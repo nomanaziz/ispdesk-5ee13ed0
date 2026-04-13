@@ -27,7 +27,7 @@ const ThemeContext = createContext<ThemeContextType>({ theme: "default", setThem
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeName>(() => {
     const saved = localStorage.getItem("fiberwatch-theme");
-    return (saved as ThemeName) || "default";
+    return (saved as ThemeName) || "light";
   });
 
   const setTheme = (t: ThemeName) => {
