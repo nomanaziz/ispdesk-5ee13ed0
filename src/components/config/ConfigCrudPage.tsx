@@ -33,6 +33,7 @@ interface ConfigCrudPageProps {
   filterComponent?: React.ReactNode;
   filterFn?: (row: any) => boolean;
   fetchQuery?: () => Promise<any[]>;
+  showStatusTabs?: boolean;
 }
 
 export default function ConfigCrudPage({
