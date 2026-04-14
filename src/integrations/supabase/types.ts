@@ -503,33 +503,57 @@ export type Database = {
       }
       branch_managers: {
         Row: {
+          address: string | null
+          balance: number
           branch_id: string | null
+          client_code: string | null
+          client_code_prefix: string | null
           contact: string | null
           created_at: string
           email: string | null
           id: string
+          min_recharge: number | null
           name: string
+          nid_number: string | null
           status: string
+          tariff_id: string | null
+          use_prefix: boolean
           user_id: string | null
         }
         Insert: {
+          address?: string | null
+          balance?: number
           branch_id?: string | null
+          client_code?: string | null
+          client_code_prefix?: string | null
           contact?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          min_recharge?: number | null
           name: string
+          nid_number?: string | null
           status?: string
+          tariff_id?: string | null
+          use_prefix?: boolean
           user_id?: string | null
         }
         Update: {
+          address?: string | null
+          balance?: number
           branch_id?: string | null
+          client_code?: string | null
+          client_code_prefix?: string | null
           contact?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          min_recharge?: number | null
           name?: string
+          nid_number?: string | null
           status?: string
+          tariff_id?: string | null
+          use_prefix?: boolean
           user_id?: string | null
         }
         Relationships: [
@@ -538,6 +562,13 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_managers_tariff_id_fkey"
+            columns: ["tariff_id"]
+            isOneToOne: false
+            referencedRelation: "reseller_tariffs"
             referencedColumns: ["id"]
           },
         ]
@@ -3807,6 +3838,160 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reseller_pgw_payments: {
+        Row: {
+          client_contact: string | null
+          client_name: string | null
+          created_at: string
+          id: string
+          our_share: number
+          payment_method: string | null
+          reseller_id: string
+          reseller_share: number
+          status: string
+          tariff_rate: number
+          total_amount: number
+          transaction_id: string | null
+        }
+        Insert: {
+          client_contact?: string | null
+          client_name?: string | null
+          created_at?: string
+          id?: string
+          our_share?: number
+          payment_method?: string | null
+          reseller_id: string
+          reseller_share?: number
+          status?: string
+          tariff_rate?: number
+          total_amount?: number
+          transaction_id?: string | null
+        }
+        Update: {
+          client_contact?: string | null
+          client_name?: string | null
+          created_at?: string
+          id?: string
+          our_share?: number
+          payment_method?: string | null
+          reseller_id?: string
+          reseller_share?: number
+          status?: string
+          tariff_rate?: number
+          total_amount?: number
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reseller_pgw_payments_reseller_id_fkey"
+            columns: ["reseller_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reseller_pgw_settlements: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          method: string | null
+          notes: string | null
+          reference: string | null
+          reseller_id: string
+          settled_by: string | null
+          status: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          reference?: string | null
+          reseller_id: string
+          settled_by?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          reference?: string | null
+          reseller_id?: string
+          settled_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reseller_pgw_settlements_reseller_id_fkey"
+            columns: ["reseller_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reseller_tariffs: {
+        Row: {
+          activation_days: number
+          created_at: string
+          id: string
+          is_daily_recharge: boolean
+          mikrotik_profile: string | null
+          mikrotik_server_id: string | null
+          name: string
+          package_id: string | null
+          protocol_type: string | null
+          selling_rate: number
+          status: string
+        }
+        Insert: {
+          activation_days?: number
+          created_at?: string
+          id?: string
+          is_daily_recharge?: boolean
+          mikrotik_profile?: string | null
+          mikrotik_server_id?: string | null
+          name: string
+          package_id?: string | null
+          protocol_type?: string | null
+          selling_rate?: number
+          status?: string
+        }
+        Update: {
+          activation_days?: number
+          created_at?: string
+          id?: string
+          is_daily_recharge?: boolean
+          mikrotik_profile?: string | null
+          mikrotik_server_id?: string | null
+          name?: string
+          package_id?: string | null
+          protocol_type?: string | null
+          selling_rate?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reseller_tariffs_mikrotik_server_id_fkey"
+            columns: ["mikrotik_server_id"]
+            isOneToOne: false
+            referencedRelation: "mikrotik_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reseller_tariffs_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "isp_packages"
             referencedColumns: ["id"]
           },
         ]
