@@ -1,72 +1,36 @@
 
 
-## Plan: Build All 14 Website Panel Pages with Full CRUD
+## Plan: Insert Demo Content for a Lively Website
 
-All 14 Website Panel pages are currently placeholders. Each will be rebuilt into a functional admin CRUD page backed by its corresponding database table. No database changes needed -- all tables already exist with RLS policies.
+All website-related tables are currently empty. This plan inserts realistic Bangla demo data using the Supabase insert tool across 10+ tables so the public website looks vibrant and professional.
 
-### Pages and Their Database Tables
+### Data to Insert
 
-| Page | DB Table | Key Fields | UI Pattern |
-|---|---|---|---|
-| 1. Website Dashboard | Aggregates all website_* tables | Counts + recent items | Stats cards + recent activity |
-| 2. Homepage Editor | `landing_content` | section, content_key, content_value (JSONB), sort_order, is_active | Section-based editor with JSONB content editing |
-| 3. Pages (CMS) | `website_pages` | title, slug, content, status (draft/published), sort_order | Table + dialog with textarea for content |
-| 4. Notices | `website_notices` | title, content, status (draft/published), publish_date | Table + add/edit dialog |
-| 5. Offers | `website_offers` | title, description, discount_text, image_url, start_date, end_date, status | Table + dialog with date pickers |
-| 6. Testimonials | `website_testimonials` | name, designation, company, content, rating, image_url, sort_order, status | Table + dialog with star rating |
-| 7. Partners | `website_partners` | name, logo_url, website_url, sort_order, status | Table + dialog |
-| 8. Features | `website_features` | title, description, icon, sort_order, status | Table + dialog |
-| 9. Services | `website_services` | title, description, icon, image_url, sort_order, status | Table + dialog |
-| 10. Festivals | `website_festivals` | title, description, image_url, start_date, end_date, status | Table + dialog with date range |
-| 11. Menu Editor | `website_menu` | title, url, parent_id (self-ref), sort_order, status | Tree-like table with parent dropdown |
-| 12. Media Library | `website_media` | filename, url, alt_text, file_type, file_size | Grid/table view (URL-based, no storage bucket) |
-| 13. About Page Editor | `landing_content` (section='about') | content_key, content_value JSONB | Key-value editor for about section content |
-| 14. Site Settings | `landing_content` (section='settings') | content_key, content_value JSONB | Settings form (company name, logo, contact, social links) |
+| Table | Records | Content |
+|---|---|---|
+| `isp_packages` | 6 | Basic (500), Standard (700), Popular (1000), Premium (1500), Business (2500), Corporate (5000) with realistic bandwidth and `show_on_homepage=true` |
+| `districts` | 4 | ঢাকা, চট্টগ্রাম, রাজশাহী, সিলেট |
+| `upazilas` | 8 | 2 per district (e.g., সাভার, গাজীপুর under ঢাকা) |
+| `zones` | 6 | Coverage zones like পূর্ব জোন, পশ্চিম জোন, etc. |
+| `website_services` | 5 | Home Internet, Business Internet, Dedicated Line, IPTV, Corporate Solution |
+| `website_features` | 6 | Fast Speed, Security, 24/7 Support, Fiber Optic, Free Router, Quick Resolution |
+| `website_testimonials` | 4 | Fake customer reviews with Bangla names, 4-5 star ratings |
+| `website_partners` | 4 | BDCOM, Huawei, MikroTik, TP-Link with logo URLs |
+| `website_notices` | 3 | Maintenance notice, Eid offer notice, New coverage area notice |
+| `website_offers` | 2 | "নতুন কানেকশনে ৫০% ছাড়" and "রেফার করুন ৫০০ টাকা পান" |
+| `website_pages` | 3 | Privacy Policy, Terms of Service, Refund Policy |
+| `website_menu` | 5 | Home, Packages, Services, About, Contact |
+| `payment_methods` | 4 | bKash, Nagad, Rocket, Bank Transfer |
+| `landing_content` | 4 | Hero section, about section, settings (company name, logo, contact) -- update existing + add new |
 
-### UI Pattern for Each CRUD Page
+### Technical Approach
 
-Each page follows a consistent pattern:
-- **Header**: Title + "Add New" button
-- **Data table**: Columns matching key fields, status badges, action buttons (edit/delete)
-- **Dialog**: Form with inputs for all fields, handles both create and update
-- **Queries**: `useQuery` for fetching, `useMutation` for insert/update/delete with `queryClient.invalidateQueries`
-- **Toast notifications** on success/error
+- Use the Supabase **insert tool** for all data operations (no migrations needed)
+- All inserts use Bangla content appropriate for a Bangladeshi ISP
+- Packages priced in BDT with realistic bandwidth (5-100 Mbps)
+- All records set to `status: 'active'` and `show_on_homepage: true` where applicable
 
-### Technical Details
+### Files to Edit
 
-- All pages use `@tanstack/react-query` + Supabase client
-- Dialog forms use shadcn `Dialog`, `Input`, `Textarea`, `Select`, `Switch`
-- Status toggles use `Switch` component
-- Sort order uses numeric `Input`
-- Date fields use native date inputs
-- Image URLs are text inputs (no file upload -- Media Library is URL-based registry)
-- Menu Editor uses a parent_id dropdown referencing other menu items for nested structure
-
-### Files to Edit (14 files)
-
-```
-src/pages/dashboard/website/WebsiteDashboard.tsx
-src/pages/dashboard/website/HomepageEditor.tsx
-src/pages/dashboard/website/WebsitePages.tsx
-src/pages/dashboard/website/WebsiteNotices.tsx
-src/pages/dashboard/website/WebsiteOffers.tsx
-src/pages/dashboard/website/WebsiteTestimonials.tsx
-src/pages/dashboard/website/WebsitePartners.tsx
-src/pages/dashboard/website/WebsiteFeatures.tsx
-src/pages/dashboard/website/WebsiteServices.tsx
-src/pages/dashboard/website/WebsiteFestivals.tsx
-src/pages/dashboard/website/WebsiteMenu.tsx
-src/pages/dashboard/website/WebsiteMedia.tsx
-src/pages/dashboard/website/WebsiteAbout.tsx
-src/pages/dashboard/website/WebsiteSettings.tsx
-```
-
-### Implementation Order
-
-Build in batches for efficiency:
-1. **Batch 1** (Simple CRUD tables): Notices, Features, Partners, Services -- straightforward table+dialog pattern
-2. **Batch 2** (Date-based): Offers, Festivals, Testimonials -- add date pickers and rating
-3. **Batch 3** (Content editors): Pages, Menu Editor, Media Library -- slug, tree structure, grid
-4. **Batch 4** (JSONB editors): Homepage Editor, About Page, Site Settings -- landing_content based
-5. **Batch 5** (Dashboard): Website Dashboard -- aggregate stats from all tables
+No code files need editing. This is purely a data insertion task using the Supabase insert tool across ~14 tables.
 
