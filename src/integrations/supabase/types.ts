@@ -706,44 +706,90 @@ export type Database = {
       client_requests: {
         Row: {
           address: string | null
+          assigned_to: string | null
+          billing_date: number | null
           connection_type: string | null
+          connection_type_id: string | null
           contact: string | null
           created_at: string
+          created_by: string | null
+          customer_type: string | null
           email: string | null
           id: string
+          monthly_bill: number | null
           name: string
           notes: string | null
+          otc_charge: number | null
           package_id: string | null
+          physical_connectivity: string | null
+          schedule_date: string | null
+          setup_by: string | null
+          setup_status: string | null
+          setup_time: string | null
           status: string
+          subzone_id: string | null
           zone_id: string | null
         }
         Insert: {
           address?: string | null
+          assigned_to?: string | null
+          billing_date?: number | null
           connection_type?: string | null
+          connection_type_id?: string | null
           contact?: string | null
           created_at?: string
+          created_by?: string | null
+          customer_type?: string | null
           email?: string | null
           id?: string
+          monthly_bill?: number | null
           name: string
           notes?: string | null
+          otc_charge?: number | null
           package_id?: string | null
+          physical_connectivity?: string | null
+          schedule_date?: string | null
+          setup_by?: string | null
+          setup_status?: string | null
+          setup_time?: string | null
           status?: string
+          subzone_id?: string | null
           zone_id?: string | null
         }
         Update: {
           address?: string | null
+          assigned_to?: string | null
+          billing_date?: number | null
           connection_type?: string | null
+          connection_type_id?: string | null
           contact?: string | null
           created_at?: string
+          created_by?: string | null
+          customer_type?: string | null
           email?: string | null
           id?: string
+          monthly_bill?: number | null
           name?: string
           notes?: string | null
+          otc_charge?: number | null
           package_id?: string | null
+          physical_connectivity?: string | null
+          schedule_date?: string | null
+          setup_by?: string | null
+          setup_status?: string | null
+          setup_time?: string | null
           status?: string
+          subzone_id?: string | null
           zone_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "client_requests_connection_type_id_fkey"
+            columns: ["connection_type_id"]
+            isOneToOne: false
+            referencedRelation: "connection_types_config"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_requests_package_id_fkey"
             columns: ["package_id"]
@@ -752,10 +798,64 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "client_requests_subzone_id_fkey"
+            columns: ["subzone_id"]
+            isOneToOne: false
+            referencedRelation: "sub_zones"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "client_requests_zone_id_fkey"
             columns: ["zone_id"]
             isOneToOne: false
             referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_schedulers: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          previous_info: string | null
+          remarks: string | null
+          schedule_date: string | null
+          schedule_info: string | null
+          scheduler_type: string
+          status: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          previous_info?: string | null
+          remarks?: string | null
+          schedule_date?: string | null
+          schedule_info?: string | null
+          scheduler_type?: string
+          status?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          previous_info?: string | null
+          remarks?: string | null
+          schedule_date?: string | null
+          schedule_info?: string | null
+          scheduler_type?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_schedulers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -787,71 +887,205 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          affiliator_id: string | null
           billing_date: number | null
+          billing_start_month: string | null
+          billing_status: string | null
+          box_id: string | null
           branch_id: string | null
+          cable_length: number | null
           client_id: string
           client_type: string | null
+          connected_by: string | null
           connection_type: string | null
           contact: string | null
+          core_color: string | null
+          core_count: number | null
           created_at: string
+          date_of_birth: string | null
+          device_serial: string | null
+          device_type: string | null
           email: string | null
+          expire_date: string | null
+          father_name: string | null
+          fiber_code: string | null
+          gender: string | null
+          house_number: string | null
           id: string
+          is_vip: boolean | null
+          joining_date: string | null
+          latitude: string | null
+          left_date: string | null
+          left_reason: string | null
+          longitude: string | null
+          mac_address: string | null
           mikrotik_id: string | null
+          mikrotik_status: string | null
           monthly_bill: number | null
+          mother_name: string | null
           name: string
+          nid_number: string | null
+          occupation: string | null
           onu_id: string | null
           package_id: string | null
+          password: string | null
+          permanent_address: string | null
+          phone_number: string | null
+          profile: string | null
+          protocol_type: string | null
+          purchase_date: string | null
+          reference_by: string | null
+          remarks: string | null
+          remote_address: string | null
+          road_number: string | null
+          server_name: string | null
           status: string
           sub_zone_id: string | null
           updated_at: string
           user_id: string | null
+          username: string | null
+          vendor: string | null
           zone_id: string | null
         }
         Insert: {
           address?: string | null
+          affiliator_id?: string | null
           billing_date?: number | null
+          billing_start_month?: string | null
+          billing_status?: string | null
+          box_id?: string | null
           branch_id?: string | null
+          cable_length?: number | null
           client_id: string
           client_type?: string | null
+          connected_by?: string | null
           connection_type?: string | null
           contact?: string | null
+          core_color?: string | null
+          core_count?: number | null
           created_at?: string
+          date_of_birth?: string | null
+          device_serial?: string | null
+          device_type?: string | null
           email?: string | null
+          expire_date?: string | null
+          father_name?: string | null
+          fiber_code?: string | null
+          gender?: string | null
+          house_number?: string | null
           id?: string
+          is_vip?: boolean | null
+          joining_date?: string | null
+          latitude?: string | null
+          left_date?: string | null
+          left_reason?: string | null
+          longitude?: string | null
+          mac_address?: string | null
           mikrotik_id?: string | null
+          mikrotik_status?: string | null
           monthly_bill?: number | null
+          mother_name?: string | null
           name: string
+          nid_number?: string | null
+          occupation?: string | null
           onu_id?: string | null
           package_id?: string | null
+          password?: string | null
+          permanent_address?: string | null
+          phone_number?: string | null
+          profile?: string | null
+          protocol_type?: string | null
+          purchase_date?: string | null
+          reference_by?: string | null
+          remarks?: string | null
+          remote_address?: string | null
+          road_number?: string | null
+          server_name?: string | null
           status?: string
           sub_zone_id?: string | null
           updated_at?: string
           user_id?: string | null
+          username?: string | null
+          vendor?: string | null
           zone_id?: string | null
         }
         Update: {
           address?: string | null
+          affiliator_id?: string | null
           billing_date?: number | null
+          billing_start_month?: string | null
+          billing_status?: string | null
+          box_id?: string | null
           branch_id?: string | null
+          cable_length?: number | null
           client_id?: string
           client_type?: string | null
+          connected_by?: string | null
           connection_type?: string | null
           contact?: string | null
+          core_color?: string | null
+          core_count?: number | null
           created_at?: string
+          date_of_birth?: string | null
+          device_serial?: string | null
+          device_type?: string | null
           email?: string | null
+          expire_date?: string | null
+          father_name?: string | null
+          fiber_code?: string | null
+          gender?: string | null
+          house_number?: string | null
           id?: string
+          is_vip?: boolean | null
+          joining_date?: string | null
+          latitude?: string | null
+          left_date?: string | null
+          left_reason?: string | null
+          longitude?: string | null
+          mac_address?: string | null
           mikrotik_id?: string | null
+          mikrotik_status?: string | null
           monthly_bill?: number | null
+          mother_name?: string | null
           name?: string
+          nid_number?: string | null
+          occupation?: string | null
           onu_id?: string | null
           package_id?: string | null
+          password?: string | null
+          permanent_address?: string | null
+          phone_number?: string | null
+          profile?: string | null
+          protocol_type?: string | null
+          purchase_date?: string | null
+          reference_by?: string | null
+          remarks?: string | null
+          remote_address?: string | null
+          road_number?: string | null
+          server_name?: string | null
           status?: string
           sub_zone_id?: string | null
           updated_at?: string
           user_id?: string | null
+          username?: string | null
+          vendor?: string | null
           zone_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "clients_affiliator_id_fkey"
+            columns: ["affiliator_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_box_id_fkey"
+            columns: ["box_id"]
+            isOneToOne: false
+            referencedRelation: "boxes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clients_branch_id_fkey"
             columns: ["branch_id"]
@@ -2316,6 +2550,68 @@ export type Database = {
             columns: ["pop_id"]
             isOneToOne: false
             referencedRelation: "pop_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      portal_servers: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          status: string
+          url: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          status?: string
+          url?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_servers_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "portal_categories"
             referencedColumns: ["id"]
           },
         ]
