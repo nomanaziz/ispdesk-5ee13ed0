@@ -1,48 +1,75 @@
 
 
-## Plan: Enhanced Billing List + Client Profile Page
+## Plan: MikroTik Module — Full Implementation
 
-### Overview
-1. Enhance `BillingList.tsx` to show ALL client types (active, free, personal, left, paid, due, partial due, overdue, advance) with more summary cards
-2. Create a new `ClientProfile.tsx` page with full client info (matching the reference screenshot) — accessible via View button
-3. Add route for client profile page
+### Database Migration
 
-### Changes
+**Alter `mikrotik_devices`:**
+- Add `version` (text, default 'v3') — MikroTik API version
+- Add `timeout` (integer, default 10) — API request timeout in seconds
 
-**1. Rebuild `BillingList.tsx`**
-- Remove `.eq("status", "active")` filter — fetch ALL clients regardless of status
-- Add client type filter: Active, Free, Personal, Left
-- Add more summary cards:
-  - Row 1: Total Clients, Active, Free/Personal, Left
-  - Row 2: Paid, Due, Partial Due, Overdue (expire_date passed)
-  - Row 3: Received Amount, Due Amount, Advance Amount, Monthly Bill Total
-- Add billing status filter options: Paid, Due, Partial, Overdue
-- Add client status filter: Active, Free, Personal, Left
-- View button navigates to `/dashboard/billing/client/:id`
+**New table: `mikrotik_backups`** — stores backup records
+- `id` (uuid PK), `mikrotik_id` (uuid FK → mikrotik_devices)
+- `file_name` (text), `file_url` (text), `file_size` (bigint)
+- `status` (text, default 'completed'), `created_at` (timestamptz)
+- RLS enabled with authenticated access
 
-**2. Create `ClientProfile.tsx`** (new file)
-- **Left Sidebar Panel** (matching reference):
-  - Client avatar placeholder
-  - Client Code, Client ID/IP, Billing Status, MikroTik Status toggle, Creation Date
-  - Action buttons: Update Information, Status Scheduler, Send Email/Message, Package Scheduler, Download Information, Go To Client List
-- **Right Content Area with Tabs**:
-  - **Service Information**: Package, Profile/Speed, Joining Date, Client Type, Billing Start Month, Username/IP, Expire Date, Password, Monthly Bill, Balance Due, Reference By, Connection Setup By, Last Log In
-  - **Network & Product Information**: Connection Type, Protocol Type, MAC Address, Server, Remote Address, Device Type, Device Serial, ONU ID, Fiber Code, Core details
-  - **Personal Information**: Father/Mother Name, Date of Birth, Gender, NID, Occupation, Email, Phone, Address, Permanent Address
-  - **Generated & Updated Bill/Invoices**: Billing history table from `billing` table
-  - **Received Bill History**: Collections from `bill_collections` table
-  - **Complain History**: From support tickets
-  - **Remarks History**: Client remarks
-- Data fetched from `clients` JOIN zones, packages, billing, bill_collections
+**New table: `mikrotik_clients`** — stores imported MikroTik PPPoE/DHCP users
+- `id` (uuid PK), `mikrotik_id` (uuid FK → mikrotik_devices)
+- `name` (text — username), `password` (text), `service` (text — pppoe/dhcp/hotspot)
+- `profile` (text — MikroTik profile name), `caller_id` (text — MAC)
+- `server_name` (text), `remote_address` (text)
+- `logout_time` (timestamptz), `user_status` (text — unique/duplicate/disabled)
+- `branch_id` (uuid FK → branches), `exported` (boolean default false)
+- `exported_to` (text — 'client_list' or 'mac_reseller')
+- `status` (text, default 'active'), `created_at` (timestamptz)
 
-**3. Routing (`App.tsx`)**
-- Add import for `ClientProfile`
-- Add route: `/dashboard/billing/client/:id`
+**New table: `mikrotik_bulk_imports`** — tracks bulk import batches
+- `id` (uuid PK), `file_name` (text), `total_rows` (integer)
+- `imported_rows` (integer default 0), `package_id` (uuid FK → isp_packages)
+- `status` (text — pending/processing/completed/failed)
+- `created_by` (uuid FK → profiles), `created_at` (timestamptz)
 
-### Technical Details
-- Client profile uses `useParams()` to get client ID
-- All data via `@tanstack/react-query` + Supabase
-- BillingList View button: `useNavigate()` to `/dashboard/billing/client/${c.id}`
+### Frontend Pages
+
+**1. Servers (`Servers.tsx`)** — matching reference screenshot
+- "+ Server" button opens Add/Edit dialog with: Server IP*, Username*, Password*, API Port*, MikroTik Version (dropdown: v3/v2), API Request Timeout
+- Table columns: Serial, ServerName, Server IP, Username, Password (masked with eye toggle), Port, Version, Timeout, Status (toggle switch), Action (edit/delete/sync)
+- Status toggle calls Supabase update
+- Search and entries-per-page selector
+
+**2. Server Backup (`Backup.tsx`)**
+- "+ Create Backup" button triggers backup creation (inserts record)
+- Table: Time, Backup File Name, Download (link)
+- Server selector filter at top
+- Search and pagination
+
+**3. Import From MikroTik (`Import.tsx`)** — MikroTik Client List
+- **Filters row**: Servers (select), Protocol (PPPoE/DHCP/All), Profile (select from MikroTik profiles), User Type (Unique/Duplicate/All)
+- Clear Filter & Apply Filter buttons
+- **Action buttons**: Generate Excel, Export To MACReseller
+- **Table columns**: Name, Password (masked), Service, Profile, Caller ID, Server Name, Logout Time, User Status (badge), Branch, Action (export to client list icon), Export (checkbox)
+- Export action (single): clicking export icon navigates to Add Client page pre-filled with MikroTik user data (username, password, profile, server, MAC)
+- Export To MACReseller (bulk): selected users get `exported_to = 'mac_reseller'` flag and transfer to MAC reseller portal
+- Pagination with entries count
+
+**4. Bulk Clients Import (`BulkImport.tsx`)**
+- **Instruction toggle**: "Learn How to Import Clients..." collapsible section
+- **Action buttons**: Download Sample Excel, Clear All Clients, Upload Importable Clients(Excel), Download Edited Data
+- Download Sample Excel generates an XLSX with columns: C.Code, Name, Mobile, Email, NationalID, Address, Zone, Conn.Type, Server, Prot.Type, Profile, UserName, Password, R.Address, C.Type, Package, B.Status, M.Bill, Bill.Month, Join.Date, Exp.Date, DateOfBirth(Opt.), FatherName(Opt.), MotherName(Opt.), Occupation(Opt.)
+- Upload parses Excel, validates data (checks package exists, profile matches MikroTik profile), shows in editable table
+- Package must match for all rows in a batch OR allow per-row package assignment
+- Table shows all uploaded rows with inline edit capability
+- Action column: delete individual row
+- "Import All" button inserts validated rows into `clients` table
+
+### Routing
+- Existing routes already defined in App.tsx — no new routes needed
+
+### Technical Notes
+- All pages use `@tanstack/react-query` + Supabase client
+- MikroTik password stored encrypted in `password_encrypted` — UI shows masked dots with eye toggle
+- Excel generation uses browser-side xlsx library (already available or add `xlsx` package)
+- Import validation: check `isp_packages.mikrotik_profile` matches the MikroTik profile name
 - Bangla UI labels throughout
-- No database changes needed — all columns already exist in `clients` table
 
