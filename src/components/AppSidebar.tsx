@@ -139,6 +139,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Shift Management", url: "/dashboard/hr/shifts", icon: Clock },
       { title: "ZKTeco Devices", url: "/dashboard/hr/zkteco-devices", icon: Server },
       { title: "Attendance Rules", url: "/dashboard/hr/attendance-rules", icon: Shield },
+      { title: "HR Settings", url: "/dashboard/hr/settings", icon: Settings },
     ],
   },
   {
