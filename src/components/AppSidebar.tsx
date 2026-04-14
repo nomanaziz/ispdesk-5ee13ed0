@@ -41,7 +41,6 @@ const menuGroups: MenuGroup[] = [
     icon: Globe,
     iconColor: "text-purple-400",
     items: [
-      { title: "Website Dashboard", url: "/dashboard/website", icon: LayoutDashboard },
       { title: "Homepage Editor", url: "/dashboard/website/homepage", icon: Monitor },
       { title: "Pages", url: "/dashboard/website/pages", icon: FileText },
       { title: "Notices", url: "/dashboard/website/notices", icon: Bell },
