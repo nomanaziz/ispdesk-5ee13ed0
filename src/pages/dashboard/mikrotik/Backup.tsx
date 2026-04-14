@@ -106,7 +106,7 @@ export default function Backup() {
                     <TableCell>{new Date(b.created_at).toLocaleString("bn-BD")}</TableCell>
                     <TableCell>{b.mikrotik_devices?.name || "—"}</TableCell>
                     <TableCell className="font-mono text-sm">{b.file_name}</TableCell>
-                    <TableCell><span className="text-xs px-2 py-1 rounded bg-green-100 text-green-800">{b.status}</span></TableCell>
+                    <TableCell><span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary">{b.status}</span></TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!b.file_url}>
                         <Download className="h-4 w-4" />

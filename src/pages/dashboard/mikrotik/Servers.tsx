@@ -60,7 +60,7 @@ export default function Servers() {
         const { error } = await supabase.from("mikrotik_devices").update(payload).eq("id", values.id);
         if (error) throw error;
       } else {
-        payload.status = "active";
+        payload.status = "online";
         const { error } = await supabase.from("mikrotik_devices").insert(payload);
         if (error) throw error;
       }
