@@ -1,42 +1,57 @@
 
 
-## Plan: Purchase Module — Full Page Implementation
+## Plan: Inventory Management — Full Page Implementation
 
 ### Overview
-Implement all 4 purchase pages (currently placeholders) with full CRUD UI and Supabase integration. No database changes needed — all tables (`vendors`, `purchases`, `requisitions`, `purchase_bills`) already exist.
+Implement all 5 inventory pages (currently placeholders) with full CRUD UI and Supabase integration. All tables already exist — no database migration needed. The inventory will handle ISP network materials like Fiber, ONU, TJ Box, Patchcord, SFP, Short Cable, Switch, etc.
 
 ### Pages to Implement
 
-**1. Vendors (`Vendors.tsx`)** — ভেন্ডর ম্যানেজমেন্ট
-- "+ Add Vendor" dialog: Name, Contact, Email, Address, Status (active/inactive)
-- Summary cards: Total Vendors, Active, Inactive
-- Table: Serial, Name, Contact, Email, Address, Status (badge), Created Date, Actions (edit/delete)
+**1. Units (`Units.tsx`)** — পরিমাপ একক
+- "+ Add Unit" dialog: Name, Short Name, Status
+- Table: Serial, Name, Short Name, Status (badge), Created Date, Actions (edit/delete)
+- Search filter
+- Pre-populated ISP units: Meter, Roll, Piece (পিস), Box, Coil, Set
+
+**2. Store Locations (`Locations.tsx`)** — স্টোর লোকেশন
+- "+ Add Location" dialog: Name, Address, Status
+- Table: Serial, Name, Address, Status (badge), Created Date, Actions (edit/delete)
 - Search filter
 
-**2. Requisitions (`Requisitions.tsx`)** — রিকুইজিশন
-- "+ New Requisition" dialog: Requisition No, Item (select from inventory_items), Quantity, Vendor (select), Estimated Cost, Notes
-- Summary cards: Total, Pending, Approved, Rejected
-- Filters: Status, Vendor, Search
-- Table: Serial, Requisition No, Item Name, Quantity, Vendor, Estimated Cost, Status (pending/approved/rejected badge), Approved By, Notes, Created Date, Actions (edit/approve/reject/delete)
-- Status update actions for approve/reject
+**3. Item Categories (`InventoryCategories.tsx`)** — আইটেম ক্যাটাগরি
+- "+ Add Category" dialog: Name, Status
+- Table: Serial, Category Name, Status (badge), Created Date, Actions (edit/delete)
+- Search filter
+- ISP-specific categories: Fiber Cable, ONU/ONT, Connector & Splitter, Networking Equipment, Cable Accessories, Tools
 
-**3. Purchases (`Purchases.tsx`)** — ক্রয় তালিকা
-- "+ New Purchase" dialog: Purchase No, Vendor (select), Item (select from inventory_items), Quantity, Unit Price, Total (auto-calc), Purchase Date, Status, Notes
-- Summary cards: Total Purchases, Total Amount, Completed, Pending
-- Filters: Status, Vendor, Date Range, Search
-- Table: Serial, Purchase No, Vendor, Item, Quantity, Unit Price, Total, Purchase Date, Status (badge), Notes, Actions (edit/delete)
+**4. Items (`InventoryItems.tsx`)** — আইটেম তালিকা
+- "+ Add Item" dialog: Name, Code, Category (select), Unit (select), Purchase Price, Sale Price, Store Location (select), Status
+- Summary cards: Total Items, Active, Low Stock (quantity < 10)
+- Filters: Category, Store Location, Search
+- Table: Serial, Code, Name, Category, Unit, Purchase Price, Sale Price, Current Stock (quantity), Store, Status (badge), Actions (edit/delete)
+- Common ISP items: Fiber Cable (1km Roll), ONU Device, TJ Box, Patchcord, SFP Module, Short Cable, Network Switch, Splitter (1:8/1:16), Drop Wire, HDPE Pipe
 
-**4. Purchase Bills (`PurchaseBills.tsx`)** — পার্চেজ বিল
-- Same pattern as existing `bw-buy/Bills.tsx` but for general purchases
-- "+ New Bill" dialog: Bill No, Vendor (select), Amount, Paid, Due (auto-calc), Bill Date, Status
-- Summary cards: Total Amount, Total Paid, Total Due
-- Filters: Status, Vendor, Search
-- Table: Serial, Vendor, Bill No, Amount, Paid, Due, Bill Date, Status (badge), Actions (edit/delete)
+**5. Stock (`Stock.tsx`)** — স্টক ম্যানেজমেন্ট
+- Two sections: Stock In / Stock Out via `stock_movements` table
+- "+ Stock In" / "+ Stock Out" buttons
+- Dialog: Item (select from inventory_items), Quantity, Type (in/out), Reference (PO number, etc.), Notes
+- On save: insert into `stock_movements` + update `inventory_items.quantity` accordingly
+- Summary cards: Total Stock In (today), Total Stock Out (today), Total Items in Stock
+- Filters: Item, Type (in/out), Date Range, Search
+- Table: Serial, Item Name, Type (badge: Stock In green / Stock Out red), Quantity, Reference, Notes, Date, Actions (delete)
 
 ### Technical Details
-- All queries via `@tanstack/react-query` + Supabase
-- Vendors dropdown shared across Requisitions, Purchases, Purchase Bills
-- Items dropdown from `inventory_items` table for Requisitions and Purchases
+- All queries via `@tanstack/react-query` + Supabase client
+- Items page joins `inventory_categories`, `inventory_units`, `store_locations` for dropdown selects and display names
+- Stock page updates `inventory_items.quantity` on each stock movement (increment for "in", decrement for "out")
+- Same UI pattern as Vendors/Purchases pages (already implemented)
 - Bangla UI labels throughout
-- No database migration needed — all tables exist
+- No database migration needed — all 5 tables exist
+
+### Files to Edit (5)
+- `src/pages/dashboard/inventory/Units.tsx`
+- `src/pages/dashboard/inventory/Locations.tsx`
+- `src/pages/dashboard/inventory/InventoryCategories.tsx`
+- `src/pages/dashboard/inventory/InventoryItems.tsx`
+- `src/pages/dashboard/inventory/Stock.tsx`
 
