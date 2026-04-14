@@ -1,67 +1,74 @@
 
 
-## Plan: Bandwidth Buy Module — Full Implementation
+## Plan: Billing Module — Full Implementation
 
 ### Database Migration
 
-**Alter `bw_categories`:**
-- Add `parent_id` (uuid, self-referencing FK) for sub-categories
-- Seed predefined categories: INT, IIG, FNA, GGC, M-CDN, B-CDN, BDIX, NIX, IX, DATA, NTTN
+**New table: `bill_collections`** — stores each bill payment/collection transaction
+- `id` (uuid PK), `billing_id` (FK → billing), `client_id` (FK → clients)
+- `amount` (numeric), `discount` (numeric default 0), `vat` (numeric default 0)
+- `payment_method` (text — Cash, bKash, Nagad, etc.)
+- `note` (text), `transaction_id` (text)
+- `received_by` (uuid FK → profiles), `approved_by` (uuid FK → profiles), `created_by` (uuid FK → profiles)
+- `status` (text default 'approved' — approved/pending/rejected)
+- `created_at` (timestamptz)
 
-**Alter `bw_providers`:**
-- Add `logo_url` (text), `address` (text), `mobile` (text)
+**Alter `billing` table:**
+- Add `vat` (numeric default 0)
+- Add `generated` (boolean default false) — whether bill was auto-generated
+- Add `branch_id` (uuid FK → branches, nullable)
 
-**Alter `bw_purchase_bills`:**
-- Add `billing_month` (text), `payment_due` (date), `invoice_no` (text), `attachment_url` (text), `discount` (numeric default 0), `remarks` (text)
+**Add columns to `clients` (if missing):**
+- `speed` (text) — display speed label
 
-**New table: `bw_bill_items`** — line items per bill
-- `id` (uuid PK), `bill_id` (FK → bw_purchase_bills), `item_id` (FK → bw_items)
-- `description` (text), `unit` (text), `quantity` (numeric), `rate` (numeric), `vat_percent` (numeric default 0)
-- `from_date` (date), `to_date` (date), `total` (numeric), `created_at`
+### Frontend: Billing List (`BillingList.tsx`)
 
-**Alter `bw_items`:**
-- Add `description` (text)
+**Summary Cards (2 rows):**
+- Row 1: Paid Client count (green), Unpaid Client count (blue), Received Bill amount (red/orange), Due Amount (purple)
+- Row 2: Generated Bill count, Advance Amount, Monthly Bill total
 
-**Storage bucket:** `bw-provider-logos` for provider logo uploads, `bw-bill-attachments` for bill file attachments.
+**Bulk Action Buttons:**
+- Generate Excel, Generate PDF, Bulk Status Change, Bulk Zone Change, Bulk Billing Date Extend, Download Invoice, Enable/Disable Selected
 
----
+**Filters:**
+- Search (client ID/name/mobile), Zone select, Status select (Paid/Unpaid/Due), Month picker, Package select
 
-### Frontend Pages
+**Client Billing Table:**
+- Columns: SN, C.Code, ID/IP, Customer Name, Mobile, Zone, Cus.Type, Conn.Type, Package, Speed, Expire Date, M.Bill, Received, VAT, Balance Due, Advance, Payment Date, Server, M.Status (toggle), B.Status (Pay/Due/Paid badge), Action (view/edit/collect)
+- Data from `clients` JOIN `billing` (current month)
+- Pagination with entries-per-page select
 
-**1. Item Categories (`Categories.tsx`)**
-- Card-based list with parent categories shown as expandable sections
-- Sub-categories listed under parent with indent
-- Add/Edit dialog with optional parent_id select
-- Edit & Delete buttons per category
+### Frontend: Daily Bill Collection (`DailyCollection.tsx`)
 
-**2. Items (`Items.tsx`)**
-- Card/table layout grouped by category (not tree view)
-- Each category as a collapsible card header showing item count
-- Items listed in a clean table within each card
-- Add Item dialog: name, category (select), provider (select), bandwidth, price, description
-- Edit/Delete inline
+**Tabs:** Collected Bills | Webhook Payments | Paybill Payments
 
-**3. Providers (`Providers.tsx`)**
-- Table: Logo, Company, Contact Person, Email, Mobile, Balance Due, Actions
-- Logo upload via Supabase Storage
-- Add/Edit dialog with all fields
-- Balance Due calculated from unpaid bills (aggregated query)
-- View, Edit, Delete actions
+**Summary Cards:** Receive total, Discount total, Due total (for filtered period)
 
-**4. Purchase Bills (`Bills.tsx`)**
-- **Summary cards**: Total Purchase, Paid, Due, Discount amounts (current month + all-time)
-- **Invoice count cards**: Total, Paid, Due, Unpaid counts
-- **Filters**: Month (MM/YYYY), Status select, Provider select
-- **Bill table**: SN, Provider, Contact, Bill No, Invoice No, Month, Amount, Paid, Discount, Due, Status (Pay/Due/Paid badges), Actions
-- **Add Bill route** (`/dashboard/bw-buy/bills/new`): Form with provider select, auto-generated bill no, billing month, payment due date, invoice no, attachment upload, dynamic line items table (item select, description, unit, qty, rate, VAT%, from/to date, total auto-calc), remarks textarea, total row
-- **View Bill route** (`/dashboard/bw-buy/bills/:id`): Invoice-style view matching the reference (provider info header, bill-to section, line items table, totals, payment history, remarks). Download PDF button.
+**Action Buttons:** Generate CSV, Generate PDF, + Receive Bill, Approve Selected, Delete Selected
 
-### Routing
-- Add routes: `/dashboard/bw-buy/bills/new` and `/dashboard/bw-buy/bills/:id`
+**Filters (2 rows):**
+- Username (select), From Date, To Date, Received By
+- Approved By, Created By, Trans. Status, Payment Method
+- Clear Filter & Apply Filter buttons
+
+**Collection Table:**
+- Columns: Date, C.Code, Username, Cus.Name, Mobile, Note/Remarks, M.Bill, Received, VAT, Discount, Balance Due, Payment Method, Received By, Approved By, Created By, Action (approve checkmark)
+- Data from `bill_collections` JOIN `clients` JOIN `billing`
+
+**"Receive Bill" Dialog:**
+- Client search/select (username/ID dropdown)
+- Shows client info + current bill details
+- Amount, Discount, Payment Method, Note fields
+- On save: insert into `bill_collections`, update `billing.paid`, `billing.status`
+
+### Routing & Sidebar
+- Existing routes `/dashboard/billing` and `/dashboard/billing/daily-collection` — just rebuild the page content
+- No new routes needed
 
 ### Technical Notes
-- All pages use `@tanstack/react-query` + Supabase client
-- Bill amounts auto-calculated from line items (quantity * rate + VAT)
-- Provider balance due = SUM(bill amounts) - SUM(paid) across all their bills
-- Bangla UI labels consistent with existing pages
+- All queries use `@tanstack/react-query` + Supabase client
+- Bill status logic: if paid >= amount → "paid", if paid > 0 → "partial", else "unpaid"
+- Summary cards aggregate from `billing` table filtered by current month
+- Collection table aggregates from `bill_collections` with date range filter
+- Bangla UI labels throughout
 
