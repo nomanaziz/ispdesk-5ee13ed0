@@ -453,6 +453,12 @@ const App = () => (
               <Route path="/dashboard/system/email" element={<P><SystemEmail /></P>} />
               <Route path="/dashboard/system/setup" element={<P><SystemSetup /></P>} />
               <Route path="/dashboard/system/processing-fee" element={<P><SystemProcessingFee /></P>} />
+              <Route path="/dashboard/system/roles" element={<P><SystemRoles /></P>} />
+              <Route path="/dashboard/system/olt-permissions" element={<P><SystemOltPermissions /></P>} />
+              <Route path="/dashboard/system/system-log" element={<P><SystemLog /></P>} />
+
+              {/* Config (additional) */}
+              <Route path="/dashboard/config/service-types" element={<P><ConfigServiceTypes /></P>} />
 
               {/* Website Panel */}
               <Route path="/dashboard/website" element={<P><WebsiteDashboard /></P>} />
