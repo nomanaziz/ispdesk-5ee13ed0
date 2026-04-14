@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Users, UserX, Banknote, AlertTriangle, FileSpreadsheet, FileText,
-  RefreshCw, Download, Eye, Edit, Receipt, Search, ChevronLeft, ChevronRight
+  RefreshCw, Download, Eye, Edit, Receipt, Search, ChevronLeft, ChevronRight,
+  UserCheck, UserMinus, Clock, TrendingUp
 } from "lucide-react";
 
 const currentMonth = () => {
@@ -18,14 +20,15 @@ const currentMonth = () => {
 };
 
 export default function BillingList() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [clientStatusFilter, setClientStatusFilter] = useState("all");
   const [zoneFilter, setZoneFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState(currentMonth());
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
 
-  // Fetch clients with billing for selected month
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["billing-list", monthFilter],
     queryFn: async () => {
@@ -39,7 +42,6 @@ export default function BillingList() {
           package:isp_packages(name),
           billing!billing_client_id_fkey(id, month, amount, paid, due, discount, advance, vat, status, pay_date)
         `)
-        .eq("status", "active")
         .order("client_id", { ascending: true });
       if (error) throw error;
       return (data || []).map((c: any) => {
@@ -49,7 +51,6 @@ export default function BillingList() {
     },
   });
 
-  // Fetch zones for filter
   const { data: zones = [] } = useQuery({
     queryKey: ["zones-list"],
     queryFn: async () => {
@@ -58,7 +59,6 @@ export default function BillingList() {
     },
   });
 
-  // Filter
   const filtered = useMemo(() => {
     return clients.filter((c: any) => {
       if (search) {
@@ -70,32 +70,48 @@ export default function BillingList() {
         ) return false;
       }
       if (zoneFilter !== "all" && c.zone?.name !== zoneFilter) return false;
+      if (clientStatusFilter !== "all" && c.status !== clientStatusFilter) return false;
       if (statusFilter !== "all") {
-        const bs = c.currentBill?.status?.toLowerCase() || "unpaid";
-        if (statusFilter !== bs) return false;
+        const b = c.currentBill;
+        const bs = b?.status?.toLowerCase() || "unpaid";
+        const now = new Date();
+        const expDate = c.expire_date ? new Date(c.expire_date) : null;
+        if (statusFilter === "overdue") {
+          if (!expDate || expDate >= now || bs === "paid") return false;
+        } else if (statusFilter !== bs) return false;
       }
       return true;
     });
-  }, [clients, search, zoneFilter, statusFilter]);
+  }, [clients, search, zoneFilter, clientStatusFilter, statusFilter]);
 
-  // Summary
   const summary = useMemo(() => {
-    let paid = 0, unpaid = 0, received = 0, due = 0, advance = 0, monthlyBill = 0, generated = 0;
+    let total = clients.length, active = 0, free = 0, left = 0;
+    let paid = 0, unpaid = 0, partial = 0, overdue = 0;
+    let received = 0, due = 0, advance = 0, monthlyBill = 0;
+    const now = new Date();
+
     clients.forEach((c: any) => {
+      if (c.status === "active") active++;
+      else if (c.status === "free" || c.status === "personal") free++;
+      else if (c.status === "left") left++;
+
       const b = c.currentBill;
       monthlyBill += Number(c.monthly_bill || 0);
       if (b) {
-        generated++;
-        if (b.status === "paid") paid++;
-        else unpaid++;
         received += Number(b.paid || 0);
         due += Number(b.due || 0);
         advance += Number(b.advance || 0);
+        const bs = b.status?.toLowerCase();
+        if (bs === "paid") paid++;
+        else if (bs === "partial") partial++;
+        else unpaid++;
       } else {
         unpaid++;
       }
+      const expDate = c.expire_date ? new Date(c.expire_date) : null;
+      if (expDate && expDate < now && (!b || b.status !== "paid")) overdue++;
     });
-    return { paid, unpaid, received, due, advance, monthlyBill, generated };
+    return { total, active, free, left, paid, unpaid, partial, overdue, received, due, advance, monthlyBill };
   }, [clients]);
 
   const totalPages = Math.ceil(filtered.length / perPage);
@@ -105,16 +121,24 @@ export default function BillingList() {
     <div className="space-y-4 p-4">
       <h1 className="text-xl font-bold text-foreground">বিলিং তালিকা (Billing List)</h1>
 
-      {/* Summary Cards Row 1 */}
+      {/* Row 1: Client Counts */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <SummaryCard icon={Users} label="পেইড ক্লায়েন্ট" value={summary.paid} color="text-emerald-400" bg="bg-emerald-500/10" />
-        <SummaryCard icon={UserX} label="আনপেইড ক্লায়েন্ট" value={summary.unpaid} color="text-blue-400" bg="bg-blue-500/10" />
-        <SummaryCard icon={Banknote} label="রিসিভড বিল" value={`৳${summary.received.toLocaleString()}`} color="text-orange-400" bg="bg-orange-500/10" />
-        <SummaryCard icon={AlertTriangle} label="বকেয়া" value={`৳${summary.due.toLocaleString()}`} color="text-purple-400" bg="bg-purple-500/10" />
+        <SummaryCard icon={Users} label="মোট ক্লায়েন্ট" value={summary.total} color="text-blue-500" bg="bg-blue-500/10" />
+        <SummaryCard icon={UserCheck} label="অ্যাক্টিভ" value={summary.active} color="text-emerald-500" bg="bg-emerald-500/10" />
+        <SummaryCard icon={UserMinus} label="ফ্রি/পার্সোনাল" value={summary.free} color="text-cyan-500" bg="bg-cyan-500/10" />
+        <SummaryCard icon={UserX} label="লেফট" value={summary.left} color="text-red-500" bg="bg-red-500/10" />
       </div>
-      {/* Summary Cards Row 2 */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <SummaryCard icon={Receipt} label="জেনারেটেড বিল" value={summary.generated} color="text-cyan-400" bg="bg-cyan-500/10" />
+      {/* Row 2: Billing Status Counts */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <SummaryCard icon={Receipt} label="পেইড ক্লায়েন্ট" value={summary.paid} color="text-emerald-400" bg="bg-emerald-500/10" />
+        <SummaryCard icon={AlertTriangle} label="ডিউ ক্লায়েন্ট" value={summary.unpaid} color="text-orange-400" bg="bg-orange-500/10" />
+        <SummaryCard icon={Clock} label="পার্শিয়াল ডিউ" value={summary.partial} color="text-yellow-400" bg="bg-yellow-500/10" />
+        <SummaryCard icon={TrendingUp} label="ওভারডিউ" value={summary.overdue} color="text-red-400" bg="bg-red-500/10" />
+      </div>
+      {/* Row 3: Financial */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <SummaryCard icon={Banknote} label="রিসিভড" value={`৳${summary.received.toLocaleString()}`} color="text-emerald-400" bg="bg-emerald-500/10" />
+        <SummaryCard icon={AlertTriangle} label="বকেয়া" value={`৳${summary.due.toLocaleString()}`} color="text-purple-400" bg="bg-purple-500/10" />
         <SummaryCard icon={Banknote} label="অগ্রিম" value={`৳${summary.advance.toLocaleString()}`} color="text-yellow-400" bg="bg-yellow-500/10" />
         <SummaryCard icon={Banknote} label="মাসিক বিল" value={`৳${summary.monthlyBill.toLocaleString()}`} color="text-teal-400" bg="bg-teal-500/10" />
       </div>
@@ -133,20 +157,31 @@ export default function BillingList() {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input placeholder="সার্চ (ID/নাম/মোবাইল)" className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <Select value={zoneFilter} onValueChange={setZoneFilter}>
+        <Select value={zoneFilter} onValueChange={v => { setZoneFilter(v); setPage(1); }}>
           <SelectTrigger className="w-40"><SelectValue placeholder="জোন" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">সকল জোন</SelectItem>
             {zones.map((z: any) => <SelectItem key={z.id} value={z.name}>{z.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="স্ট্যাটাস" /></SelectTrigger>
+        <Select value={clientStatusFilter} onValueChange={v => { setClientStatusFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-36"><SelectValue placeholder="ক্লায়েন্ট টাইপ" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">সকল</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="free">Free</SelectItem>
+            <SelectItem value="personal">Personal</SelectItem>
+            <SelectItem value="left">Left</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-36"><SelectValue placeholder="বিলিং স্ট্যাটাস" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">সকল</SelectItem>
             <SelectItem value="paid">Paid</SelectItem>
-            <SelectItem value="unpaid">Unpaid</SelectItem>
+            <SelectItem value="unpaid">Unpaid/Due</SelectItem>
             <SelectItem value="partial">Partial</SelectItem>
+            <SelectItem value="overdue">Overdue</SelectItem>
           </SelectContent>
         </Select>
         <Input type="month" value={monthFilter} onChange={e => setMonthFilter(e.target.value)} className="w-44" />
@@ -168,6 +203,7 @@ export default function BillingList() {
                   <TableHead>প্যাকেজ</TableHead>
                   <TableHead>স্পিড</TableHead>
                   <TableHead>মেয়াদ</TableHead>
+                  <TableHead>C.Status</TableHead>
                   <TableHead className="text-right">M.Bill</TableHead>
                   <TableHead className="text-right">Received</TableHead>
                   <TableHead className="text-right">Due</TableHead>
@@ -179,9 +215,9 @@ export default function BillingList() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">লোড হচ্ছে...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={17} className="text-center py-8 text-muted-foreground">লোড হচ্ছে...</TableCell></TableRow>
                 ) : paginated.length === 0 ? (
-                  <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={17} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
                 ) : paginated.map((c: any, i: number) => {
                   const b = c.currentBill;
                   const bs = b?.status || "unpaid";
@@ -196,6 +232,11 @@ export default function BillingList() {
                       <TableCell>{c.package?.name || "-"}</TableCell>
                       <TableCell>{c.speed || "-"}</TableCell>
                       <TableCell className="text-xs">{c.expire_date || "-"}</TableCell>
+                      <TableCell>
+                        <Badge variant={c.status === "active" ? "default" : c.status === "left" ? "destructive" : "secondary"} className="text-xs capitalize">
+                          {c.status}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-right">{Number(c.monthly_bill || 0).toLocaleString()}</TableCell>
                       <TableCell className="text-right">{Number(b?.paid || 0).toLocaleString()}</TableCell>
                       <TableCell className="text-right">{Number(b?.due || 0).toLocaleString()}</TableCell>
@@ -208,7 +249,9 @@ export default function BillingList() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" className="h-7 w-7"><Eye className="h-3.5 w-3.5" /></Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => navigate(`/dashboard/billing/client/${c.id}`)}>
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7"><Edit className="h-3.5 w-3.5" /></Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7"><Receipt className="h-3.5 w-3.5" /></Button>
                         </div>

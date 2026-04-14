@@ -59,6 +59,7 @@ import ClientPortalManage from "@/pages/dashboard/clients/PortalManage";
 // Billing
 import BillingList from "@/pages/dashboard/billing/BillingList";
 import BillingDailyCollection from "@/pages/dashboard/billing/DailyCollection";
+import ClientProfile from "@/pages/dashboard/billing/ClientProfile";
 
 // Mikrotik
 import MikrotikServers from "@/pages/dashboard/mikrotik/Servers";
