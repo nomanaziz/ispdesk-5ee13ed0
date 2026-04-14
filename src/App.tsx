@@ -18,6 +18,8 @@ import NewConnection from "@/pages/public/NewConnection";
 import QuickPay from "@/pages/public/QuickPay";
 import Services from "@/pages/public/Services";
 import About from "@/pages/public/About";
+import Contact from "@/pages/public/Contact";
+import Offers from "@/pages/public/Offers";
 
 // Auth pages
 import Login from "./pages/Login";

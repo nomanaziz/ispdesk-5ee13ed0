@@ -414,7 +414,7 @@ function TestimonialsSection() {
                     <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-                <p className="text-sm text-slate-600 mb-4 leading-relaxed italic">"{t.message}"</p>
+                <p className="text-sm text-slate-600 mb-4 leading-relaxed italic">"{t.content}"</p>
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm">
                     {t.name?.charAt(0)}
