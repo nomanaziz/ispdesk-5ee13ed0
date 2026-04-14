@@ -33,6 +33,7 @@ interface ConfigCrudPageProps {
   filterComponent?: React.ReactNode;
   filterFn?: (row: any) => boolean;
   fetchQuery?: () => Promise<any[]>;
+  showStatusTabs?: boolean;
 }
 
 export default function ConfigCrudPage({
@@ -45,7 +46,9 @@ export default function ConfigCrudPage({
   filterComponent,
   filterFn,
   fetchQuery,
+  showStatusTabs = false,
 }: ConfigCrudPageProps) {
+  const [statusTab, setStatusTab] = useState<"active" | "inactive">("active");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -165,6 +168,7 @@ export default function ConfigCrudPage({
   };
 
   const filtered = (items || [])
+    .filter((item: any) => showStatusTabs ? item.status === statusTab : true)
     .filter((item: any) => filterFn ? filterFn(item) : true)
     .filter((item: any) => {
       if (!search) return true;
@@ -202,6 +206,17 @@ export default function ConfigCrudPage({
       </div>
 
       {filterComponent}
+
+      {showStatusTabs && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant={statusTab === "active" ? "default" : "outline"} onClick={() => setStatusTab("active")}>
+            সক্রিয় তালিকা
+          </Button>
+          <Button size="sm" variant={statusTab === "inactive" ? "default" : "outline"} onClick={() => setStatusTab("inactive")}>
+            লুকানো তালিকা
+          </Button>
+        </div>
+      )}
 
       <Card>
         <CardHeader className="pb-3">

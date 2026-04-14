@@ -53,6 +53,7 @@ export default function Divisions() {
         { key: "code", label: "ইংরেজি নাম", placeholder: "e.g. Dhaka" },
       ]}
       onStatusToggle={handleStatusToggle}
+      showStatusTabs
     />
   );
 }

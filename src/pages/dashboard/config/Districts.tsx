@@ -72,6 +72,7 @@ export default function Districts() {
       }
       filterFn={(row) => divisionFilter === "all" || row.division_id === divisionFilter}
       onStatusToggle={handleStatusToggle}
+      showStatusTabs
     />
   );
 }

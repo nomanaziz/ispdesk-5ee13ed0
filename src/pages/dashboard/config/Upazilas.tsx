@@ -52,6 +52,7 @@ export default function Upazilas() {
         </div>
       }
       filterFn={(row) => districtFilter === "all" || row.district_id === districtFilter}
+      showStatusTabs
       fetchQuery={async () => {
         const { data, error } = await supabase.from("upazilas").select("*").order("name");
         if (error) throw error;
