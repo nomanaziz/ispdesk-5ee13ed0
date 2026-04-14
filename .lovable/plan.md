@@ -1,79 +1,86 @@
 
 
-## Plan: Rebuild Public Website to Match galaxynetbd.com Design
+## Plan: Build All Configuration Pages + Import District/Upazila Data
 
-The current public website has a basic design. This plan rebuilds all public-facing pages and shared components to exactly replicate the galaxynetbd.com design, layout, and features -- while keeping content dynamic from the database.
+### Part 1: Import All Districts & Upazilas from Excel
 
-### Design Elements from galaxynetbd.com
+The uploaded Excel file contains all Bangladesh districts and upazilas. Currently only 4 demo districts and 8 upazilas exist. We will:
 
-**Common across all pages:**
-- Top info bar: phone number + social icons (Facebook, YouTube, WhatsApp) on dark teal/slate background
-- Sticky navbar: Logo (left) + nav links (হোম, প্যাকেজ, সেবা, কভারেজ, আমাদের সম্পর্কে, বিল পরিশোধ, অফার, যোগাযোগ) + EN toggle + "টেলিযোগাযোগ" orange button + user icon
-- Breadcrumb hero banner on inner pages: full-width image with overlay, page title, subtitle, and breadcrumb trail
-- Footer: 4 columns (Logo+tagline+social, দ্রুত লিংক, রিসোর্স, যোগাযোগ) + bottom copyright bar
-- Floating WiFi button (bottom-left)
+1. **Parse the Excel file** using a Python script to extract all district and upazila names
+2. **Delete existing demo data** (4 districts, 8 upazilas) and **insert the full dataset** (~64 districts, ~500 upazilas) via the Supabase insert tool
+3. All inserted with `status: 'active'` by default
 
-**Home page sections (in order):**
-1. Festival announcement banner (scrolling marquee)
-2. Hero section with background image, title, subtitle, price badge, 3 CTA buttons
-3. Stats bar (4 items: আপটাইম, গ্রাহক, এলাকা, BDIX)
-4. Cache server logos marquee (Google, Meta, YouTube, Netflix, TikTok, etc.)
-5. Fiber optic banner (full-width image + text overlay)
-6. "কেন আমাদের?" features grid (6 cards with icons)
-7. Services section (5 service cards with tags)
-8. Gaming/streaming banner (image + text)
-9. Popular packages (4 package cards with BDIX/FTP/Cache badges + "জনপ্রিয়" tag)
-10. Speed banner (full-width)
-11. Coverage check (search input)
-12. How to connect (3 steps)
-13. Testimonials carousel
-14. About Us section with feature cards
-15. Memberships & Partners badges
-16. CTA section ("সংযুক্ত হতে প্রস্তুত?")
+### Part 2: Create `connection_types` Table
 
-**Packages page:** Breadcrumb banner + tab filter (হোম/কর্পোরেট/ডেডিকেটেড) + package cards with speed, price, BDIX/FTP/Cache badges, feature list
+The `connection_types` table does not exist yet. Create via migration:
+- `id` (uuid), `name` (text), `status` (text, default 'active'), `created_at` (timestamptz)
 
-**Coverage page:** Breadcrumb banner + search box + filter dropdowns (বিভাগ, জেলা, থানা, জোন) + grouped by district with upazila cards grid
+### Part 3: Build a Reusable Config CRUD Component
 
-**Services page:** Breadcrumb banner + highlight badges (99.9% Uptime, BDIX, etc.) + service cards with feature tags + CTA
+Create a shared `ConfigCrudPage` component that handles all config tables with a consistent UI pattern:
 
-**About page:** Breadcrumb banner + stats cards + highlight badges + timeline (আমাদের পথচলা) + team section (grouped by department) + partners
+**Features per page:**
+- Search/filter bar
+- Data table with status toggle (active/inactive switch)
+- **Single Add** — Dialog with form fields
+- **Single Edit** — Inline edit or dialog
+- **Single Delete** — Confirm dialog
+- **Bulk Actions** — Select multiple rows via checkboxes, then bulk delete, bulk activate, bulk deactivate
+- Toast notifications for all actions
 
-**New Connection page:** Breadcrumb banner + highlight cards (3 benefits) + form with cascading selects (বিভাগ > জেলা > থানা) + package type tabs + sidebar benefits
+### Part 4: Build Each Configuration Page
 
-**Quick Pay page:** Keep existing with breadcrumb banner styling
+| Page | Table | Extra Fields | Special Features |
+|---|---|---|---|
+| **Districts** | `districts` | name, code | On/off toggle; when district OFF → all its upazilas auto-deactivate; coverage area hides |
+| **Upazilas** | `upazilas` | name, code, district_id (dropdown) | Filtered by district; parent district status cascades |
+| **Zones** | `zones` | name, code | Standard CRUD |
+| **Sub Zones** | `sub_zones` | name, code, zone_id (dropdown) | Filtered by parent zone |
+| **Boxes** | `boxes` | name, code, zone_id, sub_zone_id (cascading dropdowns) | Cascading location selects |
+| **Connection Types** | `connection_types` | name | Standard CRUD |
+| **Client Types** | `client_types` | name | Standard CRUD |
+| **Protocol Types** | `protocol_types` | name | Standard CRUD |
+| **Billing Statuses** | `billing_statuses` | name, color | Color picker for status badge |
+| **Service Types** | `service_types` | name, description | Standard CRUD |
+| **Packages** | `isp_packages` | Enhanced existing page | Add edit dialog, delete, bulk actions |
+
+### District On/Off Cascade Logic
+
+When a district is toggled OFF:
+- District `status` → `'inactive'`
+- All upazilas with that `district_id` → `status: 'inactive'` automatically (via frontend mutation)
+- Coverage page filters by `status = 'active'`, so these areas auto-hide
+
+When toggled back ON:
+- District reactivates, upazilas under it also reactivate
 
 ### Files to Create/Edit
 
 | File | Action |
 |---|---|
-| `src/components/public/TopInfoBar.tsx` | **New** - phone + social links bar |
-| `src/components/public/PublicNavbar.tsx` | **Rewrite** - match Galaxy Net navbar |
-| `src/components/public/BreadcrumbBanner.tsx` | **New** - reusable hero banner for inner pages |
-| `src/components/public/PublicFooter.tsx` | **Rewrite** - 4-column footer matching Galaxy Net |
-| `src/components/public/LogoMarquee.tsx` | **New** - scrolling cache server logos |
-| `src/components/PublicLayout.tsx` | **Edit** - add TopInfoBar |
-| `src/pages/public/Home.tsx` | **Rewrite** - all 16 sections |
-| `src/pages/public/Packages.tsx` | **Rewrite** - tabbed layout + badges |
-| `src/pages/public/Coverage.tsx` | **Rewrite** - filter dropdowns + district grouping |
-| `src/pages/public/Services.tsx` | **Rewrite** - tag-based cards + badges |
-| `src/pages/public/About.tsx` | **Rewrite** - timeline + team + partners |
-| `src/pages/public/NewConnection.tsx` | **Rewrite** - cascading location + tabs |
-| `src/pages/public/QuickPay.tsx` | **Edit** - add breadcrumb banner |
-| `src/pages/public/Contact.tsx` | **New** - contact page (যোগাযোগ) |
-| `src/pages/public/Offers.tsx` | **New** - offers page (অফার) |
-| `src/App.tsx` | **Edit** - add /contact and /offers routes |
+| `src/components/config/ConfigCrudPage.tsx` | **New** — Reusable CRUD component with table, dialogs, bulk actions |
+| `src/components/config/BulkActionBar.tsx` | **New** — Bulk select toolbar (delete, activate, deactivate) |
+| `src/components/config/AddEditDialog.tsx` | **New** — Reusable add/edit dialog |
+| `src/pages/dashboard/config/Districts.tsx` | **Rewrite** — Full CRUD + cascade toggle |
+| `src/pages/dashboard/config/Upazilas.tsx` | **Rewrite** — CRUD with district filter |
+| `src/pages/dashboard/config/Zones.tsx` | **Rewrite** — Full CRUD |
+| `src/pages/dashboard/config/SubZones.tsx` | **Rewrite** — CRUD with zone filter |
+| `src/pages/dashboard/config/Boxes.tsx` | **Rewrite** — CRUD with cascading zone/subzone |
+| `src/pages/dashboard/config/ConnectionTypes.tsx` | **Rewrite** — Full CRUD |
+| `src/pages/dashboard/config/ClientTypes.tsx` | **Rewrite** — Full CRUD |
+| `src/pages/dashboard/config/ProtocolTypes.tsx` | **Rewrite** — Full CRUD |
+| `src/pages/dashboard/config/BillingStatuses.tsx` | **Rewrite** — CRUD + color picker |
+| `src/pages/dashboard/config/ServiceTypes.tsx` | **Rewrite** — Full CRUD |
+| `src/pages/dashboard/config/Packages.tsx` | **Edit** — Add edit, delete, bulk actions |
 
-### Color Scheme (matching Galaxy Net)
-- Primary: `#0891b2` (cyan-600) / `#f97316` (orange-500) for CTAs
-- Dark header: `#0f172a` (slate-900) info bar
-- Cards: white with subtle borders
-- Text: slate-800/900 headings, slate-500 body
+### Migration Needed
+- Create `connection_types` table
+- Insert all districts and upazilas from Excel (after deleting demo data)
 
-### Technical Details
-- All content remains database-driven (packages from `isp_packages`, coverage from `districts`/`upazilas`/`zones`, services from `website_services`, etc.)
-- Marquee animation via CSS keyframes (no extra library)
-- Breadcrumb banner uses Unsplash placeholder images (configurable from `landing_content`)
-- Team section on About page pulls from `employees` table or hardcoded demo data
-- Package tabs filter by a `category` field (home/corporate/dedicated) -- will use existing `type` field or filter by price range
+### Technical Notes
+- All pages use `@tanstack/react-query` for data fetching
+- Supabase client for all CRUD operations
+- Bulk actions use `Promise.all` with individual Supabase calls
+- Checkbox-based row selection for bulk operations
+- Status toggle uses Switch component (same pattern as Packages page)
 
