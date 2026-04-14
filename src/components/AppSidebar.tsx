@@ -32,7 +32,8 @@ const menuGroups: MenuGroup[] = [
     defaultOpen: true,
     items: [
       { title: "Billing Overview", url: "/dashboard", icon: CreditCard },
-      { title: "OLT Overview", url: "/dashboard/olt-overview", icon: Cpu },
+      { title: "OLT / ONU Overview", url: "/dashboard/olt-overview", icon: Cpu },
+      { title: "ওয়েবসাইট ড্যাশবোর্ড", url: "/dashboard/website", icon: Globe },
     ],
   },
   {
@@ -40,7 +41,6 @@ const menuGroups: MenuGroup[] = [
     icon: Globe,
     iconColor: "text-purple-400",
     items: [
-      { title: "Website Dashboard", url: "/dashboard/website", icon: LayoutDashboard },
       { title: "Homepage Editor", url: "/dashboard/website/homepage", icon: Monitor },
       { title: "Pages", url: "/dashboard/website/pages", icon: FileText },
       { title: "Notices", url: "/dashboard/website/notices", icon: Bell },
