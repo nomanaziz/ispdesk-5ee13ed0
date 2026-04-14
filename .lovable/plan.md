@@ -1,57 +1,75 @@
 
 
-## Plan: Inventory Management — Full Page Implementation
+## Plan: SMS Module — Full Implementation
 
 ### Overview
-Implement all 5 inventory pages (currently placeholders) with full CRUD UI and Supabase integration. All tables already exist — no database migration needed. The inventory will handle ISP network materials like Fiber, ONU, TJ Box, Patchcord, SFP, Short Cable, Switch, etc.
+Implement all 5 SMS pages with full CRUD UI and Supabase integration. The module allows sending SMS to individual numbers, client groups (paid/unpaid/due), and bulk send via configurable SMS gateways with ID/password/API authentication.
+
+### Database Changes (Migration Required)
+Enhance existing tables to support the full workflow:
+
+**`sms_gateways`** — add fields:
+- `username` (text) — gateway login ID
+- `password` (text) — gateway password
+- `sms_type` (text, default 'english') — english/bangla support
+- `is_default` (boolean, default false)
+
+**`sms_log`** — add fields:
+- `sms_type` (text) — recipient category: individual, paid_clients, unpaid_clients, due_clients, all_clients
+- `template_id` (uuid, FK to sms_templates)
+- `group_id` (uuid, FK to sms_groups)
+- `sent_by` (uuid, FK to auth.users)
+- `recipient_count` (integer, default 1)
+
+**`sms_groups`** — add fields:
+- `members` (jsonb) — array of phone numbers or client references
+- `group_type` (text) — manual / auto (paid/unpaid/due)
+
+**`sms_templates`** — add field:
+- `variables` (text) — placeholder variables like {name}, {bill}, {due_date}
 
 ### Pages to Implement
 
-**1. Units (`Units.tsx`)** — পরিমাপ একক
-- "+ Add Unit" dialog: Name, Short Name, Status
-- Table: Serial, Name, Short Name, Status (badge), Created Date, Actions (edit/delete)
-- Search filter
-- Pre-populated ISP units: Meter, Roll, Piece (পিস), Box, Coil, Set
+**1. SMS Gateway (`Gateway.tsx`)** — এসএমএস গেটওয়ে
+- "+ Add Gateway" dialog: Name, API URL, API Key, Username (ID), Password, Sender ID, SMS Type (English/Bangla), Default toggle, Status
+- Table: Serial, Name, API URL, Sender ID, Type (English/Bangla badge), Default (star icon), Status, Actions
+- Multiple gateways supported
 
-**2. Store Locations (`Locations.tsx`)** — স্টোর লোকেশন
-- "+ Add Location" dialog: Name, Address, Status
-- Table: Serial, Name, Address, Status (badge), Created Date, Actions (edit/delete)
-- Search filter
+**2. SMS Templates (`Templates.tsx`)** — এসএমএস টেমপ্লেট
+- "+ Add Template" dialog: Name, Content (textarea with variable hints), Type (bill_reminder/welcome/custom), Status
+- Variable hints: {name}, {client_id}, {bill}, {due_date}, {package}
+- Table: Serial, Name, Content preview, Type, Status, Actions
 
-**3. Item Categories (`InventoryCategories.tsx`)** — আইটেম ক্যাটাগরি
-- "+ Add Category" dialog: Name, Status
-- Table: Serial, Category Name, Status (badge), Created Date, Actions (edit/delete)
-- Search filter
-- ISP-specific categories: Fiber Cable, ONU/ONT, Connector & Splitter, Networking Equipment, Cable Accessories, Tools
+**3. SMS Groups (`Groups.tsx`)** — এসএমএস গ্রুপ
+- "+ Add Group" dialog: Name, Group Type (manual/auto), Description, Status
+- Auto groups: Paid Clients, Unpaid Clients, Due Clients (auto-populated from clients table)
+- Manual groups: add phone numbers manually
+- Table: Serial, Name, Type, Member Count, Status, Actions
 
-**4. Items (`InventoryItems.tsx`)** — আইটেম তালিকা
-- "+ Add Item" dialog: Name, Code, Category (select), Unit (select), Purchase Price, Sale Price, Store Location (select), Status
-- Summary cards: Total Items, Active, Low Stock (quantity < 10)
-- Filters: Category, Store Location, Search
-- Table: Serial, Code, Name, Category, Unit, Purchase Price, Sale Price, Current Stock (quantity), Store, Status (badge), Actions (edit/delete)
-- Common ISP items: Fiber Cable (1km Roll), ONU Device, TJ Box, Patchcord, SFP Module, Short Cable, Network Switch, Splitter (1:8/1:16), Drop Wire, HDPE Pipe
+**4. Individual SMS (`Individual.tsx`)** — ইন্ডিভিজুয়াল এসএমএস
+- Send to specific number or search client
+- Form: Recipient Number (manual or client search), Gateway (select), Template (optional select), Message (textarea)
+- Client quick-select tabs: Paid, Unpaid, Due, All — loads client list with checkboxes
+- Preview message before send
+- Insert into `sms_log` on send
 
-**5. Stock (`Stock.tsx`)** — স্টক ম্যানেজমেন্ট
-- Two sections: Stock In / Stock Out via `stock_movements` table
-- "+ Stock In" / "+ Stock Out" buttons
-- Dialog: Item (select from inventory_items), Quantity, Type (in/out), Reference (PO number, etc.), Notes
-- On save: insert into `stock_movements` + update `inventory_items.quantity` accordingly
-- Summary cards: Total Stock In (today), Total Stock Out (today), Total Items in Stock
-- Filters: Item, Type (in/out), Date Range, Search
-- Table: Serial, Item Name, Type (badge: Stock In green / Stock Out red), Quantity, Reference, Notes, Date, Actions (delete)
+**5. Send SMS (`Send.tsx`)** — এসএমএস পাঠান (Bulk)
+- Bulk send to groups or filtered clients
+- Form: Target (Group select / Client filter: paid/unpaid/due/all), Gateway (select), Template (select or custom), Message
+- Summary: recipient count preview
+- Table below: Recent SMS log with status, recipient count, date
 
 ### Technical Details
-- All queries via `@tanstack/react-query` + Supabase client
-- Items page joins `inventory_categories`, `inventory_units`, `store_locations` for dropdown selects and display names
-- Stock page updates `inventory_items.quantity` on each stock movement (increment for "in", decrement for "out")
-- Same UI pattern as Vendors/Purchases pages (already implemented)
+- All CRUD via `@tanstack/react-query` + Supabase
+- Gateway selection shared across Individual and Send pages
+- Client filtering queries `clients` table by `status` field (active=paid, expired/due=unpaid)
+- SMS sending is UI-only (inserts to `sms_log`) — actual API integration to gateway is future scope
 - Bangla UI labels throughout
-- No database migration needed — all 5 tables exist
 
 ### Files to Edit (5)
-- `src/pages/dashboard/inventory/Units.tsx`
-- `src/pages/dashboard/inventory/Locations.tsx`
-- `src/pages/dashboard/inventory/InventoryCategories.tsx`
-- `src/pages/dashboard/inventory/InventoryItems.tsx`
-- `src/pages/dashboard/inventory/Stock.tsx`
+- `src/pages/dashboard/sms/Gateway.tsx`
+- `src/pages/dashboard/sms/Templates.tsx`
+- `src/pages/dashboard/sms/Groups.tsx`
+- `src/pages/dashboard/sms/Individual.tsx`
+- `src/pages/dashboard/sms/Send.tsx`
 
