@@ -59,6 +59,7 @@ import ClientPortalManage from "@/pages/dashboard/clients/PortalManage";
 // Billing
 import BillingList from "@/pages/dashboard/billing/BillingList";
 import BillingDailyCollection from "@/pages/dashboard/billing/DailyCollection";
+import ClientProfile from "@/pages/dashboard/billing/ClientProfile";
 
 // Mikrotik
 import MikrotikServers from "@/pages/dashboard/mikrotik/Servers";
@@ -307,6 +308,7 @@ const App = () => (
 
               {/* Billing */}
               <Route path="/dashboard/billing" element={<P><BillingList /></P>} />
+              <Route path="/dashboard/billing/client/:id" element={<P><ClientProfile /></P>} />
               <Route path="/dashboard/billing/daily-collection" element={<P><BillingDailyCollection /></P>} />
 
               {/* Mikrotik */}
