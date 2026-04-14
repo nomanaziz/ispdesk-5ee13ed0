@@ -80,6 +80,19 @@ import HrAttendance from "@/pages/dashboard/hr/Attendance";
 // OLT
 import OltDevices from "@/pages/dashboard/olt/OltDevices";
 import OltUsers from "@/pages/dashboard/olt/OltUsers";
+import OnuList from "@/pages/dashboard/olt/OnuList";
+import UserDownCount from "@/pages/dashboard/olt/UserDownCount";
+import FiberDownFinder from "@/pages/dashboard/olt/FiberDownFinder";
+import OltSharing from "@/pages/dashboard/olt/OltSharing";
+
+// Network Monitoring
+import SwitchList from "@/pages/dashboard/monitoring/SwitchList";
+import AddSwitch from "@/pages/dashboard/monitoring/AddSwitch";
+import PopDass from "@/pages/dashboard/monitoring/PopDass";
+import PopIp from "@/pages/dashboard/monitoring/PopIp";
+import PopLog from "@/pages/dashboard/monitoring/PopLog";
+import PingTools from "@/pages/dashboard/monitoring/PingTools";
+import PopDevices from "@/pages/dashboard/monitoring/PopDevices";
 
 // Network
 import NetworkDiagram from "@/pages/dashboard/network/Diagram";
@@ -196,6 +209,12 @@ import SystemPaymentGateways from "@/pages/dashboard/system/PaymentGateways";
 import SystemEmail from "@/pages/dashboard/system/Email";
 import SystemSetup from "@/pages/dashboard/system/Setup";
 import SystemProcessingFee from "@/pages/dashboard/system/SysProcessingFee";
+import SystemRoles from "@/pages/dashboard/system/Roles";
+import SystemOltPermissions from "@/pages/dashboard/system/OltPermissions";
+import SystemLog from "@/pages/dashboard/system/SystemLog";
+
+// Config (additional)
+import ConfigServiceTypes from "@/pages/dashboard/config/ServiceTypes";
 
 // Website Panel
 import WebsiteDashboard from "@/pages/dashboard/website/WebsiteDashboard";
