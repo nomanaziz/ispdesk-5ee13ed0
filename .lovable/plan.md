@@ -1,101 +1,150 @@
 
 
-## Plan: Cross-links, Dashboard Sub-tabs, and Full Widget Dashboard
+## Plan: Website Control Panel + Feature Integration
 
-### 1. Cross-links between Frontend and Backend
+Based on exploring the Galaxy Net admin panel at galaxynetbd.com/admin, I've mapped all 20 sections. This plan adds a **Website Control Panel** to the ERP dashboard sidebar and integrates shared data (coverage from districts, team from HR, payments to system).
 
-**Public Navbar** (`src/components/public/PublicNavbar.tsx`):
-- For logged-in users, show a "ড্যাশবোর্ড" button linking to `/dashboard` (instead of or alongside the "লগইন" button)
-- Use `useAuth()` to detect login state
+### What the Galaxy Net Admin Panel Has
 
-**Dashboard TopBar** (`src/components/TopBar.tsx`):
-- Add a "Visit Website" link (icon + text) pointing to `/` so admins can jump to the public site
-- Fix the broken Profile link (currently `/admin` which doesn't exist)
+| # | Section | Purpose |
+|---|---------|---------|
+| 1 | Dashboard | Stats: Total Orders, Active Packages, Coverage Areas, Pending Orders |
+| 2 | Packages | CRUD for public website packages (name, speed, price, category, homepage/popular/visible toggles) |
+| 3 | Coverage | Manage coverage areas shown on public site |
+| 4 | Orders | New connection orders from public site (= our `client_requests`) |
+| 5 | Pages | Custom CMS pages (title, slug, status) |
+| 6 | Notices | Public notice board |
+| 7 | Offers | Special offers/promotions |
+| 8 | Testimonials | Customer testimonials for public site |
+| 9 | Partners | Partner/sponsor logos |
+| 10 | Features | Feature highlights for public site |
+| 11 | Menu | Navigation menu editor |
+| 12 | Payments | Payment methods (bKash, bank transfer) with logo, account, color, visibility |
+| 13 | Homepage | Hero section editor (title, description, CTA in EN/BN) |
+| 14 | Media | File/image upload manager |
+| 15 | Services | Service descriptions for public site |
+| 16 | Festivals | Festival/seasonal banners |
+| 17 | About Page | About page content editor |
+| 18 | Departments | Team departments (merges with HR) |
+| 19 | Designations | Job titles (merges with HR positions) |
+| 20 | Employees | Public-facing team members (merges with HR employees) |
+| 21 | Settings | Site settings (name, tagline, phone, email, address, social links, WhatsApp, maintenance mode) |
+| 22 | Users | Admin users |
 
-### 2. Dashboard with Two Sub-Overview Tabs
+### Integration & Merge Strategy
 
-**Sidebar update** (`src/components/AppSidebar.tsx`):
-- Under "Dashboard" group, change from single "Overview" to two items:
-  - "Billing Overview" → `/dashboard` (default)
-  - "OLT Overview" → `/dashboard/olt-overview`
+1. **Coverage** -- Uses existing `districts` + `zones` + `sub_zones` tables from Configuration. The website control panel page will read from those same tables (no duplication).
 
-**New page**: `src/pages/dashboard/OltOverview.tsx`
-- Placeholder page for OLT/ONU status overview
+2. **Departments / Designations / Employees** -- Uses existing HR module tables (`departments`, `positions`, `employees`). The website panel just adds a "Show on Website" toggle field to those tables.
 
-**Route update** (`src/App.tsx`):
-- Add route for `/dashboard/olt-overview`
+3. **Orders** -- Already exists as `client_requests` table. The website panel Orders page shows the same data as `/dashboard/clients/new-request`.
 
-### 3. Full Billing Dashboard Widgets (from portal.galaxynetbd.com)
+4. **Payments** -- Merges into System > Payment Gateways. The website panel Payments page manages payment methods that show on the public Quick Pay page AND feed into System payment config.
 
-Rebuild `src/pages/Dashboard.tsx` with ALL widgets seen on the portal. The complete widget list:
+5. **Packages** -- Uses existing `isp_packages` table (already has the data). Website panel adds homepage/popular toggle management.
 
-**Row 1 — Client Summary (4 cards)**:
-- Total Client | Running Clients | Inactive Clients | Waiver Clients
+### New Database Tables Needed
 
-**Row 2 — Monthly Client Activity (4 cards)**:
-- New Client | Renewed Clients | Deactivated Clients | Left Clients
+```sql
+-- Website-specific content tables
+CREATE TABLE website_pages (id, title, slug, content, status, sort_order, created_at);
+CREATE TABLE website_notices (id, title, content, status, publish_date, created_at);
+CREATE TABLE website_offers (id, title, description, image_url, discount_text, status, start_date, end_date, created_at);
+CREATE TABLE website_testimonials (id, name, designation, company, content, rating, image_url, status, sort_order, created_at);
+CREATE TABLE website_partners (id, name, logo_url, website_url, status, sort_order, created_at);
+CREATE TABLE website_features (id, title, description, icon, status, sort_order, created_at);
+CREATE TABLE website_services (id, title, description, icon, image_url, status, sort_order, created_at);
+CREATE TABLE website_festivals (id, title, description, image_url, status, start_date, end_date, created_at);
+CREATE TABLE website_menu (id, title, url, parent_id, sort_order, status, created_at);
+CREATE TABLE website_media (id, filename, url, file_type, file_size, alt_text, created_at);
+CREATE TABLE payment_methods (id, name, category, account_number, logo_url, color, status, sort_order, created_at);
 
-**Row 3 — Billing Status (4 cards)**:
-- Billing Clients | Paid Clients | Partially Paid | Unpaid Clients
+-- Add website visibility columns to existing tables
+ALTER TABLE employees ADD COLUMN show_on_website boolean DEFAULT false;
+ALTER TABLE isp_packages ADD COLUMN show_on_homepage boolean DEFAULT false;
+```
 
-**Row 4 — Network Status (4 cards)**:
-- Online Clients | Blocked Clients | Bill Date Expire | Unpaid Extension
+The existing `landing_content` table handles Homepage and About Page settings (hero section, site settings etc.).
 
-**Row 5 — POP Status (4 cards)**:
-- Total POPs | Total POP Clients | Enabled POP Clients | Disabled POP Clients
+### New Sidebar Group: "Website Panel"
 
-**Row 6 — Support & Tasks (4 cards)**:
-- Pending Tickets | Processing Tickets | Pending Task | Processing Task
+Add a new sidebar group between Dashboard and Configuration:
 
-**Row 7 — Charts (2 side-by-side)**:
-- Zone Wise Problem Occurrence (Doughnut chart)
-- Sub-Zone Wise Problem Occurrence (Doughnut chart)
+```
+Website Panel (icon: Globe)
+  ├── Website Dashboard (stats: orders, packages, coverage areas)
+  ├── Homepage Editor
+  ├── Packages Display
+  ├── Coverage Areas (reads from zones/districts)
+  ├── Orders (reads from client_requests)
+  ├── Pages
+  ├── Notices
+  ├── Offers
+  ├── Testimonials
+  ├── Partners
+  ├── Features
+  ├── Services
+  ├── Festivals
+  ├── Menu Editor
+  ├── Payment Methods
+  ├── Media Library
+  ├── About Page
+  └── Site Settings
+```
 
-**Row 8 — Monthly Problem Occurrence (Pie chart)**
+### New Routes
 
-**Row 9 — Charts (2 side-by-side)**:
-- Most Problem Solver (Bar chart)
-- Monthly New Client (Bar chart)
+All under `/dashboard/website/*`:
+- `/dashboard/website` -- Website Dashboard
+- `/dashboard/website/homepage` -- Homepage Editor
+- `/dashboard/website/packages` -- Package display management
+- `/dashboard/website/coverage` -- Coverage (reads zones/districts)
+- `/dashboard/website/orders` -- Orders (reads client_requests)
+- `/dashboard/website/pages` -- CMS Pages
+- `/dashboard/website/notices` -- Notices
+- `/dashboard/website/offers` -- Offers
+- `/dashboard/website/testimonials` -- Testimonials
+- `/dashboard/website/partners` -- Partners
+- `/dashboard/website/features` -- Features
+- `/dashboard/website/services` -- Services
+- `/dashboard/website/festivals` -- Festivals
+- `/dashboard/website/menu` -- Menu Editor
+- `/dashboard/website/payments` -- Payment Methods
+- `/dashboard/website/media` -- Media Library
+- `/dashboard/website/about` -- About Page Editor
+- `/dashboard/website/settings` -- Site Settings
 
-**Row 10 — Chart + Table**:
-- Company Performance / Active Client (Bar chart, 12 months)
-- Top 20 Unpaid Client (Table: User Name, Mobile, Bill Amount, Due Amount)
+### Files to Create/Edit
 
-**Row 11 — Financial Summary (4 cards)**:
-- Monthly Bill | Collected Bill | Discount | Total Due
+**New files (18 pages)**:
+- `src/pages/dashboard/website/WebsiteDashboard.tsx`
+- `src/pages/dashboard/website/HomepageEditor.tsx`
+- `src/pages/dashboard/website/WebsitePackages.tsx`
+- `src/pages/dashboard/website/WebsiteCoverage.tsx`
+- `src/pages/dashboard/website/WebsiteOrders.tsx`
+- `src/pages/dashboard/website/WebsitePages.tsx`
+- `src/pages/dashboard/website/WebsiteNotices.tsx`
+- `src/pages/dashboard/website/WebsiteOffers.tsx`
+- `src/pages/dashboard/website/WebsiteTestimonials.tsx`
+- `src/pages/dashboard/website/WebsitePartners.tsx`
+- `src/pages/dashboard/website/WebsiteFeatures.tsx`
+- `src/pages/dashboard/website/WebsiteServices.tsx`
+- `src/pages/dashboard/website/WebsiteFestivals.tsx`
+- `src/pages/dashboard/website/WebsiteMenu.tsx`
+- `src/pages/dashboard/website/WebsitePayments.tsx`
+- `src/pages/dashboard/website/WebsiteMedia.tsx`
+- `src/pages/dashboard/website/WebsiteAbout.tsx`
+- `src/pages/dashboard/website/WebsiteSettings.tsx`
 
-**Row 12 — Sales & Income (4 cards)**:
-- Service Sales Invoice | Product Sales Invoice | Income | Expense
+**Edited files**:
+- `src/components/AppSidebar.tsx` -- Add "Website Panel" group
+- `src/App.tsx` -- Register 18 new routes
+- Database migration -- Create 11 new tables + ALTER 2 existing tables
 
-**Row 13 — POP Financials (4 cards)**:
-- Credited Amount | POP Fund | POP Bill | Receivable Amount
+### Implementation Order
 
-**Row 14 — Bandwidth & Salary (4 cards)**:
-- B.Width Provider Bill | B.Width Provider Due | B.Width POP Bill | Paid Salary
-
-**Row 15 — SMS & Purchase (4 cards)**:
-- SMS Balance | Purchase Payable Due | Purchase Paid Amount | Cash On Hand
-
-### Technical Details
-
-**Data fetching**: Single `useStats` hook querying:
-- `clients` table (counts by status: active/inactive/left/waiver/deactivated)
-- `billing` table (monthly totals, paid/unpaid/partial counts)
-- `onu_list` table (online/blocked counts)
-- `support_tickets` table (pending/processing counts)
-- `tasks` table (pending/processing counts)
-- `pop` / `pop_clients` tables (POP counts)
-- `accounting_transactions` (income/expense/cash)
-- `bandwidth_bills`, `purchase_bills`, `salary` tables
-- `client_requests` (monthly new clients chart data)
-
-**Charts**: Use existing `recharts` via `src/components/ui/chart.tsx` (already installed)
-
-**Files to create/edit**:
-- Edit `src/components/public/PublicNavbar.tsx` — add dashboard link for logged-in users
-- Edit `src/components/TopBar.tsx` — add "Visit Website" link, fix profile link
-- Edit `src/components/AppSidebar.tsx` — split Dashboard into 2 sub-items
-- Edit `src/pages/Dashboard.tsx` — complete rebuild with all widgets
-- Create `src/pages/dashboard/OltOverview.tsx` — OLT/ONU overview placeholder
-- Edit `src/App.tsx` — add OLT overview route
+1. Run database migration (create tables, alter existing)
+2. Create all 18 website panel page files (placeholder first, then full CRUD)
+3. Update sidebar with Website Panel group
+4. Update App.tsx with routes
 
