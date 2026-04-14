@@ -143,6 +143,8 @@ import BwBuyItems from "@/pages/dashboard/bw-buy/Items";
 import BwBuyCategories from "@/pages/dashboard/bw-buy/Categories";
 import BwBuyProviders from "@/pages/dashboard/bw-buy/Providers";
 import BwBuyBills from "@/pages/dashboard/bw-buy/Bills";
+import BwBuyBillForm from "@/pages/dashboard/bw-buy/BillForm";
+import BwBuyBillView from "@/pages/dashboard/bw-buy/BillView";
 
 // BW Sale
 import BwSalePop from "@/pages/dashboard/bw-sale/Pop";
@@ -390,6 +392,9 @@ const App = () => (
               <Route path="/dashboard/bw-buy/categories" element={<P><BwBuyCategories /></P>} />
               <Route path="/dashboard/bw-buy/providers" element={<P><BwBuyProviders /></P>} />
               <Route path="/dashboard/bw-buy/bills" element={<P><BwBuyBills /></P>} />
+              <Route path="/dashboard/bw-buy/bills/new" element={<P><BwBuyBillForm /></P>} />
+              <Route path="/dashboard/bw-buy/bills/:id" element={<P><BwBuyBillView /></P>} />
+              <Route path="/dashboard/bw-buy/bills/:id/edit" element={<P><BwBuyBillForm /></P>} />
 
               {/* BW Sale */}
               <Route path="/dashboard/bw-sale/pop" element={<P><BwSalePop /></P>} />
