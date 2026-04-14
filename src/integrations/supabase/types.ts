@@ -4191,64 +4191,178 @@ export type Database = {
       }
       support_categories: {
         Row: {
+          category_type: string
           created_at: string
+          department: string | null
+          details: string | null
           id: string
           name: string
           status: string
         }
         Insert: {
+          category_type?: string
           created_at?: string
+          department?: string | null
+          details?: string | null
           id?: string
           name: string
           status?: string
         }
         Update: {
+          category_type?: string
           created_at?: string
+          department?: string | null
+          details?: string | null
           id?: string
           name?: string
           status?: string
         }
         Relationships: []
       }
+      support_ticket_assignees: {
+        Row: {
+          assigned_at: string
+          employee_id: string
+          id: string
+          ticket_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          employee_id: string
+          id?: string
+          ticket_id: string
+        }
+        Update: {
+          assigned_at?: string
+          employee_id?: string
+          id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_assignees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_assignees_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_comments: {
+        Row: {
+          attachments: string[] | null
+          comment: string
+          created_at: string
+          id: string
+          ticket_id: string
+          user_id: string | null
+        }
+        Insert: {
+          attachments?: string[] | null
+          comment: string
+          created_at?: string
+          id?: string
+          ticket_id: string
+          user_id?: string | null
+        }
+        Update: {
+          attachments?: string[] | null
+          comment?: string
+          created_at?: string
+          id?: string
+          ticket_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       support_tickets: {
         Row: {
           assigned_to: string | null
+          attachments: string[] | null
+          box: string | null
           category_id: string | null
           client_id: string | null
+          complain_no: string | null
           created_at: string
+          created_by: string | null
           description: string | null
           id: string
           priority: string | null
           resolved_at: string | null
+          solved_at: string | null
+          solved_by: string | null
+          source: string
           status: string
           subject: string
+          subzone: string | null
           ticket_no: string
+          zone_id: string | null
         }
         Insert: {
           assigned_to?: string | null
+          attachments?: string[] | null
+          box?: string | null
           category_id?: string | null
           client_id?: string | null
+          complain_no?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
           priority?: string | null
           resolved_at?: string | null
+          solved_at?: string | null
+          solved_by?: string | null
+          source?: string
           status?: string
           subject: string
+          subzone?: string | null
           ticket_no: string
+          zone_id?: string | null
         }
         Update: {
           assigned_to?: string | null
+          attachments?: string[] | null
+          box?: string | null
           category_id?: string | null
           client_id?: string | null
+          complain_no?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
           priority?: string | null
           resolved_at?: string | null
+          solved_at?: string | null
+          solved_by?: string | null
+          source?: string
           status?: string
           subject?: string
+          subzone?: string | null
           ticket_no?: string
+          zone_id?: string | null
         }
         Relationships: [
           {
@@ -4263,6 +4377,27 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "support_tickets_solved_by_fkey"
+            columns: ["solved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "support_tickets_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
             referencedColumns: ["id"]
           },
         ]
