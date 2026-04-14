@@ -141,9 +141,12 @@ export type Database = {
           check_out: string | null
           created_at: string
           date: string
+          device_log_id: string | null
           employee_id: string
           id: string
           remarks: string | null
+          shift_id: string | null
+          source: string
           status: string
         }
         Insert: {
@@ -151,9 +154,12 @@ export type Database = {
           check_out?: string | null
           created_at?: string
           date: string
+          device_log_id?: string | null
           employee_id: string
           id?: string
           remarks?: string | null
+          shift_id?: string | null
+          source?: string
           status?: string
         }
         Update: {
@@ -161,12 +167,22 @@ export type Database = {
           check_out?: string | null
           created_at?: string
           date?: string
+          device_log_id?: string | null
           employee_id?: string
           id?: string
           remarks?: string | null
+          shift_id?: string | null
+          source?: string
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "attendance_device_log_id_fkey"
+            columns: ["device_log_id"]
+            isOneToOne: false
+            referencedRelation: "zkteco_attendance_logs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "attendance_employee_id_fkey"
             columns: ["employee_id"]
@@ -174,7 +190,56 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "attendance_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      attendance_rules: {
+        Row: {
+          absent_after_minutes: number
+          absent_deduction: number | null
+          absent_deduction_type: string | null
+          created_at: string
+          half_day_after_minutes: number
+          id: string
+          late_after_minutes: number
+          late_deduction: number | null
+          late_deduction_type: string | null
+          name: string
+          status: string
+        }
+        Insert: {
+          absent_after_minutes?: number
+          absent_deduction?: number | null
+          absent_deduction_type?: string | null
+          created_at?: string
+          half_day_after_minutes?: number
+          id?: string
+          late_after_minutes?: number
+          late_deduction?: number | null
+          late_deduction_type?: string | null
+          name: string
+          status?: string
+        }
+        Update: {
+          absent_after_minutes?: number
+          absent_deduction?: number | null
+          absent_deduction_type?: string | null
+          created_at?: string
+          half_day_after_minutes?: number
+          id?: string
+          late_after_minutes?: number
+          late_deduction?: number | null
+          late_deduction_type?: string | null
+          name?: string
+          status?: string
+        }
+        Relationships: []
       }
       billing: {
         Row: {
@@ -1363,11 +1428,54 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_shift_assignments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date: string
+          employee_id: string
+          id: string
+          shift_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date: string
+          employee_id: string
+          id?: string
+          shift_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          employee_id?: string
+          id?: string
+          shift_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_shift_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_shift_assignments_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           address: string | null
           created_at: string
           department_id: string | null
+          device_user_id: string | null
           email: string | null
           employee_id: string
           id: string
@@ -1384,6 +1492,7 @@ export type Database = {
           address?: string | null
           created_at?: string
           department_id?: string | null
+          device_user_id?: string | null
           email?: string | null
           employee_id: string
           id?: string
@@ -1400,6 +1509,7 @@ export type Database = {
           address?: string | null
           created_at?: string
           department_id?: string | null
+          device_user_id?: string | null
           email?: string | null
           employee_id?: string
           id?: string
@@ -3304,6 +3414,42 @@ export type Database = {
         }
         Relationships: []
       }
+      shifts: {
+        Row: {
+          created_at: string
+          end_time: string
+          grace_minutes: number
+          id: string
+          late_deduction_amount: number | null
+          late_deduction_type: string | null
+          name: string
+          start_time: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          grace_minutes?: number
+          id?: string
+          late_deduction_amount?: number | null
+          late_deduction_type?: string | null
+          name: string
+          start_time: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          grace_minutes?: number
+          id?: string
+          late_deduction_amount?: number | null
+          late_deduction_type?: string | null
+          name?: string
+          start_time?: string
+          status?: string
+        }
+        Relationships: []
+      }
       sms_gateways: {
         Row: {
           api_key: string | null
@@ -4249,6 +4395,96 @@ export type Database = {
           name?: string
           rating?: number | null
           sort_order?: number | null
+          status?: string
+        }
+        Relationships: []
+      }
+      zkteco_attendance_logs: {
+        Row: {
+          created_at: string
+          device_id: string
+          device_user_id: string | null
+          employee_id: string | null
+          id: string
+          punch_time: string
+          punch_type: string
+          synced_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          device_user_id?: string | null
+          employee_id?: string | null
+          id?: string
+          punch_time: string
+          punch_type?: string
+          synced_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          device_user_id?: string | null
+          employee_id?: string | null
+          id?: string
+          punch_time?: string
+          punch_type?: string
+          synced_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zkteco_attendance_logs_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "zkteco_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zkteco_attendance_logs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zkteco_devices: {
+        Row: {
+          api_id: string | null
+          api_password: string | null
+          created_at: string
+          id: string
+          ip_address: string
+          last_sync_at: string | null
+          location: string | null
+          name: string
+          port: number
+          serial_number: string | null
+          status: string
+        }
+        Insert: {
+          api_id?: string | null
+          api_password?: string | null
+          created_at?: string
+          id?: string
+          ip_address: string
+          last_sync_at?: string | null
+          location?: string | null
+          name: string
+          port?: number
+          serial_number?: string | null
+          status?: string
+        }
+        Update: {
+          api_id?: string | null
+          api_password?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string
+          last_sync_at?: string | null
+          location?: string | null
+          name?: string
+          port?: number
+          serial_number?: string | null
           status?: string
         }
         Relationships: []
