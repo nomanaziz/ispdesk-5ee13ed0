@@ -80,6 +80,19 @@ import HrAttendance from "@/pages/dashboard/hr/Attendance";
 // OLT
 import OltDevices from "@/pages/dashboard/olt/OltDevices";
 import OltUsers from "@/pages/dashboard/olt/OltUsers";
+import OnuList from "@/pages/dashboard/olt/OnuList";
+import UserDownCount from "@/pages/dashboard/olt/UserDownCount";
+import FiberDownFinder from "@/pages/dashboard/olt/FiberDownFinder";
+import OltSharing from "@/pages/dashboard/olt/OltSharing";
+
+// Network Monitoring
+import SwitchList from "@/pages/dashboard/monitoring/SwitchList";
+import AddSwitch from "@/pages/dashboard/monitoring/AddSwitch";
+import PopDass from "@/pages/dashboard/monitoring/PopDass";
+import PopIp from "@/pages/dashboard/monitoring/PopIp";
+import PopLog from "@/pages/dashboard/monitoring/PopLog";
+import PingTools from "@/pages/dashboard/monitoring/PingTools";
+import PopDevices from "@/pages/dashboard/monitoring/PopDevices";
 
 // Network
 import NetworkDiagram from "@/pages/dashboard/network/Diagram";
@@ -196,6 +209,12 @@ import SystemPaymentGateways from "@/pages/dashboard/system/PaymentGateways";
 import SystemEmail from "@/pages/dashboard/system/Email";
 import SystemSetup from "@/pages/dashboard/system/Setup";
 import SystemProcessingFee from "@/pages/dashboard/system/SysProcessingFee";
+import SystemRoles from "@/pages/dashboard/system/Roles";
+import SystemOltPermissions from "@/pages/dashboard/system/OltPermissions";
+import SystemLog from "@/pages/dashboard/system/SystemLog";
+
+// Config (additional)
+import ConfigServiceTypes from "@/pages/dashboard/config/ServiceTypes";
 
 // Website Panel
 import WebsiteDashboard from "@/pages/dashboard/website/WebsiteDashboard";
@@ -304,7 +323,20 @@ const App = () => (
 
               {/* OLT */}
               <Route path="/dashboard/olt" element={<P><OltDevices /></P>} />
+              <Route path="/dashboard/olt/onu" element={<P><OnuList /></P>} />
               <Route path="/dashboard/olt/users" element={<P><OltUsers /></P>} />
+              <Route path="/dashboard/olt/user-down" element={<P><UserDownCount /></P>} />
+              <Route path="/dashboard/olt/fiber-down" element={<P><FiberDownFinder /></P>} />
+              <Route path="/dashboard/olt/sharing" element={<P><OltSharing /></P>} />
+
+              {/* Network Monitoring */}
+              <Route path="/dashboard/monitoring/switches" element={<P><SwitchList /></P>} />
+              <Route path="/dashboard/monitoring/add-switch" element={<P><AddSwitch /></P>} />
+              <Route path="/dashboard/monitoring/pop-dass" element={<P><PopDass /></P>} />
+              <Route path="/dashboard/monitoring/pop-ip" element={<P><PopIp /></P>} />
+              <Route path="/dashboard/monitoring/pop-log" element={<P><PopLog /></P>} />
+              <Route path="/dashboard/monitoring/ping-tools" element={<P><PingTools /></P>} />
+              <Route path="/dashboard/monitoring/pop-devices" element={<P><PopDevices /></P>} />
 
               {/* Network */}
               <Route path="/dashboard/network/diagram" element={<P><NetworkDiagram /></P>} />
@@ -421,6 +453,12 @@ const App = () => (
               <Route path="/dashboard/system/email" element={<P><SystemEmail /></P>} />
               <Route path="/dashboard/system/setup" element={<P><SystemSetup /></P>} />
               <Route path="/dashboard/system/processing-fee" element={<P><SystemProcessingFee /></P>} />
+              <Route path="/dashboard/system/roles" element={<P><SystemRoles /></P>} />
+              <Route path="/dashboard/system/olt-permissions" element={<P><SystemOltPermissions /></P>} />
+              <Route path="/dashboard/system/system-log" element={<P><SystemLog /></P>} />
+
+              {/* Config (additional) */}
+              <Route path="/dashboard/config/service-types" element={<P><ConfigServiceTypes /></P>} />
 
               {/* Website Panel */}
               <Route path="/dashboard/website" element={<P><WebsiteDashboard /></P>} />

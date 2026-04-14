@@ -2206,6 +2206,47 @@ export type Database = {
           },
         ]
       }
+      pop_ip_addresses: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          gateway: string | null
+          id: string
+          ip_address: string
+          pop_id: string | null
+          status: string
+          subnet: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          gateway?: string | null
+          id?: string
+          ip_address: string
+          pop_id?: string | null
+          status?: string
+          subnet?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          gateway?: string | null
+          id?: string
+          ip_address?: string
+          pop_id?: string | null
+          status?: string
+          subnet?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pop_ip_addresses_pop_id_fkey"
+            columns: ["pop_id"]
+            isOneToOne: false
+            referencedRelation: "pop_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pop_logs: {
         Row: {
           created_at: string
@@ -2704,6 +2745,30 @@ export type Database = {
           phone?: string
           service_needed?: string
           status?: string | null
+        }
+        Relationships: []
+      }
+      service_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string
         }
         Relationships: []
       }
