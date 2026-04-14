@@ -763,18 +763,21 @@ export type Database = {
       client_types: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           name: string
           status: string
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           name: string
           status?: string
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
           status?: string
@@ -1420,6 +1423,7 @@ export type Database = {
           mikrotik_id: string | null
           mikrotik_profile: string | null
           name: string
+          package_type: string | null
           price: number
           protocol: string | null
           setup_fee: number | null
@@ -1435,6 +1439,7 @@ export type Database = {
           mikrotik_id?: string | null
           mikrotik_profile?: string | null
           name: string
+          package_type?: string | null
           price?: number
           protocol?: string | null
           setup_fee?: number | null
@@ -1450,6 +1455,7 @@ export type Database = {
           mikrotik_id?: string | null
           mikrotik_profile?: string | null
           name?: string
+          package_type?: string | null
           price?: number
           protocol?: string | null
           setup_fee?: number | null
