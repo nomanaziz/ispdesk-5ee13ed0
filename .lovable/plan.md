@@ -1,126 +1,172 @@
 
 
-## ISP Desk ERP -- Full Build Plan
+## Complete ERP Page Creation Plan
 
-### Architecture Overview
+Based on exploring your live portal at portal.galaxynetbd.com, I've mapped every single page. Here is the full list of **120+ pages** to create as placeholder pages (UI only, no logic yet -- you'll tell me the logic later).
 
-This project will have **two sides** within one codebase:
+### Complete Page Map from Your Portal
 
-1. **Frontend (Public Website)** -- The ISP's customer-facing website (like galaxynetbd.com), accessible without login
-2. **Backend (Admin ERP)** -- The ISP management dashboard, accessible after login
+| # | Module | Sub-pages | Route |
+|---|--------|-----------|-------|
+| 1 | **Dashboard** | Overview | `/dashboard` (exists) |
+| | **Configuration** | | |
+| 2 | | Zone | `/dashboard/config/zones` |
+| 3 | | Sub Zone | `/dashboard/config/sub-zones` |
+| 4 | | Box | `/dashboard/config/boxes` |
+| 5 | | Connection Type | `/dashboard/config/connection-types` |
+| 6 | | Client Type | `/dashboard/config/client-types` |
+| 7 | | Protocol Type | `/dashboard/config/protocol-types` |
+| 8 | | Billing Status | `/dashboard/config/billing-statuses` |
+| 9 | | Package | `/dashboard/config/packages` |
+| 10 | | District | `/dashboard/config/districts` |
+| 11 | | Upazila | `/dashboard/config/upazilas` |
+| | **VAS** | | |
+| 12 | | VAS Config | `/dashboard/vas/config` |
+| 13 | | Transaction History | `/dashboard/vas/transactions` |
+| | **Client** | | |
+| 14 | | New Request | `/dashboard/clients/new-request` |
+| 15 | | Add New | `/dashboard/clients/add` |
+| 16 | | Client List | `/dashboard/clients` |
+| 17 | | Left Client | `/dashboard/clients/left` |
+| 18 | | Scheduler | `/dashboard/clients/scheduler` |
+| 19 | | Change Request | `/dashboard/clients/change-request` |
+| 20 | | Portal Manage | `/dashboard/clients/portal-manage` |
+| | **Billing** | | |
+| 21 | | Billing List | `/dashboard/billing` |
+| 22 | | Daily Bill Collection | `/dashboard/billing/daily-collection` |
+| | **Mikrotik Server** | | |
+| 23 | | Server | `/dashboard/mikrotik/servers` |
+| 24 | | Server Backup | `/dashboard/mikrotik/backup` |
+| 25 | | Import From Mikrotik | `/dashboard/mikrotik/import` |
+| 26 | | Bulk Clients Import | `/dashboard/mikrotik/bulk-import` |
+| | **HR & Payroll** | | |
+| 27 | | Department | `/dashboard/hr/departments` |
+| 28 | | Payhead | `/dashboard/hr/payheads` |
+| 29 | | Payroll | `/dashboard/hr/payroll` |
+| 30 | | Position | `/dashboard/hr/positions` |
+| 31 | | Payslip | `/dashboard/hr/payslip` |
+| 32 | | Add Employee | `/dashboard/hr/employees/add` |
+| 33 | | Employee List | `/dashboard/hr/employees` |
+| 34 | | Salary Sheet | `/dashboard/hr/salary-sheet` |
+| 35 | | Resign Rule | `/dashboard/hr/resign-rules` |
+| 36 | | Resignation | `/dashboard/hr/resignations` |
+| 37 | | Rejoin | `/dashboard/hr/rejoin` |
+| 38 | | Attendance | `/dashboard/hr/attendance` |
+| | **OLT Management** | | |
+| 39 | | OLT | `/dashboard/olt` |
+| 40 | | OLT Users | `/dashboard/olt/users` |
+| | **Network Diagram** | | |
+| 41 | | Diagram | `/dashboard/network/diagram` |
+| 42 | | Network POP | `/dashboard/network/pop` |
+| 43 | | Clients in Diagram | `/dashboard/network/clients` |
+| 44 | | Network Connections | `/dashboard/network/connections` |
+| 45 | | Distributed Inv. Items | `/dashboard/network/distributed-items` |
+| 46 | | Network View in Map | `/dashboard/network/map` |
+| | **Leave Management** | | |
+| 47 | | Category | `/dashboard/leave/categories` |
+| 48 | | Setup | `/dashboard/leave/setup` |
+| 49 | | Apply | `/dashboard/leave/apply` |
+| 50 | | Approval | `/dashboard/leave/approval` |
+| | **Branch Office** | | |
+| 51 | | Package | `/dashboard/branches/packages` |
+| 52 | | Tariff Config | `/dashboard/branches/tariff` |
+| 53 | | Add Branch Manager | `/dashboard/branches/add-manager` |
+| 54 | | Branch Managers List | `/dashboard/branches/managers` |
+| 55 | | Branch Funding | `/dashboard/branches/funding` |
+| 56 | | Client PGW Payments | `/dashboard/branches/pgw-payments` |
+| 57 | | PGW Transaction Settlement | `/dashboard/branches/pgw-settlement` |
+| 58 | | POP Notice | `/dashboard/branches/pop-notice` |
+| | **Events & Holidays** | | |
+| 59 | | Index | `/dashboard/events` |
+| | **Support & Ticketing** | | |
+| 60 | | Support Category | `/dashboard/support/categories` |
+| 61 | | Client Support | `/dashboard/support/tickets` |
+| 62 | | Support History | `/dashboard/support/history` |
+| | **Task Management** | | |
+| 63 | | Task Category | `/dashboard/tasks/categories` |
+| 64 | | Task | `/dashboard/tasks` |
+| 65 | | Task History | `/dashboard/tasks/history` |
+| | **Bandwidth Buy** | | |
+| 66 | | Item | `/dashboard/bw-buy/items` |
+| 67 | | Item Category | `/dashboard/bw-buy/categories` |
+| 68 | | Provider | `/dashboard/bw-buy/providers` |
+| 69 | | Purchase Bill | `/dashboard/bw-buy/bills` |
+| | **Bandwidth Sale** | | |
+| 70 | | POP | `/dashboard/bw-sale/pop` |
+| 71 | | Sales Invoice | `/dashboard/bw-sale/invoices` |
+| 72 | | Bill Collection | `/dashboard/bw-sale/collection` |
+| 73 | | Recurring Invoice | `/dashboard/bw-sale/recurring` |
+| | **Purchase** | | |
+| 74 | | Vendor | `/dashboard/purchases/vendors` |
+| 75 | | Requisition | `/dashboard/purchases/requisitions` |
+| 76 | | Purchase | `/dashboard/purchases` |
+| 77 | | Purchase Bill | `/dashboard/purchases/bills` |
+| | **Sales & Service** | | |
+| 78 | | Product Invoice | `/dashboard/sales/product-invoice` |
+| 79 | | Service Invoice | `/dashboard/sales/service-invoice` |
+| 80 | | Installation Fee | `/dashboard/sales/installation-fee` |
+| | **Inventory** | | |
+| 81 | | Unit | `/dashboard/inventory/units` |
+| 82 | | Store Location | `/dashboard/inventory/locations` |
+| 83 | | Item Category | `/dashboard/inventory/categories` |
+| 84 | | Item | `/dashboard/inventory/items` |
+| 85 | | Stock | `/dashboard/inventory/stock` |
+| | **Assets** | | |
+| 86 | | Asset List | `/dashboard/assets` |
+| 87 | | Destroyed Items | `/dashboard/assets/destroyed` |
+| | **Accounting** | | |
+| 88 | | Accounting Dashboard | `/dashboard/accounting` |
+| 89 | | Chart of Accounts | `/dashboard/accounting/chart` |
+| 90 | | Income | `/dashboard/accounting/income` |
+| 91 | | Expense | `/dashboard/accounting/expense` |
+| 92 | | Journal | `/dashboard/accounting/journal` |
+| 93 | | Accounting Transactions | `/dashboard/accounting/transactions` |
+| 94 | | Account Balances | `/dashboard/accounting/balances` |
+| 95 | | Balance Sheet | `/dashboard/accounting/balance-sheet` |
+| 96 | | Profit Loss | `/dashboard/accounting/profit-loss` |
+| 97 | | Compare Profit Loss | `/dashboard/accounting/compare-pl` |
+| 98 | | Trial Balance | `/dashboard/accounting/trial-balance` |
+| 99 | | Cash Book | `/dashboard/accounting/cash-book` |
+| | **Report** | | |
+| 100 | | Bill Collection | `/dashboard/reports/bill-collection` |
+| 101 | | Discount Report | `/dashboard/reports/discount` |
+| 102 | | Customer Report | `/dashboard/reports/customer` |
+| 103 | | Messages Report | `/dashboard/reports/messages` |
+| 104 | | Due Customer SMS | `/dashboard/reports/due-sms` |
+| 105 | | Pay. Processing Fee | `/dashboard/reports/processing-fee` |
+| 106 | | BTRC Monthly Report | `/dashboard/reports/btrc` |
+| 107 | | Financial Transactions | `/dashboard/reports/financial` |
+| | **SMS Service** | | |
+| 108 | | Individual SMS | `/dashboard/sms/individual` |
+| 109 | | SMS Template | `/dashboard/sms/templates` |
+| 110 | | SMS Group | `/dashboard/sms/groups` |
+| 111 | | Send SMS | `/dashboard/sms/send` |
+| 112 | | SMS Gateway | `/dashboard/sms/gateway` |
+| | **Affiliation** | | |
+| 113 | | Affiliate Partners | `/dashboard/affiliation/partners` |
+| 114 | | Add Affiliator | `/dashboard/affiliation/add` |
+| | **System** | | |
+| 115 | | App Users | `/dashboard/system/users` |
+| 116 | | Company SetUp | `/dashboard/system/company` |
+| 117 | | Invoice SetUp | `/dashboard/system/invoice` |
+| 118 | | Periods SetUp | `/dashboard/system/periods` |
+| 119 | | Payment Gateways | `/dashboard/system/payment-gateways` |
+| 120 | | EMail SetUp | `/dashboard/system/email` |
+| 121 | | System SetUp | `/dashboard/system/setup` |
+| 122 | | P. Processing Fee | `/dashboard/system/processing-fee` |
 
-```text
-Route Structure:
-/                    --> Public Website (Homepage)
-/packages            --> Package listing
-/coverage            --> Coverage area checker
-/new-connection      --> New connection request form
-/about               --> About the ISP
-/services            --> Services page
-/quick-pay           --> Quick bill payment (public)
-/login               --> Admin login
-/dashboard           --> ERP Dashboard (protected)
-/dashboard/clients   --> Client management (protected)
-/dashboard/billing   --> Billing (protected)
-/dashboard/hr        --> HR & Payroll (protected)
-/dashboard/inventory --> Inventory (protected)
-/dashboard/network   --> OLT/ONU/MikroTik (protected)
-/dashboard/accounting--> Accounting (protected)
-/dashboard/settings  --> Settings (protected)
-```
+### Implementation Approach
 
-### Phase 1: Public Website (Frontend)
-
-Build the ISP website pages modeled after galaxynetbd.com. Data comes from existing Supabase tables.
-
-**Pages to create:**
-
-| Page | Data Source (existing tables) |
-|------|-----|
-| Homepage (Hero, Stats, Features, Packages preview, Testimonials, CTA) | `isp_packages`, `zones`, static content |
-| `/packages` -- Full package listing | `isp_packages` |
-| `/coverage` -- Coverage area search | `zones`, `sub_zones` |
-| `/new-connection` -- Connection request form | Inserts into `client_requests` |
-| `/services` -- Services offered | Static / configurable |
-| `/about` -- About the ISP | Static / configurable |
-| `/quick-pay` -- Quick bill payment | `billing`, `clients` (lookup by client_id) |
-
-**Key features:**
-- Bangla language support (like the live site)
-- Responsive design matching galaxynetbd.com style
-- Cache server logos marquee
-- Testimonials section
-- "How to connect" steps section
-- Package cards with pricing in BDT (৳)
-
-**Data flow:**
-- Packages shown on website come from `isp_packages` table
-- New connection requests insert into `client_requests`
-- Quick Pay looks up client by ID, shows billing, processes payment
-- HR employees data can feed into a "Our Team" section
-
-### Phase 2: ERP Backend (Admin Dashboard)
-
-Build the protected admin modules. All 85 existing tables are already in Supabase with RLS policies.
-
-**Modules & their existing tables:**
-
-| Module | Tables Used |
-|--------|------------|
-| **Dashboard** | Aggregates from billing, clients, onu_list |
-| **Client Management** | `clients`, `client_requests`, `change_requests`, `client_types`, `zones`, `sub_zones`, `boxes` |
-| **Billing** | `billing`, `billing_statuses`, `installation_fees`, `service_invoices`, `product_invoices` |
-| **Network Monitoring** | `olt_devices`, `onu_list`, `onu_history`, `mikrotik_devices`, `switches`, `pop_devices`, `pop_logs`, `ping_targets` |
-| **HR & Payroll** | `employees`, `departments`, `positions`, `payroll`, `payheads`, `leave_applications`, `leave_categories`, `resignations`, `resign_rules`, `events_holidays` |
-| **Inventory** | `inventory_items`, `inventory_categories`, `inventory_units`, `store_locations`, `stock_movements`, `purchases`, `purchase_bills`, `requisitions`, `vendors` |
-| **Accounting** | `chart_of_accounts`, `journal_entries`, `expense_entries`, `income_entries` |
-| **Bandwidth Mgmt** | `bw_items`, `bw_categories`, `bw_providers`, `bw_purchase_bills`, `bw_sale_pops`, `bw_sales_invoices` |
-| **Support** | `support_tickets`, `support_categories`, `tasks`, `task_categories` |
-| **SMS** | `sms_gateways`, `sms_templates`, `sms_groups`, `sms_log` |
-| **Settings** | `branches`, `branch_managers`, `notification_settings`, `scheduler_config`, `user_roles`, `profiles` |
-
-### Phase 3: Website-ERP Integration
-
-- **HR -> Team page**: Employees from `employees` table shown on public website "Our Team"
-- **Packages -> Website**: `isp_packages` data drives the public packages page
-- **Quick Pay -> Billing**: Public quick-pay form queries `clients` + `billing`, marks paid
-- **Connection Requests**: Public form inserts into `client_requests`, ERP shows pending requests
-- **Coverage**: Zones/sub-zones from ERP shown on public coverage page
-
-### Implementation Order
-
-1. **Public website layout & homepage** -- Navbar, Footer, Hero, Features, Package preview, CTA
-2. **Public pages** -- /packages, /coverage, /new-connection, /quick-pay
-3. **ERP sidebar update** -- Update AppSidebar with all ERP modules
-4. **ERP Dashboard** -- Summary cards, charts, recent activity
-5. **Client Management module** -- CRUD for clients, requests
-6. **Billing module** -- Monthly billing, collections, payment tracking
-7. **Network module** -- OLT/ONU/MikroTik views
-8. **HR module** -- Employees, payroll, leave
-9. **Remaining modules** -- Inventory, Accounting, Support, SMS, Settings
+1. **Update `AppSidebar.tsx`** -- Replace current menu groups with the exact 22 module groups from the portal
+2. **Create placeholder page components** -- Each page gets a simple component with the page title, breadcrumb, and a "Coming soon" card
+3. **Create a reusable `PlaceholderPage` component** -- To avoid 120 separate files, use a shared component that accepts title/description
+4. **Update `App.tsx`** -- Register all 122 routes under `/dashboard/*`, all wrapped in `ProtectedRoute`
+5. **Group page files by module** -- e.g., `src/pages/dashboard/hr/`, `src/pages/dashboard/billing/`, etc.
 
 ### Technical Details
 
-- **No database changes needed** -- All 85 tables with RLS already exist
-- **Routing**: Update `App.tsx` to add public routes (no auth) + protected `/dashboard/*` routes
-- **ProtectedRoute**: Fix redirect from `/landing` to `/login`
-- **Public pages**: New layout component (PublicLayout) with ISP-branded navbar/footer
-- **Supabase queries**: Use existing `supabase` client; tables are already in the types
-- **Bangla i18n**: Hardcoded Bangla strings for the public site (matching galaxynetbd.com pattern)
-- **Theme**: Public site uses its own branded theme; ERP uses the existing dark sidebar theme
-
-### Files to Create/Modify
-
-- `src/components/PublicLayout.tsx` -- Public website shell (navbar + footer)
-- `src/pages/public/Home.tsx` -- Homepage
-- `src/pages/public/Packages.tsx` -- Package listing
-- `src/pages/public/Coverage.tsx` -- Coverage checker
-- `src/pages/public/NewConnection.tsx` -- Connection request form
-- `src/pages/public/QuickPay.tsx` -- Quick payment
-- `src/pages/public/About.tsx` -- About page
-- `src/pages/public/Services.tsx` -- Services page
-- `src/pages/dashboard/*` -- All ERP module pages
-- `src/App.tsx` -- Add all routes
-- `src/components/AppSidebar.tsx` -- Update with full ERP menu
-- `src/components/ProtectedRoute.tsx` -- Fix redirect to `/login`
+- Each page file will be a simple React component importing the shared `PlaceholderPage`
+- All routes will be protected via the existing `P` wrapper
+- Sidebar will match the exact portal structure with all 22 groups and their sub-items
+- No logic/data fetching in this phase -- just page shells ready for you to specify logic later
 
