@@ -1842,29 +1842,47 @@ export type Database = {
         Row: {
           account_id: string | null
           amount: number
+          branch_id: string | null
+          category: string | null
           created_at: string
           description: string | null
           expense_date: string | null
           id: string
+          month: string | null
+          paid_by: string | null
+          payment_method: string | null
           reference: string | null
+          status: string
         }
         Insert: {
           account_id?: string | null
           amount?: number
+          branch_id?: string | null
+          category?: string | null
           created_at?: string
           description?: string | null
           expense_date?: string | null
           id?: string
+          month?: string | null
+          paid_by?: string | null
+          payment_method?: string | null
           reference?: string | null
+          status?: string
         }
         Update: {
           account_id?: string | null
           amount?: number
+          branch_id?: string | null
+          category?: string | null
           created_at?: string
           description?: string | null
           expense_date?: string | null
           id?: string
+          month?: string | null
+          paid_by?: string | null
+          payment_method?: string | null
           reference?: string | null
+          status?: string
         }
         Relationships: [
           {
@@ -1872,6 +1890,13 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_entries_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
             referencedColumns: ["id"]
           },
         ]
@@ -1901,29 +1926,50 @@ export type Database = {
         Row: {
           account_id: string | null
           amount: number
+          branch_id: string | null
+          client_id: string | null
           created_at: string
           description: string | null
           id: string
           income_date: string | null
+          month: string | null
+          payment_method: string | null
+          received_by: string | null
           reference: string | null
+          source: string
+          status: string
         }
         Insert: {
           account_id?: string | null
           amount?: number
+          branch_id?: string | null
+          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           income_date?: string | null
+          month?: string | null
+          payment_method?: string | null
+          received_by?: string | null
           reference?: string | null
+          source?: string
+          status?: string
         }
         Update: {
           account_id?: string | null
           amount?: number
+          branch_id?: string | null
+          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           income_date?: string | null
+          month?: string | null
+          payment_method?: string | null
+          received_by?: string | null
           reference?: string | null
+          source?: string
+          status?: string
         }
         Relationships: [
           {
@@ -1931,6 +1977,20 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "income_entries_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "income_entries_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
