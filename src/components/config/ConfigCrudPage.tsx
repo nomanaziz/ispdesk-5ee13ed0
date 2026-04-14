@@ -207,6 +207,17 @@ export default function ConfigCrudPage({
 
       {filterComponent}
 
+      {showStatusTabs && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant={statusTab === "active" ? "default" : "outline"} onClick={() => setStatusTab("active")}>
+            সক্রিয় তালিকা
+          </Button>
+          <Button size="sm" variant={statusTab === "inactive" ? "default" : "outline"} onClick={() => setStatusTab("inactive")}>
+            লুকানো তালিকা
+          </Button>
+        </div>
+      )}
+
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between flex-wrap gap-3">
