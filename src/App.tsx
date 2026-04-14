@@ -308,6 +308,7 @@ const App = () => (
 
               {/* Billing */}
               <Route path="/dashboard/billing" element={<P><BillingList /></P>} />
+              <Route path="/dashboard/billing/client/:id" element={<P><ClientProfile /></P>} />
               <Route path="/dashboard/billing/daily-collection" element={<P><BillingDailyCollection /></P>} />
 
               {/* Mikrotik */}
