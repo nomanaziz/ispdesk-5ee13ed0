@@ -1,77 +1,72 @@
 
 
-## Plan: Shift Management & ZKTeco Attendance Integration
+## Plan: Enhanced Employee Form + Auto-ID Settings
 
-### Database Migration (5 new tables)
+### Phase 1: Database Migration
 
-**1. `shifts`** — shift definitions
-- `id` (uuid PK), `name` (text, e.g. "Morning", "Night"), `start_time` (time), `end_time` (time), `grace_minutes` (int, default 15), `late_deduction_amount` (numeric), `late_deduction_type` (text: fixed/percentage), `status` (text), `created_at`
+**Add columns to `employees` table:**
+- `date_of_birth` (date)
+- `gender` (text) — Male/Female/Other
+- `personal_phone` (text) — ব্যক্তিগত নম্বর
+- `office_phone` (text) — অফিস নম্বর
+- `guardian_phone` (text) — অভিভাবকের নম্বর
+- `marital_status` (text)
+- `nid_number` (text) — NID/জন্ম সনদ
+- `facebook_link` (text)
+- `reference` (text)
+- `district` (text)
+- `upazila` (text)
+- `permanent_address` (text)
+- `working_experience` (text)
+- `last_degree` (text)
+- `institution` (text)
+- `passing_year` (text)
+- `punch_card_id` (text) — ZKTeco punch card
+- `default_in_time` (time)
+- `default_out_time` (time)
+- `zkteco_device_id` (uuid FK → zkteco_devices)
+- `image_url` (text) — profile photo
+- `payroll_template_id` (uuid FK → payroll_templates)
 
-**2. `employee_shift_assignments`** — monthly roster
-- `id` (uuid PK), `employee_id` (FK → employees), `shift_id` (FK → shifts), `date` (date), `created_by` (uuid), `created_at`
-- UNIQUE(employee_id, date)
+**New table: `hr_settings`** — for employee ID auto-generation config:
+- `id` (uuid PK), `setting_key` (text UNIQUE), `setting_value` (jsonb), `created_at`
+- Stores: `{ "mode": "auto"|"manual", "prefix": "EMP", "next_number": 1, "padding": 3 }`
+- Auto mode generates: `EMP001`, `EMP002`, etc.
 
-**3. `zkteco_devices`** — registered ZKTeco devices
-- `id` (uuid PK), `name` (text), `ip_address` (text), `port` (int, default 4370), `api_id` (text), `api_password` (text), `serial_number` (text), `location` (text), `status` (text, default 'active'), `last_sync_at` (timestamptz), `created_at`
+### Phase 2: Rebuild AddEmployee.tsx
 
-**4. `zkteco_attendance_logs`** — raw punch logs from devices
-- `id` (uuid PK), `device_id` (FK → zkteco_devices), `employee_id` (FK → employees), `punch_time` (timestamptz), `punch_type` (text: check_in/check_out), `device_user_id` (text), `synced_at` (timestamptz), `created_at`
+Redesign with 5 card sections matching the reference:
 
-**5. `attendance_rules`** — late/absence deduction rules
-- `id` (uuid PK), `name` (text), `late_after_minutes` (int), `half_day_after_minutes` (int), `absent_after_minutes` (int), `late_deduction` (numeric), `late_deduction_type` (text), `absent_deduction` (numeric), `absent_deduction_type` (text), `status` (text), `created_at`
+**1. Basic Information (ব্যক্তিগত তথ্য)**
+- Name*, DOB, Gender (select), Personal Phone*, Office Phone*, Guardian Phone
+- Marital Status (select), NID Number, Email, Facebook Link, Reference
+- District (select from config), Upazila (select from config)
+- Working Experience (textarea), Present Address (textarea), Permanent Address (textarea)
 
-Also alter `attendance` table: add `shift_id` (FK → shifts), `device_log_id` (FK → zkteco_attendance_logs), `source` (text: manual/device).
+**2. Attendance Information (উপস্থিতি তথ্য)**
+- Device (select from zkteco_devices), Punch Card ID, Default In Time, Default Out Time
 
-RLS: admin manage, authenticated read on all new tables.
+**3. Educational Qualification (শিক্ষাগত যোগ্যতা)**
+- Last Achieved Degree, Institution/Board, Passing Year
 
----
+**4. Posting Information (চাকুরি সম্পর্কিত)**
+- Joining Date*, Department (select), Position/Designation (select)
+- Payroll Template (select), Salary, Show on Website toggle, Profile Image upload
 
-### Frontend Pages (4 new files)
+**5. Employee ID** — auto-generated based on hr_settings or manual input
 
-**1. `ShiftManagement.tsx`** — `/dashboard/hr/shifts`
-- **Shift Definitions tab**: CRUD for shifts (name, start/end time, grace period)
-- **Monthly Roster tab**: Calendar-style grid. Select month → shows all employees as rows, dates as columns. Click cell to assign shift. Bulk assign shift to employee for full month.
-- Color-coded shift badges per cell
+### Phase 3: HR Settings Page
 
-**2. `ZktecoDevices.tsx`** — `/dashboard/hr/zkteco-devices`
-- CRUD table: Device Name, IP, Port, API ID, Password (masked), Serial, Location, Status, Last Sync
-- "Add Device" dialog with all connection fields
-- "Sync Now" button per device (calls edge function)
-- Connection status indicator
+New page at `/dashboard/hr/settings` or integrate into System Settings:
+- Employee ID Mode: Auto / Manual (radio)
+- If Auto: Prefix (text, e.g. "EMP"), Start Number, Padding (digits)
+- Preview: shows example like "EMP001"
 
-**3. `AttendanceRules.tsx`** — `/dashboard/hr/attendance-rules`
-- CRUD: Rule name, late threshold (minutes), half-day threshold, absent threshold
-- Deduction amounts (fixed/percentage) for late and absent
-- These rules will be used in future for payroll deduction calculation
+### Routing & Sidebar
+- Add HR Settings link under HR & Payroll section
 
-**4. Update `Attendance.tsx`** — add "Source" column (Manual/Device), link to shift, show expected vs actual time
-
----
-
-### Edge Function: `sync-zkteco-data`
-
-- Accepts device connection details
-- Calls ZKTeco device API (ZKTeco devices expose a REST API or use the ZK Web API protocol over HTTP)
-- Fetches attendance logs, maps device user IDs to employees
-- Inserts into `zkteco_attendance_logs` and auto-updates `attendance` table
-- Can be triggered manually ("Sync Now") or scheduled via pg_cron
-
----
-
-### Sidebar & Routing Updates
-
-Add 3 new items under "HR & Payroll":
-- Shift Management → `/dashboard/hr/shifts`
-- ZKTeco Devices → `/dashboard/hr/zkteco-devices`
-- Attendance Rules → `/dashboard/hr/attendance-rules`
-
----
-
-### Technical Notes
-
-- ZKTeco devices typically use the **ZKBioAccess** or **PULL SDK** REST API over HTTP (IP:port). The edge function will make HTTP requests to the device's API endpoint using the stored credentials.
-- Employee-to-device mapping: employees table will get a `device_user_id` (text) column to map ZKTeco enrollment IDs to employees.
-- The `attendance` table's `check_in`/`check_out` fields will be auto-populated from device logs when source is "device".
-- Late detection: compare `check_in` time against assigned shift's `start_time + grace_minutes`.
-- Future salary deduction logic will read `attendance_rules` and apply deductions during payroll generation.
+### Technical Details
+- Profile image upload uses Supabase Storage bucket
+- Auto-ID: on form load (new employee), fetch hr_settings → generate next ID → display as read-only
+- Districts/Upazilas already exist in config tables — reuse them in selects
 
