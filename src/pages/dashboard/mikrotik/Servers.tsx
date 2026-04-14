@@ -86,7 +86,7 @@ export default function Servers() {
 
   const toggleStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("mikrotik_devices").update({ status: status === "active" ? "inactive" : "active" }).eq("id", id);
+      const { error } = await supabase.from("mikrotik_devices").update({ status: status === "online" ? "offline" : "online" }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["mikrotik_devices"] }),
@@ -100,12 +100,12 @@ export default function Servers() {
 
   const openEdit = (d: MikrotikDevice) => {
     setEditId(d.id);
-    setForm({ name: d.name, host: d.host, username: d.username, password_encrypted: d.password_encrypted || "", api_port: d.api_port, version: d.version, timeout: d.timeout });
+    setForm({ name: d.name, ip_address: d.ip_address, username: d.username, password_encrypted: d.password_encrypted || "", api_port: d.api_port, version: d.version, timeout: d.timeout });
     setDialogOpen(true);
   };
 
   const handleSubmit = () => {
-    if (!form.name || !form.host || !form.username || !form.password_encrypted) {
+    if (!form.name || !form.ip_address || !form.username || !form.password_encrypted) {
       toast.error("সব প্রয়োজনীয় ফিল্ড পূরণ করুন");
       return;
     }
@@ -113,7 +113,7 @@ export default function Servers() {
   };
 
   const filtered = devices.filter((d) =>
-    [d.name, d.host, d.username].some((v) => v?.toLowerCase().includes(search.toLowerCase()))
+    [d.name, d.ip_address, d.username].some((v) => v?.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
@@ -156,7 +156,7 @@ export default function Servers() {
                   <TableRow key={d.id}>
                     <TableCell>{i + 1}</TableCell>
                     <TableCell className="font-medium">{d.name}</TableCell>
-                    <TableCell>{d.host}</TableCell>
+                    <TableCell>{d.ip_address}</TableCell>
                     <TableCell>{d.username}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
@@ -170,7 +170,7 @@ export default function Servers() {
                     <TableCell><Badge variant="outline">{d.version}</Badge></TableCell>
                     <TableCell>{d.timeout}s</TableCell>
                     <TableCell>
-                      <Switch checked={d.status === "active"} onCheckedChange={() => toggleStatus.mutate({ id: d.id, status: d.status })} />
+                      <Switch checked={d.status === "online"} onCheckedChange={() => toggleStatus.mutate({ id: d.id, status: d.status })} />
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
@@ -193,7 +193,7 @@ export default function Servers() {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>সার্ভার নাম *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="MikroTik-1" /></div>
-              <div className="space-y-2"><Label>সার্ভার IP *</Label><Input value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} placeholder="192.168.1.1" /></div>
+              <div className="space-y-2"><Label>সার্ভার IP *</Label><Input value={form.ip_address} onChange={(e) => setForm({ ...form, ip_address: e.target.value })} placeholder="192.168.1.1" /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>ইউজারনেম *</Label><Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="admin" /></div>

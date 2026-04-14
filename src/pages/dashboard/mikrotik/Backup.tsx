@@ -17,7 +17,7 @@ export default function Backup() {
   const { data: servers = [] } = useQuery({
     queryKey: ["mikrotik_devices_list"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("mikrotik_devices").select("id, name").eq("status", "active").order("name");
+      const { data, error } = await supabase.from("mikrotik_devices").select("id, name").neq("status", "offline").order("name");
       if (error) throw error;
       return data;
     },
