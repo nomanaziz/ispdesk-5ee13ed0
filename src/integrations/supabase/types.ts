@@ -2592,6 +2592,72 @@ export type Database = {
           },
         ]
       }
+      payroll_template_payheads: {
+        Row: {
+          amount_type: string
+          amount_value: number
+          created_at: string
+          final_amount: number
+          id: string
+          payhead_id: string
+          template_id: string
+        }
+        Insert: {
+          amount_type?: string
+          amount_value?: number
+          created_at?: string
+          final_amount?: number
+          id?: string
+          payhead_id: string
+          template_id: string
+        }
+        Update: {
+          amount_type?: string
+          amount_value?: number
+          created_at?: string
+          final_amount?: number
+          id?: string
+          payhead_id?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_template_payheads_payhead_id_fkey"
+            columns: ["payhead_id"]
+            isOneToOne: false
+            referencedRelation: "payheads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_template_payheads_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_templates: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string
+        }
+        Relationships: []
+      }
       ping_targets: {
         Row: {
           branch_id: string | null
