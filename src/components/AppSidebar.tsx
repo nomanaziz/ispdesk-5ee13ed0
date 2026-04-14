@@ -106,6 +106,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "Billing List", url: "/dashboard/billing", icon: CreditCard },
       { title: "Daily Bill Collection", url: "/dashboard/billing/daily-collection", icon: Wallet },
+      { title: "ইনস্টলেশন ফি", url: "/dashboard/sales/installation-fee", icon: DollarSign },
     ],
   },
   {
@@ -274,9 +275,8 @@ const menuGroups: MenuGroup[] = [
     icon: Receipt,
     iconColor: "text-pink-400",
     items: [
-      { title: "Product Invoice", url: "/dashboard/sales/product-invoice", icon: FileText },
-      { title: "Service Invoice", url: "/dashboard/sales/service-invoice", icon: FileText },
-      { title: "Installation Fee", url: "/dashboard/sales/installation-fee", icon: DollarSign },
+      { title: "প্রোডাক্ট ইনভয়েস", url: "/dashboard/sales/product-invoice", icon: FileText },
+      { title: "সার্ভিস ইনভয়েস", url: "/dashboard/sales/service-invoice", icon: FileText },
     ],
   },
   {

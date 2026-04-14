@@ -65,7 +65,7 @@ export default function ProductInvoice() {
   const { data: items = [] } = useQuery({
     queryKey: ["inventory_items_list"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("inventory_items").select("id, name, price").order("name");
+      const { data, error } = await supabase.from("inventory_items").select("id, name, sale_price").order("name");
       if (error) throw error;
       return data;
     },
@@ -179,7 +179,7 @@ export default function ProductInvoice() {
                 <Label>আইটেম</Label>
                 <Select value={form.item_id} onValueChange={(v) => {
                   const item = items.find((i) => i.id === v);
-                  setForm({ ...form, item_id: v, unit_price: item?.price || 0 });
+                  setForm({ ...form, item_id: v, unit_price: item?.sale_price || 0 });
                 }}>
                   <SelectTrigger><SelectValue placeholder="আইটেম নির্বাচন করুন" /></SelectTrigger>
                   <SelectContent>
