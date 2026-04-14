@@ -4467,6 +4467,42 @@ export type Database = {
         }
         Relationships: []
       }
+      task_assignees: {
+        Row: {
+          assigned_at: string
+          employee_id: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          employee_id: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          assigned_at?: string
+          employee_id?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_categories: {
         Row: {
           created_at: string
@@ -4488,40 +4524,81 @@ export type Database = {
         }
         Relationships: []
       }
+      task_comments: {
+        Row: {
+          comment: string
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_to: string | null
+          attachments: string[] | null
           category_id: string | null
           completed_at: string | null
           created_at: string
+          created_by: string | null
           description: string | null
           due_date: string | null
           id: string
           priority: string | null
+          remarks: string | null
           status: string
           title: string
         }
         Insert: {
           assigned_to?: string | null
+          attachments?: string[] | null
           category_id?: string | null
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
           priority?: string | null
+          remarks?: string | null
           status?: string
           title: string
         }
         Update: {
           assigned_to?: string | null
+          attachments?: string[] | null
           category_id?: string | null
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
           priority?: string | null
+          remarks?: string | null
           status?: string
           title?: string
         }
