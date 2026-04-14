@@ -323,7 +323,20 @@ const App = () => (
 
               {/* OLT */}
               <Route path="/dashboard/olt" element={<P><OltDevices /></P>} />
+              <Route path="/dashboard/olt/onu" element={<P><OnuList /></P>} />
               <Route path="/dashboard/olt/users" element={<P><OltUsers /></P>} />
+              <Route path="/dashboard/olt/user-down" element={<P><UserDownCount /></P>} />
+              <Route path="/dashboard/olt/fiber-down" element={<P><FiberDownFinder /></P>} />
+              <Route path="/dashboard/olt/sharing" element={<P><OltSharing /></P>} />
+
+              {/* Network Monitoring */}
+              <Route path="/dashboard/monitoring/switches" element={<P><SwitchList /></P>} />
+              <Route path="/dashboard/monitoring/add-switch" element={<P><AddSwitch /></P>} />
+              <Route path="/dashboard/monitoring/pop-dass" element={<P><PopDass /></P>} />
+              <Route path="/dashboard/monitoring/pop-ip" element={<P><PopIp /></P>} />
+              <Route path="/dashboard/monitoring/pop-log" element={<P><PopLog /></P>} />
+              <Route path="/dashboard/monitoring/ping-tools" element={<P><PingTools /></P>} />
+              <Route path="/dashboard/monitoring/pop-devices" element={<P><PopDevices /></P>} />
 
               {/* Network */}
               <Route path="/dashboard/network/diagram" element={<P><NetworkDiagram /></P>} />
