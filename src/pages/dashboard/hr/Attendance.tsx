@@ -131,11 +131,12 @@ export default function Attendance() {
                     <TableHead>চেক-ইন</TableHead>
                     <TableHead>চেক-আউট</TableHead>
                     <TableHead>স্ট্যাটাস</TableHead>
+                    <TableHead>সোর্স</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(employees || []).length === 0 && (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">কোনো সক্রিয় কর্মী নেই</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">কোনো সক্রিয় কর্মী নেই</TableCell></TableRow>
                   )}
                   {(employees || []).map((emp: any) => {
                     const att = getAttendance(emp.id);
@@ -174,6 +175,11 @@ export default function Attendance() {
                               ))}
                             </SelectContent>
                           </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={att?.source === "device" ? "default" : "secondary"} className="text-[11px]">
+                            {att?.source === "device" ? "ডিভাইস" : "ম্যানুয়াল"}
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     );
