@@ -219,9 +219,6 @@ import ConfigServiceTypes from "@/pages/dashboard/config/ServiceTypes";
 // Website Panel
 import WebsiteDashboard from "@/pages/dashboard/website/WebsiteDashboard";
 import HomepageEditor from "@/pages/dashboard/website/HomepageEditor";
-import WebsitePackages from "@/pages/dashboard/website/WebsitePackages";
-import WebsiteCoverage from "@/pages/dashboard/website/WebsiteCoverage";
-import WebsiteOrders from "@/pages/dashboard/website/WebsiteOrders";
 import WebsitePages from "@/pages/dashboard/website/WebsitePages";
 import WebsiteNotices from "@/pages/dashboard/website/WebsiteNotices";
 import WebsiteOffers from "@/pages/dashboard/website/WebsiteOffers";
@@ -231,7 +228,7 @@ import WebsiteFeatures from "@/pages/dashboard/website/WebsiteFeatures";
 import WebsiteServices from "@/pages/dashboard/website/WebsiteServices";
 import WebsiteFestivals from "@/pages/dashboard/website/WebsiteFestivals";
 import WebsiteMenu from "@/pages/dashboard/website/WebsiteMenu";
-import WebsitePayments from "@/pages/dashboard/website/WebsitePayments";
+
 import WebsiteMedia from "@/pages/dashboard/website/WebsiteMedia";
 import WebsiteAbout from "@/pages/dashboard/website/WebsiteAbout";
 import WebsiteSettings from "@/pages/dashboard/website/WebsiteSettings";
@@ -463,9 +460,9 @@ const App = () => (
               {/* Website Panel */}
               <Route path="/dashboard/website" element={<P><WebsiteDashboard /></P>} />
               <Route path="/dashboard/website/homepage" element={<P><HomepageEditor /></P>} />
-              <Route path="/dashboard/website/packages" element={<P><WebsitePackages /></P>} />
-              <Route path="/dashboard/website/coverage" element={<P><WebsiteCoverage /></P>} />
-              <Route path="/dashboard/website/orders" element={<P><WebsiteOrders /></P>} />
+              <Route path="/dashboard/website/packages" element={<Navigate to="/dashboard/config/packages" replace />} />
+              <Route path="/dashboard/website/coverage" element={<Navigate to="/dashboard/config/districts" replace />} />
+              <Route path="/dashboard/website/orders" element={<Navigate to="/dashboard/clients/new-request" replace />} />
               <Route path="/dashboard/website/pages" element={<P><WebsitePages /></P>} />
               <Route path="/dashboard/website/notices" element={<P><WebsiteNotices /></P>} />
               <Route path="/dashboard/website/offers" element={<P><WebsiteOffers /></P>} />
@@ -475,7 +472,7 @@ const App = () => (
               <Route path="/dashboard/website/services" element={<P><WebsiteServices /></P>} />
               <Route path="/dashboard/website/festivals" element={<P><WebsiteFestivals /></P>} />
               <Route path="/dashboard/website/menu" element={<P><WebsiteMenu /></P>} />
-              <Route path="/dashboard/website/payments" element={<P><WebsitePayments /></P>} />
+              <Route path="/dashboard/website/payments" element={<Navigate to="/dashboard/system/payment-gateways" replace />} />
               <Route path="/dashboard/website/media" element={<P><WebsiteMedia /></P>} />
               <Route path="/dashboard/website/about" element={<P><WebsiteAbout /></P>} />
               <Route path="/dashboard/website/settings" element={<P><WebsiteSettings /></P>} />
