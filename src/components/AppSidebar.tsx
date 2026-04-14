@@ -30,7 +30,10 @@ const menuGroups: MenuGroup[] = [
     icon: LayoutDashboard,
     iconColor: "text-blue-400",
     defaultOpen: true,
-    items: [{ title: "Overview", url: "/dashboard", icon: LayoutDashboard }],
+    items: [
+      { title: "Billing Overview", url: "/dashboard", icon: CreditCard },
+      { title: "OLT Overview", url: "/dashboard/olt-overview", icon: Cpu },
+    ],
   },
   {
     label: "Configuration",
