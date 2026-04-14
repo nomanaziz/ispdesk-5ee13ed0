@@ -392,6 +392,9 @@ const App = () => (
               <Route path="/dashboard/bw-buy/categories" element={<P><BwBuyCategories /></P>} />
               <Route path="/dashboard/bw-buy/providers" element={<P><BwBuyProviders /></P>} />
               <Route path="/dashboard/bw-buy/bills" element={<P><BwBuyBills /></P>} />
+              <Route path="/dashboard/bw-buy/bills/new" element={<P><BwBuyBillForm /></P>} />
+              <Route path="/dashboard/bw-buy/bills/:id" element={<P><BwBuyBillView /></P>} />
+              <Route path="/dashboard/bw-buy/bills/:id/edit" element={<P><BwBuyBillForm /></P>} />
 
               {/* BW Sale */}
               <Route path="/dashboard/bw-sale/pop" element={<P><BwSalePop /></P>} />
