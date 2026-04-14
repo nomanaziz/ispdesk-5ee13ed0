@@ -168,6 +168,7 @@ export default function ConfigCrudPage({
   };
 
   const filtered = (items || [])
+    .filter((item: any) => showStatusTabs ? item.status === statusTab : true)
     .filter((item: any) => filterFn ? filterFn(item) : true)
     .filter((item: any) => {
       if (!search) return true;
