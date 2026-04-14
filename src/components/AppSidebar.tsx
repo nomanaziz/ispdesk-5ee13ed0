@@ -42,9 +42,6 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "Website Dashboard", url: "/dashboard/website", icon: LayoutDashboard },
       { title: "Homepage Editor", url: "/dashboard/website/homepage", icon: Monitor },
-      { title: "Packages Display", url: "/dashboard/website/packages", icon: Package },
-      { title: "Coverage Areas", url: "/dashboard/website/coverage", icon: MapPin },
-      { title: "Orders", url: "/dashboard/website/orders", icon: ShoppingCart },
       { title: "Pages", url: "/dashboard/website/pages", icon: FileText },
       { title: "Notices", url: "/dashboard/website/notices", icon: Bell },
       { title: "Offers", url: "/dashboard/website/offers", icon: Tag },
@@ -54,7 +51,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Services", url: "/dashboard/website/services", icon: Wrench },
       { title: "Festivals", url: "/dashboard/website/festivals", icon: Megaphone },
       { title: "Menu Editor", url: "/dashboard/website/menu", icon: List },
-      { title: "Payment Methods", url: "/dashboard/website/payments", icon: CreditCardIcon },
+      
       { title: "Media Library", url: "/dashboard/website/media", icon: FolderOpen },
       { title: "About Page", url: "/dashboard/website/about", icon: BookOpen },
       { title: "Site Settings", url: "/dashboard/website/settings", icon: Cog },
