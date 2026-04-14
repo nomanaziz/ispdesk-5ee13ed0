@@ -241,11 +241,78 @@ export type Database = {
         }
         Relationships: []
       }
+      bill_collections: {
+        Row: {
+          amount: number
+          approved_by: string | null
+          billing_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          discount: number
+          id: string
+          note: string | null
+          payment_method: string | null
+          received_by: string | null
+          status: string
+          transaction_id: string | null
+          vat: number
+        }
+        Insert: {
+          amount?: number
+          approved_by?: string | null
+          billing_id?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          discount?: number
+          id?: string
+          note?: string | null
+          payment_method?: string | null
+          received_by?: string | null
+          status?: string
+          transaction_id?: string | null
+          vat?: number
+        }
+        Update: {
+          amount?: number
+          approved_by?: string | null
+          billing_id?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          discount?: number
+          id?: string
+          note?: string | null
+          payment_method?: string | null
+          received_by?: string | null
+          status?: string
+          transaction_id?: string | null
+          vat?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_collections_billing_id_fkey"
+            columns: ["billing_id"]
+            isOneToOne: false
+            referencedRelation: "billing"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_collections_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing: {
         Row: {
           advance: number | null
           amount: number
           bill_id: string
+          branch_id: string | null
           client_id: string
           collected_by: string | null
           created_at: string
@@ -253,17 +320,20 @@ export type Database = {
           due: number | null
           due_date: string | null
           extend_date: string | null
+          generated: boolean | null
           id: string
           month: string
           paid: number | null
           pay_date: string | null
           payment_method: string | null
           status: string
+          vat: number | null
         }
         Insert: {
           advance?: number | null
           amount?: number
           bill_id: string
+          branch_id?: string | null
           client_id: string
           collected_by?: string | null
           created_at?: string
@@ -271,17 +341,20 @@ export type Database = {
           due?: number | null
           due_date?: string | null
           extend_date?: string | null
+          generated?: boolean | null
           id?: string
           month: string
           paid?: number | null
           pay_date?: string | null
           payment_method?: string | null
           status?: string
+          vat?: number | null
         }
         Update: {
           advance?: number | null
           amount?: number
           bill_id?: string
+          branch_id?: string | null
           client_id?: string
           collected_by?: string | null
           created_at?: string
@@ -289,14 +362,23 @@ export type Database = {
           due?: number | null
           due_date?: string | null
           extend_date?: string | null
+          generated?: boolean | null
           id?: string
           month?: string
           paid?: number | null
           pay_date?: string | null
           payment_method?: string | null
           status?: string
+          vat?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "billing_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "billing_client_id_fkey"
             columns: ["client_id"]
@@ -1146,6 +1228,7 @@ export type Database = {
           remote_address: string | null
           road_number: string | null
           server_name: string | null
+          speed: string | null
           status: string
           sub_zone_id: string | null
           updated_at: string
@@ -1208,6 +1291,7 @@ export type Database = {
           remote_address?: string | null
           road_number?: string | null
           server_name?: string | null
+          speed?: string | null
           status?: string
           sub_zone_id?: string | null
           updated_at?: string
@@ -1270,6 +1354,7 @@ export type Database = {
           remote_address?: string | null
           road_number?: string | null
           server_name?: string | null
+          speed?: string | null
           status?: string
           sub_zone_id?: string | null
           updated_at?: string
