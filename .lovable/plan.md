@@ -1,40 +1,46 @@
 
 
-## Plan: Add Division (বিভাগ) to Configuration Hierarchy
+## Fix: Division Cascade Not Working
 
-Currently the hierarchy is: District → Upazila. This plan adds a Division level above District, making it: **Division → District → Upazila**.
+### Problem Identified
 
-### Database Changes
+There are **two bugs** in `ConfigCrudPage.tsx`:
 
-**New table: `divisions`**
-- `id` (uuid, PK, default gen_random_uuid())
-- `name` (text, NOT NULL) — e.g. ঢাকা, চট্টগ্রাম
-- `code` (text) — e.g. Dhaka, Chattogram
-- `status` (text, default 'active')
-- `created_at` (timestamptz, default now())
-- RLS: same pattern as other config tables (admin manage, authenticated view)
+1. **Bulk status action ignores cascade**: When you select multiple divisions and click "নিষ্ক্রিয়" (bulk action), `bulkStatusMutation` (line 117-129) directly updates the table without calling `onStatusToggle`. So districts and upazilas are NOT cascaded.
 
-**Alter `districts` table:**
-- Add `division_id` (uuid, nullable, FK → divisions.id)
+2. **Individual toggle also broken for cascade**: The `toggleStatus` mutation calls `onStatusToggle(id, status, row)` but **then also** invalidates the query for the current table (line 110). However, the `onStatusToggle` in `Divisions.tsx` already does the division update itself (line 10). This means the division status gets updated correctly, but there could be race conditions with rapid toggling.
 
-**Seed data:** Insert all 8 Bangladesh divisions (ঢাকা, চট্টগ্রাম, রাজশাহী, খুলনা, বরিশাল, সিলেট, রংপুর, ময়মনসিংহ) and update each district's `division_id` to point to its correct division.
+### Fix Plan
 
-### Frontend Changes
+**File: `src/components/config/ConfigCrudPage.tsx`**
 
-| File | Change |
-|---|---|
-| `src/pages/dashboard/config/Divisions.tsx` | **New** — CRUD page with cascade toggle (off → deactivate all districts + upazilas under it) |
-| `src/pages/dashboard/config/Districts.tsx` | **Edit** — Add `division_id` select field + division filter + show division column |
-| `src/pages/dashboard/config/Upazilas.tsx` | **Edit** — Optionally add division filter for convenience |
-| `src/App.tsx` | **Edit** — Add route `/dashboard/config/divisions` |
-| `src/components/AppSidebar.tsx` | **Edit** — Add "Division" nav item before District |
+- Update `bulkStatusMutation` to call `onStatusToggle` for each selected item (if provided), so cascade logic runs for bulk actions too.
 
-### Cascade Logic
-- Division OFF → all its districts + their upazilas become inactive
-- Division ON → all its districts + their upazilas reactivate
-- District OFF → still cascades to its upazilas (existing behavior preserved)
+**File: `src/pages/dashboard/config/Divisions.tsx`**
 
-### Technical Notes
-- Division-to-district mapping based on standard Bangladesh administrative data
-- `ConfigCrudPage` reusable component handles the CRUD UI — no new components needed
+- No changes needed — cascade logic is correct.
+
+### Technical Details
+
+In `ConfigCrudPage.tsx`, change the `bulkStatusMutation` from:
+```typescript
+// Current: direct update, no cascade
+for (const id of selected) {
+  await supabase.from(tableName).update({ status }).eq("id", id);
+}
+```
+To:
+```typescript
+// Fixed: use onStatusToggle if available
+for (const id of selected) {
+  if (onStatusToggle) {
+    const row = items?.find((item: any) => item.id === id);
+    await onStatusToggle(id, status, row);
+  } else {
+    await supabase.from(tableName).update({ status }).eq("id", id);
+  }
+}
+```
+
+Also invalidate related queries after bulk status change.
 
