@@ -1,87 +1,59 @@
 
 
-## Plan: Support & Ticketing Module — Full Implementation
+## Plan: OLT Management Module — Full Page Implementation
 
-### Database Migration
+### Overview
+Implement all 6 OLT management pages (currently placeholders) with full UI and Supabase data integration. No database changes needed — all tables (`olt_devices`, `onu_list`, `onu_history`, `alerts`, `olt_branch_shares`, `clients`) already exist.
 
-**Alter `support_categories`** — add fields matching the reference screenshot:
-- `department` (text, nullable) — e.g., Transmission, NOC
-- `category_type` (text, default 'for_everyone') — "Only For Office" or "For Everyone"
-- `details` (text, nullable)
+### Pages to Implement
 
-**Alter `support_tickets`** — add fields for the full ticket workflow:
-- `complain_no` (text, nullable) — complained number/phone
-- `created_by` (uuid FK → profiles, nullable) — who opened the ticket
-- `solved_at` (timestamptz, nullable)
-- `solved_by` (uuid FK → profiles, nullable)
-- `source` (text, default 'admin') — 'admin' or 'client_portal'
-- `zone_id` (uuid FK → zones, nullable)
-- `subzone` (text, nullable)
-- `box` (text, nullable)
-- `attachments` (text[], nullable) — file URLs
+**1. OLT Devices (`OltDevices.tsx`)** — OLT ডিভাইস ম্যানেজমেন্ট
+- "+ Add OLT" dialog: Name, Vendor (enum dropdown: huawei/bdcom/vsol/dbc/syrotech/solitine/corelink/c-data/ecom/hsgq/phyhome), IP Address, Port, Connection Type (telnet/ssh), Username, Password, Branch (select), MikroTik Link (optional select), Description
+- Summary cards: Total OLT, Online, Offline, Total ONU
+- Table: Serial, Name, Vendor (badge), IP:Port, Connection, Branch, Status (online/offline badge), CPU%, Memory%, Uptime, Total ONU, Online ONU, Actions (edit/delete/view)
+- View action navigates to ONU list filtered by that OLT
+- Status toggle switch per device
 
-**New table: `support_ticket_assignees`** — many-to-many for multi-assign
-- `id` (uuid PK), `ticket_id` (uuid FK → support_tickets ON DELETE CASCADE)
-- `employee_id` (uuid FK → employees ON DELETE CASCADE)
-- `assigned_at` (timestamptz, default now())
-- Unique constraint on (ticket_id, employee_id)
-- RLS enabled
+**2. ONU List (`OnuList.tsx`)** — সকল ONU তালিকা
+- Filters: OLT (select), Status (online/offline/all), dB Range (dropdown buckets), Search (MAC/serial/description)
+- Summary cards: Total ONU, Online, Offline, High dB (>-24)
+- Table: Serial, OLT Name, Interface, MAC, Serial Number, Description, Status (badge), RX Power (color-coded dBm), TX Power, Distance (m), Last Seen, Offline Reason, Actions (view history)
+- dB values color-coded: green (<-18), yellow (-18 to -24), orange (-24 to -27), red (>-27)
+- Pagination
 
-**New table: `support_ticket_comments`** — ticket conversation/discussion thread
-- `id` (uuid PK), `ticket_id` (uuid FK → support_tickets ON DELETE CASCADE)
-- `user_id` (uuid FK → profiles)
-- `comment` (text NOT NULL) — rich text content
-- `attachments` (text[], nullable)
-- `created_at` (timestamptz, default now())
-- RLS enabled
+**3. OLT Users (`OltUsers.tsx`)** — OLT ইউজার ম্যাপিং
+- Shows clients mapped to ONUs (via `clients.onu_id`)
+- Filters: OLT (select), Zone, Status, Search (client name/username/MAC)
+- Table: Serial, Client ID, Username, Name, Contact, Zone, ONU MAC, ONU Interface, RX Power, ONU Status, Client Status, Actions (view client profile)
+- Join: `clients` → `onu_list` → `olt_devices`
+- Unmapped ONU indicator for ONUs without a linked client
 
-### Frontend Pages
+**4. User Down Count (`UserDownCount.tsx`)** — ডাউন ONU কাউন্ট
+- Summary: Total Down ONUs, grouped by OLT
+- Filters: OLT (select), Date range
+- Table grouped by OLT: OLT Name, Total ONU, Online, Offline, Offline %, list of offline ONUs with MAC/description/last_seen/offline_reason
+- Bar chart or visual showing offline percentage per OLT
+- Auto-refresh toggle
 
-**1. Support Categories (`SupportCategories.tsx`)**
-- Tabs: Client's, POP's, Bandwidth POP's (matching reference)
-- "+ Support Category" dialog: Name, Department (select from `departments`), Category Type (Only For Office / For Everyone), Details
-- Table: Serial, Support Category, Department, Category Type (colored badge), Details, Action (edit/delete)
-- Search + pagination
+**5. Fiber Down Finder (`FiberDownFinder.tsx`)** — ফাইবার ডাউন সনাক্তকরণ
+- Purpose: Find clusters of offline ONUs on the same interface/port (indicates fiber cut)
+- Groups offline ONUs by OLT + interface prefix (e.g., `0/1/1` → all ONUs on that PON port)
+- Table: OLT Name, PON Port/Interface, Total ONU on Port, Offline Count, Offline %, Status (Fiber Down if >50% offline, Warning if >30%), Last Change
+- Expandable rows showing individual offline ONUs on that port
+- Alert badges for likely fiber cuts
 
-**2. Client Support / Tickets (`Tickets.tsx`)**
-- Tabs: Accepted (Client's), Pending (Client's) with count, MAC Reseller's, Bandwidth POP's
-- Summary cards: Total Tickets (current month), Pending Tickets, Processing Tickets, Solved Tickets
-- Filters: Support Category, Zone, Solved By/Assign To, Created By, Status, Priority, From Date, To Date, Complained No
-- Table: TicketNo, ClientCode, ID/IP, CustomerName, Mobile, ComplainNo, Zone, Subzone, Box, Problem, Priority (badge), Complain Time, CreatedBy, Status (badge), Assign To (button), Solved Time, Duration
-- Assign button opens multi-select employee dialog
-- Row actions: conversation (chat icon), edit, delete
-- "+ Open New Ticket" button opens full ticket creation dialog
-
-**3. New Ticket Dialog (within Tickets page)**
-- Client search by Username/ID — auto-fills: Customer Name, Mobile, Address, Zone, Billing Status, Monthly Bill, Last Paid, Payment Status, MikroTik Status, Uptime, Last Logout, MAC/Caller ID, IP Address, Device Vendor, Connectivity Status
-- ONU Information section (auto-filled from OLT data): MAC, IP, OLT Name, Optical Power, OLT Port, ONU MAC/Serial, Status, Last Deregister, Distance, Deregister Reason, Description
-- Form fields: Problem Category (select), Problem Priority (select: High/Medium/Low), Complained Number, Attachments, Remarks/Note (textarea)
-- "Send SMS to Client?" checkbox
-- Cancel / Clear / Submit buttons
-
-**4. Ticket Conversation Dialog**
-- Rich text editor for new comment
-- Attach images option
-- "Submit Your Comments" button
-- Previous Discussion: chronological list of comments with author avatar, name, date, and content
-- Footer: Cancel, View Details, Refresh buttons
-
-**5. Support History (`History.tsx`)**
-- Tabs: Client's, POP's, Bandwidth POP's
-- Action buttons: Generate PDF, Generate CSV
-- Summary cards: Total Tickets, From Client Portal, From Admin Portal, Ticket's Priority (H:xx M:xx L:xx)
-- Filters: From Date, To Date, Solved By, Problem Category, Zone
-- Table: Sr.No, Date, TicketNo, ClientCode, Username, MobileNo, Zone, Category, Solve Time, Solved By (multiple names), Duration, Ticketing Info (icon)
-- Only shows resolved/solved tickets
-
-### Routing
-- No new routes needed — existing routes `/dashboard/support/categories`, `/dashboard/support/tickets`, `/dashboard/support/history` already in App.tsx
+**6. OLT Sharing (`OltSharing.tsx`)** — ব্রাঞ্চ অনুযায়ী OLT শেয়ারিং
+- Uses existing `olt_branch_shares` table
+- "+ Share OLT" dialog: Select OLT, Select Branch
+- Table: Serial, OLT Name, OLT IP, Shared With Branch, Shared By (profile name), Shared Date, Actions (remove share)
+- Filter by OLT or Branch
 
 ### Technical Details
-- Multi-assign: `support_ticket_assignees` join table; Tickets page shows "Assign" button that opens a multi-select dropdown of employees
-- Duration calculation: `solved_at - created_at` displayed as `Xd:Xh:Xm:Xs`
-- Conversation: `support_ticket_comments` displayed in chronological order within a dialog
-- Ticket numbering: auto-increment counter or max(ticket_no)+1
-- All queries via `@tanstack/react-query` + Supabase
+- All queries via `@tanstack/react-query` + Supabase client
+- ONU list joins: `onu_list` → `olt_devices` for OLT name
+- OLT Users joins: `clients` (where `onu_id` is not null) → `onu_list` → `olt_devices`
+- Fiber Down: client-side grouping of offline ONUs by `interface` prefix
+- dB color coding reuses the bucket logic from `OltOverview.tsx`
 - Bangla UI labels throughout
+- No new database tables or migrations needed
 
