@@ -24,17 +24,27 @@ const PACKAGE_TYPES = [
 
 export default function Packages() {
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editingPkg, setEditingPkg] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", code: "", price: "", bandwidth_down: "", bandwidth_up: "", protocol: "PPPoE", setup_fee: "", package_type: "home" });
+  const [form, setForm] = useState({ name: "", code: "", price: "", bandwidth: "", protocol: "", setup_fee: "", package_type: "home" });
   const queryClient = useQueryClient();
 
   const { data: packages, isLoading } = useQuery({
     queryKey: ["isp-packages"],
     queryFn: async () => {
       const { data, error } = await supabase.from("isp_packages").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: protocolTypes } = useQuery({
+    queryKey: ["config-protocol-types-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("protocol_types").select("*").eq("status", "active").order("name");
       if (error) throw error;
       return data;
     },
@@ -59,13 +69,14 @@ export default function Packages() {
 
   const upsertMutation = useMutation({
     mutationFn: async () => {
+      const bw = Number(form.bandwidth) || 0;
       const data = {
         name: form.name,
         code: form.code || null,
         price: Number(form.price) || 0,
-        bandwidth_down: Number(form.bandwidth_down) || 0,
-        bandwidth_up: Number(form.bandwidth_up) || 0,
-        protocol: form.protocol || "PPPoE",
+        bandwidth_down: bw,
+        bandwidth_up: bw,
+        protocol: form.protocol || null,
         setup_fee: Number(form.setup_fee) || 0,
         package_type: form.package_type || "home",
       };
@@ -114,7 +125,7 @@ export default function Packages() {
 
   const openAdd = () => {
     setEditingPkg(null);
-    setForm({ name: "", code: "", price: "", bandwidth_down: "", bandwidth_up: "", protocol: "PPPoE", setup_fee: "", package_type: "home" });
+    setForm({ name: "", code: "", price: "", bandwidth: "", protocol: "", setup_fee: "", package_type: "home" });
     setDialogOpen(true);
   };
 
@@ -122,14 +133,17 @@ export default function Packages() {
     setEditingPkg(pkg);
     setForm({
       name: pkg.name, code: pkg.code || "", price: String(pkg.price),
-      bandwidth_down: String(pkg.bandwidth_down || 0), bandwidth_up: String(pkg.bandwidth_up || 0),
-      protocol: pkg.protocol || "PPPoE", setup_fee: String(pkg.setup_fee || 0),
+      bandwidth: String(pkg.bandwidth_down || 0),
+      protocol: pkg.protocol || "", setup_fee: String(pkg.setup_fee || 0),
       package_type: pkg.package_type || "home",
     });
     setDialogOpen(true);
   };
 
-  const filtered = packages?.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = packages
+    ?.filter((p) => typeFilter === "all" || p.package_type === typeFilter)
+    ?.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+
   const allSelected = (filtered?.length || 0) > 0 && filtered?.every((p) => selected.has(p.id));
 
   const getPackageTypeBadge = (type: string | null) => {
@@ -149,6 +163,16 @@ export default function Packages() {
           <p className="text-sm text-muted-foreground">ISP প্যাকেজ ম্যানেজমেন্ট</p>
         </div>
         <Button onClick={openAdd} className="gap-2"><Plus className="h-4 w-4" /> নতুন প্যাকেজ</Button>
+      </div>
+
+      {/* Package Type Filter */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button size="sm" variant={typeFilter === "all" ? "default" : "outline"} onClick={() => setTypeFilter("all")}>সব</Button>
+        {PACKAGE_TYPES.map((t) => (
+          <Button key={t.value} size="sm" variant={typeFilter === t.value ? "default" : "outline"} onClick={() => setTypeFilter(t.value)}>
+            {t.label}
+          </Button>
+        ))}
       </div>
 
       <Card>
@@ -205,7 +229,7 @@ export default function Packages() {
                       }} /></TableCell>
                       <TableCell className="font-medium">{pkg.name}</TableCell>
                       <TableCell>{getPackageTypeBadge(pkg.package_type)}</TableCell>
-                      <TableCell>{pkg.bandwidth_down || 0} / {pkg.bandwidth_up || 0}</TableCell>
+                      <TableCell>{pkg.bandwidth_down || 0} Mbps</TableCell>
                       <TableCell>{pkg.price.toLocaleString()}</TableCell>
                       <TableCell>{pkg.protocol || "—"}</TableCell>
                       <TableCell>
@@ -256,10 +280,19 @@ export default function Packages() {
               <div><label className="text-sm font-medium">সেটআপ ফি</label><Input type="number" value={form.setup_fee} onChange={(e) => setForm({...form, setup_fee: e.target.value})} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-sm font-medium">ডাউনলোড (Mbps)</label><Input type="number" value={form.bandwidth_down} onChange={(e) => setForm({...form, bandwidth_down: e.target.value})} /></div>
-              <div><label className="text-sm font-medium">আপলোড (Mbps)</label><Input type="number" value={form.bandwidth_up} onChange={(e) => setForm({...form, bandwidth_up: e.target.value})} /></div>
+              <div><label className="text-sm font-medium">ব্যান্ডউইথ (Mbps)</label><Input type="number" value={form.bandwidth} onChange={(e) => setForm({...form, bandwidth: e.target.value})} placeholder="যেমন: 10" /></div>
+              <div>
+                <label className="text-sm font-medium">প্রোটোকল</label>
+                <Select value={form.protocol} onValueChange={(v) => setForm({...form, protocol: v})}>
+                  <SelectTrigger><SelectValue placeholder="প্রোটোকল নির্বাচন করুন" /></SelectTrigger>
+                  <SelectContent>
+                    {protocolTypes?.map((pt) => (
+                      <SelectItem key={pt.id} value={pt.name}>{pt.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div><label className="text-sm font-medium">প্রোটোকল</label><Input value={form.protocol} onChange={(e) => setForm({...form, protocol: e.target.value})} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>বাতিল</Button>
