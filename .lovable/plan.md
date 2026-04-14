@@ -1,58 +1,42 @@
 
 
-## Plan: Task Management Module — Internal Organization Tasks
+## Plan: Purchase Module — Full Page Implementation
 
 ### Overview
-Implement the 3 task management pages for internal organizational use. The existing `tasks` and `task_categories` tables cover the basics but need enhancements for multi-assignee support, created_by tracking, and task comments/notes.
+Implement all 4 purchase pages (currently placeholders) with full CRUD UI and Supabase integration. No database changes needed — all tables (`vendors`, `purchases`, `requisitions`, `purchase_bills`) already exist.
 
-### Database Migration
+### Pages to Implement
 
-**Alter `tasks`** — add missing workflow fields:
-- `created_by` (uuid, nullable) — who created the task
-- `remarks` (text, nullable) — additional notes
-- `attachments` (text[], nullable) — file URLs
-
-**New table: `task_assignees`** — many-to-many for multi-assign (like support tickets)
-- `id` (uuid PK), `task_id` (uuid FK → tasks ON DELETE CASCADE)
-- `employee_id` (uuid FK → employees ON DELETE CASCADE)
-- `assigned_at` (timestamptz, default now())
-- Unique constraint on (task_id, employee_id)
-- RLS enabled, authenticated users can manage
-
-**New table: `task_comments`** — discussion thread per task
-- `id` (uuid PK), `task_id` (uuid FK → tasks ON DELETE CASCADE)
-- `user_id` (uuid, not null) — who commented
-- `comment` (text, not null)
-- `created_at` (timestamptz, default now())
-- RLS enabled
-
-### Frontend Pages
-
-**1. Task Categories (`TaskCategories.tsx`)**
-- "+ Add Category" dialog: Name, Status (active/inactive)
-- Table: Serial, Category Name, Status (badge), Created Date, Actions (edit/delete)
+**1. Vendors (`Vendors.tsx`)** — ভেন্ডর ম্যানেজমেন্ট
+- "+ Add Vendor" dialog: Name, Contact, Email, Address, Status (active/inactive)
+- Summary cards: Total Vendors, Active, Inactive
+- Table: Serial, Name, Contact, Email, Address, Status (badge), Created Date, Actions (edit/delete)
 - Search filter
 
-**2. Tasks (`Tasks.tsx`)**
-- Summary cards: Total Tasks, Pending, In Progress, Completed
-- "+ New Task" dialog: Title, Description, Category (select), Priority (High/Medium/Low), Due Date, Assign To (multi-select employees), Remarks
-- Filters: Category, Priority, Status, Assigned To, Date Range
-- Table: Serial, Title, Category, Priority (colored badge), Due Date, Assigned To (avatar chips), Status (badge: pending/in_progress/completed/cancelled), Created By, Created Date, Actions (edit/view conversation/delete/mark complete)
-- Status update dropdown per task row
-- Conversation dialog (same pattern as support tickets): comment thread with author and timestamp
+**2. Requisitions (`Requisitions.tsx`)** — রিকুইজিশন
+- "+ New Requisition" dialog: Requisition No, Item (select from inventory_items), Quantity, Vendor (select), Estimated Cost, Notes
+- Summary cards: Total, Pending, Approved, Rejected
+- Filters: Status, Vendor, Search
+- Table: Serial, Requisition No, Item Name, Quantity, Vendor, Estimated Cost, Status (pending/approved/rejected badge), Approved By, Notes, Created Date, Actions (edit/approve/reject/delete)
+- Status update actions for approve/reject
 
-**3. Task History (`TaskHistory.tsx`)**
-- Shows only completed/cancelled tasks
-- Summary cards: Total Completed, Total Cancelled, Avg Completion Time
-- Filters: Category, Date Range, Completed By
-- Table: Serial, Title, Category, Priority, Assigned To, Created Date, Completed Date, Duration, Status, Actions (view details)
-- CSV export button
+**3. Purchases (`Purchases.tsx`)** — ক্রয় তালিকা
+- "+ New Purchase" dialog: Purchase No, Vendor (select), Item (select from inventory_items), Quantity, Unit Price, Total (auto-calc), Purchase Date, Status, Notes
+- Summary cards: Total Purchases, Total Amount, Completed, Pending
+- Filters: Status, Vendor, Date Range, Search
+- Table: Serial, Purchase No, Vendor, Item, Quantity, Unit Price, Total, Purchase Date, Status (badge), Notes, Actions (edit/delete)
+
+**4. Purchase Bills (`PurchaseBills.tsx`)** — পার্চেজ বিল
+- Same pattern as existing `bw-buy/Bills.tsx` but for general purchases
+- "+ New Bill" dialog: Bill No, Vendor (select), Amount, Paid, Due (auto-calc), Bill Date, Status
+- Summary cards: Total Amount, Total Paid, Total Due
+- Filters: Status, Vendor, Search
+- Table: Serial, Vendor, Bill No, Amount, Paid, Due, Bill Date, Status (badge), Actions (edit/delete)
 
 ### Technical Details
 - All queries via `@tanstack/react-query` + Supabase
-- Multi-assign uses `task_assignees` join table (same pattern as `support_ticket_assignees`)
-- Employee names fetched from `employees` table for assignment dropdowns
-- Duration: `completed_at - created_at` displayed as `Xd:Xh:Xm`
+- Vendors dropdown shared across Requisitions, Purchases, Purchase Bills
+- Items dropdown from `inventory_items` table for Requisitions and Purchases
 - Bangla UI labels throughout
-- 3 files to create/edit, 1 migration
+- No database migration needed — all tables exist
 
