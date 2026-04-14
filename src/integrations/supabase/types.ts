@@ -2221,6 +2221,7 @@ export type Database = {
       }
       leave_applications: {
         Row: {
+          approved_at: string | null
           approved_by: string | null
           category_id: string
           created_at: string
@@ -2229,10 +2230,12 @@ export type Database = {
           end_date: string
           id: string
           reason: string | null
+          remarks: string | null
           start_date: string
           status: string
         }
         Insert: {
+          approved_at?: string | null
           approved_by?: string | null
           category_id: string
           created_at?: string
@@ -2241,10 +2244,12 @@ export type Database = {
           end_date: string
           id?: string
           reason?: string | null
+          remarks?: string | null
           start_date: string
           status?: string
         }
         Update: {
+          approved_at?: string | null
           approved_by?: string | null
           category_id?: string
           created_at?: string
@@ -2253,6 +2258,7 @@ export type Database = {
           end_date?: string
           id?: string
           reason?: string | null
+          remarks?: string | null
           start_date?: string
           status?: string
         }
@@ -2273,10 +2279,59 @@ export type Database = {
           },
         ]
       }
+      leave_balances: {
+        Row: {
+          category_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          remaining_days: number
+          total_days: number
+          used_days: number
+          year: number
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          remaining_days?: number
+          total_days?: number
+          used_days?: number
+          year?: number
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          remaining_days?: number
+          total_days?: number
+          used_days?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_balances_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "leave_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_balances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leave_categories: {
         Row: {
           created_at: string
           days_allowed: number | null
+          description: string | null
           id: string
           name: string
           status: string
@@ -2284,6 +2339,7 @@ export type Database = {
         Insert: {
           created_at?: string
           days_allowed?: number | null
+          description?: string | null
           id?: string
           name: string
           status?: string
@@ -2291,6 +2347,7 @@ export type Database = {
         Update: {
           created_at?: string
           days_allowed?: number | null
+          description?: string | null
           id?: string
           name?: string
           status?: string
