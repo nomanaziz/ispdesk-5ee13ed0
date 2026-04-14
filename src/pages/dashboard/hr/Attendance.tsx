@@ -45,10 +45,11 @@ export default function Attendance() {
     mutationFn: async ({ employee_id, field, value }: { employee_id: string; field: string; value: string }) => {
       const existing = attendance?.find((a: any) => a.employee_id === employee_id);
       if (existing) {
-        const { error } = await supabase.from("attendance").update({ [field]: value }).eq("id", existing.id);
+        const { error } = await supabase.from("attendance").update({ [field]: value } as any).eq("id", existing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("attendance").insert({ employee_id, date: selectedDate, [field]: value } as any);
+        const payload: any = { employee_id, date: selectedDate, [field]: value };
+        const { error } = await supabase.from("attendance").insert(payload);
         if (error) throw error;
       }
     },
