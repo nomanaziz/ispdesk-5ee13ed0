@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { Menu, X, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navLinks = [
   { label: "হোম", to: "/" },
@@ -15,6 +16,7 @@ const navLinks = [
 
 export function PublicNavbar() {
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
@@ -54,11 +56,19 @@ export function PublicNavbar() {
                 Quick Pay
               </Button>
             </NavLink>
-            <NavLink to="/login">
-              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
-                লগইন
-              </Button>
-            </NavLink>
+            {user ? (
+              <NavLink to="/dashboard">
+                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
+                  ড্যাশবোর্ড
+                </Button>
+              </NavLink>
+            ) : (
+              <NavLink to="/login">
+                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
+                  লগইন
+                </Button>
+              </NavLink>
+            )}
           </div>
 
           {/* Mobile toggle */}
@@ -92,9 +102,15 @@ export function PublicNavbar() {
               <NavLink to="/quick-pay" onClick={() => setOpen(false)}>
                 <Button variant="outline" className="w-full border-teal-500 text-teal-600">Quick Pay</Button>
               </NavLink>
-              <NavLink to="/login" onClick={() => setOpen(false)}>
-                <Button className="w-full bg-teal-600 text-white">লগইন</Button>
-              </NavLink>
+              {user ? (
+                <NavLink to="/dashboard" onClick={() => setOpen(false)}>
+                  <Button className="w-full bg-teal-600 text-white">ড্যাশবোর্ড</Button>
+                </NavLink>
+              ) : (
+                <NavLink to="/login" onClick={() => setOpen(false)}>
+                  <Button className="w-full bg-teal-600 text-white">লগইন</Button>
+                </NavLink>
+              )}
             </div>
           </nav>
         </div>

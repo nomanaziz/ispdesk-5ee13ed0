@@ -25,6 +25,7 @@ import ResetPassword from "./pages/ResetPassword";
 
 // Dashboard pages
 import Dashboard from "./pages/Dashboard";
+import OltOverview from "./pages/dashboard/OltOverview";
 import NotFound from "./pages/NotFound";
 
 // Config
@@ -230,6 +231,7 @@ const App = () => (
 
               {/* Dashboard */}
               <Route path="/dashboard" element={<P><Dashboard /></P>} />
+              <Route path="/dashboard/olt-overview" element={<P><OltOverview /></P>} />
 
               {/* Config */}
               <Route path="/dashboard/config/zones" element={<P><ConfigZones /></P>} />

@@ -1,10 +1,9 @@
-import { Bell, LogOut, User, Search, Menu } from "lucide-react";
+import { LogOut, User, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
@@ -25,6 +24,12 @@ export function TopBar() {
         </div>
       </div>
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <Link to="/" target="_blank">
+          <Button variant="ghost" size="sm" className="gap-1.5 h-9 text-muted-foreground hover:text-foreground">
+            <Globe className="h-4 w-4" />
+            <span className="hidden sm:inline text-xs">ওয়েবসাইট</span>
+          </Button>
+        </Link>
         <ThemeSwitcher />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -41,12 +46,12 @@ export function TopBar() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={() => navigate("/admin")}>
-              <User className="mr-2 h-4 w-4" /> Profile
+            <DropdownMenuItem onClick={() => navigate("/dashboard/system/company")}>
+              <User className="mr-2 h-4 w-4" /> প্রোফাইল
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => { signOut(); navigate("/login"); }} className="text-destructive">
-              <LogOut className="mr-2 h-4 w-4" /> Sign Out
+              <LogOut className="mr-2 h-4 w-4" /> সাইন আউট
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
