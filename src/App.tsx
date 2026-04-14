@@ -46,6 +46,7 @@ import ConfigUpazilas from "@/pages/dashboard/config/Upazilas";
 // VAS
 import VasConfig from "@/pages/dashboard/vas/VasConfig";
 import VasTransactions from "@/pages/dashboard/vas/VasTransactions";
+import VasSubscriptions from "@/pages/dashboard/vas/VasSubscriptions";
 
 // Client
 import ClientNewRequest from "@/pages/dashboard/clients/NewRequest";
