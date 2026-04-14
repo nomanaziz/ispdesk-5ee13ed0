@@ -296,6 +296,7 @@ const App = () => (
 
               {/* VAS */}
               <Route path="/dashboard/vas/config" element={<P><VasConfig /></P>} />
+              <Route path="/dashboard/vas/subscriptions" element={<P><VasSubscriptions /></P>} />
               <Route path="/dashboard/vas/transactions" element={<P><VasTransactions /></P>} />
 
               {/* Client */}
