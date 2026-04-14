@@ -75,6 +75,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Package", url: "/dashboard/config/packages", icon: Package },
       { title: "District", url: "/dashboard/config/districts", icon: Globe },
       { title: "Upazila", url: "/dashboard/config/upazilas", icon: MapPin },
+      { title: "Service Type", url: "/dashboard/config/service-types", icon: Wrench },
     ],
   },
   {
@@ -144,8 +145,26 @@ const menuGroups: MenuGroup[] = [
     icon: Cpu,
     iconColor: "text-red-400",
     items: [
-      { title: "OLT", url: "/dashboard/olt", icon: Server },
+      { title: "OLT Devices", url: "/dashboard/olt", icon: Server },
+      { title: "ONU List", url: "/dashboard/olt/onu", icon: List },
       { title: "OLT Users", url: "/dashboard/olt/users", icon: Users },
+      { title: "User Down Count", url: "/dashboard/olt/user-down", icon: UserX },
+      { title: "Fiber Down Finder", url: "/dashboard/olt/fiber-down", icon: Cable },
+      { title: "OLT Sharing", url: "/dashboard/olt/sharing", icon: Link2 },
+    ],
+  },
+  {
+    label: "Network Monitoring",
+    icon: Activity,
+    iconColor: "text-orange-400",
+    items: [
+      { title: "Switch List", url: "/dashboard/monitoring/switches", icon: Network },
+      { title: "Add Switch", url: "/dashboard/monitoring/add-switch", icon: UserPlus },
+      { title: "POP DASS", url: "/dashboard/monitoring/pop-dass", icon: Monitor },
+      { title: "POP IP", url: "/dashboard/monitoring/pop-ip", icon: Globe },
+      { title: "POP Log", url: "/dashboard/monitoring/pop-log", icon: ScrollText },
+      { title: "Ping Tools", url: "/dashboard/monitoring/ping-tools", icon: Wifi },
+      { title: "POP Devices", url: "/dashboard/monitoring/pop-devices", icon: Radio },
     ],
   },
   {
@@ -340,6 +359,8 @@ const menuGroups: MenuGroup[] = [
     iconColor: "text-gray-400",
     items: [
       { title: "App Users", url: "/dashboard/system/users", icon: Users },
+      { title: "Roles", url: "/dashboard/system/roles", icon: Shield },
+      { title: "OLT Permissions", url: "/dashboard/system/olt-permissions", icon: Cpu },
       { title: "Company SetUp", url: "/dashboard/system/company", icon: Building },
       { title: "Invoice SetUp", url: "/dashboard/system/invoice", icon: FileText },
       { title: "Periods SetUp", url: "/dashboard/system/periods", icon: Calendar },
@@ -347,6 +368,7 @@ const menuGroups: MenuGroup[] = [
       { title: "EMail SetUp", url: "/dashboard/system/email", icon: Mail },
       { title: "System SetUp", url: "/dashboard/system/setup", icon: Settings },
       { title: "P. Processing Fee", url: "/dashboard/system/processing-fee", icon: DollarSign },
+      { title: "System Log", url: "/dashboard/system/system-log", icon: ScrollText },
     ],
   },
 ];
