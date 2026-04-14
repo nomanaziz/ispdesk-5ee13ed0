@@ -40,7 +40,7 @@ const Login = () => {
         toast({ title: "Account created!", description: "Check your email to verify." });
       } else {
         await signIn(email, password);
-        navigate("/admin");
+        navigate("/dashboard");
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
