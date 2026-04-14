@@ -25,6 +25,8 @@ import ResetPassword from "./pages/ResetPassword";
 
 // Dashboard pages
 import Dashboard from "./pages/Dashboard";
+import Dashboard from "./pages/Dashboard";
+import OltOverview from "./pages/dashboard/OltOverview";
 import NotFound from "./pages/NotFound";
 
 // Config

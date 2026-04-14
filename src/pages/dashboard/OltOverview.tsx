@@ -3,7 +3,7 @@ import { PlaceholderPage } from "@/components/PlaceholderPage";
 const OltOverview = () => (
   <PlaceholderPage
     title="OLT Overview"
-    description="OLT/ONU স্ট্যাটাস ওভারভিউ — সকল OLT ডিভাইস ও ONU এর রিয়েল-টাইম অবস্থা"
+    module="OLT/ONU স্ট্যাটাস ওভারভিউ — সকল OLT ডিভাইস ও ONU এর রিয়েল-টাইম অবস্থা"
   />
 );
 
