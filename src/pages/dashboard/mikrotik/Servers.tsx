@@ -16,19 +16,19 @@ import { Plus, Pencil, Trash2, Eye, EyeOff, RefreshCw, Server } from "lucide-rea
 interface MikrotikDevice {
   id: string;
   name: string;
-  host: string;
+  ip_address: string;
   username: string;
   password_encrypted: string;
   api_port: number;
   version: string;
   timeout: number;
-  status: string;
+  status: "online" | "offline" | "unknown";
   created_at: string;
 }
 
 const defaultForm = {
   name: "",
-  host: "",
+  ip_address: "",
   username: "",
   password_encrypted: "",
   api_port: 8728,
