@@ -1,72 +1,67 @@
 
 
-## Plan: Enhanced Employee Form + Auto-ID Settings
+## Plan: Bandwidth Buy Module — Full Implementation
 
-### Phase 1: Database Migration
+### Database Migration
 
-**Add columns to `employees` table:**
-- `date_of_birth` (date)
-- `gender` (text) — Male/Female/Other
-- `personal_phone` (text) — ব্যক্তিগত নম্বর
-- `office_phone` (text) — অফিস নম্বর
-- `guardian_phone` (text) — অভিভাবকের নম্বর
-- `marital_status` (text)
-- `nid_number` (text) — NID/জন্ম সনদ
-- `facebook_link` (text)
-- `reference` (text)
-- `district` (text)
-- `upazila` (text)
-- `permanent_address` (text)
-- `working_experience` (text)
-- `last_degree` (text)
-- `institution` (text)
-- `passing_year` (text)
-- `punch_card_id` (text) — ZKTeco punch card
-- `default_in_time` (time)
-- `default_out_time` (time)
-- `zkteco_device_id` (uuid FK → zkteco_devices)
-- `image_url` (text) — profile photo
-- `payroll_template_id` (uuid FK → payroll_templates)
+**Alter `bw_categories`:**
+- Add `parent_id` (uuid, self-referencing FK) for sub-categories
+- Seed predefined categories: INT, IIG, FNA, GGC, M-CDN, B-CDN, BDIX, NIX, IX, DATA, NTTN
 
-**New table: `hr_settings`** — for employee ID auto-generation config:
-- `id` (uuid PK), `setting_key` (text UNIQUE), `setting_value` (jsonb), `created_at`
-- Stores: `{ "mode": "auto"|"manual", "prefix": "EMP", "next_number": 1, "padding": 3 }`
-- Auto mode generates: `EMP001`, `EMP002`, etc.
+**Alter `bw_providers`:**
+- Add `logo_url` (text), `address` (text), `mobile` (text)
 
-### Phase 2: Rebuild AddEmployee.tsx
+**Alter `bw_purchase_bills`:**
+- Add `billing_month` (text), `payment_due` (date), `invoice_no` (text), `attachment_url` (text), `discount` (numeric default 0), `remarks` (text)
 
-Redesign with 5 card sections matching the reference:
+**New table: `bw_bill_items`** — line items per bill
+- `id` (uuid PK), `bill_id` (FK → bw_purchase_bills), `item_id` (FK → bw_items)
+- `description` (text), `unit` (text), `quantity` (numeric), `rate` (numeric), `vat_percent` (numeric default 0)
+- `from_date` (date), `to_date` (date), `total` (numeric), `created_at`
 
-**1. Basic Information (ব্যক্তিগত তথ্য)**
-- Name*, DOB, Gender (select), Personal Phone*, Office Phone*, Guardian Phone
-- Marital Status (select), NID Number, Email, Facebook Link, Reference
-- District (select from config), Upazila (select from config)
-- Working Experience (textarea), Present Address (textarea), Permanent Address (textarea)
+**Alter `bw_items`:**
+- Add `description` (text)
 
-**2. Attendance Information (উপস্থিতি তথ্য)**
-- Device (select from zkteco_devices), Punch Card ID, Default In Time, Default Out Time
+**Storage bucket:** `bw-provider-logos` for provider logo uploads, `bw-bill-attachments` for bill file attachments.
 
-**3. Educational Qualification (শিক্ষাগত যোগ্যতা)**
-- Last Achieved Degree, Institution/Board, Passing Year
+---
 
-**4. Posting Information (চাকুরি সম্পর্কিত)**
-- Joining Date*, Department (select), Position/Designation (select)
-- Payroll Template (select), Salary, Show on Website toggle, Profile Image upload
+### Frontend Pages
 
-**5. Employee ID** — auto-generated based on hr_settings or manual input
+**1. Item Categories (`Categories.tsx`)**
+- Card-based list with parent categories shown as expandable sections
+- Sub-categories listed under parent with indent
+- Add/Edit dialog with optional parent_id select
+- Edit & Delete buttons per category
 
-### Phase 3: HR Settings Page
+**2. Items (`Items.tsx`)**
+- Card/table layout grouped by category (not tree view)
+- Each category as a collapsible card header showing item count
+- Items listed in a clean table within each card
+- Add Item dialog: name, category (select), provider (select), bandwidth, price, description
+- Edit/Delete inline
 
-New page at `/dashboard/hr/settings` or integrate into System Settings:
-- Employee ID Mode: Auto / Manual (radio)
-- If Auto: Prefix (text, e.g. "EMP"), Start Number, Padding (digits)
-- Preview: shows example like "EMP001"
+**3. Providers (`Providers.tsx`)**
+- Table: Logo, Company, Contact Person, Email, Mobile, Balance Due, Actions
+- Logo upload via Supabase Storage
+- Add/Edit dialog with all fields
+- Balance Due calculated from unpaid bills (aggregated query)
+- View, Edit, Delete actions
 
-### Routing & Sidebar
-- Add HR Settings link under HR & Payroll section
+**4. Purchase Bills (`Bills.tsx`)**
+- **Summary cards**: Total Purchase, Paid, Due, Discount amounts (current month + all-time)
+- **Invoice count cards**: Total, Paid, Due, Unpaid counts
+- **Filters**: Month (MM/YYYY), Status select, Provider select
+- **Bill table**: SN, Provider, Contact, Bill No, Invoice No, Month, Amount, Paid, Discount, Due, Status (Pay/Due/Paid badges), Actions
+- **Add Bill route** (`/dashboard/bw-buy/bills/new`): Form with provider select, auto-generated bill no, billing month, payment due date, invoice no, attachment upload, dynamic line items table (item select, description, unit, qty, rate, VAT%, from/to date, total auto-calc), remarks textarea, total row
+- **View Bill route** (`/dashboard/bw-buy/bills/:id`): Invoice-style view matching the reference (provider info header, bill-to section, line items table, totals, payment history, remarks). Download PDF button.
 
-### Technical Details
-- Profile image upload uses Supabase Storage bucket
-- Auto-ID: on form load (new employee), fetch hr_settings → generate next ID → display as read-only
-- Districts/Upazilas already exist in config tables — reuse them in selects
+### Routing
+- Add routes: `/dashboard/bw-buy/bills/new` and `/dashboard/bw-buy/bills/:id`
+
+### Technical Notes
+- All pages use `@tanstack/react-query` + Supabase client
+- Bill amounts auto-calculated from line items (quantity * rate + VAT)
+- Provider balance due = SUM(bill amounts) - SUM(paid) across all their bills
+- Bangla UI labels consistent with existing pages
 
