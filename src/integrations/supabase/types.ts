@@ -3768,27 +3768,36 @@ export type Database = {
           code: string
           created_at: string
           description: string | null
+          district_id: string | null
+          division_id: string | null
           id: string
           name: string
           status: string
+          upazila_id: string | null
         }
         Insert: {
           branch_id?: string | null
           code: string
           created_at?: string
           description?: string | null
+          district_id?: string | null
+          division_id?: string | null
           id?: string
           name: string
           status?: string
+          upazila_id?: string | null
         }
         Update: {
           branch_id?: string | null
           code?: string
           created_at?: string
           description?: string | null
+          district_id?: string | null
+          division_id?: string | null
           id?: string
           name?: string
           status?: string
+          upazila_id?: string | null
         }
         Relationships: [
           {
@@ -3796,6 +3805,27 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zones_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "districts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zones_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zones_upazila_id_fkey"
+            columns: ["upazila_id"]
+            isOneToOne: false
+            referencedRelation: "upazilas"
             referencedColumns: ["id"]
           },
         ]
