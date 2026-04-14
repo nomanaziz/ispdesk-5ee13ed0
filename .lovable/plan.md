@@ -1,38 +1,56 @@
 
 
-## Plan: Sales & Invoice Module — Full Implementation
+## Plan: VAS (OTT Platform) Module — Full Implementation
 
 ### Overview
-Implement the Sales & Service module with full CRUD for Product Invoice and Service Invoice pages. Remove Installation Fee from Sales and move it to the Billing/Client section.
+Implement the VAS Config page to manage OTT platform subscriptions (Bongo, Chorki, Ayna, etc.) and allow admins to send VAS credentials (ID/Password) to individual clients or groups of clients via SMS.
 
-### Database
-No migration needed — tables `product_invoices`, `service_invoices`, and `installation_fees` already exist with proper schemas.
+### Database Changes (Migration Required)
 
-### Changes
+**Alter `vas_services` table** — add fields for OTT credentials and branding:
+- `logo_url` (text) — platform logo
+- `provider_type` (text, default 'ott') — e.g. ott, iptv
+- `credentials_template` (text) — SMS template for sending credentials
 
-**1. Product Invoice (`src/pages/dashboard/sales/ProductInvoice.tsx`)**
-- Full CRUD table: Invoice No, Client (select from clients), Item (select from inventory_items), Quantity, Unit Price, Total (auto-calc), Date, Status (paid/unpaid/partial)
-- Add/Edit dialog, search, date filter, summary cards (total invoices, received, due)
-- Bangla UI labels
+**Create `vas_subscriptions` table** — track which client has which VAS with credentials:
+- `id` (uuid, PK)
+- `client_id` (uuid, FK → clients)
+- `service_id` (uuid, FK → vas_services)
+- `vas_username` (text) — OTT login ID
+- `vas_password` (text) — OTT password
+- `start_date` (date)
+- `end_date` (date)
+- `status` (text, default 'active')
+- `created_at` (timestamptz)
 
-**2. Service Invoice (`src/pages/dashboard/sales/ServiceInvoice.tsx`)**
-- Full CRUD table: Invoice No, Client, Service Name, Amount, Date, Status, Notes
-- Add/Edit dialog with client search, status filter
-- Summary cards, Bangla labels
+Pre-seed popular BD OTT platforms: Bongo, Chorki, Ayna, Hoichoi, Toffee, Bioscope
 
-**3. Move Installation Fee**
-- Remove "Installation Fee" from the "Sales & Service" sidebar group
-- Add it under "Billing" sidebar group as "ইনস্টলেশন ফি"
-- Keep the route but update sidebar placement
-- Implement full CRUD in `InstallationFee.tsx`: Client select, Amount, Paid, Status, Fee Date, Notes
+### Implementation
 
-**4. Sidebar (`src/components/AppSidebar.tsx`)**
-- Remove Installation Fee from Sales & Service items
-- Add Installation Fee item to Billing group
+**1. VAS Config (`VasConfig.tsx`)**
+- CRUD table for OTT services: Name, Price, Status (active/inactive), Description
+- Pre-populated with popular BD platforms
+- Toggle active/inactive status
+- Add/Edit dialog
 
-### Files to Edit (4)
-- `src/pages/dashboard/sales/ProductInvoice.tsx`
-- `src/pages/dashboard/sales/ServiceInvoice.tsx`
-- `src/pages/dashboard/sales/InstallationFee.tsx`
+**2. VAS Subscriptions section (within VasConfig or separate tab)**
+- Assign VAS credentials to a client: select client → select service → enter username/password → set dates
+- Table showing all active subscriptions with client name, service, credentials, expiry
+- Edit/Revoke subscription
+
+**3. Send Credentials feature**
+- "Send Credentials" button on each subscription row
+- Bulk send dialog: filter by VAS service → select clients/groups → sends SMS with ID/password
+- Uses existing `sms_log` table and SMS gateway infrastructure
+- Message template auto-filled: "আপনার {service_name} ID: {username}, Password: {password}"
+
+**4. VAS Transactions (`VasTransactions.tsx`)**
+- Show transaction history from `vas_transactions` table with client and service names
+
+**5. Sidebar update** — Bangla labels: "VAS কনফিগ", "সাবস্ক্রিপশন", "লেনদেন"
+
+### Files to Edit (3)
+- `src/pages/dashboard/vas/VasConfig.tsx`
+- `src/pages/dashboard/vas/VasTransactions.tsx`
 - `src/components/AppSidebar.tsx`
 
