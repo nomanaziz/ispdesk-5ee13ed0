@@ -1030,6 +1030,41 @@ export type Database = {
         Row: {
           code: string | null
           created_at: string
+          division_id: string | null
+          id: string
+          name: string
+          status: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          division_id?: string | null
+          id?: string
+          name: string
+          status?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          division_id?: string | null
+          id?: string
+          name?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "districts_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      divisions: {
+        Row: {
+          code: string | null
+          created_at: string
           id: string
           name: string
           status: string

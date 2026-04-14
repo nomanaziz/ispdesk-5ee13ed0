@@ -70,6 +70,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Protocol Type", url: "/dashboard/config/protocol-types", icon: Shield },
       { title: "Billing Status", url: "/dashboard/config/billing-statuses", icon: Tag },
       { title: "Package", url: "/dashboard/config/packages", icon: Package },
+      { title: "Division", url: "/dashboard/config/divisions", icon: Building },
       { title: "District", url: "/dashboard/config/districts", icon: Globe },
       { title: "Upazila", url: "/dashboard/config/upazilas", icon: MapPin },
       { title: "Service Type", url: "/dashboard/config/service-types", icon: Wrench },

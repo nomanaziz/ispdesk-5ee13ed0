@@ -39,6 +39,7 @@ import ConfigClientTypes from "@/pages/dashboard/config/ClientTypes";
 import ConfigProtocolTypes from "@/pages/dashboard/config/ProtocolTypes";
 import ConfigBillingStatuses from "@/pages/dashboard/config/BillingStatuses";
 import ConfigPackages from "@/pages/dashboard/config/Packages";
+import ConfigDivisions from "@/pages/dashboard/config/Divisions";
 import ConfigDistricts from "@/pages/dashboard/config/Districts";
 import ConfigUpazilas from "@/pages/dashboard/config/Upazilas";
 
@@ -281,6 +282,7 @@ const App = () => (
               <Route path="/dashboard/config/protocol-types" element={<P><ConfigProtocolTypes /></P>} />
               <Route path="/dashboard/config/billing-statuses" element={<P><ConfigBillingStatuses /></P>} />
               <Route path="/dashboard/config/packages" element={<P><ConfigPackages /></P>} />
+              <Route path="/dashboard/config/divisions" element={<P><ConfigDivisions /></P>} />
               <Route path="/dashboard/config/districts" element={<P><ConfigDistricts /></P>} />
               <Route path="/dashboard/config/upazilas" element={<P><ConfigUpazilas /></P>} />
 
