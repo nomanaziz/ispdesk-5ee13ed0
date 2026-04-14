@@ -1,75 +1,87 @@
 
 
-## Plan: MikroTik Module — Full Implementation
+## Plan: Support & Ticketing Module — Full Implementation
 
 ### Database Migration
 
-**Alter `mikrotik_devices`:**
-- Add `version` (text, default 'v3') — MikroTik API version
-- Add `timeout` (integer, default 10) — API request timeout in seconds
+**Alter `support_categories`** — add fields matching the reference screenshot:
+- `department` (text, nullable) — e.g., Transmission, NOC
+- `category_type` (text, default 'for_everyone') — "Only For Office" or "For Everyone"
+- `details` (text, nullable)
 
-**New table: `mikrotik_backups`** — stores backup records
-- `id` (uuid PK), `mikrotik_id` (uuid FK → mikrotik_devices)
-- `file_name` (text), `file_url` (text), `file_size` (bigint)
-- `status` (text, default 'completed'), `created_at` (timestamptz)
-- RLS enabled with authenticated access
+**Alter `support_tickets`** — add fields for the full ticket workflow:
+- `complain_no` (text, nullable) — complained number/phone
+- `created_by` (uuid FK → profiles, nullable) — who opened the ticket
+- `solved_at` (timestamptz, nullable)
+- `solved_by` (uuid FK → profiles, nullable)
+- `source` (text, default 'admin') — 'admin' or 'client_portal'
+- `zone_id` (uuid FK → zones, nullable)
+- `subzone` (text, nullable)
+- `box` (text, nullable)
+- `attachments` (text[], nullable) — file URLs
 
-**New table: `mikrotik_clients`** — stores imported MikroTik PPPoE/DHCP users
-- `id` (uuid PK), `mikrotik_id` (uuid FK → mikrotik_devices)
-- `name` (text — username), `password` (text), `service` (text — pppoe/dhcp/hotspot)
-- `profile` (text — MikroTik profile name), `caller_id` (text — MAC)
-- `server_name` (text), `remote_address` (text)
-- `logout_time` (timestamptz), `user_status` (text — unique/duplicate/disabled)
-- `branch_id` (uuid FK → branches), `exported` (boolean default false)
-- `exported_to` (text — 'client_list' or 'mac_reseller')
-- `status` (text, default 'active'), `created_at` (timestamptz)
+**New table: `support_ticket_assignees`** — many-to-many for multi-assign
+- `id` (uuid PK), `ticket_id` (uuid FK → support_tickets ON DELETE CASCADE)
+- `employee_id` (uuid FK → employees ON DELETE CASCADE)
+- `assigned_at` (timestamptz, default now())
+- Unique constraint on (ticket_id, employee_id)
+- RLS enabled
 
-**New table: `mikrotik_bulk_imports`** — tracks bulk import batches
-- `id` (uuid PK), `file_name` (text), `total_rows` (integer)
-- `imported_rows` (integer default 0), `package_id` (uuid FK → isp_packages)
-- `status` (text — pending/processing/completed/failed)
-- `created_by` (uuid FK → profiles), `created_at` (timestamptz)
+**New table: `support_ticket_comments`** — ticket conversation/discussion thread
+- `id` (uuid PK), `ticket_id` (uuid FK → support_tickets ON DELETE CASCADE)
+- `user_id` (uuid FK → profiles)
+- `comment` (text NOT NULL) — rich text content
+- `attachments` (text[], nullable)
+- `created_at` (timestamptz, default now())
+- RLS enabled
 
 ### Frontend Pages
 
-**1. Servers (`Servers.tsx`)** — matching reference screenshot
-- "+ Server" button opens Add/Edit dialog with: Server IP*, Username*, Password*, API Port*, MikroTik Version (dropdown: v3/v2), API Request Timeout
-- Table columns: Serial, ServerName, Server IP, Username, Password (masked with eye toggle), Port, Version, Timeout, Status (toggle switch), Action (edit/delete/sync)
-- Status toggle calls Supabase update
-- Search and entries-per-page selector
+**1. Support Categories (`SupportCategories.tsx`)**
+- Tabs: Client's, POP's, Bandwidth POP's (matching reference)
+- "+ Support Category" dialog: Name, Department (select from `departments`), Category Type (Only For Office / For Everyone), Details
+- Table: Serial, Support Category, Department, Category Type (colored badge), Details, Action (edit/delete)
+- Search + pagination
 
-**2. Server Backup (`Backup.tsx`)**
-- "+ Create Backup" button triggers backup creation (inserts record)
-- Table: Time, Backup File Name, Download (link)
-- Server selector filter at top
-- Search and pagination
+**2. Client Support / Tickets (`Tickets.tsx`)**
+- Tabs: Accepted (Client's), Pending (Client's) with count, MAC Reseller's, Bandwidth POP's
+- Summary cards: Total Tickets (current month), Pending Tickets, Processing Tickets, Solved Tickets
+- Filters: Support Category, Zone, Solved By/Assign To, Created By, Status, Priority, From Date, To Date, Complained No
+- Table: TicketNo, ClientCode, ID/IP, CustomerName, Mobile, ComplainNo, Zone, Subzone, Box, Problem, Priority (badge), Complain Time, CreatedBy, Status (badge), Assign To (button), Solved Time, Duration
+- Assign button opens multi-select employee dialog
+- Row actions: conversation (chat icon), edit, delete
+- "+ Open New Ticket" button opens full ticket creation dialog
 
-**3. Import From MikroTik (`Import.tsx`)** — MikroTik Client List
-- **Filters row**: Servers (select), Protocol (PPPoE/DHCP/All), Profile (select from MikroTik profiles), User Type (Unique/Duplicate/All)
-- Clear Filter & Apply Filter buttons
-- **Action buttons**: Generate Excel, Export To MACReseller
-- **Table columns**: Name, Password (masked), Service, Profile, Caller ID, Server Name, Logout Time, User Status (badge), Branch, Action (export to client list icon), Export (checkbox)
-- Export action (single): clicking export icon navigates to Add Client page pre-filled with MikroTik user data (username, password, profile, server, MAC)
-- Export To MACReseller (bulk): selected users get `exported_to = 'mac_reseller'` flag and transfer to MAC reseller portal
-- Pagination with entries count
+**3. New Ticket Dialog (within Tickets page)**
+- Client search by Username/ID — auto-fills: Customer Name, Mobile, Address, Zone, Billing Status, Monthly Bill, Last Paid, Payment Status, MikroTik Status, Uptime, Last Logout, MAC/Caller ID, IP Address, Device Vendor, Connectivity Status
+- ONU Information section (auto-filled from OLT data): MAC, IP, OLT Name, Optical Power, OLT Port, ONU MAC/Serial, Status, Last Deregister, Distance, Deregister Reason, Description
+- Form fields: Problem Category (select), Problem Priority (select: High/Medium/Low), Complained Number, Attachments, Remarks/Note (textarea)
+- "Send SMS to Client?" checkbox
+- Cancel / Clear / Submit buttons
 
-**4. Bulk Clients Import (`BulkImport.tsx`)**
-- **Instruction toggle**: "Learn How to Import Clients..." collapsible section
-- **Action buttons**: Download Sample Excel, Clear All Clients, Upload Importable Clients(Excel), Download Edited Data
-- Download Sample Excel generates an XLSX with columns: C.Code, Name, Mobile, Email, NationalID, Address, Zone, Conn.Type, Server, Prot.Type, Profile, UserName, Password, R.Address, C.Type, Package, B.Status, M.Bill, Bill.Month, Join.Date, Exp.Date, DateOfBirth(Opt.), FatherName(Opt.), MotherName(Opt.), Occupation(Opt.)
-- Upload parses Excel, validates data (checks package exists, profile matches MikroTik profile), shows in editable table
-- Package must match for all rows in a batch OR allow per-row package assignment
-- Table shows all uploaded rows with inline edit capability
-- Action column: delete individual row
-- "Import All" button inserts validated rows into `clients` table
+**4. Ticket Conversation Dialog**
+- Rich text editor for new comment
+- Attach images option
+- "Submit Your Comments" button
+- Previous Discussion: chronological list of comments with author avatar, name, date, and content
+- Footer: Cancel, View Details, Refresh buttons
+
+**5. Support History (`History.tsx`)**
+- Tabs: Client's, POP's, Bandwidth POP's
+- Action buttons: Generate PDF, Generate CSV
+- Summary cards: Total Tickets, From Client Portal, From Admin Portal, Ticket's Priority (H:xx M:xx L:xx)
+- Filters: From Date, To Date, Solved By, Problem Category, Zone
+- Table: Sr.No, Date, TicketNo, ClientCode, Username, MobileNo, Zone, Category, Solve Time, Solved By (multiple names), Duration, Ticketing Info (icon)
+- Only shows resolved/solved tickets
 
 ### Routing
-- Existing routes already defined in App.tsx — no new routes needed
+- No new routes needed — existing routes `/dashboard/support/categories`, `/dashboard/support/tickets`, `/dashboard/support/history` already in App.tsx
 
-### Technical Notes
-- All pages use `@tanstack/react-query` + Supabase client
-- MikroTik password stored encrypted in `password_encrypted` — UI shows masked dots with eye toggle
-- Excel generation uses browser-side xlsx library (already available or add `xlsx` package)
-- Import validation: check `isp_packages.mikrotik_profile` matches the MikroTik profile name
+### Technical Details
+- Multi-assign: `support_ticket_assignees` join table; Tickets page shows "Assign" button that opens a multi-select dropdown of employees
+- Duration calculation: `solved_at - created_at` displayed as `Xd:Xh:Xm:Xs`
+- Conversation: `support_ticket_comments` displayed in chronological order within a dialog
+- Ticket numbering: auto-increment counter or max(ticket_no)+1
+- All queries via `@tanstack/react-query` + Supabase
 - Bangla UI labels throughout
 
