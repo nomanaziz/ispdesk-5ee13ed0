@@ -422,7 +422,26 @@ const App = () => (
               <Route path="/dashboard/system/setup" element={<P><SystemSetup /></P>} />
               <Route path="/dashboard/system/processing-fee" element={<P><SystemProcessingFee /></P>} />
 
-              <Route path="*" element={<NotFound />} />
+              {/* Website Panel */}
+              <Route path="/dashboard/website" element={<P><WebsiteDashboard /></P>} />
+              <Route path="/dashboard/website/homepage" element={<P><HomepageEditor /></P>} />
+              <Route path="/dashboard/website/packages" element={<P><WebsitePackages /></P>} />
+              <Route path="/dashboard/website/coverage" element={<P><WebsiteCoverage /></P>} />
+              <Route path="/dashboard/website/orders" element={<P><WebsiteOrders /></P>} />
+              <Route path="/dashboard/website/pages" element={<P><WebsitePages /></P>} />
+              <Route path="/dashboard/website/notices" element={<P><WebsiteNotices /></P>} />
+              <Route path="/dashboard/website/offers" element={<P><WebsiteOffers /></P>} />
+              <Route path="/dashboard/website/testimonials" element={<P><WebsiteTestimonials /></P>} />
+              <Route path="/dashboard/website/partners" element={<P><WebsitePartners /></P>} />
+              <Route path="/dashboard/website/features" element={<P><WebsiteFeatures /></P>} />
+              <Route path="/dashboard/website/services" element={<P><WebsiteServices /></P>} />
+              <Route path="/dashboard/website/festivals" element={<P><WebsiteFestivals /></P>} />
+              <Route path="/dashboard/website/menu" element={<P><WebsiteMenu /></P>} />
+              <Route path="/dashboard/website/payments" element={<P><WebsitePayments /></P>} />
+              <Route path="/dashboard/website/media" element={<P><WebsiteMedia /></P>} />
+              <Route path="/dashboard/website/about" element={<P><WebsiteAbout /></P>} />
+              <Route path="/dashboard/website/settings" element={<P><WebsiteSettings /></P>} />
+
             </Routes>
           </AuthProvider>
         </BrowserRouter>
