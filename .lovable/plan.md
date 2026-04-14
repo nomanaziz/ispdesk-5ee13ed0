@@ -1,88 +1,77 @@
 
 
-## Plan: Full HR & Payroll Module
+## Plan: Shift Management & ZKTeco Attendance Integration
 
-All 12 HR pages are currently placeholders. The database already has tables for `employees`, `departments`, `positions`, `payheads`, `payroll`, `resign_rules`, and `resignations`. We need to create missing tables and build out all frontend pages.
+### Database Migration (5 new tables)
+
+**1. `shifts`** — shift definitions
+- `id` (uuid PK), `name` (text, e.g. "Morning", "Night"), `start_time` (time), `end_time` (time), `grace_minutes` (int, default 15), `late_deduction_amount` (numeric), `late_deduction_type` (text: fixed/percentage), `status` (text), `created_at`
+
+**2. `employee_shift_assignments`** — monthly roster
+- `id` (uuid PK), `employee_id` (FK → employees), `shift_id` (FK → shifts), `date` (date), `created_by` (uuid), `created_at`
+- UNIQUE(employee_id, date)
+
+**3. `zkteco_devices`** — registered ZKTeco devices
+- `id` (uuid PK), `name` (text), `ip_address` (text), `port` (int, default 4370), `api_id` (text), `api_password` (text), `serial_number` (text), `location` (text), `status` (text, default 'active'), `last_sync_at` (timestamptz), `created_at`
+
+**4. `zkteco_attendance_logs`** — raw punch logs from devices
+- `id` (uuid PK), `device_id` (FK → zkteco_devices), `employee_id` (FK → employees), `punch_time` (timestamptz), `punch_type` (text: check_in/check_out), `device_user_id` (text), `synced_at` (timestamptz), `created_at`
+
+**5. `attendance_rules`** — late/absence deduction rules
+- `id` (uuid PK), `name` (text), `late_after_minutes` (int), `half_day_after_minutes` (int), `absent_after_minutes` (int), `late_deduction` (numeric), `late_deduction_type` (text), `absent_deduction` (numeric), `absent_deduction_type` (text), `status` (text), `created_at`
+
+Also alter `attendance` table: add `shift_id` (FK → shifts), `device_log_id` (FK → zkteco_attendance_logs), `source` (text: manual/device).
+
+RLS: admin manage, authenticated read on all new tables.
 
 ---
 
-### Phase 1: Database Migration
+### Frontend Pages (4 new files)
 
-Create missing tables:
+**1. `ShiftManagement.tsx`** — `/dashboard/hr/shifts`
+- **Shift Definitions tab**: CRUD for shifts (name, start/end time, grace period)
+- **Monthly Roster tab**: Calendar-style grid. Select month → shows all employees as rows, dates as columns. Click cell to assign shift. Bulk assign shift to employee for full month.
+- Color-coded shift badges per cell
 
-**1. `attendance`** — daily attendance tracking
-- `id`, `employee_id` (FK → employees), `date`, `check_in` (time), `check_out` (time), `status` (present/absent/late/half_day/leave), `remarks`, `created_at`
+**2. `ZktecoDevices.tsx`** — `/dashboard/hr/zkteco-devices`
+- CRUD table: Device Name, IP, Port, API ID, Password (masked), Serial, Location, Status, Last Sync
+- "Add Device" dialog with all connection fields
+- "Sync Now" button per device (calls edge function)
+- Connection status indicator
 
-**2. `rejoin_requests`** — track resigned employees who rejoin
-- `id`, `employee_id` (FK → employees), `resignation_id` (FK → resignations), `rejoin_date`, `new_salary`, `new_department_id`, `new_position_id`, `remarks`, `status` (pending/approved/rejected), `approved_by`, `created_at`
+**3. `AttendanceRules.tsx`** — `/dashboard/hr/attendance-rules`
+- CRUD: Rule name, late threshold (minutes), half-day threshold, absent threshold
+- Deduction amounts (fixed/percentage) for late and absent
+- These rules will be used in future for payroll deduction calculation
 
-**3. `payroll_details`** — per-payhead breakdown for each payroll entry
-- `id`, `payroll_id` (FK → payroll), `payhead_id` (FK → payheads), `amount`, `created_at`
-
-**4. `salary_sheets`** — monthly salary sheet snapshots
-- `id`, `month` (date), `employee_id` (FK → employees), `basic_salary`, `total_allowance`, `total_deduction`, `net_salary`, `status` (draft/finalized), `created_at`
-
-Add RLS policies (admin-only manage, authenticated read) for all new tables.
+**4. Update `Attendance.tsx`** — add "Source" column (Manual/Device), link to shift, show expected vs actual time
 
 ---
 
-### Phase 2: Frontend Pages (12 files)
+### Edge Function: `sync-zkteco-data`
 
-**1. `Departments.tsx`** — CRUD using `ConfigCrudPage`
-- Fields: name, status
+- Accepts device connection details
+- Calls ZKTeco device API (ZKTeco devices expose a REST API or use the ZK Web API protocol over HTTP)
+- Fetches attendance logs, maps device user IDs to employees
+- Inserts into `zkteco_attendance_logs` and auto-updates `attendance` table
+- Can be triggered manually ("Sync Now") or scheduled via pg_cron
 
-**2. `Positions.tsx`** — CRUD using `ConfigCrudPage`
-- Fields: name, status
+---
 
-**3. `Payheads.tsx`** — CRUD for pay components (allowances/deductions)
-- Fields: name, type (allowance/deduction), amount, is_percentage, status
+### Sidebar & Routing Updates
 
-**4. `AddEmployee.tsx`** — Multi-section form
-- Personal: name, employee_id, email, phone, gender, DOB, NID, address
-- Job: department (dropdown), position (dropdown), joining_date, salary
-- Status, show_on_website toggle
-- Save & redirect to Employee List
-
-**5. `Employees.tsx`** — Employee list table
-- Columns: Employee ID, Name, Department, Position, Phone, Salary, Status, Action
-- Edit/delete actions, search, filters by department/status
-
-**6. `Attendance.tsx`** — Daily attendance
-- Date picker, employee list with check-in/check-out/status
-- Bulk mark present, filter by date range
-- Summary cards (present/absent/late/leave count)
-
-**7. `Payroll.tsx`** — Monthly payroll processing
-- Month selector, generate payroll for all active employees
-- Table: Employee, Basic, Allowances, Deductions, Net Salary, Status
-- Pay/unpay toggle per employee
-
-**8. `SalarySheet.tsx`** — Monthly salary summary report
-- Month filter, table with all employees' salary breakdown
-- Generate PDF/Excel export buttons
-
-**9. `Payslip.tsx`** — Individual payslip viewer
-- Select employee + month, show payslip with payhead breakdown
-- Print-friendly layout
-
-**10. `ResignRules.tsx`** — CRUD using `ConfigCrudPage`
-- Fields: name, notice_period_days, status
-
-**11. `Resignations.tsx`** — Resignation management
-- Table: Employee, Resign Date, Last Working Date, Reason, Status
-- Add resignation dialog, approve/reject actions
-
-**12. `Rejoin.tsx`** — Rejoin management
-- Table of resigned employees eligible for rejoin
-- Add rejoin dialog: select employee, new salary, department, position, rejoin date
-- Approve/reject workflow
+Add 3 new items under "HR & Payroll":
+- Shift Management → `/dashboard/hr/shifts`
+- ZKTeco Devices → `/dashboard/hr/zkteco-devices`
+- Attendance Rules → `/dashboard/hr/attendance-rules`
 
 ---
 
 ### Technical Notes
-- Department/Position dropdowns in employee forms pull from `departments` and `positions` tables
-- Payroll generation auto-calculates: basic salary + SUM(allowance payheads) - SUM(deduction payheads) = net salary
-- Payheads with `is_percentage=true` calculate as percentage of basic salary
-- All pages follow the existing pattern: `useQuery` for fetching, `useMutation` for upsert, `sonner` toast for feedback
-- Simple CRUD pages (Departments, Positions, ResignRules, Payheads) use the `ConfigCrudPage` component
+
+- ZKTeco devices typically use the **ZKBioAccess** or **PULL SDK** REST API over HTTP (IP:port). The edge function will make HTTP requests to the device's API endpoint using the stored credentials.
+- Employee-to-device mapping: employees table will get a `device_user_id` (text) column to map ZKTeco enrollment IDs to employees.
+- The `attendance` table's `check_in`/`check_out` fields will be auto-populated from device logs when source is "device".
+- Late detection: compare `check_in` time against assigned shift's `start_time + grace_minutes`.
+- Future salary deduction logic will read `attendance_rules` and apply deductions during payroll generation.
 
