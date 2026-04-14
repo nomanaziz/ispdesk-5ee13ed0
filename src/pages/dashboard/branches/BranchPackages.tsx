@@ -53,7 +53,7 @@ export default function BranchPackages() {
                     <TableRow key={pkg.id}>
                       <TableCell>{i + 1}</TableCell>
                       <TableCell className="font-medium">{pkg.name}</TableCell>
-                      <TableCell>{pkg.speed || "-"}</TableCell>
+                      <TableCell>{pkg.bandwidth_down ? `${pkg.bandwidth_down} Mbps` : "-"}</TableCell>
                       <TableCell className="font-mono">৳{pkg.price ?? 0}</TableCell>
                       <TableCell>
                         <Badge variant={pkg.status === "active" ? "default" : "secondary"}>

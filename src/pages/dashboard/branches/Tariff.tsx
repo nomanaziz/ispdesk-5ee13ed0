@@ -58,7 +58,7 @@ export default function Tariff() {
   const { data: servers } = useQuery({
     queryKey: ["mikrotik-servers-select"],
     queryFn: async () => {
-      const { data } = await supabase.from("mikrotik_devices").select("id, name").eq("status", "active");
+      const { data } = await supabase.from("mikrotik_devices").select("id, name");
       return data ?? [];
     },
   });
