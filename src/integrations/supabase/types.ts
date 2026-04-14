@@ -5058,29 +5058,89 @@ export type Database = {
       vas_services: {
         Row: {
           created_at: string
+          credentials_template: string | null
           description: string | null
           id: string
+          logo_url: string | null
           name: string
           price: number | null
+          provider_type: string | null
           status: string
         }
         Insert: {
           created_at?: string
+          credentials_template?: string | null
           description?: string | null
           id?: string
+          logo_url?: string | null
           name: string
           price?: number | null
+          provider_type?: string | null
           status?: string
         }
         Update: {
           created_at?: string
+          credentials_template?: string | null
           description?: string | null
           id?: string
+          logo_url?: string | null
           name?: string
           price?: number | null
+          provider_type?: string | null
           status?: string
         }
         Relationships: []
+      }
+      vas_subscriptions: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          end_date: string | null
+          id: string
+          service_id: string
+          start_date: string | null
+          status: string | null
+          vas_password: string | null
+          vas_username: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          service_id: string
+          start_date?: string | null
+          status?: string | null
+          vas_password?: string | null
+          vas_username?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          service_id?: string
+          start_date?: string | null
+          status?: string | null
+          vas_password?: string | null
+          vas_username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vas_subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vas_subscriptions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "vas_services"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vas_transactions: {
         Row: {
