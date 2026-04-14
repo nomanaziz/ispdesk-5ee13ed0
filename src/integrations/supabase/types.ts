@@ -481,32 +481,104 @@ export type Database = {
         }
         Relationships: []
       }
+      bw_bill_items: {
+        Row: {
+          bill_id: string
+          created_at: string
+          description: string | null
+          from_date: string | null
+          id: string
+          item_id: string | null
+          quantity: number | null
+          rate: number | null
+          to_date: string | null
+          total: number | null
+          unit: string | null
+          vat_percent: number | null
+        }
+        Insert: {
+          bill_id: string
+          created_at?: string
+          description?: string | null
+          from_date?: string | null
+          id?: string
+          item_id?: string | null
+          quantity?: number | null
+          rate?: number | null
+          to_date?: string | null
+          total?: number | null
+          unit?: string | null
+          vat_percent?: number | null
+        }
+        Update: {
+          bill_id?: string
+          created_at?: string
+          description?: string | null
+          from_date?: string | null
+          id?: string
+          item_id?: string | null
+          quantity?: number | null
+          rate?: number | null
+          to_date?: string | null
+          total?: number | null
+          unit?: string | null
+          vat_percent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_bill_items_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bw_purchase_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_bill_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "bw_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bw_categories: {
         Row: {
           created_at: string
           id: string
           name: string
+          parent_id: string | null
           status: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          parent_id?: string | null
           status?: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          parent_id?: string | null
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bw_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "bw_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bw_items: {
         Row: {
           bandwidth: string | null
           category_id: string | null
           created_at: string
+          description: string | null
           id: string
           name: string
           price: number | null
@@ -517,6 +589,7 @@ export type Database = {
           bandwidth?: string | null
           category_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           name: string
           price?: number | null
@@ -527,6 +600,7 @@ export type Database = {
           bandwidth?: string | null
           category_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
           price?: number | null
@@ -552,26 +626,35 @@ export type Database = {
       }
       bw_providers: {
         Row: {
+          address: string | null
           contact: string | null
           created_at: string
           email: string | null
           id: string
+          logo_url: string | null
+          mobile: string | null
           name: string
           status: string
         }
         Insert: {
+          address?: string | null
           contact?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          logo_url?: string | null
+          mobile?: string | null
           name: string
           status?: string
         }
         Update: {
+          address?: string | null
           contact?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          logo_url?: string | null
+          mobile?: string | null
           name?: string
           status?: string
         }
@@ -580,32 +663,50 @@ export type Database = {
       bw_purchase_bills: {
         Row: {
           amount: number | null
+          attachment_url: string | null
           bill_no: string
+          billing_month: string | null
           created_at: string
+          discount: number | null
           id: string
+          invoice_no: string | null
           month: string | null
           paid: number | null
+          payment_due: string | null
           provider_id: string | null
+          remarks: string | null
           status: string
         }
         Insert: {
           amount?: number | null
+          attachment_url?: string | null
           bill_no: string
+          billing_month?: string | null
           created_at?: string
+          discount?: number | null
           id?: string
+          invoice_no?: string | null
           month?: string | null
           paid?: number | null
+          payment_due?: string | null
           provider_id?: string | null
+          remarks?: string | null
           status?: string
         }
         Update: {
           amount?: number | null
+          attachment_url?: string | null
           bill_no?: string
+          billing_month?: string | null
           created_at?: string
+          discount?: number | null
           id?: string
+          invoice_no?: string | null
           month?: string | null
           paid?: number | null
+          payment_due?: string | null
           provider_id?: string | null
+          remarks?: string | null
           status?: string
         }
         Relationships: [
