@@ -46,7 +46,9 @@ export default function ConfigCrudPage({
   filterComponent,
   filterFn,
   fetchQuery,
+  showStatusTabs = false,
 }: ConfigCrudPageProps) {
+  const [statusTab, setStatusTab] = useState<"active" | "inactive">("active");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
