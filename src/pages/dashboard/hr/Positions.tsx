@@ -1,5 +1,15 @@
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import ConfigCrudPage from "@/components/config/ConfigCrudPage";
 
 export default function Positions() {
-  return <PlaceholderPage title="Position" module="HR & Payroll" />;
+  return (
+    <ConfigCrudPage
+      title="পদবী"
+      tableName="positions"
+      queryKey="positions"
+      fields={[
+        { key: "name", label: "নাম", required: true, placeholder: "পদবীর নাম" },
+      ]}
+      showStatusTabs
+    />
+  );
 }

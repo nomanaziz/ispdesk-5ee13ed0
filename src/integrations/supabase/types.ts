@@ -135,6 +135,47 @@ export type Database = {
           },
         ]
       }
+      attendance: {
+        Row: {
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          date: string
+          employee_id: string
+          id: string
+          remarks: string | null
+          status: string
+        }
+        Insert: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          date: string
+          employee_id: string
+          id?: string
+          remarks?: string | null
+          status?: string
+        }
+        Update: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          date?: string
+          employee_id?: string
+          id?: string
+          remarks?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing: {
         Row: {
           advance: number | null
@@ -2399,6 +2440,45 @@ export type Database = {
           },
         ]
       }
+      payroll_details: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          payhead_id: string
+          payroll_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          payhead_id: string
+          payroll_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          payhead_id?: string
+          payroll_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_details_payhead_id_fkey"
+            columns: ["payhead_id"]
+            isOneToOne: false
+            referencedRelation: "payheads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_details_payroll_id_fkey"
+            columns: ["payroll_id"]
+            isOneToOne: false
+            referencedRelation: "payroll"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ping_targets: {
         Row: {
           branch_id: string | null
@@ -2859,6 +2939,77 @@ export type Database = {
           },
         ]
       }
+      rejoin_requests: {
+        Row: {
+          approved_by: string | null
+          created_at: string
+          employee_id: string
+          id: string
+          new_department_id: string | null
+          new_position_id: string | null
+          new_salary: number | null
+          rejoin_date: string
+          remarks: string | null
+          resignation_id: string | null
+          status: string
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          new_department_id?: string | null
+          new_position_id?: string | null
+          new_salary?: number | null
+          rejoin_date: string
+          remarks?: string | null
+          resignation_id?: string | null
+          status?: string
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          new_department_id?: string | null
+          new_position_id?: string | null
+          new_salary?: number | null
+          rejoin_date?: string
+          remarks?: string | null
+          resignation_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rejoin_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rejoin_requests_new_department_id_fkey"
+            columns: ["new_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rejoin_requests_new_position_id_fkey"
+            columns: ["new_position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rejoin_requests_resignation_id_fkey"
+            columns: ["resignation_id"]
+            isOneToOne: false
+            referencedRelation: "resignations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requisitions: {
         Row: {
           approved_by: string | null
@@ -2968,6 +3119,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "resignations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salary_sheets: {
+        Row: {
+          basic_salary: number | null
+          created_at: string
+          employee_id: string
+          id: string
+          month: string
+          net_salary: number | null
+          status: string
+          total_allowance: number | null
+          total_deduction: number | null
+        }
+        Insert: {
+          basic_salary?: number | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          month: string
+          net_salary?: number | null
+          status?: string
+          total_allowance?: number | null
+          total_deduction?: number | null
+        }
+        Update: {
+          basic_salary?: number | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          month?: string
+          net_salary?: number | null
+          status?: string
+          total_allowance?: number | null
+          total_deduction?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_sheets_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
