@@ -4093,27 +4093,39 @@ export type Database = {
           api_url: string | null
           created_at: string
           id: string
+          is_default: boolean
           name: string
+          password: string | null
           sender_id: string | null
+          sms_type: string
           status: string
+          username: string | null
         }
         Insert: {
           api_key?: string | null
           api_url?: string | null
           created_at?: string
           id?: string
+          is_default?: boolean
           name: string
+          password?: string | null
           sender_id?: string | null
+          sms_type?: string
           status?: string
+          username?: string | null
         }
         Update: {
           api_key?: string | null
           api_url?: string | null
           created_at?: string
           id?: string
+          is_default?: boolean
           name?: string
+          password?: string | null
           sender_id?: string | null
+          sms_type?: string
           status?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -4121,21 +4133,27 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          group_type: string
           id: string
+          members: Json | null
           name: string
           status: string
         }
         Insert: {
           created_at?: string
           description?: string | null
+          group_type?: string
           id?: string
+          members?: Json | null
           name: string
           status?: string
         }
         Update: {
           created_at?: string
           description?: string | null
+          group_type?: string
           id?: string
+          members?: Json | null
           name?: string
           status?: string
         }
@@ -4145,29 +4163,44 @@ export type Database = {
         Row: {
           created_at: string
           gateway_id: string | null
+          group_id: string | null
           id: string
           message: string
           recipient: string
+          recipient_count: number
           sent_at: string | null
+          sent_by: string | null
+          sms_type: string
           status: string
+          template_id: string | null
         }
         Insert: {
           created_at?: string
           gateway_id?: string | null
+          group_id?: string | null
           id?: string
           message: string
           recipient: string
+          recipient_count?: number
           sent_at?: string | null
+          sent_by?: string | null
+          sms_type?: string
           status?: string
+          template_id?: string | null
         }
         Update: {
           created_at?: string
           gateway_id?: string | null
+          group_id?: string | null
           id?: string
           message?: string
           recipient?: string
+          recipient_count?: number
           sent_at?: string | null
+          sent_by?: string | null
+          sms_type?: string
           status?: string
+          template_id?: string | null
         }
         Relationships: [
           {
@@ -4175,6 +4208,20 @@ export type Database = {
             columns: ["gateway_id"]
             isOneToOne: false
             referencedRelation: "sms_gateways"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_log_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "sms_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_log_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "sms_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -4187,6 +4234,7 @@ export type Database = {
           name: string
           status: string
           type: string | null
+          variables: string | null
         }
         Insert: {
           content: string
@@ -4195,6 +4243,7 @@ export type Database = {
           name: string
           status?: string
           type?: string | null
+          variables?: string | null
         }
         Update: {
           content?: string
@@ -4203,6 +4252,7 @@ export type Database = {
           name?: string
           status?: string
           type?: string | null
+          variables?: string | null
         }
         Relationships: []
       }
