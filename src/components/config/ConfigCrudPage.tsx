@@ -116,8 +116,13 @@ export default function ConfigCrudPage({
   const bulkStatusMutation = useMutation({
     mutationFn: async (status: string) => {
       for (const id of selected) {
-        const { error } = await supabase.from(tableName as any).update({ status }).eq("id", id);
-        if (error) throw error;
+        if (onStatusToggle) {
+          const row = items?.find((item: any) => item.id === id);
+          await onStatusToggle(id, status, row);
+        } else {
+          const { error } = await supabase.from(tableName as any).update({ status }).eq("id", id);
+          if (error) throw error;
+        }
       }
     },
     onSuccess: () => {
