@@ -177,8 +177,7 @@ const OltOverview = () => {
                     <TableHead>#</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>IP Address</TableHead>
-                    <TableHead>Model</TableHead>
-                    <TableHead>Ports</TableHead>
+                    <TableHead>Port</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -188,10 +187,9 @@ const OltOverview = () => {
                       <TableCell>{switchPage * perPage + idx + 1}</TableCell>
                       <TableCell className="font-medium">{sw.name}</TableCell>
                       <TableCell className="font-mono text-sm">{sw.ip_address}</TableCell>
-                      <TableCell>{sw.model || "—"}</TableCell>
-                      <TableCell>{sw.port_count || 0}</TableCell>
+                      <TableCell>{sw.port || 0}</TableCell>
                       <TableCell>
-                        <Badge variant={sw.status === "active" ? "default" : "destructive"}>
+                        <Badge variant={sw.status === "online" ? "default" : "destructive"}>
                           {sw.status}
                         </Badge>
                       </TableCell>
