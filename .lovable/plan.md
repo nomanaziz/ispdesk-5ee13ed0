@@ -1,46 +1,24 @@
 
 
-## Fix: Division Cascade Not Working
+## Plan: Packages Page Improvements
 
-### Problem Identified
+### Changes to `src/pages/dashboard/config/Packages.tsx`
 
-There are **two bugs** in `ConfigCrudPage.tsx`:
+**1. Add package_type filter tabs/buttons above the table**
+- Add a `typeFilter` state (default: `"all"`)
+- Render filter buttons: "সব", "Home", "Corporate", "Business", "Personal", "Dedicated"
+- Apply filter before search in the `filtered` variable
 
-1. **Bulk status action ignores cascade**: When you select multiple divisions and click "নিষ্ক্রিয়" (bulk action), `bulkStatusMutation` (line 117-129) directly updates the table without calling `onStatusToggle`. So districts and upazilas are NOT cascaded.
+**2. Merge bandwidth into single field**
+- Replace separate download/upload inputs with one "ব্যান্ডউইথ (Mbps)" input
+- When user enters a value, both `bandwidth_down` and `bandwidth_up` get the same value
+- Table column shows single value (e.g. "10 Mbps") instead of "10 / 10"
 
-2. **Individual toggle also broken for cascade**: The `toggleStatus` mutation calls `onStatusToggle(id, status, row)` but **then also** invalidates the query for the current table (line 110). However, the `onStatusToggle` in `Divisions.tsx` already does the division update itself (line 10). This means the division status gets updated correctly, but there could be race conditions with rapid toggling.
+**3. Protocol dropdown from `protocol_types` table**
+- Add a `useQuery` to fetch active records from `protocol_types` table
+- Replace the free-text protocol `<Input>` with a `<Select>` dropdown populated from the query
+- Display protocol type names (Static, Hotspot, PPPoE) as select options
 
-### Fix Plan
-
-**File: `src/components/config/ConfigCrudPage.tsx`**
-
-- Update `bulkStatusMutation` to call `onStatusToggle` for each selected item (if provided), so cascade logic runs for bulk actions too.
-
-**File: `src/pages/dashboard/config/Divisions.tsx`**
-
-- No changes needed — cascade logic is correct.
-
-### Technical Details
-
-In `ConfigCrudPage.tsx`, change the `bulkStatusMutation` from:
-```typescript
-// Current: direct update, no cascade
-for (const id of selected) {
-  await supabase.from(tableName).update({ status }).eq("id", id);
-}
-```
-To:
-```typescript
-// Fixed: use onStatusToggle if available
-for (const id of selected) {
-  if (onStatusToggle) {
-    const row = items?.find((item: any) => item.id === id);
-    await onStatusToggle(id, status, row);
-  } else {
-    await supabase.from(tableName).update({ status }).eq("id", id);
-  }
-}
-```
-
-Also invalidate related queries after bulk status change.
+### No database changes needed
+All required tables and columns already exist.
 
