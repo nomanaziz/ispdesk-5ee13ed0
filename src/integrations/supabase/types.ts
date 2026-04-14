@@ -1063,6 +1063,7 @@ export type Database = {
           phone: string | null
           position_id: string | null
           salary: number | null
+          show_on_website: boolean | null
           status: string
           updated_at: string
         }
@@ -1078,6 +1079,7 @@ export type Database = {
           phone?: string | null
           position_id?: string | null
           salary?: number | null
+          show_on_website?: boolean | null
           status?: string
           updated_at?: string
         }
@@ -1093,6 +1095,7 @@ export type Database = {
           phone?: string | null
           position_id?: string | null
           salary?: number | null
+          show_on_website?: boolean | null
           status?: string
           updated_at?: string
         }
@@ -1385,6 +1388,7 @@ export type Database = {
           price: number
           protocol: string | null
           setup_fee: number | null
+          show_on_homepage: boolean | null
           status: string
         }
         Insert: {
@@ -1399,6 +1403,7 @@ export type Database = {
           price?: number
           protocol?: string | null
           setup_fee?: number | null
+          show_on_homepage?: boolean | null
           status?: string
         }
         Update: {
@@ -1413,6 +1418,7 @@ export type Database = {
           price?: number
           protocol?: string | null
           setup_fee?: number | null
+          show_on_homepage?: boolean | null
           status?: string
         }
         Relationships: [
@@ -1984,6 +1990,42 @@ export type Database = {
           name?: string
           status?: string
           type?: string
+        }
+        Relationships: []
+      }
+      payment_methods: {
+        Row: {
+          account_number: string | null
+          category: string | null
+          color: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+          sort_order: number | null
+          status: string
+        }
+        Insert: {
+          account_number?: string | null
+          category?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          sort_order?: number | null
+          status?: string
+        }
+        Update: {
+          account_number?: string | null
+          category?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          sort_order?: number | null
+          status?: string
         }
         Relationships: []
       }
@@ -3284,6 +3326,332 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      website_features: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          sort_order: number | null
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          sort_order?: number | null
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          sort_order?: number | null
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      website_festivals: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          image_url: string | null
+          start_date: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          start_date?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          start_date?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      website_media: {
+        Row: {
+          alt_text: string | null
+          created_at: string
+          file_size: number | null
+          file_type: string | null
+          filename: string
+          id: string
+          url: string
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string
+          file_size?: number | null
+          file_type?: string | null
+          filename: string
+          id?: string
+          url: string
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string
+          file_size?: number | null
+          file_type?: string | null
+          filename?: string
+          id?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      website_menu: {
+        Row: {
+          created_at: string
+          id: string
+          parent_id: string | null
+          sort_order: number | null
+          status: string
+          title: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          sort_order?: number | null
+          status?: string
+          title: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          sort_order?: number | null
+          status?: string
+          title?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_menu_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "website_menu"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      website_notices: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          publish_date: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          publish_date?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          publish_date?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      website_offers: {
+        Row: {
+          created_at: string
+          description: string | null
+          discount_text: string | null
+          end_date: string | null
+          id: string
+          image_url: string | null
+          start_date: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          discount_text?: string | null
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          start_date?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          discount_text?: string | null
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          start_date?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      website_pages: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          slug: string
+          sort_order: number | null
+          status: string
+          title: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          slug: string
+          sort_order?: number | null
+          status?: string
+          title: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          slug?: string
+          sort_order?: number | null
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      website_partners: {
+        Row: {
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+          sort_order: number | null
+          status: string
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          sort_order?: number | null
+          status?: string
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          sort_order?: number | null
+          status?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      website_services: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          image_url: string | null
+          sort_order: number | null
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          image_url?: string | null
+          sort_order?: number | null
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          image_url?: string | null
+          sort_order?: number | null
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      website_testimonials: {
+        Row: {
+          company: string | null
+          content: string | null
+          created_at: string
+          designation: string | null
+          id: string
+          image_url: string | null
+          name: string
+          rating: number | null
+          sort_order: number | null
+          status: string
+        }
+        Insert: {
+          company?: string | null
+          content?: string | null
+          created_at?: string
+          designation?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          rating?: number | null
+          sort_order?: number | null
+          status?: string
+        }
+        Update: {
+          company?: string | null
+          content?: string | null
+          created_at?: string
+          designation?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          rating?: number | null
+          sort_order?: number | null
           status?: string
         }
         Relationships: []
