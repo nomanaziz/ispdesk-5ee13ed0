@@ -1,26 +1,38 @@
 
 
-## Plan: Events & Holidays Page
+## Plan: Sales & Invoice Module — Full Implementation
 
 ### Overview
-Implement the Events & Holidays page using the existing `events_holidays` table. This page will be visible to all employees for viewing company events and holidays, with admin CRUD capabilities.
+Implement the Sales & Service module with full CRUD for Product Invoice and Service Invoice pages. Remove Installation Fee from Sales and move it to the Billing/Client section.
 
-### Existing Table Schema (`events_holidays`)
-- `id` (uuid, PK), `title` (text), `description` (text, nullable), `event_date` (date), `end_date` (date, nullable), `type` (text, default 'holiday'), `status` (text, default 'active'), `created_at` (timestamptz)
+### Database
+No migration needed — tables `product_invoices`, `service_invoices`, and `installation_fees` already exist with proper schemas.
 
-No database migration needed.
+### Changes
 
-### Implementation
+**1. Product Invoice (`src/pages/dashboard/sales/ProductInvoice.tsx`)**
+- Full CRUD table: Invoice No, Client (select from clients), Item (select from inventory_items), Quantity, Unit Price, Total (auto-calc), Date, Status (paid/unpaid/partial)
+- Add/Edit dialog, search, date filter, summary cards (total invoices, received, due)
+- Bangla UI labels
 
-**Events Page (`src/pages/dashboard/events/Events.tsx`)**
-- Header: "ইভেন্ট ও ছুটি" with "+ নতুন ইভেন্ট" button
-- Calendar view (mini calendar) highlighting event dates at the top
-- Filter tabs: All / Holiday (ছুটি) / Event (ইভেন্ট) / Meeting (মিটিং)
-- Table: Serial, Title, Date, End Date, Type (badge: holiday/event/meeting), Status, Actions (edit/delete)
-- Add/Edit dialog: Title, Description, Event Date, End Date, Type (select: holiday/event/meeting), Status toggle
-- Upcoming events card showing next 5 events sorted by date
-- Bangla UI labels throughout
+**2. Service Invoice (`src/pages/dashboard/sales/ServiceInvoice.tsx`)**
+- Full CRUD table: Invoice No, Client, Service Name, Amount, Date, Status, Notes
+- Add/Edit dialog with client search, status filter
+- Summary cards, Bangla labels
 
-### Files to Edit (1)
-- `src/pages/dashboard/events/Events.tsx`
+**3. Move Installation Fee**
+- Remove "Installation Fee" from the "Sales & Service" sidebar group
+- Add it under "Billing" sidebar group as "ইনস্টলেশন ফি"
+- Keep the route but update sidebar placement
+- Implement full CRUD in `InstallationFee.tsx`: Client select, Amount, Paid, Status, Fee Date, Notes
+
+**4. Sidebar (`src/components/AppSidebar.tsx`)**
+- Remove Installation Fee from Sales & Service items
+- Add Installation Fee item to Billing group
+
+### Files to Edit (4)
+- `src/pages/dashboard/sales/ProductInvoice.tsx`
+- `src/pages/dashboard/sales/ServiceInvoice.tsx`
+- `src/pages/dashboard/sales/InstallationFee.tsx`
+- `src/components/AppSidebar.tsx`
 
