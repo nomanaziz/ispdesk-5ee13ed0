@@ -2297,6 +2297,164 @@ export type Database = {
         }
         Relationships: []
       }
+      mikrotik_backups: {
+        Row: {
+          created_at: string
+          file_name: string | null
+          file_size: number | null
+          file_url: string | null
+          id: string
+          mikrotik_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          mikrotik_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          mikrotik_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mikrotik_backups_mikrotik_id_fkey"
+            columns: ["mikrotik_id"]
+            isOneToOne: false
+            referencedRelation: "mikrotik_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mikrotik_bulk_imports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          file_name: string | null
+          id: string
+          imported_rows: number
+          package_id: string | null
+          status: string
+          total_rows: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          imported_rows?: number
+          package_id?: string | null
+          status?: string
+          total_rows?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          imported_rows?: number
+          package_id?: string | null
+          status?: string
+          total_rows?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mikrotik_bulk_imports_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "mikrotik_bulk_imports_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "isp_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mikrotik_clients: {
+        Row: {
+          branch_id: string | null
+          caller_id: string | null
+          created_at: string
+          exported: boolean
+          exported_to: string | null
+          id: string
+          logout_time: string | null
+          mikrotik_id: string | null
+          name: string
+          password: string | null
+          profile: string | null
+          remote_address: string | null
+          server_name: string | null
+          service: string | null
+          status: string
+          user_status: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          caller_id?: string | null
+          created_at?: string
+          exported?: boolean
+          exported_to?: string | null
+          id?: string
+          logout_time?: string | null
+          mikrotik_id?: string | null
+          name: string
+          password?: string | null
+          profile?: string | null
+          remote_address?: string | null
+          server_name?: string | null
+          service?: string | null
+          status?: string
+          user_status?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          caller_id?: string | null
+          created_at?: string
+          exported?: boolean
+          exported_to?: string | null
+          id?: string
+          logout_time?: string | null
+          mikrotik_id?: string | null
+          name?: string
+          password?: string | null
+          profile?: string | null
+          remote_address?: string | null
+          server_name?: string | null
+          service?: string | null
+          status?: string
+          user_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mikrotik_clients_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mikrotik_clients_mikrotik_id_fkey"
+            columns: ["mikrotik_id"]
+            isOneToOne: false
+            referencedRelation: "mikrotik_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mikrotik_devices: {
         Row: {
           api_port: number
@@ -2308,8 +2466,10 @@ export type Database = {
           name: string
           password_encrypted: string | null
           status: Database["public"]["Enums"]["device_status"]
+          timeout: number
           updated_at: string
           username: string | null
+          version: string
         }
         Insert: {
           api_port?: number
@@ -2321,8 +2481,10 @@ export type Database = {
           name: string
           password_encrypted?: string | null
           status?: Database["public"]["Enums"]["device_status"]
+          timeout?: number
           updated_at?: string
           username?: string | null
+          version?: string
         }
         Update: {
           api_port?: number
@@ -2334,8 +2496,10 @@ export type Database = {
           name?: string
           password_encrypted?: string | null
           status?: Database["public"]["Enums"]["device_status"]
+          timeout?: number
           updated_at?: string
           username?: string | null
+          version?: string
         }
         Relationships: [
           {
