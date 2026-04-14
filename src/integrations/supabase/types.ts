@@ -1474,53 +1474,119 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
+          date_of_birth: string | null
+          default_in_time: string | null
+          default_out_time: string | null
           department_id: string | null
           device_user_id: string | null
+          district: string | null
           email: string | null
           employee_id: string
+          facebook_link: string | null
+          gender: string | null
+          guardian_phone: string | null
           id: string
+          image_url: string | null
+          institution: string | null
           joining_date: string | null
+          last_degree: string | null
+          marital_status: string | null
           name: string
+          nid_number: string | null
+          office_phone: string | null
+          passing_year: string | null
+          payroll_template_id: string | null
+          permanent_address: string | null
+          personal_phone: string | null
           phone: string | null
           position_id: string | null
+          punch_card_id: string | null
+          reference: string | null
           salary: number | null
           show_on_website: boolean | null
           status: string
+          upazila: string | null
           updated_at: string
+          working_experience: string | null
+          zkteco_device_id: string | null
         }
         Insert: {
           address?: string | null
           created_at?: string
+          date_of_birth?: string | null
+          default_in_time?: string | null
+          default_out_time?: string | null
           department_id?: string | null
           device_user_id?: string | null
+          district?: string | null
           email?: string | null
           employee_id: string
+          facebook_link?: string | null
+          gender?: string | null
+          guardian_phone?: string | null
           id?: string
+          image_url?: string | null
+          institution?: string | null
           joining_date?: string | null
+          last_degree?: string | null
+          marital_status?: string | null
           name: string
+          nid_number?: string | null
+          office_phone?: string | null
+          passing_year?: string | null
+          payroll_template_id?: string | null
+          permanent_address?: string | null
+          personal_phone?: string | null
           phone?: string | null
           position_id?: string | null
+          punch_card_id?: string | null
+          reference?: string | null
           salary?: number | null
           show_on_website?: boolean | null
           status?: string
+          upazila?: string | null
           updated_at?: string
+          working_experience?: string | null
+          zkteco_device_id?: string | null
         }
         Update: {
           address?: string | null
           created_at?: string
+          date_of_birth?: string | null
+          default_in_time?: string | null
+          default_out_time?: string | null
           department_id?: string | null
           device_user_id?: string | null
+          district?: string | null
           email?: string | null
           employee_id?: string
+          facebook_link?: string | null
+          gender?: string | null
+          guardian_phone?: string | null
           id?: string
+          image_url?: string | null
+          institution?: string | null
           joining_date?: string | null
+          last_degree?: string | null
+          marital_status?: string | null
           name?: string
+          nid_number?: string | null
+          office_phone?: string | null
+          passing_year?: string | null
+          payroll_template_id?: string | null
+          permanent_address?: string | null
+          personal_phone?: string | null
           phone?: string | null
           position_id?: string | null
+          punch_card_id?: string | null
+          reference?: string | null
           salary?: number | null
           show_on_website?: boolean | null
           status?: string
+          upazila?: string | null
           updated_at?: string
+          working_experience?: string | null
+          zkteco_device_id?: string | null
         }
         Relationships: [
           {
@@ -1531,10 +1597,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employees_payroll_template_id_fkey"
+            columns: ["payroll_template_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_templates"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "employees_position_id_fkey"
             columns: ["position_id"]
             isOneToOne: false
             referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_zkteco_device_id_fkey"
+            columns: ["zkteco_device_id"]
+            isOneToOne: false
+            referencedRelation: "zkteco_devices"
             referencedColumns: ["id"]
           },
         ]
@@ -1609,6 +1689,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      hr_settings: {
+        Row: {
+          created_at: string
+          id: string
+          setting_key: string
+          setting_value: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          setting_key: string
+          setting_value?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+        }
+        Relationships: []
       }
       income_entries: {
         Row: {
