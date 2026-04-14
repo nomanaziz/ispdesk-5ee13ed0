@@ -136,6 +136,9 @@ const menuGroups: MenuGroup[] = [
       { title: "Resignation", url: "/dashboard/hr/resignations", icon: UserX },
       { title: "Rejoin", url: "/dashboard/hr/rejoin", icon: UserPlus },
       { title: "Attendance", url: "/dashboard/hr/attendance", icon: CheckSquare },
+      { title: "Shift Management", url: "/dashboard/hr/shifts", icon: Clock },
+      { title: "ZKTeco Devices", url: "/dashboard/hr/zkteco-devices", icon: Server },
+      { title: "Attendance Rules", url: "/dashboard/hr/attendance-rules", icon: Shield },
     ],
   },
   {

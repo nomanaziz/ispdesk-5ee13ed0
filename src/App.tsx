@@ -79,6 +79,9 @@ import HrResignRules from "@/pages/dashboard/hr/ResignRules";
 import HrResignations from "@/pages/dashboard/hr/Resignations";
 import HrRejoin from "@/pages/dashboard/hr/Rejoin";
 import HrAttendance from "@/pages/dashboard/hr/Attendance";
+import HrShiftManagement from "@/pages/dashboard/hr/ShiftManagement";
+import HrZktecoDevices from "@/pages/dashboard/hr/ZktecoDevices";
+import HrAttendanceRules from "@/pages/dashboard/hr/AttendanceRules";
 
 // OLT
 import OltDevices from "@/pages/dashboard/olt/OltDevices";
@@ -322,6 +325,9 @@ const App = () => (
               <Route path="/dashboard/hr/resignations" element={<P><HrResignations /></P>} />
               <Route path="/dashboard/hr/rejoin" element={<P><HrRejoin /></P>} />
               <Route path="/dashboard/hr/attendance" element={<P><HrAttendance /></P>} />
+              <Route path="/dashboard/hr/shifts" element={<P><HrShiftManagement /></P>} />
+              <Route path="/dashboard/hr/zkteco-devices" element={<P><HrZktecoDevices /></P>} />
+              <Route path="/dashboard/hr/attendance-rules" element={<P><HrAttendanceRules /></P>} />
 
               {/* OLT */}
               <Route path="/dashboard/olt" element={<P><OltDevices /></P>} />
