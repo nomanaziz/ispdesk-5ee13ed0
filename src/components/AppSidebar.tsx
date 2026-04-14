@@ -32,7 +32,8 @@ const menuGroups: MenuGroup[] = [
     defaultOpen: true,
     items: [
       { title: "Billing Overview", url: "/dashboard", icon: CreditCard },
-      { title: "OLT Overview", url: "/dashboard/olt-overview", icon: Cpu },
+      { title: "OLT / ONU Overview", url: "/dashboard/olt-overview", icon: Cpu },
+      { title: "ওয়েবসাইট ড্যাশবোর্ড", url: "/dashboard/website", icon: Globe },
     ],
   },
   {
