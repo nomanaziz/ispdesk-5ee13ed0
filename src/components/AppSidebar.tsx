@@ -81,8 +81,9 @@ const menuGroups: MenuGroup[] = [
     icon: Wrench,
     iconColor: "text-teal-400",
     items: [
-      { title: "VAS Config", url: "/dashboard/vas/config", icon: Cog },
-      { title: "Transaction History", url: "/dashboard/vas/transactions", icon: History },
+      { title: "VAS কনফিগ", url: "/dashboard/vas/config", icon: Cog },
+      { title: "সাবস্ক্রিপশন", url: "/dashboard/vas/subscriptions", icon: Users },
+      { title: "লেনদেন", url: "/dashboard/vas/transactions", icon: History },
     ],
   },
   {

@@ -46,6 +46,7 @@ import ConfigUpazilas from "@/pages/dashboard/config/Upazilas";
 // VAS
 import VasConfig from "@/pages/dashboard/vas/VasConfig";
 import VasTransactions from "@/pages/dashboard/vas/VasTransactions";
+import VasSubscriptions from "@/pages/dashboard/vas/VasSubscriptions";
 
 // Client
 import ClientNewRequest from "@/pages/dashboard/clients/NewRequest";
@@ -295,6 +296,7 @@ const App = () => (
 
               {/* VAS */}
               <Route path="/dashboard/vas/config" element={<P><VasConfig /></P>} />
+              <Route path="/dashboard/vas/subscriptions" element={<P><VasSubscriptions /></P>} />
               <Route path="/dashboard/vas/transactions" element={<P><VasTransactions /></P>} />
 
               {/* Client */}
