@@ -1,0 +1,1 @@
+ALTER TABLE public.payheads ADD COLUMN description text;
