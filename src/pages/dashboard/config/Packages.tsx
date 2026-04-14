@@ -10,8 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Package, Search, Globe, Plus, Edit, Trash2, Power, PowerOff } from "lucide-react";
+
+const PACKAGE_TYPES = [
+  { value: "home", label: "Home", color: "bg-blue-500" },
+  { value: "corporate", label: "Corporate", color: "bg-orange-500" },
+  { value: "business", label: "Business", color: "bg-green-600" },
+  { value: "personal", label: "Personal", color: "bg-amber-500" },
+  { value: "dedicated", label: "Dedicated", color: "bg-purple-600" },
+];
 
 export default function Packages() {
   const [search, setSearch] = useState("");
@@ -19,7 +28,7 @@ export default function Packages() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editingPkg, setEditingPkg] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", code: "", price: "", bandwidth_down: "", bandwidth_up: "", protocol: "PPPoE", setup_fee: "" });
+  const [form, setForm] = useState({ name: "", code: "", price: "", bandwidth_down: "", bandwidth_up: "", protocol: "PPPoE", setup_fee: "", package_type: "home" });
   const queryClient = useQueryClient();
 
   const { data: packages, isLoading } = useQuery({
@@ -58,6 +67,7 @@ export default function Packages() {
         bandwidth_up: Number(form.bandwidth_up) || 0,
         protocol: form.protocol || "PPPoE",
         setup_fee: Number(form.setup_fee) || 0,
+        package_type: form.package_type || "home",
       };
       if (editingPkg) {
         const { error } = await supabase.from("isp_packages").update(data).eq("id", editingPkg.id);
@@ -104,7 +114,7 @@ export default function Packages() {
 
   const openAdd = () => {
     setEditingPkg(null);
-    setForm({ name: "", code: "", price: "", bandwidth_down: "", bandwidth_up: "", protocol: "PPPoE", setup_fee: "" });
+    setForm({ name: "", code: "", price: "", bandwidth_down: "", bandwidth_up: "", protocol: "PPPoE", setup_fee: "", package_type: "home" });
     setDialogOpen(true);
   };
 
@@ -114,12 +124,22 @@ export default function Packages() {
       name: pkg.name, code: pkg.code || "", price: String(pkg.price),
       bandwidth_down: String(pkg.bandwidth_down || 0), bandwidth_up: String(pkg.bandwidth_up || 0),
       protocol: pkg.protocol || "PPPoE", setup_fee: String(pkg.setup_fee || 0),
+      package_type: pkg.package_type || "home",
     });
     setDialogOpen(true);
   };
 
   const filtered = packages?.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
   const allSelected = (filtered?.length || 0) > 0 && filtered?.every((p) => selected.has(p.id));
+
+  const getPackageTypeBadge = (type: string | null) => {
+    const pt = PACKAGE_TYPES.find(t => t.value === type) || PACKAGE_TYPES[0];
+    return (
+      <Badge className={`${pt.color} text-white border-0 text-xs font-semibold`}>
+        {pt.label}
+      </Badge>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -165,9 +185,9 @@ export default function Packages() {
                       }} />
                     </TableHead>
                     <TableHead>নাম</TableHead>
-                    <TableHead>কোড</TableHead>
+                    <TableHead>প্যাকেজ টাইপ</TableHead>
+                    <TableHead>ব্যান্ডউইথ (Mbps)</TableHead>
                     <TableHead>মূল্য (৳)</TableHead>
-                    <TableHead>ব্যান্ডউইথ</TableHead>
                     <TableHead>প্রোটোকল</TableHead>
                     <TableHead>স্ট্যাটাস</TableHead>
                     <TableHead className="text-center"><div className="flex items-center justify-center gap-1"><Globe className="h-3.5 w-3.5" /> হোমপেজ</div></TableHead>
@@ -184,9 +204,9 @@ export default function Packages() {
                         const n = new Set(selected); if (n.has(pkg.id)) n.delete(pkg.id); else n.add(pkg.id); setSelected(n);
                       }} /></TableCell>
                       <TableCell className="font-medium">{pkg.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{pkg.code || "—"}</TableCell>
+                      <TableCell>{getPackageTypeBadge(pkg.package_type)}</TableCell>
+                      <TableCell>{pkg.bandwidth_down || 0} / {pkg.bandwidth_up || 0}</TableCell>
                       <TableCell>{pkg.price.toLocaleString()}</TableCell>
-                      <TableCell>{pkg.bandwidth_down || 0} / {pkg.bandwidth_up || 0} Mbps</TableCell>
                       <TableCell>{pkg.protocol || "—"}</TableCell>
                       <TableCell>
                         <Switch checked={pkg.status === "active"} onCheckedChange={(c) => toggleStatus.mutate({ id: pkg.id, status: c ? "active" : "inactive" })} />
@@ -217,7 +237,20 @@ export default function Packages() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div><label className="text-sm font-medium">নাম <span className="text-destructive">*</span></label><Input value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} /></div>
-            <div><label className="text-sm font-medium">কোড</label><Input value={form.code} onChange={(e) => setForm({...form, code: e.target.value})} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-sm font-medium">কোড</label><Input value={form.code} onChange={(e) => setForm({...form, code: e.target.value})} /></div>
+              <div>
+                <label className="text-sm font-medium">প্যাকেজ টাইপ</label>
+                <Select value={form.package_type} onValueChange={(v) => setForm({...form, package_type: v})}>
+                  <SelectTrigger><SelectValue placeholder="টাইপ নির্বাচন করুন" /></SelectTrigger>
+                  <SelectContent>
+                    {PACKAGE_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-sm font-medium">মূল্য (৳)</label><Input type="number" value={form.price} onChange={(e) => setForm({...form, price: e.target.value})} /></div>
               <div><label className="text-sm font-medium">সেটআপ ফি</label><Input type="number" value={form.setup_fee} onChange={(e) => setForm({...form, setup_fee: e.target.value})} /></div>

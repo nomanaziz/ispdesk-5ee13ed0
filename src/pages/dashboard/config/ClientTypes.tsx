@@ -8,6 +8,7 @@ export default function ClientTypes() {
       queryKey="config-client-types"
       fields={[
         { key: "name", label: "ক্লায়েন্ট টাইপের নাম", required: true, placeholder: "e.g. Home, Corporate" },
+        { key: "description", label: "বিবরণ", placeholder: "e.g. Different Type Of Office..." },
       ]}
     />
   );
