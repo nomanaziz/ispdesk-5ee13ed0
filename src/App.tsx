@@ -197,6 +197,26 @@ import SystemEmail from "@/pages/dashboard/system/Email";
 import SystemSetup from "@/pages/dashboard/system/Setup";
 import SystemProcessingFee from "@/pages/dashboard/system/SysProcessingFee";
 
+// Website Panel
+import WebsiteDashboard from "@/pages/dashboard/website/WebsiteDashboard";
+import HomepageEditor from "@/pages/dashboard/website/HomepageEditor";
+import WebsitePackages from "@/pages/dashboard/website/WebsitePackages";
+import WebsiteCoverage from "@/pages/dashboard/website/WebsiteCoverage";
+import WebsiteOrders from "@/pages/dashboard/website/WebsiteOrders";
+import WebsitePages from "@/pages/dashboard/website/WebsitePages";
+import WebsiteNotices from "@/pages/dashboard/website/WebsiteNotices";
+import WebsiteOffers from "@/pages/dashboard/website/WebsiteOffers";
+import WebsiteTestimonials from "@/pages/dashboard/website/WebsiteTestimonials";
+import WebsitePartners from "@/pages/dashboard/website/WebsitePartners";
+import WebsiteFeatures from "@/pages/dashboard/website/WebsiteFeatures";
+import WebsiteServices from "@/pages/dashboard/website/WebsiteServices";
+import WebsiteFestivals from "@/pages/dashboard/website/WebsiteFestivals";
+import WebsiteMenu from "@/pages/dashboard/website/WebsiteMenu";
+import WebsitePayments from "@/pages/dashboard/website/WebsitePayments";
+import WebsiteMedia from "@/pages/dashboard/website/WebsiteMedia";
+import WebsiteAbout from "@/pages/dashboard/website/WebsiteAbout";
+import WebsiteSettings from "@/pages/dashboard/website/WebsiteSettings";
+
 const queryClient = new QueryClient();
 
 const P = ({ children }: { children: React.ReactNode }) => (
