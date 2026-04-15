@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, CheckSquare, XCircle, Filter } from "lucide-react";
+import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, CheckSquare, XCircle, Filter, RefreshCw } from "lucide-react";
 import * as XLSX from "xlsx";
 
 export default function Import() {
@@ -23,6 +23,7 @@ export default function Import() {
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const { data: servers = [] } = useQuery({
     queryKey: ["mikrotik_devices_active"],
@@ -56,6 +57,26 @@ export default function Import() {
   });
 
   const profiles = [...new Set(clients.map((c: any) => c.profile).filter(Boolean))];
+
+  const syncFromMikroTik = async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-mikrotik-ppp", {
+        body: { device_id: selectedServer !== "all" ? selectedServer : "all" },
+      });
+      if (error) throw error;
+      if (data?.errors?.length) {
+        toast.warning(`${data.synced} জন সিঙ্ক হয়েছে, ${data.errors.length} টি ত্রুটি`);
+      } else {
+        toast.success(`${data?.synced || 0} জন PPP ইউজার সিঙ্ক হয়েছে`);
+      }
+      queryClient.invalidateQueries({ queryKey: ["mikrotik_clients"] });
+    } catch (e: any) {
+      toast.error("সিঙ্ক ব্যর্থ: " + (e.message || "অজানা ত্রুটি"));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const exportToClientList = (client: any) => {
     navigate("/dashboard/clients/add", {
@@ -141,6 +162,10 @@ export default function Import() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2"><Upload className="h-6 w-6" /> ইমপোর্ট ফ্রম মাইক্রোটিক</h1>
+        <Button onClick={syncFromMikroTik} disabled={isSyncing}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+          {isSyncing ? "সিঙ্ক হচ্ছে..." : "মাইক্রোটিক থেকে সিঙ্ক করুন"}
+        </Button>
       </div>
 
       <Card>
