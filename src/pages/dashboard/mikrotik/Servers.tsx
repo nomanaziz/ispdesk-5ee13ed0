@@ -170,7 +170,13 @@ export default function Servers() {
                     <TableCell><Badge variant="outline">{{"6.43_or_older":"≤6.43","gt6.43_lt7.0":"6.43–7.0","7.0_or_newer":"≥7.0"}[d.version] || d.version}</Badge></TableCell>
                     <TableCell>{d.timeout}s</TableCell>
                     <TableCell>
-                      <Switch checked={d.status === "online"} onCheckedChange={() => toggleStatus.mutate({ id: d.id, status: d.status })} />
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-block h-3 w-3 rounded-full ${d.status === "online" ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
+                        <span className={`text-xs font-medium ${d.status === "online" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                          {d.status === "online" ? "Connected" : "Disconnected"}
+                        </span>
+                        <Switch checked={d.status === "online"} onCheckedChange={() => toggleStatus.mutate({ id: d.id, status: d.status })} />
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
