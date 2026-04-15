@@ -235,13 +235,10 @@ export default function NewRequest() {
     updateStatusMutation.mutate({ id, updates: { physical_connectivity: "Done" } });
   };
 
-  const handleConvertToClient = async (r: any) => {
-    // Mark as completed
-    await supabase.from("client_requests").update({ setup_status: "Completed" }).eq("id", r.id);
-    queryClient.invalidateQueries({ queryKey: ["client-requests"] });
-    // Navigate to AddClient with prefilled data
+  const handleConvertToClient = (r: any) => {
     navigate("/dashboard/clients/add", {
       state: {
+        request_id: r.id,
         prefill: {
           name: r.name, contact: r.contact, email: r.email, address: r.address,
           zone_id: r.zone_id, sub_zone_id: r.subzone_id,

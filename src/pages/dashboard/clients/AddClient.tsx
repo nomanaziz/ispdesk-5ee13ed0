@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Save, ArrowLeft } from "lucide-react";
 
 export default function AddClient() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const prefill = location.state?.prefill;
+  const requestId = location.state?.request_id;
   const [form, setForm] = useState<Record<string, any>>({
     name: "", gender: "", father_name: "", mother_name: "", nid_number: "",
     date_of_birth: "", occupation: "", remarks: "",
