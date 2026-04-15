@@ -1,61 +1,69 @@
 
 
-## Plan: System Settings Pages — Company Setup, System Setup, and Related Pages
+## Plan: Redesign All System Pages — Galaxy Net Style
 
 ### Overview
-Implement the placeholder System pages (Company Setup, System Setup, Invoice Setup, Periods Setup, Email Setup, Payment Gateways, Processing Fee) as functional settings pages. Since the user said "later I will provide extra logic", we'll build a solid, extensible settings framework now.
+Redesign every System module page to match the Galaxy Net portal's layout and functionality. The portal uses a clean, full-width design with teal/dark header bars, icon-prefixed fields, tabbed interfaces, and breadcrumb navigation. Our current pages are narrow cards — we'll expand them to full-width sections with richer field sets.
 
-### Database
-**Migration required** — Create a `system_settings` table (similar pattern to `hr_settings`):
-- `id` (uuid, PK)
-- `setting_key` (text, unique) — e.g. `company_info`, `invoice_config`, `email_config`, `billing_periods`
-- `setting_value` (jsonb, default `'{}'`)
-- `created_at`, `updated_at` (timestamptz)
-- RLS: authenticated users can read, admins can update
+### Design Pattern (from Galaxy Net)
+- Page header: Icon + Title + subtitle, breadcrumb on right
+- Full-width content sections with teal/dark section headers
+- 3-column grid layouts for form fields with icon-prefixed inputs
+- Tabbed interfaces where applicable (Invoice: Invoice Settings / Money Receipt; App Users: Application Users / User Roles / Role Modules)
+- Submit/Update button at bottom-right of each section
+- Status badges (green "Active", red "InActive")
+- Data tables with search, show entries, and pagination
 
-### Implementation
+### Pages to Redesign (8 files)
 
-**1. Company Setup (`Company.tsx`)**
-- Form-based page (not raw JSON): Company Name, Address, Phone, Email, Logo URL, Website, TIN/BIN
-- Saves to `system_settings` with key `company_info`
-- Upload logo option (using existing storage)
+**1. Company Setup (`Company.tsx`)** — Match portal exactly:
+- Full-width form: Company Name*, Email, Address 1, Address 2, Mobile 1, Mobile 2, Phone 1, Phone 2, Logo upload
+- Client Code: radio (Customizable / Automatic)
+- "Want to Show in Login Page?" checkbox
+- "Update Company Information" button
 
-**2. System Setup (`Setup.tsx`)**
-- Key-value settings cards: Currency, Timezone, Date Format, Language, Default Billing Cycle
-- Saves to `system_settings` with key `system_config`
+**2. Invoice Setup (`Invoice.tsx`)** — Two tabs:
+- **Invoice Settings tab**: Company info toggle (Name, Email, Mobile, Website, Upload Logo, Address), Invoice Title, Invoice position (Left/Right/None radios), Number per page select, Margins (top/bottom), Notes section (dynamic add/remove)
+- **Money Receipt tab**: Same company info toggle, Receipt Title, Format (A4/Half), Position (Left/Middle/Right), Margins, Notes
+- Submit button at bottom
 
-**3. Invoice Setup (`Invoice.tsx`)**
-- Invoice prefix, next number, padding, footer text, terms & conditions
-- Live preview of invoice number format (like HR Settings)
-- Key: `invoice_config`
+**3. App Users (`Users.tsx`)** — Three tabs:
+- **Application Users tab**: Filter row (User Status, Employee, User Role dropdowns), search bar, table (Sr.No, User Name, Password masked with eye toggle, Status badge, Employee, Role/Group, Assigned Module, Action: view/delete). "+ New User" button
+- **User Roles(Groups) tab**: Table (Sr.No, Name, Status, RedirectURL, CreatedBy, CreatedOn, Action). "+ New Role(Group)" button
+- **Role Modules(Permissions) tab**: Table (Sr.No, Role, Status, Modules, Permissions, CreatedBy, CreatedOn, Action). "+ New Role Module(Permission)" button
 
-**4. Periods Setup (`Periods.tsx`)**
-- Billing period configuration: cycle type (monthly/quarterly/yearly), billing day, grace period days
-- Key: `billing_periods`
+**4. System Setup (`Setup.tsx`)** — Expand to full-width:
+- Currency, Symbol, Timezone, Date Format, Language, Billing Cycle in 3-column grid
+- Icon-prefixed fields matching portal style
 
-**5. Email Setup (`Email.tsx`)**
-- SMTP settings form: Host, Port, Username, Password (masked), From Email, From Name, Encryption (TLS/SSL)
-- Test email button (placeholder for edge function)
-- Key: `email_config`
+**5. Email Setup (`Email.tsx`)** — Full-width section:
+- SMTP fields in 3-column grid with icons
+- Test Email button + Save
 
-**6. Payment Gateways (`PaymentGateways.tsx`)**
-- Toggle-based cards for each gateway (bKash, Nagad, Rocket, SSLCommerz, etc.)
-- Each with API Key, Secret fields, active toggle
-- Key: `payment_gateways`
+**6. Payment Gateways (`PaymentGateways.tsx`)** — Full-width cards:
+- Keep existing toggle design but expand to match portal width
 
-**7. Processing Fee (`SysProcessingFee.tsx`)**
-- Fee type (flat/percentage), amount, applicable services
-- Key: `processing_fee_config`
+**7. Periods Setup (`Periods.tsx`)** — Full-width:
+- Expand grid, add icons
 
-All pages use the same pattern: load from `system_settings` by key, form inputs, save button. Bangla UI labels throughout.
+**8. Processing Fee (`SysProcessingFee.tsx`)** — Full-width:
+- Expand layout
+
+### Technical Details
+- Remove `max-w-2xl` / `max-w-xl` constraints from all pages
+- Use consistent teal-dark section headers (`bg-[#2c5f6e]` or similar)
+- Tabs via shadcn `Tabs` component
+- Data tables with search input, entries-per-page select, pagination
+- No new database tables needed — uses existing `system_settings`, `profiles`, `user_roles`
+- All Bangla UI labels maintained
 
 ### Files to Edit (8)
 - `src/pages/dashboard/system/Company.tsx`
-- `src/pages/dashboard/system/Setup.tsx`
 - `src/pages/dashboard/system/Invoice.tsx`
-- `src/pages/dashboard/system/Periods.tsx`
+- `src/pages/dashboard/system/Users.tsx`
+- `src/pages/dashboard/system/Setup.tsx`
 - `src/pages/dashboard/system/Email.tsx`
 - `src/pages/dashboard/system/PaymentGateways.tsx`
+- `src/pages/dashboard/system/Periods.tsx`
 - `src/pages/dashboard/system/SysProcessingFee.tsx`
-- Migration: create `system_settings` table
 
