@@ -1,0 +1,195 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, KeyRound, Download, User, List } from "lucide-react";
+
+export default function CustomerView() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [customer, setCustomer] = useState<any>(null);
+  const [pop, setPop] = useState<any>(null);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { if (id) fetchData(); }, [id]);
+
+  async function fetchData() {
+    setLoading(true);
+    const { data: c } = await supabase.from("bw_sale_customers").select("*").eq("id", id!).single();
+    if (c) {
+      setCustomer(c);
+      if (c.pop_id) {
+        const { data: p } = await supabase.from("bw_sale_pops").select("*").eq("id", c.pop_id).single();
+        if (p) setPop(p);
+      }
+      const { data: inv } = await supabase.from("bw_sales_invoices").select("*").eq("customer_id", c.id).order("created_at", { ascending: false });
+      if (inv) setInvoices(inv);
+    }
+    setLoading(false);
+  }
+
+  if (loading) return <div className="flex items-center justify-center py-20 text-muted-foreground">Loading...</div>;
+  if (!customer) return <div className="flex items-center justify-center py-20 text-muted-foreground">Customer not found</div>;
+
+  const totalAmount = invoices.reduce((s, i) => s + (i.amount || 0), 0);
+  const totalPaid = invoices.reduce((s, i) => s + (i.paid_amount || 0), 0);
+  const totalDiscount = invoices.reduce((s, i) => s + (i.discount || 0), 0);
+  const totalDue = invoices.reduce((s, i) => s + (i.due || 0), 0);
+
+  const InfoRow = ({ label, value }: { label: string; value: any }) => (
+    <div className="flex justify-between py-2 border-b last:border-0">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium text-right">{value || "—"}</span>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row gap-4">
+        {/* Left Sidebar */}
+        <div className="w-full sm:w-72 shrink-0 space-y-3">
+          <Card>
+            <CardContent className="pt-6 text-center space-y-3">
+              <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="h-10 w-10 text-primary" />
+              </div>
+              <h3 className="font-semibold text-lg">{customer.customer_name}</h3>
+              <Badge variant={customer.activity_status === "active" ? "default" : "secondary"}>
+                {customer.activity_status}
+              </Badge>
+              <div className="space-y-2 pt-2">
+                <Button variant="outline" size="sm" className="w-full gap-2"><KeyRound className="h-3.5 w-3.5" /> Regenerate Password</Button>
+                <Button variant="outline" size="sm" className="w-full gap-2"><Download className="h-3.5 w-3.5" /> Download Info</Button>
+                <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => navigate("/dashboard/bw-sale/pop")}>
+                  <List className="h-3.5 w-3.5" /> Go To Client List
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Content */}
+        <div className="flex-1 min-w-0">
+          <Button variant="ghost" size="sm" className="mb-3 gap-1" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4" /> Back
+          </Button>
+
+          <Tabs defaultValue="personal">
+            <TabsList className="w-full overflow-x-auto justify-start">
+              <TabsTrigger value="personal">Personal Info</TabsTrigger>
+              <TabsTrigger value="transmission">Transmission</TabsTrigger>
+              <TabsTrigger value="invoices">Invoices</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="personal">
+              <Card>
+                <CardHeader><CardTitle className="text-base">Personal Information</CardTitle></CardHeader>
+                <CardContent>
+                  <InfoRow label="Customer Name" value={customer.customer_name} />
+                  <InfoRow label="Customer Code" value={customer.customer_code} />
+                  <InfoRow label="Contact Person" value={customer.contact_person} />
+                  <InfoRow label="Email" value={customer.email} />
+                  <InfoRow label="Mobile" value={customer.mobile} />
+                  <InfoRow label="Phone" value={customer.phone} />
+                  <InfoRow label="POP" value={pop?.name} />
+                  <InfoRow label="Reference By" value={customer.reference_by} />
+                  <InfoRow label="Address" value={customer.address} />
+                  <InfoRow label="Remarks" value={customer.remarks} />
+                  <InfoRow label="Facebook" value={customer.facebook_url} />
+                  <InfoRow label="Skype" value={customer.skype_id} />
+                  <InfoRow label="Website" value={customer.website} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="transmission">
+              <Card>
+                <CardHeader><CardTitle className="text-base">Transmission Information</CardTitle></CardHeader>
+                <CardContent>
+                  <InfoRow label="NTTN Info" value={customer.nttn_info} />
+                  <InfoRow label="SCR / Link ID" value={customer.scr_link_id} />
+                  <InfoRow label="Activation Date" value={customer.activation_date} />
+                  <InfoRow label="POP Name (Last Mile)" value={customer.pop_name_last_mile} />
+                  <InfoRow label="Username" value={customer.username} />
+                  <div className="py-2 border-b">
+                    <span className="text-sm text-muted-foreground block mb-1">VLAN Info</span>
+                    {Array.isArray(customer.vlan_info) && customer.vlan_info.length > 0 ? (
+                      <div className="space-y-1">{customer.vlan_info.map((v: any, i: number) => (
+                        <span key={i} className="text-sm">VLAN: {v.vlan || "—"} — {v.info || "—"}</span>
+                      ))}</div>
+                    ) : <span className="text-sm">—</span>}
+                  </div>
+                  <div className="py-2">
+                    <span className="text-sm text-muted-foreground block mb-1">IP Addresses</span>
+                    {Array.isArray(customer.ip_addresses) && customer.ip_addresses.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">{customer.ip_addresses.map((ip: string, i: number) => (
+                        <Badge key={i} variant="outline">{ip || "—"}</Badge>
+                      ))}</div>
+                    ) : <span className="text-sm">—</span>}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="invoices">
+              <Card>
+                <CardHeader><CardTitle className="text-base">Invoice Information</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto rounded border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="w-10">SN</TableHead>
+                          <TableHead>Bill No</TableHead>
+                          <TableHead>Bill Month</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead className="text-right">Paid</TableHead>
+                          <TableHead className="text-right">Discount</TableHead>
+                          <TableHead className="text-right">Due</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoices.length === 0 ? (
+                          <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No invoices</TableCell></TableRow>
+                        ) : invoices.map((inv, i) => (
+                          <TableRow key={inv.id}>
+                            <TableCell>{i + 1}</TableCell>
+                            <TableCell>{inv.invoice_no}</TableCell>
+                            <TableCell>{inv.month || "—"}</TableCell>
+                            <TableCell className="text-right">৳{(inv.amount || 0).toLocaleString()}</TableCell>
+                            <TableCell className="text-right">৳{(inv.paid_amount || 0).toLocaleString()}</TableCell>
+                            <TableCell className="text-right">৳{(inv.discount || 0).toLocaleString()}</TableCell>
+                            <TableCell className="text-right">৳{(inv.due || 0).toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Badge variant={inv.status === "paid" ? "default" : "destructive"}>{inv.status}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {invoices.length > 0 && (
+                          <TableRow className="bg-muted/30 font-semibold">
+                            <TableCell colSpan={3} className="text-right">Total:</TableCell>
+                            <TableCell className="text-right">৳{totalAmount.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">৳{totalPaid.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">৳{totalDiscount.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">৳{totalDue.toLocaleString()}</TableCell>
+                            <TableCell />
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </div>
+  );
+}
