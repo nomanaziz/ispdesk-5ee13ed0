@@ -109,6 +109,33 @@ export default function AddClient() {
       };
       const { error } = await supabase.from("clients").insert(payload);
       if (error) throw error;
+
+      // Create PPPoE user on MikroTik if server and credentials are provided
+      if (form.mikrotik_id && form.username && form.password) {
+        try {
+          const { data, error: mkErr } = await supabase.functions.invoke("create-mikrotik-ppp", {
+            body: {
+              mikrotik_id: form.mikrotik_id,
+              username: form.username,
+              password: form.password,
+              profile: form.profile || null,
+              remote_address: form.remote_address || null,
+              disabled: form.billing_status !== "Active",
+            },
+          });
+          if (mkErr) {
+            console.error("MikroTik PPPoE creation failed:", mkErr);
+            toast.error("ক্লায়েন্ট সেভ হয়েছে কিন্তু MikroTik-এ PPPoE user তৈরি ব্যর্থ: " + (mkErr.message || "Unknown error"));
+          } else if (data?.error) {
+            toast.error("ক্লায়েন্ট সেভ হয়েছে কিন্তু MikroTik-এ PPPoE user তৈরি ব্যর্থ: " + data.error);
+          } else {
+            toast.success("MikroTik-এ PPPoE user তৈরি হয়েছে");
+          }
+        } catch (e: any) {
+          console.error("MikroTik PPPoE error:", e);
+          toast.error("MikroTik-এ PPPoE user তৈরি ব্যর্থ: " + e.message);
+        }
+      }
     },
     onSuccess: async () => {
       // If converted from a request, mark it as completed now
