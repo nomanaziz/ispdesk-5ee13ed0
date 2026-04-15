@@ -254,30 +254,15 @@ export default function Users() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["app_users"] });
       setShowNewUserDialog(false);
-      setNewUser({ username: "", password: "", status: "Active", employee_id: "", role_id: "" });
+      setWizardStep(1);
+      setNewUser({ username: "", password: "", confirm_password: "", status: "Active", employee_id: "", role_id: "" });
       toast.success("ইউজার তৈরি হয়েছে");
     },
     onError: (e: any) => toast.error(e.message),
   });
 
-  const updateUser = useMutation({
-    mutationFn: async (user: any) => {
-      const { error } = await supabase.from("app_users").update({
-        username: user.username,
-        password: user.password,
-        status: user.status,
-        employee_id: user.employee_id || null,
-        role_id: user.role_id || null,
-      }).eq("id", user.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["app_users"] });
-      setEditingUser(null);
-      toast.success("ইউজার আপডেট হয়েছে");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+
+
 
   const deleteUser = useMutation({
     mutationFn: async (id: string) => {
