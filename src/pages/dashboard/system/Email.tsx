@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
-import { Save, Mail, Send } from "lucide-react";
+import { Save, Mail, Send, Server, User, Lock, AtSign } from "lucide-react";
 import { toast } from "sonner";
 
 interface EmailConfig {
@@ -34,47 +33,90 @@ export default function Email() {
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">লোড হচ্ছে...</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">ইমেইল সেটআপ</h1>
-          <p className="text-sm text-muted-foreground">SMTP কনফিগারেশন</p>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-primary/10">
+          <Mail className="h-6 w-6 text-primary" />
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => toast.info("টেস্ট ইমেইল পাঠানো হবে (পরে কনফিগার করা হবে)")} className="gap-2">
-            <Send className="h-4 w-4" /> টেস্ট ইমেইল
-          </Button>
-          <Button onClick={() => save(form)} disabled={isSaving} className="gap-2">
-            <Save className="h-4 w-4" /> {isSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
-          </Button>
+        <div>
+          <h1 className="text-xl font-bold text-foreground">ইমেইল সেটআপ</h1>
+          <p className="text-xs text-muted-foreground">সিস্টেম &gt; ইমেইল সেটআপ</p>
         </div>
       </div>
-      <Card className="max-w-2xl">
-        <CardHeader className="bg-primary/10 rounded-t-lg py-3">
-          <CardTitle className="text-base flex items-center gap-2"><Mail className="h-4 w-4" /> SMTP সেটিংস</CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><Label>SMTP হোস্ট</Label><Input value={form.smtp_host} onChange={e => set("smtp_host", e.target.value)} placeholder="smtp.gmail.com" /></div>
-            <div><Label>পোর্ট</Label><Input type="number" value={form.smtp_port} onChange={e => set("smtp_port", parseInt(e.target.value) || 587)} /></div>
-            <div><Label>ইউজারনেম</Label><Input value={form.smtp_username} onChange={e => set("smtp_username", e.target.value)} /></div>
-            <div><Label>পাসওয়ার্ড</Label><Input type="password" value={form.smtp_password} onChange={e => set("smtp_password", e.target.value)} /></div>
-            <div><Label>প্রেরকের ইমেইল</Label><Input value={form.from_email} onChange={e => set("from_email", e.target.value)} placeholder="noreply@company.com" /></div>
-            <div><Label>প্রেরকের নাম</Label><Input value={form.from_name} onChange={e => set("from_name", e.target.value)} placeholder="ISP Company" /></div>
+
+      <div className="border rounded-lg overflow-hidden">
+        <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
+          <Mail className="h-4 w-4" /> SMTP কনফিগারেশন
+        </div>
+        <div className="p-5 space-y-5 bg-card">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label className="text-xs mb-1 block">SMTP হোস্ট</Label>
+              <div className="relative">
+                <Server className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input value={form.smtp_host} onChange={e => set("smtp_host", e.target.value)} className="pl-9" placeholder="smtp.gmail.com" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">পোর্ট</Label>
+              <div className="relative">
+                <Server className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input type="number" value={form.smtp_port} onChange={e => set("smtp_port", parseInt(e.target.value) || 587)} className="pl-9" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">এনক্রিপশন</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10" />
+                <Select value={form.encryption} onValueChange={v => set("encryption", v)}>
+                  <SelectTrigger className="pl-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tls">TLS</SelectItem>
+                    <SelectItem value="ssl">SSL</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">ইউজারনেম</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input value={form.smtp_username} onChange={e => set("smtp_username", e.target.value)} className="pl-9" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">পাসওয়ার্ড</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input type="password" value={form.smtp_password} onChange={e => set("smtp_password", e.target.value)} className="pl-9" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">প্রেরকের ইমেইল</Label>
+              <div className="relative">
+                <AtSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input value={form.from_email} onChange={e => set("from_email", e.target.value)} className="pl-9" placeholder="noreply@company.com" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">প্রেরকের নাম</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input value={form.from_name} onChange={e => set("from_name", e.target.value)} className="pl-9" placeholder="ISP Company" />
+              </div>
+            </div>
           </div>
-          <div>
-            <Label>এনক্রিপশন</Label>
-            <Select value={form.encryption} onValueChange={v => set("encryption", v)}>
-              <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tls">TLS</SelectItem>
-                <SelectItem value="ssl">SSL</SelectItem>
-                <SelectItem value="none">None</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => toast.info("টেস্ট ইমেইল পাঠানো হবে")} className="gap-2">
+              <Send className="h-4 w-4" /> টেস্ট ইমেইল
+            </Button>
+            <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
+              <Save className="h-4 w-4" /> {isSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
