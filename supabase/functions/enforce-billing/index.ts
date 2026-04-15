@@ -6,6 +6,115 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// ── RouterOS API Protocol helpers ──
+
+function encodeLength(len: number): Uint8Array {
+  if (len < 0x80) return new Uint8Array([len]);
+  if (len < 0x4000) return new Uint8Array([((len >> 8) & 0x3f) | 0x80, len & 0xff]);
+  if (len < 0x200000) return new Uint8Array([((len >> 16) & 0x1f) | 0xc0, (len >> 8) & 0xff, len & 0xff]);
+  if (len < 0x10000000) return new Uint8Array([((len >> 24) & 0x0f) | 0xe0, (len >> 16) & 0xff, (len >> 8) & 0xff, len & 0xff]);
+  return new Uint8Array([0xf0, (len >> 24) & 0xff, (len >> 16) & 0xff, (len >> 8) & 0xff, len & 0xff]);
+}
+
+function encodeWord(word: string): Uint8Array {
+  const encoded = new TextEncoder().encode(word);
+  const lenBytes = encodeLength(encoded.length);
+  const result = new Uint8Array(lenBytes.length + encoded.length);
+  result.set(lenBytes);
+  result.set(encoded, lenBytes.length);
+  return result;
+}
+
+async function writeSentence(conn: Deno.TcpConn, words: string[]): Promise<void> {
+  const parts: Uint8Array[] = words.map(encodeWord);
+  parts.push(new Uint8Array([0]));
+  let totalLen = 0;
+  for (const p of parts) totalLen += p.length;
+  const buf = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const p of parts) { buf.set(p, offset); offset += p.length; }
+  let written = 0;
+  while (written < buf.length) {
+    const n = await conn.write(buf.subarray(written));
+    if (n === 0) throw new Error("Connection closed");
+    written += n;
+  }
+}
+
+async function readByte(conn: Deno.TcpConn): Promise<number> {
+  const buf = new Uint8Array(1);
+  const n = await conn.read(buf);
+  if (n === null || n === 0) throw new Error("Connection closed");
+  return buf[0];
+}
+
+async function readBytes(conn: Deno.TcpConn, count: number): Promise<Uint8Array> {
+  const buf = new Uint8Array(count);
+  let offset = 0;
+  while (offset < count) {
+    const n = await conn.read(buf.subarray(offset));
+    if (n === null || n === 0) throw new Error("Connection closed");
+    offset += n;
+  }
+  return buf;
+}
+
+async function readLength(conn: Deno.TcpConn): Promise<number> {
+  const b = await readByte(conn);
+  if ((b & 0x80) === 0) return b;
+  if ((b & 0xc0) === 0x80) { const b2 = await readByte(conn); return ((b & 0x3f) << 8) | b2; }
+  if ((b & 0xe0) === 0xc0) { const r = await readBytes(conn, 2); return ((b & 0x1f) << 16) | (r[0] << 8) | r[1]; }
+  if ((b & 0xf0) === 0xe0) { const r = await readBytes(conn, 3); return ((b & 0x0f) << 24) | (r[0] << 16) | (r[1] << 8) | r[2]; }
+  const r = await readBytes(conn, 4); return (r[0] << 24) | (r[1] << 16) | (r[2] << 8) | r[3];
+}
+
+async function readWord(conn: Deno.TcpConn): Promise<string> {
+  const len = await readLength(conn);
+  if (len === 0) return "";
+  return new TextDecoder().decode(await readBytes(conn, len));
+}
+
+async function readSentence(conn: Deno.TcpConn): Promise<string[]> {
+  const words: string[] = [];
+  while (true) { const w = await readWord(conn); if (w === "") break; words.push(w); }
+  return words;
+}
+
+function parseSentenceAttrs(words: string[]): Record<string, string> {
+  const attrs: Record<string, string> = {};
+  for (const word of words) {
+    if (word.startsWith("=")) {
+      const eqIdx = word.indexOf("=", 1);
+      if (eqIdx !== -1) attrs[word.substring(1, eqIdx)] = word.substring(eqIdx + 1);
+    }
+  }
+  return attrs;
+}
+
+async function mikrotikLogin(conn: Deno.TcpConn, username: string, password: string): Promise<void> {
+  await writeSentence(conn, ["/login", `=name=${username}`, `=password=${password}`]);
+  const reply = await readSentence(conn);
+  if (reply[0] === "!trap") throw new Error(`Login failed: ${parseSentenceAttrs(reply).message || "auth error"}`);
+  if (reply[0] !== "!done") throw new Error(`Unexpected login response: ${reply.join(",")}`);
+}
+
+async function mikrotikCommand(conn: Deno.TcpConn, command: string, params?: Record<string, string>): Promise<Record<string, string>[]> {
+  const words = [command];
+  if (params) for (const [k, v] of Object.entries(params)) words.push(`=${k}=${v}`);
+  await writeSentence(conn, words);
+  const results: Record<string, string>[] = [];
+  while (true) {
+    const sentence = await readSentence(conn);
+    if (sentence.length === 0) continue;
+    if (sentence[0] === "!re") results.push(parseSentenceAttrs(sentence));
+    else if (sentence[0] === "!done") break;
+    else if (sentence[0] === "!trap") throw new Error(`Command error: ${parseSentenceAttrs(sentence).message || "unknown"}`);
+  }
+  return results;
+}
+
+// ── Main handler ──
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -28,7 +137,6 @@ Deno.serve(async (req) => {
       enabled?: boolean;
       cutoff_time?: string;
       grace_days?: number;
-      recheck_interval?: string;
     } | null;
 
     if (!settings?.enabled) {
@@ -39,19 +147,14 @@ Deno.serve(async (req) => {
     }
 
     const graceDays = settings.grace_days ?? 0;
-    const cutoffTime = settings.cutoff_time ?? "00:00"; // HH:mm in Dhaka time
+    const cutoffTime = settings.cutoff_time ?? "00:00";
 
-    // 2. Calculate the effective cutoff datetime in UTC
-    // Dhaka is UTC+6, so we subtract 6 hours from the Dhaka time to get UTC
+    // 2. Calculate cutoff datetime (Dhaka UTC+6)
     const now = new Date();
     const [cutoffHour, cutoffMin] = cutoffTime.split(":").map(Number);
-    
-    // Build today's cutoff in Dhaka time, then convert to UTC
-    const dhakaOffset = 6 * 60; // minutes
     const cutoffToday = new Date(now);
-    cutoffToday.setUTCHours(cutoffHour - 6, cutoffMin, 0, 0); // Dhaka to UTC
+    cutoffToday.setUTCHours(cutoffHour - 6, cutoffMin, 0, 0);
 
-    // If cutoff hasn't passed yet today, don't enforce
     if (now < cutoffToday) {
       return new Response(
         JSON.stringify({ message: "Cutoff time not reached yet", processed: 0 }),
@@ -59,11 +162,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 3. Find expired non-VIP clients whose expire_date + grace has passed
-    // expire_date is stored as a date string (YYYY-MM-DD)
+    // 3. Find expired non-VIP clients
     const graceDate = new Date(now);
     graceDate.setDate(graceDate.getDate() - graceDays);
-    const expireCutoff = graceDate.toISOString().split("T")[0]; // YYYY-MM-DD
+    const expireCutoff = graceDate.toISOString().split("T")[0];
 
     const { data: expiredClients, error: clientsErr } = await supabase
       .from("clients")
@@ -75,9 +177,7 @@ Deno.serve(async (req) => {
       .lte("expire_date", expireCutoff)
       .eq("status", "active");
 
-    if (clientsErr) {
-      throw new Error(`Failed to query clients: ${clientsErr.message}`);
-    }
+    if (clientsErr) throw new Error(`Failed to query clients: ${clientsErr.message}`);
 
     if (!expiredClients || expiredClients.length === 0) {
       return new Response(
@@ -86,119 +186,116 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Get all MikroTik servers for API calls
+    // 4. Get MikroTik servers
     const { data: servers } = await supabase
       .from("mikrotik_devices")
-      .select("id, name, ip_address, api_port, username, password, enabled")
+      .select("id, name, ip_address, api_port, username, password_encrypted, enabled")
       .eq("enabled", true);
 
-    const serverMap = new Map(
-      (servers || []).map((s: any) => [s.id, s])
-    );
+    const serverMap = new Map((servers || []).map((s: any) => [s.id, s]));
+
+    // Group clients by mikrotik_id for connection reuse
+    const clientsByServer = new Map<string, typeof expiredClients>();
+    for (const client of expiredClients) {
+      if (client.mikrotik_status === "offline") continue;
+      if (!client.mikrotik_id) continue;
+      const list = clientsByServer.get(client.mikrotik_id) || [];
+      list.push(client);
+      clientsByServer.set(client.mikrotik_id, list);
+    }
 
     let processed = 0;
     const results: any[] = [];
 
-    for (const client of expiredClients) {
-      // Skip if already offline
-      if (client.mikrotik_status === "offline") {
-        continue;
-      }
+    // Process each server with a single TCP connection
+    for (const [serverId, clients] of clientsByServer) {
+      const server = serverMap.get(serverId);
+      if (!server) continue;
 
-      // Try to disable via MikroTik API if we have server info
-      if (client.mikrotik_id) {
-        const server = serverMap.get(client.mikrotik_id);
-        if (server) {
+      let conn: Deno.TcpConn | null = null;
+      try {
+        conn = await Deno.connect({
+          hostname: server.ip_address,
+          port: server.api_port || 8728,
+        });
+
+        await mikrotikLogin(conn, server.username || "admin", server.password_encrypted || "");
+
+        for (const client of clients) {
           try {
-            // MikroTik REST API (v7+) - find PPP secret by name then disable
-            const authHeader = "Basic " + btoa(`${server.username}:${server.password}`);
-            const apiUrl = `http://${server.ip_address}:${server.api_port || 8728}`;
+            // Find PPP secret by name
+            const secrets = await mikrotikCommand(conn, "/ppp/secret/print", {
+              "?name": client.username || "",
+            });
 
-            // First find the PPP secret by name
-            const findResp = await fetch(
-              `${apiUrl}/rest/ppp/secret?name=${encodeURIComponent(client.username || "")}`,
-              {
-                headers: { Authorization: authHeader },
-              }
-            );
+            if (secrets.length > 0) {
+              const secretId = secrets[0][".id"];
 
-            if (findResp.ok) {
-              const secrets = await findResp.json();
-              if (secrets && secrets.length > 0) {
-                const secretId = secrets[0][".id"];
-                // Disable the PPP secret
-                const disableResp = await fetch(`${apiUrl}/rest/ppp/secret/set`, {
-                  method: "POST",
-                  headers: {
-                    Authorization: authHeader,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    ".id": secretId,
-                    disabled: "yes",
-                  }),
+              // Disable the PPP secret
+              await mikrotikCommand(conn, "/ppp/secret/set", {
+                ".id": secretId,
+                disabled: "yes",
+              });
+
+              // Disconnect active session
+              try {
+                const activeSessions = await mikrotikCommand(conn, "/ppp/active/print", {
+                  "?name": client.username || "",
                 });
-
-                if (disableResp.ok) {
-                  // Also disconnect active session
-                  try {
-                    const activeResp = await fetch(
-                      `${apiUrl}/rest/ppp/active?name=${encodeURIComponent(client.username || "")}`,
-                      { headers: { Authorization: authHeader } }
-                    );
-                    if (activeResp.ok) {
-                      const activeSessions = await activeResp.json();
-                      for (const session of activeSessions) {
-                        await fetch(`${apiUrl}/rest/ppp/active/remove`, {
-                          method: "POST",
-                          headers: {
-                            Authorization: authHeader,
-                            "Content-Type": "application/json",
-                          },
-                          body: JSON.stringify({ ".id": session[".id"] }),
-                        });
-                      }
-                    }
-                  } catch {
-                    // Session disconnect is best-effort
-                  }
+                for (const session of activeSessions) {
+                  await mikrotikCommand(conn, "/ppp/active/remove", {
+                    ".id": session[".id"],
+                  });
                 }
-              }
+              } catch { /* best-effort */ }
             }
-          } catch (err) {
+          } catch (err: any) {
             results.push({
               client_id: client.client_id,
               name: client.name,
               error: `MikroTik API error: ${err.message}`,
             });
           }
+
+          // Update client status in DB
+          await supabase
+            .from("clients")
+            .update({ mikrotik_status: "offline" })
+            .eq("id", client.id);
+
+          processed++;
+          results.push({
+            client_id: client.client_id,
+            name: client.name,
+            status: "disabled",
+          });
         }
+      } catch (err: any) {
+        // Connection-level error — mark all clients from this server
+        for (const client of clients) {
+          results.push({
+            client_id: client.client_id,
+            name: client.name,
+            error: `Server connection error: ${err.message}`,
+          });
+          await supabase.from("clients").update({ mikrotik_status: "offline" }).eq("id", client.id);
+          processed++;
+        }
+      } finally {
+        try { conn?.close(); } catch { /* ignore */ }
       }
-
-      // Update client status in DB regardless
-      await supabase
-        .from("clients")
-        .update({ mikrotik_status: "offline" })
-        .eq("id", client.id);
-
-      processed++;
-      results.push({
-        client_id: client.client_id,
-        name: client.name,
-        status: "disabled",
-      });
     }
 
     return new Response(
       JSON.stringify({
-        message: `Billing enforcement complete`,
+        message: "Billing enforcement complete",
         processed,
         total_expired: expiredClients.length,
         results,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err) {
+  } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
