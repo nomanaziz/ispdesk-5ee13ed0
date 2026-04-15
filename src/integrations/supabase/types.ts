@@ -1517,36 +1517,54 @@ export type Database = {
           client_id: string
           created_at: string
           created_by: string | null
+          execution_time: string | null
           id: string
+          package_id: string | null
+          package_rate: number | null
           previous_info: string | null
+          profile_speed: string | null
+          protocol_type: string | null
           remarks: string | null
           schedule_date: string | null
           schedule_info: string | null
           scheduler_type: string
+          server_id: string | null
           status: string
         }
         Insert: {
           client_id: string
           created_at?: string
           created_by?: string | null
+          execution_time?: string | null
           id?: string
+          package_id?: string | null
+          package_rate?: number | null
           previous_info?: string | null
+          profile_speed?: string | null
+          protocol_type?: string | null
           remarks?: string | null
           schedule_date?: string | null
           schedule_info?: string | null
           scheduler_type?: string
+          server_id?: string | null
           status?: string
         }
         Update: {
           client_id?: string
           created_at?: string
           created_by?: string | null
+          execution_time?: string | null
           id?: string
+          package_id?: string | null
+          package_rate?: number | null
           previous_info?: string | null
+          profile_speed?: string | null
+          protocol_type?: string | null
           remarks?: string | null
           schedule_date?: string | null
           schedule_info?: string | null
           scheduler_type?: string
+          server_id?: string | null
           status?: string
         }
         Relationships: [
@@ -1555,6 +1573,20 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_schedulers_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "isp_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_schedulers_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "mikrotik_devices"
             referencedColumns: ["id"]
           },
         ]
