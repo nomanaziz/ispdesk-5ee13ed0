@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Save, ArrowLeft } from "lucide-react";
 
 export default function AddClient() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const prefill = location.state?.prefill;
+  const requestId = location.state?.request_id;
   const [form, setForm] = useState<Record<string, any>>({
     name: "", gender: "", father_name: "", mother_name: "", nid_number: "",
     date_of_birth: "", occupation: "", remarks: "",
@@ -34,6 +37,25 @@ export default function AddClient() {
     if (key === "same_address" && value) next.permanent_address = prev.address;
     return next;
   });
+
+  // Prefill from NewRequest convert
+  useEffect(() => {
+    if (prefill) {
+      setForm(prev => ({
+        ...prev,
+        name: prefill.name || prev.name,
+        contact: prefill.contact || prev.contact,
+        email: prefill.email || prev.email,
+        address: prefill.address || prev.address,
+        zone_id: prefill.zone_id || prev.zone_id,
+        sub_zone_id: prefill.sub_zone_id || prev.sub_zone_id,
+        connection_type: prefill.connection_type || prev.connection_type,
+        package_id: prefill.package_id || prev.package_id,
+        monthly_bill: prefill.monthly_bill || prev.monthly_bill,
+        client_type: prefill.customer_type || prev.client_type,
+      }));
+    }
+  }, []);
 
   const { data: zones } = useQuery({ queryKey: ["zones-active"], queryFn: async () => { const { data } = await supabase.from("zones").select("id, name").eq("status", "active"); return data || []; } });
   const { data: subZones } = useQuery({ queryKey: ["sub-zones-active"], queryFn: async () => { const { data } = await supabase.from("sub_zones").select("id, name, zone_id").eq("status", "active"); return data || []; } });
@@ -80,7 +102,11 @@ export default function AddClient() {
       const { error } = await supabase.from("clients").insert(payload);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // If converted from a request, mark it as completed now
+      if (requestId) {
+        await supabase.from("client_requests").update({ setup_status: "Completed" } as any).eq("id", requestId);
+      }
       toast.success("ক্লায়েন্ট সফলভাবে যোগ হয়েছে");
       navigate("/dashboard/clients/list");
     },

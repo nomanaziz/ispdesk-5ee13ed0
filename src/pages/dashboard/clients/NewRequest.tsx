@@ -235,13 +235,10 @@ export default function NewRequest() {
     updateStatusMutation.mutate({ id, updates: { physical_connectivity: "Done" } });
   };
 
-  const handleConvertToClient = async (r: any) => {
-    // Mark as completed
-    await supabase.from("client_requests").update({ setup_status: "Completed" }).eq("id", r.id);
-    queryClient.invalidateQueries({ queryKey: ["client-requests"] });
-    // Navigate to AddClient with prefilled data
+  const handleConvertToClient = (r: any) => {
     navigate("/dashboard/clients/add", {
       state: {
+        request_id: r.id,
         prefill: {
           name: r.name, contact: r.contact, email: r.email, address: r.address,
           zone_id: r.zone_id, sub_zone_id: r.subzone_id,
@@ -394,14 +391,38 @@ export default function NewRequest() {
                       <Badge variant="outline" className={`text-[10px] ${phyCfg.className}`}>{phyCfg.label}</Badge>
                     </TableCell>
                     <TableCell className="text-xs">
-                      {assigned.length > 0
-                        ? assigned.map(a => (a as any).employees?.name).filter(Boolean).join(", ")
-                        : <span className="text-muted-foreground">-</span>}
+                      {assigned.length > 0 ? (
+                        <button onClick={() => openAssignDialog(r.id)} className="text-left hover:underline text-primary cursor-pointer">
+                          {assigned.map(a => (a as any).employees?.name).filter(Boolean).join(", ")}
+                        </button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => openAssignDialog(r.id)}>
+                          <UserPlus className="h-3 w-3 mr-1" /> Assign
+                        </Button>
+                      )}
                     </TableCell>
                     <TableCell className="text-xs">{r.schedule_date || "-"}</TableCell>
                     <TableCell className="text-xs">{new Date(r.created_at).toLocaleDateString("bn-BD")}</TableCell>
                     <TableCell className="text-xs">
-                      <Badge variant="outline" className={`text-[10px] ${statusCfg.className}`}>{statusCfg.label}</Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="cursor-pointer">
+                            <Badge variant="outline" className={`text-[10px] ${statusCfg.className}`}>{statusCfg.label}</Badge>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                            <DropdownMenuItem
+                              key={key}
+                              disabled={key === status}
+                              onClick={() => updateStatusMutation.mutate({ id: r.id, updates: { setup_status: key } })}
+                            >
+                              <Badge variant="outline" className={`text-[10px] mr-2 ${cfg.className}`}>{cfg.label}</Badge>
+                              {key === status && "✓"}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{getDuration(r.created_at)}</TableCell>
                     <TableCell className="text-xs">
@@ -412,39 +433,6 @@ export default function NewRequest() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {/* Contact actions — only when Pending */}
-                          {status === "Pending" && (
-                            <>
-                              <DropdownMenuItem onClick={() => handleContact(r.id)}>
-                                <Phone className="h-3.5 w-3.5 mr-2" /> Contact Confirm
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleContact(r.id)}>
-                                <Phone className="h-3.5 w-3.5 mr-2" /> Already Contacted
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                            </>
-                          )}
-
-                          {/* Assign — when Contacted or Processing */}
-                          {(status === "Contacted" || status === "Processing") && (
-                            <>
-                              <DropdownMenuItem onClick={() => openAssignDialog(r.id)}>
-                                <UserPlus className="h-3.5 w-3.5 mr-2" /> Assign Employee
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                            </>
-                          )}
-
-                          {/* Mark Phy Done — when Processing */}
-                          {status === "Processing" && phyStatus !== "Done" && (
-                            <>
-                              <DropdownMenuItem onClick={() => handlePhyDone(r.id)}>
-                                <CheckCircle className="h-3.5 w-3.5 mr-2" /> Mark Phy. Done
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                            </>
-                          )}
-
                           {/* Convert to Client — when Phy Done */}
                           {phyStatus === "Done" && status !== "Completed" && (
                             <>
@@ -454,8 +442,6 @@ export default function NewRequest() {
                               <DropdownMenuSeparator />
                             </>
                           )}
-
-                          {/* Always available */}
                           <DropdownMenuItem onClick={() => openEdit(r)}>
                             <Edit className="h-3.5 w-3.5 mr-2" /> Edit
                           </DropdownMenuItem>
