@@ -1,35 +1,34 @@
 
 
-## Plan: Filter Out Already-Existing Clients from MikroTik Import
+## Plan: Fix IP Validation + Separate Enable/Disable from Connected/Disconnected
 
-### Overview
-Update the Import page to exclude PPP users whose `name` (PPP ID) already exists in the `clients` table (`username` column). This way only un-imported users are shown.
+### Problem
+1. **IP field accepts anything** — "নাফিসা" was accepted as a server IP. Need validation for IP addresses and domain names only.
+2. **Connected status is fake** — the Switch just toggles between online/offline in DB. In reality, enable/disable and connected/disconnected are separate concepts:
+   - **Enabled/Disabled**: admin control — should the system try to connect?
+   - **Connected/Disconnected**: actual reachability — can we communicate with it?
 
-### Approach
-In `src/pages/dashboard/mikrotik/Import.tsx`, after fetching `mikrotik_clients`, also fetch all `username` values from the `clients` table. Then filter out any `mikrotik_clients` row where `c.name` matches an existing client's `username`.
+### Changes
 
-### Changes — `src/pages/dashboard/mikrotik/Import.tsx`
+**1. Database migration** — Add `enabled` boolean column to `mikrotik_devices`
+- Default `true`, not nullable
+- New servers start with `enabled = true`, `status = 'unknown'`
 
-1. Add a new `useQuery` to fetch existing client usernames:
-   ```typescript
-   const { data: existingUsernames = [] } = useQuery({
-     queryKey: ["existing_client_usernames"],
-     queryFn: async () => {
-       const { data } = await supabase.from("clients").select("username");
-       return (data || []).map(c => c.username?.toLowerCase());
-     },
-   });
-   ```
+**2. `src/pages/dashboard/mikrotik/Servers.tsx`** — UI updates:
+- **IP validation**: On submit, validate `ip_address` matches either a valid IPv4 pattern or a domain name (letters, dots, hyphens). Reject random text like "নাফিসা".
+- **Switch → Enable/Disable**: The toggle switch controls the `enabled` column, not `status`. Label: "সক্রিয়" (Active).
+- **Status indicator (read-only)**: Green dot + "Connected" when `status = 'online'`, red dot + "Disconnected" otherwise. No user toggle — this is determined by actual connectivity checks.
+- **New server default status**: `'unknown'` instead of `'online'` — no fake connected state.
+- Add "Enabled" column header to table.
 
-2. Update the filtering logic to exclude matches:
-   ```typescript
-   const filtered = clients
-     .filter((c: any) => !existingUsernames.includes(c.name?.toLowerCase()))
-     .filter((c: any) =>
-       [c.name, c.caller_id, c.server_name].some(v => v?.toLowerCase().includes(search.toLowerCase()))
-     );
-   ```
+**3. Edge function `check-mikrotik-status`** (new) — Real connectivity check:
+- Accepts a device ID, fetches its IP/port/credentials from DB
+- Attempts a TCP connection to `ip:api_port` with timeout
+- Updates `status` to `'online'` or `'offline'` in DB
+- Called when user clicks the Refresh/Sync button on a server row
 
 ### Files
-- 1 file edited: `src/pages/dashboard/mikrotik/Import.tsx`
+- 1 new migration (add `enabled` column)
+- 1 file edited: `src/pages/dashboard/mikrotik/Servers.tsx`
+- 1 new edge function: `supabase/functions/check-mikrotik-status/index.ts`
 
