@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Users, UserX, Banknote, AlertTriangle, FileSpreadsheet, FileText,
   RefreshCw, Download, Search, ChevronLeft, ChevronRight,
-  UserCheck, UserMinus, Clock, TrendingUp
+  UserCheck, UserMinus, Clock, TrendingUp, Receipt
 } from "lucide-react";
 import ClientActionButtons from "@/components/client-actions/ClientActionButtons";
 
