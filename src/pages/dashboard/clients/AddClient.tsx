@@ -186,7 +186,7 @@ export default function AddClient() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Client <span className="text-sm font-normal text-muted-foreground">Add New Client</span></h1>
+        <h1 className="text-2xl font-bold">Client <span className="text-sm font-normal text-muted-foreground">{editMode ? "Edit Client" : "Add New Client"}</span></h1>
       </div>
 
       {/* Personal Information */}
