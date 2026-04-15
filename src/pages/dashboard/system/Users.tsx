@@ -614,7 +614,7 @@ export default function Users() {
                           <TableCell className="text-center">
                             <div className="flex justify-center gap-1">
                               <button
-                                onClick={() => setEditingUser({ ...u, employee_id: u.employee_id || "", role_id: u.role_id || "" })}
+                                onClick={() => navigate(`/dashboard/system/users/${u.id}`)}
                                 className="text-green-600 hover:text-green-800"
                               >
                                 <Eye className="h-4 w-4" />
