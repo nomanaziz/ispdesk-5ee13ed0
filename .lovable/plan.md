@@ -1,39 +1,33 @@
 
 
-## Plan: Fix Duplicate Key Error — Support Edit Mode in AddClient
+## Plan: M.Status কলামে MikroTik PPP Secret স্ট্যাটাস দেখানো
 
-### Problem
-`AddClient.tsx` always runs `supabase.from("clients").insert(payload)` regardless of whether the user is creating a new client or editing an existing one. The Edit button in `ClientActionButtons` passes `{ prefill: client, editMode: true }` via navigation state, but the save mutation ignores `editMode` entirely, causing a duplicate key violation on `clients_client_id_key`.
+### সমস্যা
+বর্তমানে `M.Status` কলামে `mikrotik_status` ফিল্ড দেখায় যা device online/offline status। ইউজার চায় এটি MikroTik PPP secret-এর enabled/disabled status দেখাক:
+- **Enabled** (সবুজ) — MikroTik-এ PPP secret enabled আছে
+- **Disabled** (লাল) — MikroTik-এ PPP secret disabled আছে
+- **Unknown** (ধূসর) — MikroTik ডাটা নেই বা চেক করা হয়নি
 
-### Fix in `src/pages/dashboard/clients/AddClient.tsx`
+### পরিকল্পনা
 
-1. **Read `editMode` from navigation state** — extract `location.state?.editMode` alongside `prefill`
-2. **Store the existing client's `id`** — when in edit mode, preserve `prefill.id` so we can target the update
-3. **Conditional save logic** — in the `saveMutation`:
-   - If `editMode` and `clientId` exist → use `.update(payload).eq("id", clientId)` 
-   - Otherwise → use `.insert(payload)` (current behavior)
-4. **Skip MikroTik PPPoE creation in edit mode** — only create PPPoE user on MikroTik for new clients (or optionally update, but skip for now)
-5. **Update success toast** — show "আপডেট হয়েছে" instead of "যোগ হয়েছে" when editing
+**1. `mikrotik_status` ফিল্ডে সঠিক মান সংরক্ষণ**
+- Client create/update করার সময় `manage-mikrotik-ppp` থেকে response অনুযায়ী `mikrotik_status` সেট করা হবে: `enabled`, `disabled`, বা `unknown`
+- `AddClient.tsx`-এ MikroTik fire-and-forget callback-এ সফল হলে DB-তে `mikrotik_status` আপডেট করা হবে
 
-### Technical Detail
+**2. ClientList.tsx-এ M.Status Badge আপডেট**
+- `enabled` → সবুজ badge
+- `disabled` → লাল badge  
+- অন্যথায় → ধূসর "Unknown" badge
 
-```typescript
-// Line ~23
-const editMode = location.state?.editMode;
-const editClientId = prefill?.id;
+**3. `manage-mikrotik-ppp`-তে status return করা**
+- `enable` action → response-এ `mikrotik_status: "enabled"` 
+- `disable` action → `mikrotik_status: "disabled"`
+- `update` action → disabled param অনুযায়ী status return
 
-// Line ~131 in saveMutation
-if (editMode && editClientId) {
-  const { error } = await supabase.from("clients").update(payload).eq("id", editClientId);
-  if (error) throw error;
-} else {
-  const { error } = await supabase.from("clients").insert(payload);
-  if (error) throw error;
-}
-```
-
-### Files
+### ফাইল
 | File | Change |
 |------|--------|
-| `src/pages/dashboard/clients/AddClient.tsx` | Add edit mode detection, conditional insert/update, appropriate toast messages |
+| `src/pages/dashboard/clients/ClientList.tsx` | M.Status badge-এ enabled/disabled/unknown দেখানো |
+| `src/pages/dashboard/clients/AddClient.tsx` | MikroTik callback-এ সফল হলে `mikrotik_status` DB-তে আপডেট |
+| `supabase/functions/manage-mikrotik-ppp/index.ts` | Response-এ `mikrotik_status` field return করা |
 
