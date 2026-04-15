@@ -168,7 +168,7 @@ export default function NewRequest() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, any> }) => {
-      const { error } = await supabase.from("client_requests").update(updates).eq("id", id);
+      const { error } = await supabase.from("client_requests").update(updates as any).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
