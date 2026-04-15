@@ -88,6 +88,128 @@ export type Database = {
           },
         ]
       }
+      app_role_modules: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          module_group: string
+          module_name: string
+          permission: string
+          role_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          module_group: string
+          module_name: string
+          permission?: string
+          role_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          module_group?: string
+          module_name?: string
+          permission?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_role_modules_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "app_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_roles: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          redirect_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          redirect_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          redirect_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      app_users: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string
+          created_by: string | null
+          employee_id: string | null
+          id: string
+          password: string
+          role_id: string | null
+          status: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string | null
+          id?: string
+          password?: string
+          role_id?: string | null
+          status?: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string | null
+          id?: string
+          password?: string
+          role_id?: string | null
+          status?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_users_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_users_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "app_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assets: {
         Row: {
           assigned_to: string | null
