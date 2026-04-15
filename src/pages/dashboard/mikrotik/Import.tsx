@@ -58,6 +58,26 @@ export default function Import() {
 
   const profiles = [...new Set(clients.map((c: any) => c.profile).filter(Boolean))];
 
+  const syncFromMikroTik = async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-mikrotik-ppp", {
+        body: { device_id: selectedServer !== "all" ? selectedServer : "all" },
+      });
+      if (error) throw error;
+      if (data?.errors?.length) {
+        toast.warning(`${data.synced} জন সিঙ্ক হয়েছে, ${data.errors.length} টি ত্রুটি`);
+      } else {
+        toast.success(`${data?.synced || 0} জন PPP ইউজার সিঙ্ক হয়েছে`);
+      }
+      queryClient.invalidateQueries({ queryKey: ["mikrotik_clients"] });
+    } catch (e: any) {
+      toast.error("সিঙ্ক ব্যর্থ: " + (e.message || "অজানা ত্রুটি"));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const exportToClientList = (client: any) => {
     navigate("/dashboard/clients/add", {
       state: {
