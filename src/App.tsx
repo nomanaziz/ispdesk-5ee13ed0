@@ -246,6 +246,16 @@ import WebsiteMedia from "@/pages/dashboard/website/WebsiteMedia";
 import WebsiteAbout from "@/pages/dashboard/website/WebsiteAbout";
 import WebsiteSettings from "@/pages/dashboard/website/WebsiteSettings";
 
+// Portal
+import { PortalAuthProvider } from "@/contexts/PortalAuthContext";
+import { PortalLayout } from "@/components/PortalLayout";
+import PortalProtectedRoute from "@/components/PortalProtectedRoute";
+import PortalLogin from "@/pages/portal/PortalLogin";
+import PortalDashboard from "@/pages/portal/PortalDashboard";
+import PortalInvoices from "@/pages/portal/PortalInvoices";
+import PortalPurchaseOrders from "@/pages/portal/PortalPurchaseOrders";
+import PortalSupport from "@/pages/portal/PortalSupport";
+
 const queryClient = new QueryClient();
 
 const P = ({ children }: { children: React.ReactNode }) => (
@@ -502,6 +512,13 @@ const App = () => (
               <Route path="/dashboard/website/media" element={<P><WebsiteMedia /></P>} />
               <Route path="/dashboard/website/about" element={<P><WebsiteAbout /></P>} />
               <Route path="/dashboard/website/settings" element={<P><WebsiteSettings /></P>} />
+
+              {/* Portal */}
+              <Route path="/portal/login" element={<PortalAuthProvider><PortalLogin /></PortalAuthProvider>} />
+              <Route path="/portal/dashboard" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalDashboard /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/invoices" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalInvoices /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/purchase-orders" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalPurchaseOrders /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/support" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalSupport /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
 
             </Routes>
           </AuthProvider>
