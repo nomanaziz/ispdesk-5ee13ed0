@@ -162,6 +162,10 @@ export default function Import() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2"><Upload className="h-6 w-6" /> ইমপোর্ট ফ্রম মাইক্রোটিক</h1>
+        <Button onClick={syncFromMikroTik} disabled={isSyncing}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+          {isSyncing ? "সিঙ্ক হচ্ছে..." : "মাইক্রোটিক থেকে সিঙ্ক করুন"}
+        </Button>
       </div>
 
       <Card>
