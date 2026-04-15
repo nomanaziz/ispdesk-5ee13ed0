@@ -1819,10 +1819,15 @@ export type Database = {
       }
       customers: {
         Row: {
+          active_users: number | null
           created_at: string
           email: string | null
+          hosting_type: string | null
           id: string
           isp_name: string
+          last_synced_at: string | null
+          max_users: number | null
+          monthly_bill: number | null
           notes: string | null
           owner_name: string
           package_id: string | null
@@ -1833,10 +1838,15 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_users?: number | null
           created_at?: string
           email?: string | null
+          hosting_type?: string | null
           id?: string
           isp_name: string
+          last_synced_at?: string | null
+          max_users?: number | null
+          monthly_bill?: number | null
           notes?: string | null
           owner_name: string
           package_id?: string | null
@@ -1847,10 +1857,15 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_users?: number | null
           created_at?: string
           email?: string | null
+          hosting_type?: string | null
           id?: string
           isp_name?: string
+          last_synced_at?: string | null
+          max_users?: number | null
+          monthly_bill?: number | null
           notes?: string | null
           owner_name?: string
           package_id?: string | null
@@ -3296,6 +3311,7 @@ export type Database = {
         Row: {
           created_at: string | null
           features: string[] | null
+          hosting_type: string | null
           id: string
           is_active: boolean | null
           is_popular: boolean | null
@@ -3304,10 +3320,13 @@ export type Database = {
           price: number
           price_label: string
           sort_order: number | null
+          user_limit: number | null
+          yearly_price: number | null
         }
         Insert: {
           created_at?: string | null
           features?: string[] | null
+          hosting_type?: string | null
           id?: string
           is_active?: boolean | null
           is_popular?: boolean | null
@@ -3316,10 +3335,13 @@ export type Database = {
           price?: number
           price_label?: string
           sort_order?: number | null
+          user_limit?: number | null
+          yearly_price?: number | null
         }
         Update: {
           created_at?: string | null
           features?: string[] | null
+          hosting_type?: string | null
           id?: string
           is_active?: boolean | null
           is_popular?: boolean | null
@@ -3328,6 +3350,8 @@ export type Database = {
           price?: number
           price_label?: string
           sort_order?: number | null
+          user_limit?: number | null
+          yearly_price?: number | null
         }
         Relationships: []
       }
