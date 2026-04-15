@@ -1,55 +1,36 @@
 
 
-## Plan: Revamp Client List & Billing List Actions
+## Plan: Fix MikroTik Import Flow
 
-### What's Broken
-- Client list action dropdown only has Edit/SMS/View — none functional
-- Billing list action buttons (Edit, Receipt) are non-functional
-- Missing: Delete, Status Scheduler, Package Change Scheduler
-- SMS doesn't send anything
+### Problem 1: "Export to Client List" doesn't prefill MikroTik fields
+The Import page sends `username`, `password`, `server_name`, `mikrotik_id`, `profile`, `mac_address` via `navigate()` state, but `AddClient.tsx` only reads `name`, `contact`, `email`, `address`, `zone_id`, `connection_type`, `package_id`, `monthly_bill`, `customer_type` in its `useEffect`. The MikroTik-specific fields are ignored.
 
-### Changes
+**Fix in `AddClient.tsx`**: Add these fields to the prefill `useEffect`:
+- `username`, `password`, `profile`, `mikrotik_id`, `remote_address`, `server_name`, `mac_address`
+- Also auto-trigger `fetch-mikrotik-profiles` when `mikrotik_id` is prefilled so the profile dropdown populates
 
-**1. `src/pages/dashboard/clients/ClientList.tsx` — Full action bar per row**
+### Problem 2: Bulk Import should auto-load unmatched MikroTik users
+Currently BulkImport only works via Excel upload. It should instead:
 
-Replace the 3-dot dropdown with inline icon buttons (matching reference screenshot):
-- **Delete** (Trash icon) — soft delete or remove client with confirmation
-- **Status Scheduler** (calendar icon) — opens dialog matching screenshot: Client Status dropdown (Active/12:30AM, Inactive/11:30PM, Personal/12:30AM, Free/12:30AM, Left/11:30PM), Remarks/Note textarea, Execution Date picker. Inserts into `client_schedulers` with `scheduler_type = 'status_scheduler'`
-- **Package Change Scheduler** (package icon) — opens dialog matching screenshot: Server select, Protocol Type (PPPoE), Profile Speed (from MikroTik fetch), Package select, Package Rate, Remarks, Execution Date. Inserts into `client_schedulers` with `scheduler_type = 'package_scheduler'`
-- **SMS** (message icon) — sends SMS with PPP ID and password (default template)
-- **Edit** (edit icon) — navigates to AddClient page with prefilled data for editing
-- **View** (eye icon) — navigates to client profile
+**Redesign `BulkImport.tsx`**:
+1. On page load, query `mikrotik_clients` where `exported = false` and filter out any whose `name` (username) already exists in `clients.username`
+2. Display these unmatched users in the editable table with auto-populated fields:
+   - `C.Code` = MikroTik username
+   - `UserName` = MikroTik username  
+   - `Password` = MikroTik password
+   - `Server` = MikroTik device name
+   - `Profile` = MikroTik profile
+   - `R.Address` = MikroTik remote_address
+   - `Prot.Type` = service (pppoe/dhcp)
+   - `M.Bill` = auto-fill from matching `isp_packages` by profile (500 default)
+   - `Package` = matched package name from profile
+3. Keep the Excel upload as an alternative option
+4. After successful import, mark `mikrotik_clients` records as `exported = true`
 
-**2. `src/pages/dashboard/billing/BillingList.tsx` — Same action buttons**
+### Files to Change
 
-Same icon bar but SMS sends billing info (client code, due amount, last billing date) instead of credentials.
-
-**3. `client_schedulers` table — Add columns for package scheduler data**
-
-Migration to add: `server_id UUID`, `protocol_type TEXT`, `profile_speed TEXT`, `package_id UUID`, `package_rate NUMERIC` to support the Package Change Scheduler form fields.
-
-**4. Status Scheduler Dialog (shared component or inline)**
-
-Fields per screenshot:
-- CLIENT STATUS * — Select with options: Active/12:30AM, Inactive/11:30PM, Personal/12:30AM, Free/12:30AM, Left/11:30PM (status + time of execution)
-- REMARKS/NOTE * — Textarea
-- EXECUTION DATE * — Date picker
-
-**5. Package Change Scheduler Dialog**
-
-Fields per screenshot:
-- SERVER * — Select from `mikrotik_devices`
-- PROTOCOL TYPE * — Select (PPPoE default)
-- PROFILE SPEED * — Fetched from MikroTik via `fetch-mikrotik-profiles`
-- PACKAGE * — Select from `isp_packages`
-- PACKAGE RATE * — Auto-filled from package, editable
-- REMARKS/NOTE — Textarea
-- EXECUTION DATE * — Date picker
-
-### Files
 | File | Change |
 |------|--------|
-| `src/pages/dashboard/clients/ClientList.tsx` | Replace dropdown with icon action buttons, add Status & Package scheduler dialogs, SMS send, Delete, Edit navigation |
-| `src/pages/dashboard/billing/BillingList.tsx` | Same action buttons, SMS sends billing info |
-| DB Migration | Add `server_id`, `protocol_type`, `profile_speed`, `package_id`, `package_rate` to `client_schedulers` |
+| `src/pages/dashboard/clients/AddClient.tsx` | Add MikroTik fields (`username`, `password`, `profile`, `mikrotik_id`, `remote_address`) to prefill useEffect; auto-fetch profiles when mikrotik_id prefilled |
+| `src/pages/dashboard/mikrotik/BulkImport.tsx` | Auto-load unmatched MikroTik users on mount, pre-populate fields, mark exported after import |
 
