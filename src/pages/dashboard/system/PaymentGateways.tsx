@@ -4,13 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
-import { Save, CreditCard, Globe, Key, User } from "lucide-react";
+import { Save, CreditCard, Globe, Key, User, Tag } from "lucide-react";
 
 interface Gateway {
   name: string;
   type: string;
   api_key: string;
   secret_key: string;
+  brand_key?: string;
   account: string;
   active: boolean;
   show_on_website: boolean;
@@ -22,6 +23,7 @@ const defaultGateways: Gateway[] = [
   { name: "Nagad", type: "Mobile Banking", api_key: "", secret_key: "", account: "", active: false, show_on_website: false, color: "#F6921E" },
   { name: "Rocket", type: "Mobile Banking", api_key: "", secret_key: "", account: "", active: false, show_on_website: false, color: "#8B2F8B" },
   { name: "SSLCommerz", type: "Payment Gateway", api_key: "", secret_key: "", account: "", active: false, show_on_website: false, color: "#2E7D32" },
+  { name: "RechargeServer", type: "Payment Gateway", api_key: "", secret_key: "", brand_key: "", account: "", active: false, show_on_website: true, color: "#6366F1" },
   { name: "Bank Transfer", type: "Bank", api_key: "", secret_key: "", account: "", active: false, show_on_website: true, color: "#1E88E5" },
 ];
 
@@ -30,7 +32,14 @@ export default function PaymentGateways() {
   const [gateways, setGateways] = useState<Gateway[]>(defaultGateways);
 
   useEffect(() => {
-    if (value && Array.isArray(value) && value.length > 0) setGateways(value);
+    if (value && Array.isArray(value) && value.length > 0) {
+      // Merge with defaults to ensure new gateways (like RechargeServer) are included
+      const merged = defaultGateways.map(def => {
+        const existing = (value as Gateway[]).find(g => g.name === def.name);
+        return existing ? { ...def, ...existing } : def;
+      });
+      setGateways(merged);
+    }
   }, [value]);
 
   const update = (idx: number, k: keyof Gateway, v: any) => {
@@ -81,7 +90,7 @@ export default function PaymentGateways() {
               </div>
               {gw.active && (
                 <div className="px-4 py-3 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className={`grid grid-cols-1 gap-3 ${gw.name === "RechargeServer" ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
                     <div>
                       <Label className="text-xs mb-1 block">একাউন্ট / মার্চেন্ট</Label>
                       <div className="relative">
@@ -103,6 +112,15 @@ export default function PaymentGateways() {
                         <Input type="password" value={gw.secret_key} onChange={e => update(idx, "secret_key", e.target.value)} className="pl-9" />
                       </div>
                     </div>
+                    {gw.name === "RechargeServer" && (
+                      <div>
+                        <Label className="text-xs mb-1 block">Brand Key</Label>
+                        <div className="relative">
+                          <Tag className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input value={gw.brand_key || ""} onChange={e => update(idx, "brand_key", e.target.value)} className="pl-9" placeholder="Brand Key" />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
