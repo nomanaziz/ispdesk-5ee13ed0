@@ -246,6 +246,16 @@ import WebsiteMedia from "@/pages/dashboard/website/WebsiteMedia";
 import WebsiteAbout from "@/pages/dashboard/website/WebsiteAbout";
 import WebsiteSettings from "@/pages/dashboard/website/WebsiteSettings";
 
+// Portal
+import { PortalAuthProvider } from "@/contexts/PortalAuthContext";
+import { PortalLayout } from "@/components/PortalLayout";
+import PortalProtectedRoute from "@/components/PortalProtectedRoute";
+import PortalLogin from "@/pages/portal/PortalLogin";
+import PortalDashboard from "@/pages/portal/PortalDashboard";
+import PortalInvoices from "@/pages/portal/PortalInvoices";
+import PortalPurchaseOrders from "@/pages/portal/PortalPurchaseOrders";
+import PortalSupport from "@/pages/portal/PortalSupport";
+
 const queryClient = new QueryClient();
 
 const P = ({ children }: { children: React.ReactNode }) => (
