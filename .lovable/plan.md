@@ -1,46 +1,30 @@
 
 
-## Plan: Packages & Tariff Restructure — "রিসেলার" → "POP"
+## Plan: Billing Type Configuration — Date-to-Date vs Month-to-Month
 
 ### Overview
-1. Add "pop" to package types so POP packages are managed from the main Packages page
-2. Remove the separate BranchPackages page (it's redundant)
-3. Rename "রিসেলার" → "POP" across the sidebar and related pages
-4. Add `min_activation_days` column to `reseller_tariffs` table
-5. Restructure the Tariff form: Server → Protocol → Profile (from MikroTik), plus min activation days field
+ISP billing has two modes:
+- **Month-to-Month**: All active users get bills generated on the 1st of every month (midnight 12:00-12:30 idle, then auto-generate)
+- **Date-to-Date**: Each user's bill generates on the anniversary of their connection date
 
-### Database Migration
-- Add `min_activation_days integer default 1` to `reseller_tariffs`
+This setting will be added to the existing **Periods** page (`System > পিরিয়ড সেটআপ`).
 
-### File Changes
+### Changes
 
-**1. `src/pages/dashboard/config/Packages.tsx`**
-- Add `{ value: "pop", label: "POP", color: "bg-indigo-500" }` to PACKAGE_TYPES array
-- Everything else stays the same — POP packages are now managed here
+**1. `src/pages/dashboard/system/Periods.tsx`**
+- Add a new field `billing_mode` to the `PeriodsConfig` interface with values: `"month_to_month"` | `"date_to_date"`
+- Default: `"month_to_month"`
+- Place it as the **first field** in the form, before cycle type
+- When `billing_mode = "month_to_month"`: show the existing "বিলিং দিন" field (which day of month to generate bills)
+- When `billing_mode = "date_to_date"`: hide "বিলিং দিন" (since each client's connection date determines their billing date)
+- Add a small helper text under the select explaining each mode:
+  - Month-to-Month: "সকল ক্লায়েন্টের বিল একই তারিখে জেনারেট হবে"
+  - Date-to-Date: "প্রতিটি ক্লায়েন্টের কানেকশন তারিখ অনুযায়ী বিল জেনারেট হবে"
 
-**2. `src/components/AppSidebar.tsx`**
-- Rename sidebar group "MAC Reseller" → "POP Management"
-- Remove the "প্যাকেজ" menu item (url: `/dashboard/branches/packages`)
-- Rename "রিসেলার ফান্ডিং" → "POP ফান্ডিং"
-
-**3. `src/App.tsx`**
-- Remove the BranchPackages import and route (`/dashboard/branches/packages`)
-
-**4. `src/pages/dashboard/branches/Tariff.tsx`**
-- Add `min_activation_days` to form (default 1)
-- Filter packages to only show `package_type = 'pop'` in the select
-- Reorder form fields: Package → Selling Rate → Activation Days → Min Activation Days → Server → Protocol Type → MikroTik Profile
-- Replace "রিসেলারদের জন্য" → "POP-এর জন্য" in subtitle
-- Replace the `is_daily_recharge` toggle with the `min_activation_days` numeric input
-
-**5. Other files with "রিসেলার" text** (AddManager, Funding, PgwPayments, PopNotice, Managers)
-- Replace "রিসেলার" with "POP" in UI labels throughout
-
-**6. Delete `src/pages/dashboard/branches/BranchPackages.tsx`**
+No database migration needed — this is stored as JSON in `system_settings` via the existing `useSystemSetting` hook.
 
 ### Technical Details
-- 1 migration: add column `min_activation_days` to `reseller_tariffs`
-- ~7 files edited, 1 file deleted
-- Tariff's package select will filter by `package_type = 'pop'`
-- `min_activation_days` must be ≤ `activation_days` (validated in UI)
+- Only 1 file edited: `Periods.tsx`
+- The `billing_mode` value will be read later by the auto-billing cron job to determine generation logic
+- Grace period and cycle type fields remain visible in both modes
 
