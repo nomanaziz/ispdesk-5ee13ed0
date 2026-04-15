@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,11 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Settings, Pencil, Trash2 } from "lucide-react";
+import { Plus, Settings, Pencil, Trash2, RefreshCw } from "lucide-react";
 
 interface TariffForm {
   name: string;
@@ -33,6 +32,8 @@ export default function Tariff() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<TariffForm>(defaultForm);
   const [editId, setEditId] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<{ name: string; "rate-limit": string }[]>([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
 
   const { data: tariffs, isLoading } = useQuery({
     queryKey: ["reseller-tariffs"],
@@ -62,6 +63,45 @@ export default function Tariff() {
     },
   });
 
+  // Fetch MikroTik profiles when server changes
+  const fetchProfiles = async (deviceId: string) => {
+    if (!deviceId) {
+      setProfiles([]);
+      return;
+    }
+    setLoadingProfiles(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-mikrotik-profiles", {
+        body: { device_id: deviceId },
+      });
+      if (error) throw error;
+      if (data?.profiles) {
+        setProfiles(data.profiles);
+      } else {
+        setProfiles([]);
+        if (data?.error) toast.error(data.error);
+      }
+    } catch (e: any) {
+      toast.error("প্রোফাইল লোড ব্যর্থ: " + (e.message || "Unknown error"));
+      setProfiles([]);
+    } finally {
+      setLoadingProfiles(false);
+    }
+  };
+
+  // When server selection changes in form
+  const handleServerChange = (serverId: string) => {
+    setForm({ ...form, mikrotik_server_id: serverId, mikrotik_profile: "" });
+    fetchProfiles(serverId);
+  };
+
+  // Load profiles when editing an existing tariff
+  useEffect(() => {
+    if (open && form.mikrotik_server_id) {
+      fetchProfiles(form.mikrotik_server_id);
+    }
+  }, [open]);
+
   const save = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -89,6 +129,7 @@ export default function Tariff() {
       setOpen(false);
       setForm(defaultForm);
       setEditId(null);
+      setProfiles([]);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -122,7 +163,7 @@ export default function Tariff() {
           <h1 className="text-2xl font-bold text-foreground">ট্যারিফ কনফিগারেশন</h1>
           <p className="text-sm text-muted-foreground">POP-এর জন্য প্যাকেজ রেট ও সেটিংস</p>
         </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setForm(defaultForm); setEditId(null); } }}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setForm(defaultForm); setEditId(null); setProfiles([]); } }}>
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-1" /> ট্যারিফ যোগ করুন</Button>
           </DialogTrigger>
@@ -169,7 +210,7 @@ export default function Tariff() {
               </div>
               <div>
                 <Label>MikroTik সার্ভার</Label>
-                <Select value={form.mikrotik_server_id} onValueChange={(v) => setForm({ ...form, mikrotik_server_id: v })}>
+                <Select value={form.mikrotik_server_id} onValueChange={handleServerChange}>
                   <SelectTrigger><SelectValue placeholder="সার্ভার বাছাই করুন" /></SelectTrigger>
                   <SelectContent>
                     {servers?.map((s) => (
@@ -190,8 +231,40 @@ export default function Tariff() {
                 </Select>
               </div>
               <div>
-                <Label>MikroTik প্রোফাইল</Label>
-                <Input value={form.mikrotik_profile} onChange={(e) => setForm({ ...form, mikrotik_profile: e.target.value })} placeholder="e.g. 10Mbps" />
+                <Label className="flex items-center gap-2">
+                  MikroTik প্রোফাইল
+                  {form.mikrotik_server_id && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={() => fetchProfiles(form.mikrotik_server_id)}
+                      disabled={loadingProfiles}
+                    >
+                      <RefreshCw className={`h-3 w-3 ${loadingProfiles ? "animate-spin" : ""}`} />
+                    </Button>
+                  )}
+                </Label>
+                {profiles.length > 0 ? (
+                  <Select value={form.mikrotik_profile} onValueChange={(v) => setForm({ ...form, mikrotik_profile: v })}>
+                    <SelectTrigger><SelectValue placeholder="প্রোফাইল বাছাই করুন" /></SelectTrigger>
+                    <SelectContent>
+                      {profiles.map((p) => (
+                        <SelectItem key={p.name} value={p.name}>
+                          {p.name} {p["rate-limit"] ? `(${p["rate-limit"]})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={form.mikrotik_profile}
+                    onChange={(e) => setForm({ ...form, mikrotik_profile: e.target.value })}
+                    placeholder={loadingProfiles ? "লোড হচ্ছে..." : form.mikrotik_server_id ? "সার্ভার থেকে সিঙ্ক করুন" : "আগে সার্ভার সিলেক্ট করুন"}
+                    disabled={loadingProfiles}
+                  />
+                )}
               </div>
               <Button className="w-full" onClick={() => save.mutate()} disabled={!form.name || save.isPending}>
                 {save.isPending ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
