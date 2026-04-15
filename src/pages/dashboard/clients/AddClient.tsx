@@ -22,6 +22,8 @@ export default function AddClient() {
   const location = useLocation();
   const prefill = location.state?.prefill;
   const requestId = location.state?.request_id;
+  const editMode = location.state?.editMode === true;
+  const editClientId = prefill?.id;
   const [form, setForm] = useState<Record<string, any>>({
     name: "", gender: "", father_name: "", mother_name: "", nid_number: "",
     date_of_birth: "", occupation: "", remarks: "",
