@@ -234,22 +234,23 @@ export default function Users() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-primary/10"><UsersIcon className="h-6 w-6 text-primary" /></div>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">App Users <span className="text-sm font-normal text-muted-foreground">All Users of Application</span></h1>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary/10"><UsersIcon className="h-5 w-5 text-primary" /></div>
+          <div>
+            <h1 className="text-lg font-bold text-foreground">App Users</h1>
+            <p className="text-xs text-muted-foreground">All Users of Application</p>
+          </div>
         </div>
-        <div className="ml-auto text-xs text-muted-foreground">সিস্টেম &gt; App Users</div>
+        <div className="sm:ml-auto text-xs text-muted-foreground">সিস্টেম &gt; App Users</div>
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <div className="flex items-center justify-between">
-          <TabsList className="bg-muted/50">
-            <TabsTrigger value="users" className="gap-1.5 text-xs"><UsersIcon className="h-3.5 w-3.5" /> Application Users</TabsTrigger>
-            <TabsTrigger value="roles" className="gap-1.5 text-xs"><Shield className="h-3.5 w-3.5" /> User Roles(Groups)</TabsTrigger>
-            <TabsTrigger value="permissions" className="gap-1.5 text-xs"><Lock className="h-3.5 w-3.5" /> Role Modules(Permissions)</TabsTrigger>
-          </TabsList>
-        </div>
+        <TabsList className="bg-muted/50 w-full sm:w-auto flex overflow-x-auto">
+          <TabsTrigger value="users" className="gap-1.5 text-xs flex-1 sm:flex-none"><UsersIcon className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Application</span> Users</TabsTrigger>
+          <TabsTrigger value="roles" className="gap-1.5 text-xs flex-1 sm:flex-none"><Shield className="h-3.5 w-3.5" /> Roles</TabsTrigger>
+          <TabsTrigger value="permissions" className="gap-1.5 text-xs flex-1 sm:flex-none"><Lock className="h-3.5 w-3.5" /> Permissions</TabsTrigger>
+        </TabsList>
 
         {/* ======== APPLICATION USERS TAB ======== */}
         <TabsContent value="users">
