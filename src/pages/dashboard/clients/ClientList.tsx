@@ -8,12 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Search, FileSpreadsheet, FileText, Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, MoreVertical, Edit, MessageSquare, CalendarClock, Crown } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Search, FileSpreadsheet, FileText, Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, CalendarClock, Crown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { format, parseISO, differenceInDays, isAfter, isBefore } from "date-fns";
+import { format, parseISO, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import ClientActionButtons from "@/components/client-actions/ClientActionButtons";
 
 export default function ClientList() {
   const [search, setSearch] = useState("");
@@ -243,16 +243,7 @@ export default function ClientList() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="icon" variant="ghost" className="h-7 w-7"><MoreVertical className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem><Edit className="h-3 w-3 mr-2" /> Edit</DropdownMenuItem>
-                          <DropdownMenuItem><MessageSquare className="h-3 w-3 mr-2" /> SMS</DropdownMenuItem>
-                          <DropdownMenuItem><Eye className="h-3 w-3 mr-2" /> View</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <ClientActionButtons client={c} mode="client" invalidateKey="clients-list" />
                     </TableCell>
                   </TableRow>
                 );
