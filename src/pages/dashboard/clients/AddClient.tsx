@@ -134,10 +134,26 @@ export default function AddClient() {
         const { error } = await supabase.from("clients").update(payload).eq("id", editClientId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("clients").insert(payload);
+        const { data: insertedClient, error } = await supabase.from("clients").insert(payload).select("id").single();
         if (error) throw error;
 
-        // Create PPPoE user on MikroTik only for new clients (fire-and-forget to avoid page hang)
+        // Auto-generate billing record for current month
+        if (insertedClient?.id) {
+          const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`;
+          const billId = `BILL-${form.client_id}-${currentMonth.slice(0, 7)}`;
+          await supabase.from("billing").insert({
+            bill_id: billId,
+            client_id: insertedClient.id,
+            month: currentMonth,
+            amount: form.monthly_bill || 0,
+            due: form.monthly_bill || 0,
+            status: "unpaid",
+            generated: true,
+            branch_id: form.branch_id || null,
+          });
+        }
+
+        // Create PPPoE user on MikroTik only for new clients (fire-and-forget)
         if (form.mikrotik_id && form.username && form.password) {
           supabase.functions.invoke("create-mikrotik-ppp", {
             body: {
