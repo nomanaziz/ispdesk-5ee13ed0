@@ -1,0 +1,1 @@
+ALTER TABLE public.mikrotik_clients ADD CONSTRAINT mikrotik_clients_name_mikrotik_id_unique UNIQUE (name, mikrotik_id);
