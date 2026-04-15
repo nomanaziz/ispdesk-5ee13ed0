@@ -27,15 +27,18 @@ export default function AddClient() {
     date_of_birth: "", occupation: "", remarks: "",
     latitude: "", longitude: "", contact: "", phone_number: "", email: "",
     address: "", permanent_address: "", road_number: "", house_number: "",
-    mikrotik_id: "", protocol_type: "", zone_id: "", sub_zone_id: "", box_id: "",
+    mikrotik_id: "", protocol_type: "PPPoE", zone_id: "", sub_zone_id: "", box_id: "",
     connection_type: "", cable_length: "", fiber_code: "", core_count: "",
     core_color: "", device_type: "", device_serial: "", vendor: "", purchase_date: "",
-    client_id: "", package_id: "", profile: "", client_type: "", billing_status: "Active",
-    username: "", remote_address: "", password: "", joining_date: "",
+    client_id: "", package_id: "", profile: "", client_type: "Home", billing_status: "Active",
+    username: "", remote_address: "", password: "", joining_date: format(new Date(), "yyyy-MM-dd"),
     monthly_bill: 0, billing_start_month: "", expire_date: "",
     reference_by: "", is_vip: false, connected_by: "", affiliator_id: "",
     same_address: false,
   });
+
+  const [mikrotikProfiles, setMikrotikProfiles] = useState<{ name: string; rateLimit?: string }[]>([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
 
   const setField = (key: string, value: any) => setForm(prev => {
     const next = { ...prev, [key]: value };
@@ -149,7 +152,22 @@ export default function AddClient() {
           </div>
           <div>
             <Label>Occupation</Label>
-            <Input value={form.occupation} onChange={e => setField("occupation", e.target.value)} />
+            <Select value={form.occupation} onValueChange={v => setField("occupation", v)}>
+              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Student">Student</SelectItem>
+                <SelectItem value="Private Job Holder">Private Job Holder</SelectItem>
+                <SelectItem value="Govt Job Holder">Govt Job Holder</SelectItem>
+                <SelectItem value="Business">Business</SelectItem>
+                <SelectItem value="Housewife">Housewife</SelectItem>
+                <SelectItem value="Teacher">Teacher</SelectItem>
+                <SelectItem value="Doctor">Doctor</SelectItem>
+                <SelectItem value="Engineer">Engineer</SelectItem>
+                <SelectItem value="Farmer">Farmer</SelectItem>
+                <SelectItem value="Retired">Retired</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>NID/Birth Certificate No *</Label>
@@ -262,7 +280,19 @@ export default function AddClient() {
         <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <Label>Server *</Label>
-            <Select value={form.mikrotik_id} onValueChange={v => setField("mikrotik_id", v)}>
+            <Select value={form.mikrotik_id} onValueChange={v => {
+              setField("mikrotik_id", v);
+              setField("profile", "");
+              // Fetch PPP profiles from this server
+              setLoadingProfiles(true);
+              supabase.functions.invoke("fetch-mikrotik-profiles", { body: { device_id: v } })
+                .then(({ data }) => {
+                  if (data?.profiles) setMikrotikProfiles(data.profiles);
+                  else setMikrotikProfiles([]);
+                })
+                .catch(() => setMikrotikProfiles([]))
+                .finally(() => setLoadingProfiles(false));
+            }}>
               <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
               <SelectContent>
                 {mikrotiks?.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
@@ -388,7 +418,14 @@ export default function AddClient() {
           </div>
           <div>
             <Label>Profile</Label>
-            <Input value={form.profile} onChange={e => setField("profile", e.target.value)} />
+            <Select value={form.profile} onValueChange={v => setField("profile", v)} disabled={loadingProfiles}>
+              <SelectTrigger><SelectValue placeholder={loadingProfiles ? "Loading..." : mikrotikProfiles.length > 0 ? "Select Profile" : "Select Server First"} /></SelectTrigger>
+              <SelectContent>
+                {mikrotikProfiles.map(p => (
+                  <SelectItem key={p.name} value={p.name}>{p.name}{p.rateLimit ? ` (${p.rateLimit})` : ""}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>Client Type *</Label>
@@ -405,8 +442,6 @@ export default function AddClient() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {billingStatuses?.map((bs: any) => <SelectItem key={bs.id} value={bs.name}>{bs.name}</SelectItem>)}
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Free">Free</SelectItem>
               </SelectContent>
             </Select>
           </div>
