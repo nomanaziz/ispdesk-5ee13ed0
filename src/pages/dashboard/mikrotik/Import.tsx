@@ -23,6 +23,7 @@ export default function Import() {
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const { data: servers = [] } = useQuery({
     queryKey: ["mikrotik_devices_active"],
