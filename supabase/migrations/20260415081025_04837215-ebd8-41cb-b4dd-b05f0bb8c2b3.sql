@@ -1,0 +1,1 @@
+ALTER TABLE public.reseller_tariffs ADD COLUMN min_activation_days integer NOT NULL DEFAULT 1;
