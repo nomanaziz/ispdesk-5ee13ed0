@@ -1,4 +1,4 @@
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { Navigate } from "react-router-dom";
 export default function Roles() {
-  return <PlaceholderPage title="Roles" module="System — ইউজার রোল ম্যানেজমেন্ট" />;
+  return <Navigate to="/dashboard/system/users" replace />;
 }
