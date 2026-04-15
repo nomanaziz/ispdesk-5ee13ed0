@@ -1,59 +1,40 @@
 
 
-## Plan: New Client Request Workflow
+## Plan: Login System Cleanup — Remove Signup & Portal PPP Login
 
-### Workflow States
-```text
-Pending → Contacted → Processing (employees assigned) → Phy. Done → Completed (convert to client)
-```
+### Overview
+1. Remove registration/signup from admin login page (Login.tsx)
+2. Update portal-auth edge function to authenticate clients using **Client Code or PPP Username** + **PPP Password** from `clients` table (in addition to existing `bw_sale_customers`)
+3. Update portal login UI labels accordingly
 
-1. **Pending**: New request arrives, status = "Pending"
-2. **Contacted**: Admin confirms contact → status = "Contacted" (or "Already Contacted" if client called)
-3. **Assign Employees**: Admin assigns 1+ employees via a dialog. Once assigned → status = "Processing", physical_connectivity = "In Progress"
-4. **Physical Done**: Field employees mark physical_connectivity = "Done"
-5. **Completed**: Admin clicks "Convert to Client" → navigates to AddClient with prefilled data, sets setup_status = "Completed"
+### Changes
 
-### Database Changes (1 migration)
+**1. `src/pages/Login.tsx`**
+- Remove all signup-related state (`fullName`, `isSignUp`)
+- Remove the "Create Account" / "Don't have an account?" toggle
+- Remove `signUp` import from `useAuth`
+- Keep only email + password login form
+- Clean up the UI to be login-only
 
-**New table: `client_request_assignments`**
-- `id` uuid PK
-- `request_id` uuid FK → client_requests
-- `employee_id` uuid FK → employees
-- `assigned_at` timestamptz default now()
+**2. `src/contexts/AuthContext.tsx`**
+- Remove `signUp` method from the context interface and provider (optional — can keep internally but not expose, or remove entirely)
 
-This replaces the single `assigned_to` column for multi-employee assignment.
+**3. `supabase/functions/portal-auth/index.ts`**
+- Update to first check `clients` table: match `username` field (PPP ID) OR `client_id` field (Client Code) against the submitted username
+- Use `password` field from `clients` table for verification
+- Check `status` field instead of `activity_status`
+- If no match in `clients`, fall back to `bw_sale_customers` (for bandwidth/POP customers)
+- Return appropriate token payload with client data
 
-### UI Changes — `NewRequest.tsx`
-
-**Status column**: Show workflow badge (Pending / Contacted / Processing / Completed) instead of just Pending/Completed
-
-**Action column**: Replace edit/delete with a 3-dot dropdown menu:
-- **Contact Confirm** (when Pending) → sets status to "Contacted"
-- **Already Contacted** (when Pending) → sets status to "Contacted"  
-- **Assign Employee** (when Contacted) → opens dialog with multi-select employee list, saves to `client_request_assignments`, sets status to "Processing"
-- **Mark Phy. Done** (when Processing) → sets physical_connectivity to "Done"
-- **Convert to Client** (when phy done) → navigates to `/dashboard/clients/add` with prefilled data, updates setup_status to "Completed"
-- **Edit / Delete** always available
-
-**Physical Connectivity column**: Show Pending (orange) / In Progress (blue) / Done (green) badges
-
-**SetUp By column**: Show assigned employee names (from junction table)
-
-**SetUp Time / Duration column**: Show time elapsed since creation
-
-**Filter additions**: 
-- "Setup Status" filter gets new options: Pending, Contacted, Processing, Completed
-- Add "Setup By/Assign To" filter (employee select)
-- Add "Created By" filter
-
-### Files
-- 1 migration (create `client_request_assignments` table with RLS)
-- Edit `src/pages/dashboard/clients/NewRequest.tsx` — full workflow rebuild
-- Edit `src/integrations/supabase/types.ts` — add new table type
+**4. `src/pages/portal/PortalLogin.tsx`**
+- Update placeholder text: "PPP ID বা Client Code" for username field
+- Update password placeholder: "PPP Password"
+- Update labels to Bangla-friendly text
 
 ### Technical Details
-- Employee multi-select uses existing `employees` table query
-- Convert to Client prefills AddClient form via `navigate` state (already supported)
-- 3-dot menu uses shadcn `DropdownMenu`
-- Assign dialog shows checkboxes for employees with search
+- `clients` table has: `client_id` (unique code), `username` (PPP ID), `password` (PPP password), `name`, `status`
+- Login matches on `username = input OR client_id = input`
+- No database migration needed
+- Edge function needs redeployment after changes
+- 4 files edited
 
