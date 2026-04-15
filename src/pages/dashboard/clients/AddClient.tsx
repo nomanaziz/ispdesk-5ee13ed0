@@ -22,6 +22,8 @@ export default function AddClient() {
   const location = useLocation();
   const prefill = location.state?.prefill;
   const requestId = location.state?.request_id;
+  const editMode = location.state?.editMode === true;
+  const editClientId = prefill?.id;
   const [form, setForm] = useState<Record<string, any>>({
     name: "", gender: "", father_name: "", mother_name: "", nid_number: "",
     date_of_birth: "", occupation: "", remarks: "",
@@ -128,33 +130,38 @@ export default function AddClient() {
         reference_by: form.reference_by || null, is_vip: form.is_vip || false,
         connected_by: form.connected_by || null, affiliator_id: form.affiliator_id || null,
       };
-      const { error } = await supabase.from("clients").insert(payload);
-      if (error) throw error;
+      if (editMode && editClientId) {
+        const { error } = await supabase.from("clients").update(payload).eq("id", editClientId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("clients").insert(payload);
+        if (error) throw error;
 
-      // Create PPPoE user on MikroTik if server and credentials are provided
-      if (form.mikrotik_id && form.username && form.password) {
-        try {
-          const { data, error: mkErr } = await supabase.functions.invoke("create-mikrotik-ppp", {
-            body: {
-              mikrotik_id: form.mikrotik_id,
-              username: form.username,
-              password: form.password,
-              profile: form.profile || null,
-              remote_address: form.remote_address || null,
-              disabled: form.billing_status !== "Active",
-            },
-          });
-          if (mkErr) {
-            console.error("MikroTik PPPoE creation failed:", mkErr);
-            toast.error("ক্লায়েন্ট সেভ হয়েছে কিন্তু MikroTik-এ PPPoE user তৈরি ব্যর্থ: " + (mkErr.message || "Unknown error"));
-          } else if (data?.error) {
-            toast.error("ক্লায়েন্ট সেভ হয়েছে কিন্তু MikroTik-এ PPPoE user তৈরি ব্যর্থ: " + data.error);
-          } else {
-            toast.success("MikroTik-এ PPPoE user তৈরি হয়েছে");
+        // Create PPPoE user on MikroTik only for new clients
+        if (form.mikrotik_id && form.username && form.password) {
+          try {
+            const { data, error: mkErr } = await supabase.functions.invoke("create-mikrotik-ppp", {
+              body: {
+                mikrotik_id: form.mikrotik_id,
+                username: form.username,
+                password: form.password,
+                profile: form.profile || null,
+                remote_address: form.remote_address || null,
+                disabled: form.billing_status !== "Active",
+              },
+            });
+            if (mkErr) {
+              console.error("MikroTik PPPoE creation failed:", mkErr);
+              toast.error("ক্লায়েন্ট সেভ হয়েছে কিন্তু MikroTik-এ PPPoE user তৈরি ব্যর্থ: " + (mkErr.message || "Unknown error"));
+            } else if (data?.error) {
+              toast.error("ক্লায়েন্ট সেভ হয়েছে কিন্তু MikroTik-এ PPPoE user তৈরি ব্যর্থ: " + data.error);
+            } else {
+              toast.success("MikroTik-এ PPPoE user তৈরি হয়েছে");
+            }
+          } catch (e: any) {
+            console.error("MikroTik PPPoE error:", e);
+            toast.error("MikroTik-এ PPPoE user তৈরি ব্যর্থ: " + e.message);
           }
-        } catch (e: any) {
-          console.error("MikroTik PPPoE error:", e);
-          toast.error("MikroTik-এ PPPoE user তৈরি ব্যর্থ: " + e.message);
         }
       }
     },
@@ -163,7 +170,7 @@ export default function AddClient() {
       if (requestId) {
         await supabase.from("client_requests").update({ setup_status: "Completed" } as any).eq("id", requestId);
       }
-      toast.success("ক্লায়েন্ট সফলভাবে যোগ হয়েছে");
+      toast.success(editMode ? "ক্লায়েন্ট সফলভাবে আপডেট হয়েছে" : "ক্লায়েন্ট সফলভাবে যোগ হয়েছে");
       navigate("/dashboard/clients/list");
     },
     onError: (e: any) => toast.error(e.message),
@@ -179,7 +186,7 @@ export default function AddClient() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Client <span className="text-sm font-normal text-muted-foreground">Add New Client</span></h1>
+        <h1 className="text-2xl font-bold">Client <span className="text-sm font-normal text-muted-foreground">{editMode ? "Edit Client" : "Add New Client"}</span></h1>
       </div>
 
       {/* Personal Information */}
