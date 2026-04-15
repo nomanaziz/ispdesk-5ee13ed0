@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Users as UsersIcon, Plus, Search, Eye, EyeOff, Trash2, Shield, Lock, Edit } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Users as UsersIcon, Plus, Search, Eye, EyeOff, Trash2, Shield, Lock, Edit, User, Briefcase, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 // Module permissions structure matching Galaxy Net
