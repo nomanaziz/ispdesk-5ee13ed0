@@ -36,7 +36,7 @@ export default function PackageSchedulerDialog({ open, onOpenChange, client, inv
   const { data: servers = [] } = useQuery({
     queryKey: ["mikrotik-devices"],
     queryFn: async () => {
-      const { data } = await supabase.from("mikrotik_devices").select("id, name").eq("status", "active");
+      const { data } = await supabase.from("mikrotik_devices").select("id, name").eq("status", "online" as any);
       return data || [];
     },
   });
