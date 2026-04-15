@@ -33,6 +33,14 @@ export default function Import() {
     },
   });
 
+  const { data: existingUsernames = [] } = useQuery({
+    queryKey: ["existing_client_usernames"],
+    queryFn: async () => {
+      const { data } = await supabase.from("clients").select("username");
+      return (data || []).map((c: any) => c.username?.toLowerCase()).filter(Boolean);
+    },
+  });
+
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["mikrotik_clients", selectedServer, protocolFilter, profileFilter, userTypeFilter],
     queryFn: async () => {
@@ -117,9 +125,11 @@ export default function Import() {
     }
   };
 
-  const filtered = clients.filter((c: any) =>
-    [c.name, c.caller_id, c.server_name].some((v) => v?.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = clients
+    .filter((c: any) => !existingUsernames.includes(c.name?.toLowerCase()))
+    .filter((c: any) =>
+      [c.name, c.caller_id, c.server_name].some((v) => v?.toLowerCase().includes(search.toLowerCase()))
+    );
 
   const statusColor: Record<string, string> = {
     unique: "bg-green-100 text-green-800",
