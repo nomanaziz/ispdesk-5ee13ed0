@@ -1,62 +1,58 @@
 
 
-## Plan: Fetch PPP Users from MikroTik into Import List
+## Plan: Switch to RouterOS API Protocol (Port 8728)
 
 ### Problem
-The "ইমপোর্ট ফ্রম মাইক্রোটিক" page reads from `mikrotik_clients` table, but that table is empty — there's no mechanism to actually connect to MikroTik devices and pull PPP secret/user data into it.
+The current `fetch-mikrotik-ppp` edge function uses HTTP REST API (`/rest/ppp/secret`), which requires the **www** service enabled on MikroTik. But your devices only have the **API service** (port 8728) enabled — this uses MikroTik's proprietary binary protocol over raw TCP, not HTTP.
 
 ### Solution
+Rewrite the edge function to use MikroTik's native RouterOS API protocol via `Deno.connect()` (raw TCP). The protocol works like this:
 
-**1. New Edge Function: `fetch-mikrotik-ppp`**
-Create `supabase/functions/fetch-mikrotik-ppp/index.ts` that:
-- Accepts `{ device_id }` (or `"all"` to sync all enabled devices)
-- Fetches device credentials from `mikrotik_devices`
-- Calls MikroTik REST API: `GET /rest/ppp/secret` (v7+) or RouterOS API (v6)
-- For each PPP secret returned, upserts into `mikrotik_clients`:
-  - `name` = PPP username
-  - `password` = PPP password
-  - `service` = service type (pppoe/any)
-  - `profile` = profile name
-  - `caller_id` = caller-id (MAC)
-  - `remote_address` = remote-address
-  - `mikrotik_id` = device ID
-  - `server_name` = device name
-  - `user_status` = disabled? "disabled" : "unique"
-- Skips PPP users whose `name` already exists in `clients` table (the core filter logic)
-- Uses MikroTik REST API with Basic Auth (`username:password` from device record)
-
-**2. Update Import Page UI**
-In `src/pages/dashboard/mikrotik/Import.tsx`:
-- Add a "সিঙ্ক করুন" (Sync) button at top that calls the edge function
-- Show loading state during sync
-- After sync completes, refetch `mikrotik_clients` data
-- The existing filter (excluding names matching `clients.username`) stays as a second layer of defense
-
-**3. Update `sync-mikrotik-data` Edge Function**
-Replace the existing function that only writes to `user_onu_mapping` — redirect it to also populate `mikrotik_clients`, or deprecate it in favor of the new function.
-
-### MikroTik REST API Call
 ```text
-GET https://{ip}:{api_port}/rest/ppp/secret
-Authorization: Basic base64(username:password)
-
-Response: Array of PPP secrets with fields:
-  .id, name, password, service, profile, caller-id, remote-address, disabled
+TCP Connect → Send /login sentence → Authenticate
+  → Send /ppp/secret/print sentence → Receive PPP users
+  → Parse response → Upsert to mikrotik_clients
 ```
+
+### RouterOS API Protocol (how it works)
+- Each "word" is length-prefixed (variable-length encoding)
+- A "sentence" is a sequence of words terminated by an empty word (0x00)
+- Login: send `/login`, `=name=admin`, `=password=xxx`, then empty word
+- Fetch PPP: send `/ppp/secret/print`, then empty word
+- Response comes back as `!re` sentences with `=name=...`, `=password=...`, etc.
+
+### Changes
+
+**1. Rewrite `supabase/functions/fetch-mikrotik-ppp/index.ts`**
+- Implement RouterOS API protocol helper functions:
+  - `encodeWord(word)` — length-prefix encoding
+  - `writeSentence(conn, words[])` — send a sentence
+  - `readSentence(conn)` — read a response sentence
+- Login flow: `/login` + credentials
+- Fetch PPP secrets: `/ppp/secret/print`
+- Parse `!re` responses into objects
+- Use `device.api_port` directly (default 8728) — no more port guessing
+- Keep the same filtering logic (skip usernames already in `clients` table)
+- Keep the same upsert logic to `mikrotik_clients`
+
+**2. Also update `supabase/functions/enforce-billing/index.ts`**
+- The billing enforcement function also needs to use RouterOS API to disable PPP users
+- Change from HTTP REST (`/rest/ppp/secret/set`) to RouterOS API (`/ppp/secret/set`)
 
 ### Files
 | File | Action |
 |------|--------|
-| `supabase/functions/fetch-mikrotik-ppp/index.ts` | NEW — fetch PPP secrets from MikroTik REST API |
-| `src/pages/dashboard/mikrotik/Import.tsx` | Add Sync button to trigger fetch |
+| `supabase/functions/fetch-mikrotik-ppp/index.ts` | REWRITE — use RouterOS TCP API instead of REST |
+| `supabase/functions/enforce-billing/index.ts` | UPDATE — use RouterOS TCP API for disabling PPP users |
 
-### Flow
+### Key Technical Detail
 ```text
-User clicks "সিঙ্ক" → Edge Function called
-  → For each enabled MikroTik device:
-     → GET /rest/ppp/secret (REST API)
-     → Filter out usernames already in clients table
-     → Upsert remaining into mikrotik_clients
-  → UI refreshes → shows only non-client PPP users
+// RouterOS API word encoding (length prefix)
+length < 0x80       → 1 byte
+length < 0x4000     → 2 bytes (0x80 | high, low)
+length < 0x200000   → 3 bytes
+length < 0x10000000 → 4 bytes
 ```
+
+No new dependencies needed — pure TCP via `Deno.connect()`.
 
