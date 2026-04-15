@@ -170,7 +170,7 @@ export default function AddClient() {
       if (requestId) {
         await supabase.from("client_requests").update({ setup_status: "Completed" } as any).eq("id", requestId);
       }
-      toast.success("ক্লায়েন্ট সফলভাবে যোগ হয়েছে");
+      toast.success(editMode ? "ক্লায়েন্ট সফলভাবে আপডেট হয়েছে" : "ক্লায়েন্ট সফলভাবে যোগ হয়েছে");
       navigate("/dashboard/clients/list");
     },
     onError: (e: any) => toast.error(e.message),
