@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Users, UserX, Banknote, AlertTriangle, FileSpreadsheet, FileText,
-  RefreshCw, Download, Eye, Edit, Receipt, Search, ChevronLeft, ChevronRight,
+  RefreshCw, Download, Search, ChevronLeft, ChevronRight,
   UserCheck, UserMinus, Clock, TrendingUp
 } from "lucide-react";
+import ClientActionButtons from "@/components/client-actions/ClientActionButtons";
 
 const currentMonth = () => {
   const d = new Date();
@@ -248,13 +249,7 @@ export default function BillingList() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => navigate(`/dashboard/billing/client/${c.id}`)}>
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7"><Edit className="h-3.5 w-3.5" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7"><Receipt className="h-3.5 w-3.5" /></Button>
-                        </div>
+                        <ClientActionButtons client={c} mode="billing" invalidateKey="billing-list" />
                       </TableCell>
                     </TableRow>
                   );
