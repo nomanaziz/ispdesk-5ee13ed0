@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, CheckSquare, XCircle, Filter } from "lucide-react";
+import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, CheckSquare, XCircle, Filter, RefreshCw } from "lucide-react";
 import * as XLSX from "xlsx";
 
 export default function Import() {
