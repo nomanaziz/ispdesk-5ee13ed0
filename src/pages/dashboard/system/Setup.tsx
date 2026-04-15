@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
-import { Save, Settings, DollarSign, Clock, Calendar, Globe, RotateCcw } from "lucide-react";
+import { Save, Settings, DollarSign, Clock, Calendar, Globe, RotateCcw, ShieldAlert, Timer, CalendarClock } from "lucide-react";
 
 interface SystemConfig {
   currency: string;
@@ -15,20 +16,39 @@ interface SystemConfig {
   billing_cycle: string;
 }
 
+interface BillingEnforcement {
+  enabled: boolean;
+  cutoff_time: string;
+  recheck_interval: string;
+  grace_days: number;
+}
+
 const defaults: SystemConfig = {
   currency: "BDT", currency_symbol: "৳", timezone: "Asia/Dhaka",
   date_format: "DD/MM/YYYY", language: "bn", billing_cycle: "monthly",
 };
 
+const enforcementDefaults: BillingEnforcement = {
+  enabled: false,
+  cutoff_time: "00:00",
+  recheck_interval: "60",
+  grace_days: 0,
+};
+
 export default function Setup() {
   const { value, isLoading, save, isSaving } = useSystemSetting<SystemConfig>("system_config", defaults);
+  const { value: enforcement, isLoading: enfLoading, save: saveEnf, isSaving: enfSaving } = useSystemSetting<BillingEnforcement>("billing_enforcement", enforcementDefaults);
+
   const [form, setForm] = useState<SystemConfig>(defaults);
+  const [enfForm, setEnfForm] = useState<BillingEnforcement>(enforcementDefaults);
 
   useEffect(() => { setForm(value); }, [value]);
+  useEffect(() => { setEnfForm(enforcement); }, [enforcement]);
 
   const set = (k: keyof SystemConfig, v: string) => setForm(p => ({ ...p, [k]: v }));
+  const setEnf = (k: keyof BillingEnforcement, v: any) => setEnfForm(p => ({ ...p, [k]: v }));
 
-  if (isLoading) return <div className="p-8 text-center text-muted-foreground">লোড হচ্ছে...</div>;
+  if (isLoading || enfLoading) return <div className="p-8 text-center text-muted-foreground">লোড হচ্ছে...</div>;
 
   return (
     <div className="space-y-4">
@@ -42,6 +62,7 @@ export default function Setup() {
         </div>
       </div>
 
+      {/* General Settings */}
       <div className="border rounded-lg overflow-hidden">
         <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
           <Settings className="h-4 w-4" /> সাধারণ সেটিংস
@@ -120,6 +141,86 @@ export default function Setup() {
           <div className="flex justify-end pt-2">
             <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
               <Save className="h-4 w-4" /> {isSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Billing Enforcement Settings */}
+      <div className="border rounded-lg overflow-hidden">
+        <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
+          <ShieldAlert className="h-4 w-4" /> বিলিং এনফোর্সমেন্ট (অটো লাইন বন্ধ)
+        </div>
+        <div className="p-5 space-y-5 bg-card">
+          {/* Master toggle */}
+          <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+            <div>
+              <div className="font-medium text-sm">অটো এনফোর্সমেন্ট সক্রিয়</div>
+              <div className="text-xs text-muted-foreground">বিল না দিলে স্বয়ংক্রিয়ভাবে PPP লাইন বন্ধ হবে</div>
+            </div>
+            <Switch
+              checked={enfForm.enabled}
+              onCheckedChange={(v) => setEnf("enabled", v)}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label className="text-xs mb-1 block">কাটঅফ সময়</Label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10" />
+                <Select value={enfForm.cutoff_time} onValueChange={v => setEnf("cutoff_time", v)}>
+                  <SelectTrigger className="pl-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="00:00">রাত ১২:০০ AM (মেয়াদ শেষের দিন)</SelectItem>
+                    <SelectItem value="07:00">পরের দিন সকাল ৭:০০ AM</SelectItem>
+                    <SelectItem value="08:00">পরের দিন সকাল ৮:০০ AM</SelectItem>
+                    <SelectItem value="12:00">পরের দিন দুপুর ১২:০০ PM</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">মেয়াদ শেষ হওয়ার পর কখন লাইন বন্ধ হবে</p>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">রিচেক ইন্টারভাল</Label>
+              <div className="relative">
+                <Timer className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10" />
+                <Select value={enfForm.recheck_interval} onValueChange={v => setEnf("recheck_interval", v)}>
+                  <SelectTrigger className="pl-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30">৩০ মিনিট</SelectItem>
+                    <SelectItem value="60">১ ঘণ্টা</SelectItem>
+                    <SelectItem value="120">২ ঘণ্টা</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">কত সময় পর পর পুনরায় চেক করবে</p>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">গ্রেস পিরিয়ড (দিন)</Label>
+              <div className="relative">
+                <CalendarClock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10" />
+                <Select value={String(enfForm.grace_days)} onValueChange={v => setEnf("grace_days", parseInt(v))}>
+                  <SelectTrigger className="pl-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">০ দিন (মেয়াদ শেষেই বন্ধ)</SelectItem>
+                    <SelectItem value="1">১ দিন</SelectItem>
+                    <SelectItem value="2">২ দিন</SelectItem>
+                    <SelectItem value="3">৩ দিন</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">মেয়াদ শেষের পর অতিরিক্ত কত দিন অপেক্ষা করবে</p>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 text-xs text-muted-foreground">
+            <strong className="text-amber-600">⚠️ VIP ক্লায়েন্ট:</strong> VIP হিসেবে চিহ্নিত ক্লায়েন্টদের লাইন কখনও স্বয়ংক্রিয়ভাবে বন্ধ হবে না।
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button onClick={() => saveEnf(enfForm)} disabled={enfSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
+              <Save className="h-4 w-4" /> {enfSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
             </Button>
           </div>
         </div>
