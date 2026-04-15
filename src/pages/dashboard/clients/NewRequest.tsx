@@ -143,7 +143,7 @@ export default function NewRequest() {
         const { error } = await supabase.from("client_requests").update(payload).eq("id", editId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("client_requests").insert(payload);
+        const { error } = await supabase.from("client_requests").insert(payload as any);
         if (error) throw error;
       }
     },
