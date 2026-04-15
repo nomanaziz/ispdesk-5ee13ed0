@@ -244,7 +244,7 @@ Deno.serve(async (req) => {
 
       conn.close();
       return new Response(
-        JSON.stringify({ success: true, message }),
+        JSON.stringify({ success: true, message, mikrotik_status: mikrotikStatus }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } catch (cmdErr) {
