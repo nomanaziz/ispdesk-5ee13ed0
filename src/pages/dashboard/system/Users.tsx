@@ -234,22 +234,23 @@ export default function Users() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-primary/10"><UsersIcon className="h-6 w-6 text-primary" /></div>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">App Users <span className="text-sm font-normal text-muted-foreground">All Users of Application</span></h1>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary/10"><UsersIcon className="h-5 w-5 text-primary" /></div>
+          <div>
+            <h1 className="text-lg font-bold text-foreground">App Users</h1>
+            <p className="text-xs text-muted-foreground">All Users of Application</p>
+          </div>
         </div>
-        <div className="ml-auto text-xs text-muted-foreground">সিস্টেম &gt; App Users</div>
+        <div className="sm:ml-auto text-xs text-muted-foreground">সিস্টেম &gt; App Users</div>
       </div>
 
       <Tabs defaultValue="users" className="w-full">
-        <div className="flex items-center justify-between">
-          <TabsList className="bg-muted/50">
-            <TabsTrigger value="users" className="gap-1.5 text-xs"><UsersIcon className="h-3.5 w-3.5" /> Application Users</TabsTrigger>
-            <TabsTrigger value="roles" className="gap-1.5 text-xs"><Shield className="h-3.5 w-3.5" /> User Roles(Groups)</TabsTrigger>
-            <TabsTrigger value="permissions" className="gap-1.5 text-xs"><Lock className="h-3.5 w-3.5" /> Role Modules(Permissions)</TabsTrigger>
-          </TabsList>
-        </div>
+        <TabsList className="bg-muted/50 w-full sm:w-auto flex overflow-x-auto">
+          <TabsTrigger value="users" className="gap-1.5 text-xs flex-1 sm:flex-none"><UsersIcon className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Application</span> Users</TabsTrigger>
+          <TabsTrigger value="roles" className="gap-1.5 text-xs flex-1 sm:flex-none"><Shield className="h-3.5 w-3.5" /> Roles</TabsTrigger>
+          <TabsTrigger value="permissions" className="gap-1.5 text-xs flex-1 sm:flex-none"><Lock className="h-3.5 w-3.5" /> Permissions</TabsTrigger>
+        </TabsList>
 
         {/* ======== APPLICATION USERS TAB ======== */}
         <TabsContent value="users">
@@ -260,15 +261,15 @@ export default function Users() {
                 <Plus className="h-3 w-3" /> New User
               </Button>
             </div>
-            <div className="p-4 bg-card space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+             <div className="p-3 sm:p-4 bg-card space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><Label className="text-xs mb-1 block">USER STATUS</Label><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="all">সকল</SelectItem><SelectItem value="Active">Active</SelectItem><SelectItem value="InActive">InActive</SelectItem></SelectContent></Select></div>
                 <div><Label className="text-xs mb-1 block">EMPLOYEE</Label><Select value={employeeFilter} onValueChange={setEmployeeFilter}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="all">সকল</SelectItem><SelectItem value="none">Without Employee</SelectItem>{employees.map((e: any) => (<SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>))}</SelectContent></Select></div>
                 <div><Label className="text-xs mb-1 block">USER ROLE</Label><Select value={roleFilter} onValueChange={setRoleFilter}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="all">সকল</SelectItem>{appRoles.map((r: any) => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}</SelectContent></Select></div>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">SHOW</span><Select value={entriesPerPage} onValueChange={setEntriesPerPage}><SelectTrigger className="h-8 w-20 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="10">10</SelectItem><SelectItem value="25">25</SelectItem><SelectItem value="50">50</SelectItem><SelectItem value="100">100</SelectItem></SelectContent></Select><span className="text-xs text-muted-foreground">ENTRIES</span></div>
-                <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">SEARCH:</span><Input value={search} onChange={e => setSearch(e.target.value)} className="h-8 w-48 text-xs" /></div>
+                <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">SEARCH:</span><Input value={search} onChange={e => setSearch(e.target.value)} className="h-8 w-full sm:w-48 text-xs" /></div>
               </div>
               <div className="overflow-x-auto border rounded-md">
                 <Table>
@@ -431,7 +432,7 @@ export default function Users() {
 
       {/* ======== NEW USER WIZARD ======== */}
       <Dialog open={showNewUserDialog} onOpenChange={(v) => { setShowNewUserDialog(v); if (!v) setWizardStep(1); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] max-w-lg">
           <DialogHeader><DialogTitle className="text-center text-lg">Create New User</DialogTitle></DialogHeader>
           <div className="flex items-center justify-center gap-6 py-2">
             {[{ step: 1, icon: User, label: "User Info" }, { step: 2, icon: Briefcase, label: "Employee Assign" }, { step: 3, icon: Shield, label: "User Role(Group)" }].map(({ step, icon: Icon, label }) => (
