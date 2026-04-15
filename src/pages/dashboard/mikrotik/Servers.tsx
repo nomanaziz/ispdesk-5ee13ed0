@@ -32,7 +32,7 @@ const defaultForm = {
   username: "",
   password_encrypted: "",
   api_port: 8728,
-  version: "v3",
+  version: "6.43_or_older",
   timeout: 10,
 };
 
@@ -167,7 +167,7 @@ export default function Servers() {
                       </div>
                     </TableCell>
                     <TableCell>{d.api_port}</TableCell>
-                    <TableCell><Badge variant="outline">{d.version}</Badge></TableCell>
+                    <TableCell><Badge variant="outline">{{"6.43_or_older":"≤6.43","gt6.43_lt7.0":"6.43–7.0","7.0_or_newer":"≥7.0"}[d.version] || d.version}</Badge></TableCell>
                     <TableCell>{d.timeout}s</TableCell>
                     <TableCell>
                       <Switch checked={d.status === "online"} onCheckedChange={() => toggleStatus.mutate({ id: d.id, status: d.status })} />
@@ -205,7 +205,11 @@ export default function Servers() {
                 <Label>ভার্সন</Label>
                 <Select value={form.version} onValueChange={(v) => setForm({ ...form, version: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="v3">v3</SelectItem><SelectItem value="v2">v2</SelectItem></SelectContent>
+                  <SelectContent>
+                    <SelectItem value="6.43_or_older">Version 6.43 or older</SelectItem>
+                    <SelectItem value="gt6.43_lt7.0">Version greater 6.43 or older 7.0</SelectItem>
+                    <SelectItem value="7.0_or_newer">Newer than version 7.0</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2"><Label>টাইমআউট (সেকেন্ড)</Label><Input type="number" value={form.timeout} onChange={(e) => setForm({ ...form, timeout: Number(e.target.value) })} /></div>
