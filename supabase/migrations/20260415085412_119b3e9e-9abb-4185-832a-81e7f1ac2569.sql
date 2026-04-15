@@ -1,0 +1,1 @@
+ALTER TABLE public.mikrotik_devices ADD COLUMN enabled boolean NOT NULL DEFAULT true;

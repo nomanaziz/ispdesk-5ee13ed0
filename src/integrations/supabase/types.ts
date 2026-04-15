@@ -3047,6 +3047,7 @@ export type Database = {
           branch_id: string | null
           created_at: string
           credentials_encrypted: string | null
+          enabled: boolean
           id: string
           ip_address: string
           name: string
@@ -3062,6 +3063,7 @@ export type Database = {
           branch_id?: string | null
           created_at?: string
           credentials_encrypted?: string | null
+          enabled?: boolean
           id?: string
           ip_address: string
           name: string
@@ -3077,6 +3079,7 @@ export type Database = {
           branch_id?: string | null
           created_at?: string
           credentials_encrypted?: string | null
+          enabled?: boolean
           id?: string
           ip_address?: string
           name?: string

@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Eye, EyeOff, RefreshCw, Server } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, RefreshCw, Server, Loader2 } from "lucide-react";
 
 interface MikrotikDevice {
   id: string;
@@ -23,6 +23,7 @@ interface MikrotikDevice {
   version: string;
   timeout: number;
   status: "online" | "offline" | "unknown";
+  enabled: boolean;
   created_at: string;
 }
 
@@ -36,6 +37,15 @@ const defaultForm = {
   timeout: 10,
 };
 
+const isValidIpOrDomain = (value: string): boolean => {
+  const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+  if (ipRegex.test(value)) {
+    return value.split(".").every((n) => Number(n) >= 0 && Number(n) <= 255);
+  }
+  const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+  return domainRegex.test(value);
+};
+
 export default function Servers() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -43,6 +53,7 @@ export default function Servers() {
   const [form, setForm] = useState(defaultForm);
   const [search, setSearch] = useState("");
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [checkingStatus, setCheckingStatus] = useState<Record<string, boolean>>({});
 
   const { data: devices = [], isLoading } = useQuery({
     queryKey: ["mikrotik_devices"],
@@ -60,7 +71,8 @@ export default function Servers() {
         const { error } = await supabase.from("mikrotik_devices").update(payload).eq("id", values.id);
         if (error) throw error;
       } else {
-        payload.status = "online";
+        payload.status = "unknown";
+        payload.enabled = true;
         const { error } = await supabase.from("mikrotik_devices").insert(payload);
         if (error) throw error;
       }
@@ -84,13 +96,31 @@ export default function Servers() {
     },
   });
 
-  const toggleStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("mikrotik_devices").update({ status: status === "online" ? "offline" : "online" }).eq("id", id);
+  const toggleEnabled = useMutation({
+    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
+      const updates: any = { enabled: !enabled };
+      if (!enabled === false) updates.status = "offline";
+      const { error } = await supabase.from("mikrotik_devices").update(updates).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["mikrotik_devices"] }),
   });
+
+  const checkStatus = async (deviceId: string) => {
+    setCheckingStatus((p) => ({ ...p, [deviceId]: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke("check-mikrotik-status", {
+        body: { device_id: deviceId },
+      });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["mikrotik_devices"] });
+      toast.success(`স্ট্যাটাস: ${data.status === "online" ? "Connected" : "Disconnected"}`);
+    } catch (e: any) {
+      toast.error("স্ট্যাটাস চেক করতে ব্যর্থ: " + (e.message || "Unknown error"));
+    } finally {
+      setCheckingStatus((p) => ({ ...p, [deviceId]: false }));
+    }
+  };
 
   const closeDialog = () => {
     setDialogOpen(false);
@@ -109,12 +139,29 @@ export default function Servers() {
       toast.error("সব প্রয়োজনীয় ফিল্ড পূরণ করুন");
       return;
     }
+    if (!isValidIpOrDomain(form.ip_address)) {
+      toast.error("সঠিক IP অ্যাড্রেস বা ডোমেইন নাম দিন (যেমন: 192.168.1.1 বা router.example.com)");
+      return;
+    }
     upsertMutation.mutate(editId ? { ...form, id: editId } : form);
   };
 
   const filtered = devices.filter((d) =>
     [d.name, d.ip_address, d.username].some((v) => v?.toLowerCase().includes(search.toLowerCase()))
   );
+
+  const getStatusDisplay = (d: MikrotikDevice) => {
+    if (!d.enabled) {
+      return { color: "bg-gray-400", text: "Disabled", textColor: "text-muted-foreground" };
+    }
+    if (d.status === "online") {
+      return { color: "bg-green-500 animate-pulse", text: "Connected", textColor: "text-green-600 dark:text-green-400" };
+    }
+    if (d.status === "unknown") {
+      return { color: "bg-yellow-500", text: "Unknown", textColor: "text-yellow-600 dark:text-yellow-400" };
+    }
+    return { color: "bg-red-500", text: "Disconnected", textColor: "text-red-600 dark:text-red-400" };
+  };
 
   return (
     <div className="space-y-6">
@@ -143,50 +190,63 @@ export default function Servers() {
                   <TableHead>পোর্ট</TableHead>
                   <TableHead>ভার্সন</TableHead>
                   <TableHead>টাইমআউট</TableHead>
+                  <TableHead>সক্রিয়</TableHead>
                   <TableHead>স্ট্যাটাস</TableHead>
                   <TableHead>অ্যাকশন</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={10} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={11} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={10} className="text-center py-8">কোনো সার্ভার পাওয়া যায়নি</TableCell></TableRow>
-                ) : filtered.map((d, i) => (
-                  <TableRow key={d.id}>
-                    <TableCell>{i + 1}</TableCell>
-                    <TableCell className="font-medium">{d.name}</TableCell>
-                    <TableCell>{d.ip_address}</TableCell>
-                    <TableCell>{d.username}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <span className="font-mono text-xs">{showPasswords[d.id] ? d.password_encrypted : "••••••••"}</span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowPasswords((p) => ({ ...p, [d.id]: !p[d.id] }))}>
-                          {showPasswords[d.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell>{d.api_port}</TableCell>
-                    <TableCell><Badge variant="outline">{{"6.43_or_older":"≤6.43","gt6.43_lt7.0":"6.43–7.0","7.0_or_newer":"≥7.0"}[d.version] || d.version}</Badge></TableCell>
-                    <TableCell>{d.timeout}s</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-block h-3 w-3 rounded-full ${d.status === "online" ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
-                        <span className={`text-xs font-medium ${d.status === "online" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                          {d.status === "online" ? "Connected" : "Disconnected"}
-                        </span>
-                        <Switch checked={d.status === "online"} onCheckedChange={() => toggleStatus.mutate({ id: d.id, status: d.status })} />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(d)}><Pencil className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { if (confirm("মুছে ফেলতে চান?")) deleteMutation.mutate(d.id); }}><Trash2 className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Sync"><RefreshCw className="h-4 w-4" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                  <TableRow><TableCell colSpan={11} className="text-center py-8">কোনো সার্ভার পাওয়া যায়নি</TableCell></TableRow>
+                ) : filtered.map((d, i) => {
+                  const statusInfo = getStatusDisplay(d);
+                  return (
+                    <TableRow key={d.id}>
+                      <TableCell>{i + 1}</TableCell>
+                      <TableCell className="font-medium">{d.name}</TableCell>
+                      <TableCell>{d.ip_address}</TableCell>
+                      <TableCell>{d.username}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono text-xs">{showPasswords[d.id] ? d.password_encrypted : "••••••••"}</span>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowPasswords((p) => ({ ...p, [d.id]: !p[d.id] }))}>
+                            {showPasswords[d.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>{d.api_port}</TableCell>
+                      <TableCell><Badge variant="outline">{{"6.43_or_older":"≤6.43","gt6.43_lt7.0":"6.43–7.0","7.0_or_newer":"≥7.0"}[d.version] || d.version}</Badge></TableCell>
+                      <TableCell>{d.timeout}s</TableCell>
+                      <TableCell>
+                        <Switch checked={d.enabled} onCheckedChange={() => toggleEnabled.mutate({ id: d.id, enabled: d.enabled })} />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-block h-3 w-3 rounded-full ${statusInfo.color}`} />
+                          <span className={`text-xs font-medium ${statusInfo.textColor}`}>{statusInfo.text}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(d)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { if (confirm("মুছে ফেলতে চান?")) deleteMutation.mutate(d.id); }}><Trash2 className="h-4 w-4" /></Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Check Status"
+                            disabled={checkingStatus[d.id]}
+                            onClick={() => checkStatus(d.id)}
+                          >
+                            {checkingStatus[d.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -199,7 +259,10 @@ export default function Servers() {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>সার্ভার নাম *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="MikroTik-1" /></div>
-              <div className="space-y-2"><Label>সার্ভার IP *</Label><Input value={form.ip_address} onChange={(e) => setForm({ ...form, ip_address: e.target.value })} placeholder="192.168.1.1" /></div>
+              <div className="space-y-2">
+                <Label>সার্ভার IP / ডোমেইন *</Label>
+                <Input value={form.ip_address} onChange={(e) => setForm({ ...form, ip_address: e.target.value })} placeholder="192.168.1.1 বা router.example.com" />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>ইউজারনেম *</Label><Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="admin" /></div>
