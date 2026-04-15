@@ -992,6 +992,161 @@ export type Database = {
           },
         ]
       }
+      bw_sale_collections: {
+        Row: {
+          amount: number
+          balance_due: number
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          discount: number
+          id: string
+          invoice_id: string | null
+          note: string | null
+          payment_method: string | null
+          receive_date: string
+          received_by: string | null
+          status: string
+        }
+        Insert: {
+          amount?: number
+          balance_due?: number
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          discount?: number
+          id?: string
+          invoice_id?: string | null
+          note?: string | null
+          payment_method?: string | null
+          receive_date?: string
+          received_by?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          balance_due?: number
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          discount?: number
+          id?: string
+          invoice_id?: string | null
+          note?: string | null
+          payment_method?: string | null
+          receive_date?: string
+          received_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_sale_collections_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_sale_collections_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sales_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bw_sale_customers: {
+        Row: {
+          activation_date: string | null
+          activity_status: string
+          address: string | null
+          contact_person: string | null
+          created_at: string
+          customer_code: string | null
+          customer_name: string
+          email: string | null
+          facebook_url: string | null
+          id: string
+          ip_addresses: Json | null
+          mobile: string | null
+          nttn_info: string | null
+          password: string | null
+          phone: string | null
+          pop_id: string | null
+          pop_name_last_mile: string | null
+          reference_by: string | null
+          remarks: string | null
+          scr_link_id: string | null
+          skype_id: string | null
+          updated_at: string
+          username: string | null
+          vlan_info: Json | null
+          website: string | null
+        }
+        Insert: {
+          activation_date?: string | null
+          activity_status?: string
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          customer_code?: string | null
+          customer_name: string
+          email?: string | null
+          facebook_url?: string | null
+          id?: string
+          ip_addresses?: Json | null
+          mobile?: string | null
+          nttn_info?: string | null
+          password?: string | null
+          phone?: string | null
+          pop_id?: string | null
+          pop_name_last_mile?: string | null
+          reference_by?: string | null
+          remarks?: string | null
+          scr_link_id?: string | null
+          skype_id?: string | null
+          updated_at?: string
+          username?: string | null
+          vlan_info?: Json | null
+          website?: string | null
+        }
+        Update: {
+          activation_date?: string | null
+          activity_status?: string
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          customer_code?: string | null
+          customer_name?: string
+          email?: string | null
+          facebook_url?: string | null
+          id?: string
+          ip_addresses?: Json | null
+          mobile?: string | null
+          nttn_info?: string | null
+          password?: string | null
+          phone?: string | null
+          pop_id?: string | null
+          pop_name_last_mile?: string | null
+          reference_by?: string | null
+          remarks?: string | null
+          scr_link_id?: string | null
+          skype_id?: string | null
+          updated_at?: string
+          username?: string | null
+          vlan_info?: Json | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_sale_customers_pop_id_fkey"
+            columns: ["pop_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_pops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bw_sale_pops: {
         Row: {
           bandwidth: string | null
@@ -1019,35 +1174,101 @@ export type Database = {
         }
         Relationships: []
       }
+      bw_sale_recurring: {
+        Row: {
+          bill_amount: number
+          created_at: string
+          end_date: string | null
+          id: string
+          pop_id: string | null
+          repeat_date: number | null
+          start_date: string | null
+          status: string
+        }
+        Insert: {
+          bill_amount?: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          pop_id?: string | null
+          repeat_date?: number | null
+          start_date?: string | null
+          status?: string
+        }
+        Update: {
+          bill_amount?: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          pop_id?: string | null
+          repeat_date?: number | null
+          start_date?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_sale_recurring_pop_id_fkey"
+            columns: ["pop_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_pops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bw_sales_invoices: {
         Row: {
           amount: number | null
+          contact_person: string | null
           created_at: string
+          created_by: string | null
+          customer_id: string | null
+          discount: number | null
+          due: number | null
           id: string
           invoice_no: string
           month: string | null
+          paid_amount: number | null
           pop_id: string | null
           status: string
         }
         Insert: {
           amount?: number | null
+          contact_person?: string | null
           created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          discount?: number | null
+          due?: number | null
           id?: string
           invoice_no: string
           month?: string | null
+          paid_amount?: number | null
           pop_id?: string | null
           status?: string
         }
         Update: {
           amount?: number | null
+          contact_person?: string | null
           created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          discount?: number | null
+          due?: number | null
           id?: string
           invoice_no?: string
           month?: string | null
+          paid_amount?: number | null
           pop_id?: string | null
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bw_sales_invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bw_sales_invoices_pop_id_fkey"
             columns: ["pop_id"]
