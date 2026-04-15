@@ -380,7 +380,6 @@ const App = () => (
               <Route path="/dashboard/leave/approval" element={<P><LeaveApproval /></P>} />
 
               {/* Branch */}
-              <Route path="/dashboard/branches/packages" element={<P><BranchPackages /></P>} />
               <Route path="/dashboard/branches/tariff" element={<P><BranchTariff /></P>} />
               <Route path="/dashboard/branches/add-manager" element={<P><BranchAddManager /></P>} />
               <Route path="/dashboard/branches/managers" element={<P><BranchManagers /></P>} />
