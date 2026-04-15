@@ -1366,6 +1366,42 @@ export type Database = {
           },
         ]
       }
+      client_request_assignments: {
+        Row: {
+          assigned_at: string
+          employee_id: string
+          id: string
+          request_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          employee_id: string
+          id?: string
+          request_id: string
+        }
+        Update: {
+          assigned_at?: string
+          employee_id?: string
+          id?: string
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_request_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_request_assignments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "client_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_requests: {
         Row: {
           address: string | null
