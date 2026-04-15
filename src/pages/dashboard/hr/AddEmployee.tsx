@@ -25,7 +25,9 @@ const initialForm = {
   email: "",
   facebook_link: "",
   reference: "",
+  division_id: "",
   district: "",
+  district_id: "",
   upazila: "",
   working_experience: "",
   address: "",
@@ -74,20 +76,34 @@ export default function AddEmployee() {
     },
   });
 
-  const { data: districts } = useQuery({
-    queryKey: ["districts-active"],
+  const { data: divisions } = useQuery({
+    queryKey: ["divisions-active"],
     queryFn: async () => {
-      const { data } = await supabase.from("districts").select("*").eq("status", "active").order("name");
+      const { data } = await supabase.from("divisions").select("*").eq("status", "active").order("name");
       return data || [];
     },
   });
 
-  const { data: upazilas } = useQuery({
-    queryKey: ["upazilas-active"],
+  const { data: districts } = useQuery({
+    queryKey: ["districts-active", form.division_id],
     queryFn: async () => {
-      const { data } = await supabase.from("upazilas").select("*").eq("status", "active").order("name");
+      let q = supabase.from("districts").select("*").eq("status", "active").order("name");
+      if (form.division_id) q = q.eq("division_id", form.division_id);
+      const { data } = await q;
       return data || [];
     },
+    enabled: true,
+  });
+
+  const { data: upazilas } = useQuery({
+    queryKey: ["upazilas-active", form.district_id],
+    queryFn: async () => {
+      let q = supabase.from("upazilas").select("*").eq("status", "active").order("name");
+      if (form.district_id) q = q.eq("district_id", form.district_id);
+      const { data } = await q;
+      return data || [];
+    },
+    enabled: true,
   });
 
   const { data: zktecoDevices } = useQuery({
@@ -147,6 +163,8 @@ export default function AddEmployee() {
             facebook_link: data.facebook_link || "",
             reference: data.reference || "",
             district: data.district || "",
+            division_id: "",
+            district_id: "",
             upazila: data.upazila || "",
             working_experience: data.working_experience || "",
             address: data.address || "",
@@ -234,6 +252,15 @@ export default function AddEmployee() {
       toast.error("কর্মী আইডি ও নাম আবশ্যক");
       return;
     }
+    if (form.date_of_birth) {
+      const dob = new Date(form.date_of_birth);
+      const today = new Date();
+      const age = today.getFullYear() - dob.getFullYear() - (today < new Date(today.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0);
+      if (age < 12) {
+        toast.error("কর্মীর বয়স সর্বনিম্ন ১২ বছর হতে হবে");
+        return;
+      }
+    }
     mutation.mutate();
   };
 
@@ -289,7 +316,7 @@ export default function AddEmployee() {
           <CardContent className="p-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div><Label>নাম <span className="text-destructive">*</span></Label><Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="পুরো নাম" /></div>
-              <div><Label>জন্ম তারিখ</Label><Input type="date" value={form.date_of_birth} onChange={(e) => set("date_of_birth", e.target.value)} /></div>
+              <div><Label>জন্ম তারিখ</Label><Input type="date" value={form.date_of_birth} onChange={(e) => set("date_of_birth", e.target.value)} max={new Date(new Date().getFullYear() - 12, new Date().getMonth(), new Date().getDate()).toISOString().split("T")[0]} /></div>
               <div>
                 <Label>লিঙ্গ</Label>
                 <Select value={form.gender} onValueChange={(v) => set("gender", v)}>
@@ -327,19 +354,26 @@ export default function AddEmployee() {
               <div><Label>ফেসবুক লিংক</Label><Input value={form.facebook_link} onChange={(e) => set("facebook_link", e.target.value)} placeholder="https://facebook.com/..." /></div>
               <div><Label>রেফারেন্স</Label><Input value={form.reference} onChange={(e) => set("reference", e.target.value)} placeholder="রেফারেন্স ব্যক্তি" /></div>
               <div>
-                <Label>জেলা</Label>
-                <Select value={form.district} onValueChange={(v) => set("district", v)}>
+                <Label>বিভাগ</Label>
+                <Select value={form.division_id} onValueChange={(v) => { set("division_id", v); set("district", ""); set("district_id", ""); set("upazila", ""); }}>
                   <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>{(districts || []).map((d: any) => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}</SelectContent>
+                  <SelectContent>{(divisions || []).map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
+                <Label>জেলা</Label>
+                <Select value={form.district_id} onValueChange={(v) => { const d = (districts || []).find((x: any) => x.id === v); set("district_id", v); set("district", d?.name || ""); set("upazila", ""); }}>
+                  <SelectTrigger><SelectValue placeholder={form.division_id ? "নির্বাচন করুন" : "আগে বিভাগ নির্বাচন করুন"} /></SelectTrigger>
+                  <SelectContent>{(districts || []).map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label>উপজেলা</Label>
-                <Select value={form.upazila} onValueChange={(v) => set("upazila", v)}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>{(upazilas || []).map((u: any) => <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>)}</SelectContent>
+                <Select value={form.upazila} onValueChange={(v) => { const u = (upazilas || []).find((x: any) => x.id === v); set("upazila", u?.name || ""); }}>
+                  <SelectTrigger><SelectValue placeholder={form.district_id ? "নির্বাচন করুন" : "আগে জেলা নির্বাচন করুন"} /></SelectTrigger>
+                  <SelectContent>{(upazilas || []).map((u: any) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
