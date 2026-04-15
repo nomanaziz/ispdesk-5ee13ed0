@@ -388,7 +388,25 @@ export default function NewRequest() {
                       {r.otc_charge === 0 ? <Badge className="bg-green-500 text-white text-[10px]">Free</Badge> : `৳${r.otc_charge}`}
                     </TableCell>
                     <TableCell className="text-xs">
-                      <Badge variant="outline" className={`text-[10px] ${phyCfg.className}`}>{phyCfg.label}</Badge>
+                      {/* Phy connectivity dropdown — only interactive when assigned */}
+                      {status !== "Pending" && status !== "Completed" && phyStatus !== "Done" ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="cursor-pointer">
+                              <Badge variant="outline" className={`text-[10px] ${phyCfg.className}`}>{phyCfg.label}</Badge>
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {phyStatus === "In Progress" && (
+                              <DropdownMenuItem onClick={() => handlePhyDone(r.id)}>
+                                <CheckCircle className="h-3.5 w-3.5 mr-2" /> Mark as Done
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <Badge variant="outline" className={`text-[10px] ${phyCfg.className}`}>{phyCfg.label}</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-xs">
                       {assigned.length > 0 ? (
@@ -404,25 +422,47 @@ export default function NewRequest() {
                     <TableCell className="text-xs">{r.schedule_date || "-"}</TableCell>
                     <TableCell className="text-xs">{new Date(r.created_at).toLocaleDateString("bn-BD")}</TableCell>
                     <TableCell className="text-xs">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="cursor-pointer">
-                            <Badge variant="outline" className={`text-[10px] ${statusCfg.className}`}>{statusCfg.label}</Badge>
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                            <DropdownMenuItem
-                              key={key}
-                              disabled={key === status}
-                              onClick={() => updateStatusMutation.mutate({ id: r.id, updates: { setup_status: key } })}
-                            >
-                              <Badge variant="outline" className={`text-[10px] mr-2 ${cfg.className}`}>{cfg.label}</Badge>
-                              {key === status && "✓"}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {/* Status dropdown — gated by workflow */}
+                      {(() => {
+                        // Determine which statuses are allowed
+                        const isAssigned = assigned.length > 0;
+                        const phyDone = phyStatus === "Done";
+                        // Not assigned yet or already completed → no dropdown, just badge
+                        if (!isAssigned || status === "Completed") {
+                          return <Badge variant="outline" className={`text-[10px] ${statusCfg.className}`}>{statusCfg.label}</Badge>;
+                        }
+                        // Phy not done → can't change status (must complete phy first)
+                        if (!phyDone) {
+                          return <Badge variant="outline" className={`text-[10px] ${statusCfg.className}`}>{statusCfg.label}</Badge>;
+                        }
+                        // Phy done → allow Contacted (from Processing)
+                        const allowedStatuses = status === "Processing" ? ["Contacted"] : [];
+                        if (allowedStatuses.length === 0) {
+                          return <Badge variant="outline" className={`text-[10px] ${statusCfg.className}`}>{statusCfg.label}</Badge>;
+                        }
+                        return (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="cursor-pointer">
+                                <Badge variant="outline" className={`text-[10px] ${statusCfg.className}`}>{statusCfg.label}</Badge>
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {allowedStatuses.map(key => {
+                                const cfg = STATUS_CONFIG[key] || STATUS_CONFIG.Pending;
+                                return (
+                                  <DropdownMenuItem
+                                    key={key}
+                                    onClick={() => updateStatusMutation.mutate({ id: r.id, updates: { setup_status: key } })}
+                                  >
+                                    <Badge variant="outline" className={`text-[10px] mr-2 ${cfg.className}`}>{cfg.label}</Badge>
+                                  </DropdownMenuItem>
+                                );
+                              })}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{getDuration(r.created_at)}</TableCell>
                     <TableCell className="text-xs">
@@ -433,8 +473,8 @@ export default function NewRequest() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {/* Convert to Client — when Phy Done */}
-                          {phyStatus === "Done" && status !== "Completed" && (
+                          {/* Convert to Client — only when Phy Done AND Contacted */}
+                          {phyStatus === "Done" && status === "Contacted" && (
                             <>
                               <DropdownMenuItem onClick={() => handleConvertToClient(r)}>
                                 <ArrowRightCircle className="h-3.5 w-3.5 mr-2" /> Convert to Client
