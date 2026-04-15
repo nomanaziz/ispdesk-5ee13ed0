@@ -1817,13 +1817,53 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_messages: {
+        Row: {
+          channel: string
+          created_at: string | null
+          customer_id: string | null
+          id: string
+          message: string
+          recipient: string
+          status: string | null
+        }
+        Insert: {
+          channel?: string
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          message: string
+          recipient: string
+          status?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          message?: string
+          recipient?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_messages_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           active_users: number | null
+          billing_day: number | null
           created_at: string
           email: string | null
           hosting_type: string | null
           id: string
+          is_active_billing: boolean | null
           isp_name: string
           last_synced_at: string | null
           max_users: number | null
@@ -1839,10 +1879,12 @@ export type Database = {
         }
         Insert: {
           active_users?: number | null
+          billing_day?: number | null
           created_at?: string
           email?: string | null
           hosting_type?: string | null
           id?: string
+          is_active_billing?: boolean | null
           isp_name: string
           last_synced_at?: string | null
           max_users?: number | null
@@ -1858,10 +1900,12 @@ export type Database = {
         }
         Update: {
           active_users?: number | null
+          billing_day?: number | null
           created_at?: string
           email?: string | null
           hosting_type?: string | null
           id?: string
+          is_active_billing?: boolean | null
           isp_name?: string
           last_synced_at?: string | null
           max_users?: number | null
@@ -3309,6 +3353,7 @@ export type Database = {
       }
       packages: {
         Row: {
+          allowed_modules: string[] | null
           created_at: string | null
           features: string[] | null
           hosting_type: string | null
@@ -3320,10 +3365,12 @@ export type Database = {
           price: number
           price_label: string
           sort_order: number | null
+          tier: string | null
           user_limit: number | null
           yearly_price: number | null
         }
         Insert: {
+          allowed_modules?: string[] | null
           created_at?: string | null
           features?: string[] | null
           hosting_type?: string | null
@@ -3335,10 +3382,12 @@ export type Database = {
           price?: number
           price_label?: string
           sort_order?: number | null
+          tier?: string | null
           user_limit?: number | null
           yearly_price?: number | null
         }
         Update: {
+          allowed_modules?: string[] | null
           created_at?: string | null
           features?: string[] | null
           hosting_type?: string | null
@@ -3350,6 +3399,7 @@ export type Database = {
           price?: number
           price_label?: string
           sort_order?: number | null
+          tier?: string | null
           user_limit?: number | null
           yearly_price?: number | null
         }
@@ -3427,40 +3477,72 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          billing_month: string | null
           created_at: string | null
+          customer_id: string | null
+          due_date: string | null
           id: string
+          notes: string | null
           package_id: string | null
           payment_method: string | null
+          payment_method_id: string | null
+          received_by: string | null
           service_request_id: string | null
           status: string | null
           transaction_id: string | null
         }
         Insert: {
           amount?: number
+          billing_month?: string | null
           created_at?: string | null
+          customer_id?: string | null
+          due_date?: string | null
           id?: string
+          notes?: string | null
           package_id?: string | null
           payment_method?: string | null
+          payment_method_id?: string | null
+          received_by?: string | null
           service_request_id?: string | null
           status?: string | null
           transaction_id?: string | null
         }
         Update: {
           amount?: number
+          billing_month?: string | null
           created_at?: string | null
+          customer_id?: string | null
+          due_date?: string | null
           id?: string
+          notes?: string | null
           package_id?: string | null
           payment_method?: string | null
+          payment_method_id?: string | null
+          received_by?: string | null
           service_request_id?: string | null
           status?: string | null
           transaction_id?: string | null
         }
         Relationships: [
           {
+            foreignKeyName: "payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payments_package_id_fkey"
             columns: ["package_id"]
             isOneToOne: false
             referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
             referencedColumns: ["id"]
           },
           {
