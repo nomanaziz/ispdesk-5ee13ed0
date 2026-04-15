@@ -1,34 +1,71 @@
 
 
-## Plan: Redesign Users Page & Add UserReview Route
+## Plan: Implement Bandwidth Sale Module
 
 ### Overview
-Clean up and simplify the Users page (3 tabs), add the missing UserReview route, and ensure mobile responsiveness throughout.
+Build the full Bandwidth Sale module with 4 functional pages + 1 customer detail view, matching the Galaxy Net portal screenshots. Requires new database tables for customers, collections, and recurring invoices.
 
-### Changes
+### Database Migration
+New tables needed (existing: `bw_sale_pops`, `bw_sales_invoices`):
 
-**1. `src/pages/dashboard/system/Users.tsx`** — Simplify and clean up:
-- Remove overly dense inline styles, use cleaner spacing
-- Make filter row stack vertically on mobile (grid cols 1 → 3)
-- Make tables horizontally scrollable with `overflow-x-auto`
-- Simplify the New User wizard dialog for mobile (smaller padding, full-width inputs)
-- Keep all 3 tabs (Application Users, User Roles, Role Modules) with existing functionality
-- Clean up table column widths for better readability
-- Add responsive text sizes
+- **`bw_sale_customers`** — Customer Name, Customer Code, Contact Person, Email, Mobile, Phone, POP Status (FK to `bw_sale_pops`), Reference By, Address, Remarks, Facebook URL, Skype ID, Website, NTTN Info, VLAN Info (jsonb), SCR/Link ID, Activation Date, IP Addresses (jsonb), POP Name (Last Mile), Username, Password, Activity Status
+- **`bw_sale_collections`** — R.Date, customer_id (FK), invoice_id (FK), amount, discount, balance_due, received_by, note/remarks, payment_method, status (pending/approved), created_by, created_at
+- **`bw_sale_recurring`** — pop_id (FK), start_date, end_date, repeat_date (int days), status (Enabled/Disabled), bill_amount
 
-**2. `src/pages/dashboard/system/UserReview.tsx`** — Clean up:
-- Already well-built with Step 1-4 layout and edit dialogs
-- Add responsive padding and stack layout on mobile
-- Ensure dialogs are mobile-friendly (max-w-md → responsive)
-- Add `Zip/Postal` and `Action` columns to login history table to match portal exactly
+Also alter `bw_sales_invoices` to add: `customer_id`, `contact_person`, `paid_amount`, `discount`, `due`, `created_by`
 
-**3. `src/App.tsx`** — Add missing route:
-- Import `UserReview` component
-- Add route: `/dashboard/system/users/:id` → `<UserReview />`
+### Pages (6 files)
+
+**1. POP (`Pop.tsx`)** — Customer list per POP:
+- Table: Customer name, Balance Due, Action (view/edit/delete)
+- `+ Customer` button opens 3-step wizard dialog:
+  - Step 1: Customer Information (name, code, contact, email, mobile, phone, POP status, reference, address, remarks, socials)
+  - Step 2: Transmission Information (NTTN, VLAN pairs, SCR/Link ID, activation date, IP addresses, POP name)
+  - Step 3: Login Information (username, password, confirm password, activity status)
+- Show entries + search + pagination
+
+**2. Sales Invoice (`Invoices.tsx`)** — Invoice dashboard:
+- 8 summary cards (Total Sales Amount, Collected, Due, Discount, Total/Paid/Due/Unpaid Invoice counts)
+- Collapsible summary section with Hide/Show toggle
+- Filters: Month, Payment Status, Customer, Created By
+- Table: SN, Customer, Contact Person, Bill No, Invoice of Month, Total Amount, Received Amount, Discount, Due, Created By, Created On, Status, Action (Pay/View/Edit/Delete)
+- `+ Create Invoice` button, Generate PDF/CSV
+
+**3. Bill Collection (`Collection.tsx`)** — Daily bill collection:
+- Filters: POP, From Date, To Date, Received By, Created By, Transaction Status
+- Generate CSV/PDF buttons
+- Table: R.Date, Company Name, Contact Person, Mobile, Invoice No, Bill Month, Bill Amount, Received, Discount, Balance Due, Received By, Created By, Created On, Note/Remarks, Action
+- `+ Receive Bill` button, Approve/Delete selected transactions
+- Total row at bottom
+
+**4. Recurring Invoice (`Recurring.tsx`)** — Recurring billing setup:
+- Table: SN, POP Name, Start Date, End Date, Repeat Date, Status, Bill Amount, Action
+- `+ Invoice` button to create new recurring rule
+- Total bill amount row
+
+**5. Customer Detail (`CustomerView.tsx`)** — New file:
+- Left sidebar: Avatar, customer name, Password Regenerate, Login As Client, Download Info, Go To Client List buttons
+- Right content: 4 tabs (Personal Information, Transmission Information, Invoice Information, Product & Service Sales Invoices)
+- Invoice tab: table with SN, Bill No, Bill Month, Bill Amount, Paid Amount, Discount, Due, Status badge, Action
+- Total row at bottom
+
+**6. Routes (`App.tsx`)** — Add:
+- `/dashboard/bw-sale/pop/:id` → CustomerView
 
 ### Technical Details
-- No database changes needed
-- 3 files edited: `Users.tsx`, `UserReview.tsx`, `App.tsx`
-- Mobile-first responsive: stacked filters on small screens, horizontal scroll tables
-- All existing CRUD logic preserved
+- 1 migration file (new tables + alter existing)
+- 5 page files created/rewritten
+- 1 route added in App.tsx
+- Types auto-updated
+- All Bangla labels, teal headers, Galaxy Net aesthetic
+- Mobile-responsive with overflow-x-auto tables
+
+### Files
+- Migration: `create bw_sale_customers, bw_sale_collections, bw_sale_recurring + alter bw_sales_invoices`
+- `src/pages/dashboard/bw-sale/Pop.tsx`
+- `src/pages/dashboard/bw-sale/Invoices.tsx`
+- `src/pages/dashboard/bw-sale/Collection.tsx`
+- `src/pages/dashboard/bw-sale/Recurring.tsx`
+- `src/pages/dashboard/bw-sale/CustomerView.tsx` (new)
+- `src/App.tsx`
 
