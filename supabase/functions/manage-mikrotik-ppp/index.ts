@@ -189,37 +189,40 @@ Deno.serve(async (req) => {
       const secretId = secrets[0][".id"];
       let message = "";
 
+      let mikrotikStatus = "unknown";
+
       switch (action) {
         case "update": {
           const params: Record<string, string> = { ".id": secretId };
           if (password) params.password = password;
           if (profile) params.profile = profile;
           if (remote_address !== undefined) params["remote-address"] = remote_address || "";
-          if (disabled === true || disabled === "yes") params.disabled = "yes";
-          else if (disabled === false || disabled === "no") params.disabled = "no";
+          if (disabled === true || disabled === "yes") { params.disabled = "yes"; mikrotikStatus = "disabled"; }
+          else if (disabled === false || disabled === "no") { params.disabled = "no"; mikrotikStatus = "enabled"; }
+          else { mikrotikStatus = secrets[0].disabled === "true" ? "disabled" : "enabled"; }
           await mikrotikCommand(conn, "/ppp/secret/set", params);
           message = `PPP secret '${username}' updated`;
           break;
         }
         case "disable": {
           await mikrotikCommand(conn, "/ppp/secret/set", { ".id": secretId, disabled: "yes" });
-          // Also kick active connection
           try {
             const active = await mikrotikCommand(conn, "/ppp/active/print", { "?name": username });
             if (active.length > 0) {
               await mikrotikCommand(conn, "/ppp/active/remove", { ".id": active[0][".id"] });
             }
           } catch (_) { /* no active session */ }
+          mikrotikStatus = "disabled";
           message = `PPP secret '${username}' disabled and disconnected`;
           break;
         }
         case "enable": {
           await mikrotikCommand(conn, "/ppp/secret/set", { ".id": secretId, disabled: "no" });
+          mikrotikStatus = "enabled";
           message = `PPP secret '${username}' enabled`;
           break;
         }
         case "remove": {
-          // Kick active connection first
           try {
             const active = await mikrotikCommand(conn, "/ppp/active/print", { "?name": username });
             if (active.length > 0) {
@@ -227,6 +230,7 @@ Deno.serve(async (req) => {
             }
           } catch (_) { /* no active session */ }
           await mikrotikCommand(conn, "/ppp/secret/remove", { ".id": secretId });
+          mikrotikStatus = "removed";
           message = `PPP secret '${username}' removed`;
           break;
         }

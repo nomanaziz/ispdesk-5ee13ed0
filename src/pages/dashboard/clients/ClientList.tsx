@@ -238,8 +238,17 @@ export default function ClientList() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs">
-                      <Badge variant={c.mikrotik_status === "online" ? "default" : "outline"} className={`text-[10px] ${c.mikrotik_status === "online" ? "bg-green-500" : ""}`}>
-                        {c.mikrotik_status || "-"}
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${
+                          c.mikrotik_status === "enabled"
+                            ? "bg-green-500/10 text-green-600 border-green-500/30"
+                            : c.mikrotik_status === "disabled"
+                            ? "bg-red-500/10 text-red-600 border-red-500/30"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {c.mikrotik_status === "enabled" ? "Enabled" : c.mikrotik_status === "disabled" ? "Disabled" : "Unknown"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs">

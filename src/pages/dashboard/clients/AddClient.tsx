@@ -149,7 +149,12 @@ export default function AddClient() {
           }).then(({ data, error: mkErr }) => {
             if (mkErr) toast.error("MikroTik আপডেট ব্যর্থ: " + (mkErr.message || "Unknown"));
             else if (data?.error) toast.error("MikroTik আপডেট ব্যর্থ: " + data.error);
-            else toast.success("MikroTik PPP আপডেট হয়েছে");
+            else {
+              toast.success("MikroTik PPP আপডেট হয়েছে");
+              if (data?.mikrotik_status) {
+                supabase.from("clients").update({ mikrotik_status: data.mikrotik_status }).eq("id", editClientId).then(() => {});
+              }
+            }
           }).catch((e: any) => toast.error("MikroTik আপডেট ব্যর্থ: " + e.message));
         }
       } else {
