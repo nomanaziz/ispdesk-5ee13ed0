@@ -1,70 +1,46 @@
 
 
-## Plan: Bandwidth Customer Portal
+## Plan: Packages & Tariff Restructure — "রিসেলার" → "POP"
 
 ### Overview
-Build a separate customer-facing portal where bandwidth sale clients can log in (using their `bw_sale_customers` username/password) and view their billing dashboard, invoices, purchase orders, and support tickets — matching the Galaxy Net portal layout.
+1. Add "pop" to package types so POP packages are managed from the main Packages page
+2. Remove the separate BranchPackages page (it's redundant)
+3. Rename "রিসেলার" → "POP" across the sidebar and related pages
+4. Add `min_activation_days` column to `reseller_tariffs` table
+5. Restructure the Tariff form: Server → Protocol → Profile (from MikroTik), plus min activation days field
 
-### What Gets Built
+### Database Migration
+- Add `min_activation_days integer default 1` to `reseller_tariffs`
 
-**1. Portal Login Page (`/portal/login`)**
-- Split layout: left brand panel (dark), right login form
-- Username + Password fields (authenticates against `bw_sale_customers` table)
-- Edge function for secure login (validates credentials, returns JWT/session token)
+### File Changes
 
-**2. Portal Layout (`PortalLayout.tsx`)**
-- Left sidebar: Company name, menu items (Dashboard, Billing Invoices, Purchase Orders, Support Tickets, User Management, Company Settings)
-- Top bar: customer name, avatar dropdown
-- Main content area
+**1. `src/pages/dashboard/config/Packages.tsx`**
+- Add `{ value: "pop", label: "POP", color: "bg-indigo-500" }` to PACKAGE_TYPES array
+- Everything else stays the same — POP packages are now managed here
 
-**3. Portal Dashboard (`/portal/dashboard`)**
-- Welcome banner with company contact details
-- POPCode + LoginID/Username display
-- 6 summary cards in 2 rows:
-  - Row 1: Balance Due, Last Invoice Info, Payment Due Date
-  - Row 2: This Month Paid, Purchase Order Status, Ticket status
-- Messages section + Notices section at bottom
+**2. `src/components/AppSidebar.tsx`**
+- Rename sidebar group "MAC Reseller" → "POP Management"
+- Remove the "প্যাকেজ" menu item (url: `/dashboard/branches/packages`)
+- Rename "রিসেলার ফান্ডিং" → "POP ফান্ডিং"
 
-**4. Portal Billing Invoices (`/portal/invoices`)**
-- Table: Sr. No, Bill No (link), Bill Month, Bill Amount, Paid Amount, Discount, Due, Status (Pay/Due/Paid badges), Action (download)
-- Total row at bottom
-- Show entries + search + pagination
+**3. `src/App.tsx`**
+- Remove the BranchPackages import and route (`/dashboard/branches/packages`)
 
-**5. Portal Purchase Orders (`/portal/purchase-orders`)**
-- Same table layout as invoices
-- "+ New Order" button
-- Table: Sr. No, Bill No, Bill Month, Bill Amount, Paid Amount, Discount, Due, Status, Action
+**4. `src/pages/dashboard/branches/Tariff.tsx`**
+- Add `min_activation_days` to form (default 1)
+- Filter packages to only show `package_type = 'pop'` in the select
+- Reorder form fields: Package → Selling Rate → Activation Days → Min Activation Days → Server → Protocol Type → MikroTik Profile
+- Replace "রিসেলারদের জন্য" → "POP-এর জন্য" in subtitle
+- Replace the `is_daily_recharge` toggle with the `min_activation_days` numeric input
 
-**6. Portal Support Tickets (`/portal/support`)**
-- Placeholder for ticket viewing/creation
+**5. Other files with "রিসেলার" text** (AddManager, Funding, PgwPayments, PopNotice, Managers)
+- Replace "রিসেলার" with "POP" in UI labels throughout
 
-### Database Changes
-- Add `password_hash` column to `bw_sale_customers` (for portal login — currently has plaintext `password` field)
-- Or use existing `password` field with an edge function that validates it
-
-### Authentication Approach
-- Edge function `portal-auth` that validates username/password against `bw_sale_customers`
-- Returns a signed token stored in localStorage
-- Portal routes check for valid token via `PortalProtectedRoute` component
-- Completely separate from admin Supabase auth
-
-### New Files (8)
-- `supabase/functions/portal-auth/index.ts` — Login edge function
-- `src/contexts/PortalAuthContext.tsx` — Portal auth state
-- `src/components/PortalLayout.tsx` — Sidebar + topbar layout
-- `src/components/PortalProtectedRoute.tsx` — Route guard
-- `src/pages/portal/PortalLogin.tsx` — Login page
-- `src/pages/portal/PortalDashboard.tsx` — Dashboard with 6 cards
-- `src/pages/portal/PortalInvoices.tsx` — Invoice list
-- `src/pages/portal/PortalPurchaseOrders.tsx` — Purchase orders
-
-### Edited Files (1)
-- `src/App.tsx` — Add portal routes under `/portal/*`
+**6. Delete `src/pages/dashboard/branches/BranchPackages.tsx`**
 
 ### Technical Details
-- Portal is fully separate from admin dashboard — different auth, different layout
-- Customer data comes from `bw_sale_customers` + `bw_sales_invoices` tables
-- Edge function uses service role key to query `bw_sale_customers` securely
-- Mobile-responsive: sidebar collapses on mobile, tables scroll horizontally
-- Galaxy Net aesthetic: dark sidebar, teal header rows, clean white content area
+- 1 migration: add column `min_activation_days` to `reseller_tariffs`
+- ~7 files edited, 1 file deleted
+- Tariff's package select will filter by `package_type = 'pop'`
+- `min_activation_days` must be ≤ `activation_days` (validated in UI)
 
