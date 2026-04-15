@@ -59,18 +59,18 @@ const PortalLogin = () => {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">PPP ID / Client Code</Label>
                 <Input
                   id="username"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  placeholder="Enter your username"
+                  placeholder="PPP ID বা Client Code"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">PPP Password</Label>
                 <div className="relative">
                   <Input
                     id="password"

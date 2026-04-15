@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import {
   Activity, Mail, Lock, Shield, Wifi, CreditCard, Users, Monitor,
-  CheckCircle2, Eye, EyeOff
+  Eye, EyeOff
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -23,11 +23,9 @@ const features = [
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -35,13 +33,8 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      if (isSignUp) {
-        await signUp(email, password, fullName);
-        toast({ title: "Account created!", description: "Check your email to verify." });
-      } else {
-        await signIn(email, password);
-        navigate("/dashboard");
-      }
+      await signIn(email, password);
+      navigate("/dashboard");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -117,40 +110,20 @@ const Login = () => {
                 </div>
                 <span className="text-xl font-bold text-foreground">ISP Desk</span>
               </div>
-              <h2 className="text-xl font-semibold text-foreground">
-                {isSignUp ? "Create Account" : "Welcome Back"}
-              </h2>
+              <h2 className="text-xl font-semibold text-foreground">Welcome Back</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                {isSignUp ? "Sign up to get started" : "Sign in to your ISP management dashboard"}
+                Sign in to your ISP management dashboard
               </p>
             </CardHeader>
 
             <CardContent className="pt-4 pb-8 px-6 sm:px-8">
-              {!isSignUp && (
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-6">
-                  <p className="text-xs text-blue-400">
-                    <strong>Tip:</strong> Use your registered email and password. MikroTik login is not supported here.
-                  </p>
-                </div>
-              )}
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-6">
+                <p className="text-xs text-blue-400">
+                  <strong>Tip:</strong> Use your registered email and password. MikroTik login is not supported here.
+                </p>
+              </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {isSignUp && (
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-sm">Full Name</Label>
-                    <div className="relative">
-                      <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="fullName"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Your full name"
-                        className="pl-10 h-11"
-                      />
-                    </div>
-                  </div>
-                )}
-
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm">Email Address</Label>
                   <div className="relative">
@@ -170,11 +143,9 @@ const Login = () => {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password" className="text-sm">Password</Label>
-                    {!isSignUp && (
-                      <Link to="/reset-password" className="text-xs text-primary hover:underline">
-                        Forgot Password?
-                      </Link>
-                    )}
+                    <Link to="/reset-password" className="text-xs text-primary hover:underline">
+                      Forgot Password?
+                    </Link>
                   </div>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -197,33 +168,20 @@ const Login = () => {
                   </div>
                 </div>
 
-                {!isSignUp && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox id="remember" />
-                    <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
-                      Remember me
-                    </label>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  <Checkbox id="remember" />
+                  <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
+                    Remember me
+                  </label>
+                </div>
 
                 <Button
                   type="submit"
                   className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Loading..." : isSignUp ? "Create Account" : "Sign In"}
+                  {isLoading ? "Loading..." : "Sign In"}
                 </Button>
-
-                <p className="text-center text-sm text-muted-foreground">
-                  {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-                  <button
-                    type="button"
-                    onClick={() => setIsSignUp(!isSignUp)}
-                    className="text-primary hover:underline font-medium"
-                  >
-                    {isSignUp ? "Sign In" : "Create Account"}
-                  </button>
-                </p>
               </form>
             </CardContent>
           </Card>
