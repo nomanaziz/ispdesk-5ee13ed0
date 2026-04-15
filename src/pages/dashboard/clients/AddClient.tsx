@@ -46,7 +46,7 @@ export default function AddClient() {
     return next;
   });
 
-  // Prefill from NewRequest convert
+  // Prefill from NewRequest convert or MikroTik import
   useEffect(() => {
     if (prefill) {
       setForm(prev => ({
@@ -61,7 +61,28 @@ export default function AddClient() {
         package_id: prefill.package_id || prev.package_id,
         monthly_bill: prefill.monthly_bill || prev.monthly_bill,
         client_type: prefill.customer_type || prev.client_type,
+        // MikroTik fields
+        username: prefill.username || prev.username,
+        password: prefill.password || prev.password,
+        profile: prefill.profile || prev.profile,
+        mikrotik_id: prefill.mikrotik_id || prev.mikrotik_id,
+        remote_address: prefill.remote_address || prev.remote_address,
+        server_name: prefill.server_name || prev.server_name,
+        mac_address: prefill.mac_address || prev.mac_address,
+        client_id: prefill.client_id || prev.client_id,
       }));
+
+      // Auto-fetch MikroTik profiles if mikrotik_id is prefilled
+      if (prefill.mikrotik_id) {
+        setLoadingProfiles(true);
+        supabase.functions.invoke("fetch-mikrotik-profiles", { body: { device_id: prefill.mikrotik_id } })
+          .then(({ data }) => {
+            if (data?.profiles) setMikrotikProfiles(data.profiles);
+            else setMikrotikProfiles([]);
+          })
+          .catch(() => setMikrotikProfiles([]))
+          .finally(() => setLoadingProfiles(false));
+      }
     }
   }, []);
 
