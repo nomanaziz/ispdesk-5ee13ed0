@@ -163,6 +163,8 @@ export default function AddEmployee() {
             facebook_link: data.facebook_link || "",
             reference: data.reference || "",
             district: data.district || "",
+            division_id: "",
+            district_id: "",
             upazila: data.upazila || "",
             working_experience: data.working_experience || "",
             address: data.address || "",
