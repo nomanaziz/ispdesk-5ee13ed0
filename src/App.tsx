@@ -118,7 +118,6 @@ import LeaveApply from "@/pages/dashboard/leave/Apply";
 import LeaveApproval from "@/pages/dashboard/leave/Approval";
 
 // Branch
-import BranchPackages from "@/pages/dashboard/branches/BranchPackages";
 import BranchTariff from "@/pages/dashboard/branches/Tariff";
 import BranchAddManager from "@/pages/dashboard/branches/AddManager";
 import BranchManagers from "@/pages/dashboard/branches/Managers";

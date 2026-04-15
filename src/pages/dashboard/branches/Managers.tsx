@@ -75,7 +75,7 @@ export default function Managers() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">POP ম্যানেজার লিস্ট</h1>
-          <p className="text-sm text-muted-foreground">সকল রিসেলার ম্যানেজার দেখুন ও পরিচালনা করুন</p>
+          <p className="text-sm text-muted-foreground">সকল POP ম্যানেজার দেখুন ও পরিচালনা করুন</p>
         </div>
         <Button onClick={() => navigate("/dashboard/branches/add-manager")}>+ POP যোগ করুন</Button>
       </div>
@@ -83,7 +83,7 @@ export default function Managers() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Users className="h-5 w-5" /> রিসেলার তালিকা
+            <Users className="h-5 w-5" /> POP তালিকা
           </CardTitle>
         </CardHeader>
         <CardContent>
