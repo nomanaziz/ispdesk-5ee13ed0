@@ -1,71 +1,70 @@
 
 
-## Plan: Implement Bandwidth Sale Module
+## Plan: Bandwidth Customer Portal
 
 ### Overview
-Build the full Bandwidth Sale module with 4 functional pages + 1 customer detail view, matching the Galaxy Net portal screenshots. Requires new database tables for customers, collections, and recurring invoices.
+Build a separate customer-facing portal where bandwidth sale clients can log in (using their `bw_sale_customers` username/password) and view their billing dashboard, invoices, purchase orders, and support tickets — matching the Galaxy Net portal layout.
 
-### Database Migration
-New tables needed (existing: `bw_sale_pops`, `bw_sales_invoices`):
+### What Gets Built
 
-- **`bw_sale_customers`** — Customer Name, Customer Code, Contact Person, Email, Mobile, Phone, POP Status (FK to `bw_sale_pops`), Reference By, Address, Remarks, Facebook URL, Skype ID, Website, NTTN Info, VLAN Info (jsonb), SCR/Link ID, Activation Date, IP Addresses (jsonb), POP Name (Last Mile), Username, Password, Activity Status
-- **`bw_sale_collections`** — R.Date, customer_id (FK), invoice_id (FK), amount, discount, balance_due, received_by, note/remarks, payment_method, status (pending/approved), created_by, created_at
-- **`bw_sale_recurring`** — pop_id (FK), start_date, end_date, repeat_date (int days), status (Enabled/Disabled), bill_amount
+**1. Portal Login Page (`/portal/login`)**
+- Split layout: left brand panel (dark), right login form
+- Username + Password fields (authenticates against `bw_sale_customers` table)
+- Edge function for secure login (validates credentials, returns JWT/session token)
 
-Also alter `bw_sales_invoices` to add: `customer_id`, `contact_person`, `paid_amount`, `discount`, `due`, `created_by`
+**2. Portal Layout (`PortalLayout.tsx`)**
+- Left sidebar: Company name, menu items (Dashboard, Billing Invoices, Purchase Orders, Support Tickets, User Management, Company Settings)
+- Top bar: customer name, avatar dropdown
+- Main content area
 
-### Pages (6 files)
+**3. Portal Dashboard (`/portal/dashboard`)**
+- Welcome banner with company contact details
+- POPCode + LoginID/Username display
+- 6 summary cards in 2 rows:
+  - Row 1: Balance Due, Last Invoice Info, Payment Due Date
+  - Row 2: This Month Paid, Purchase Order Status, Ticket status
+- Messages section + Notices section at bottom
 
-**1. POP (`Pop.tsx`)** — Customer list per POP:
-- Table: Customer name, Balance Due, Action (view/edit/delete)
-- `+ Customer` button opens 3-step wizard dialog:
-  - Step 1: Customer Information (name, code, contact, email, mobile, phone, POP status, reference, address, remarks, socials)
-  - Step 2: Transmission Information (NTTN, VLAN pairs, SCR/Link ID, activation date, IP addresses, POP name)
-  - Step 3: Login Information (username, password, confirm password, activity status)
+**4. Portal Billing Invoices (`/portal/invoices`)**
+- Table: Sr. No, Bill No (link), Bill Month, Bill Amount, Paid Amount, Discount, Due, Status (Pay/Due/Paid badges), Action (download)
+- Total row at bottom
 - Show entries + search + pagination
 
-**2. Sales Invoice (`Invoices.tsx`)** — Invoice dashboard:
-- 8 summary cards (Total Sales Amount, Collected, Due, Discount, Total/Paid/Due/Unpaid Invoice counts)
-- Collapsible summary section with Hide/Show toggle
-- Filters: Month, Payment Status, Customer, Created By
-- Table: SN, Customer, Contact Person, Bill No, Invoice of Month, Total Amount, Received Amount, Discount, Due, Created By, Created On, Status, Action (Pay/View/Edit/Delete)
-- `+ Create Invoice` button, Generate PDF/CSV
+**5. Portal Purchase Orders (`/portal/purchase-orders`)**
+- Same table layout as invoices
+- "+ New Order" button
+- Table: Sr. No, Bill No, Bill Month, Bill Amount, Paid Amount, Discount, Due, Status, Action
 
-**3. Bill Collection (`Collection.tsx`)** — Daily bill collection:
-- Filters: POP, From Date, To Date, Received By, Created By, Transaction Status
-- Generate CSV/PDF buttons
-- Table: R.Date, Company Name, Contact Person, Mobile, Invoice No, Bill Month, Bill Amount, Received, Discount, Balance Due, Received By, Created By, Created On, Note/Remarks, Action
-- `+ Receive Bill` button, Approve/Delete selected transactions
-- Total row at bottom
+**6. Portal Support Tickets (`/portal/support`)**
+- Placeholder for ticket viewing/creation
 
-**4. Recurring Invoice (`Recurring.tsx`)** — Recurring billing setup:
-- Table: SN, POP Name, Start Date, End Date, Repeat Date, Status, Bill Amount, Action
-- `+ Invoice` button to create new recurring rule
-- Total bill amount row
+### Database Changes
+- Add `password_hash` column to `bw_sale_customers` (for portal login — currently has plaintext `password` field)
+- Or use existing `password` field with an edge function that validates it
 
-**5. Customer Detail (`CustomerView.tsx`)** — New file:
-- Left sidebar: Avatar, customer name, Password Regenerate, Login As Client, Download Info, Go To Client List buttons
-- Right content: 4 tabs (Personal Information, Transmission Information, Invoice Information, Product & Service Sales Invoices)
-- Invoice tab: table with SN, Bill No, Bill Month, Bill Amount, Paid Amount, Discount, Due, Status badge, Action
-- Total row at bottom
+### Authentication Approach
+- Edge function `portal-auth` that validates username/password against `bw_sale_customers`
+- Returns a signed token stored in localStorage
+- Portal routes check for valid token via `PortalProtectedRoute` component
+- Completely separate from admin Supabase auth
 
-**6. Routes (`App.tsx`)** — Add:
-- `/dashboard/bw-sale/pop/:id` → CustomerView
+### New Files (8)
+- `supabase/functions/portal-auth/index.ts` — Login edge function
+- `src/contexts/PortalAuthContext.tsx` — Portal auth state
+- `src/components/PortalLayout.tsx` — Sidebar + topbar layout
+- `src/components/PortalProtectedRoute.tsx` — Route guard
+- `src/pages/portal/PortalLogin.tsx` — Login page
+- `src/pages/portal/PortalDashboard.tsx` — Dashboard with 6 cards
+- `src/pages/portal/PortalInvoices.tsx` — Invoice list
+- `src/pages/portal/PortalPurchaseOrders.tsx` — Purchase orders
+
+### Edited Files (1)
+- `src/App.tsx` — Add portal routes under `/portal/*`
 
 ### Technical Details
-- 1 migration file (new tables + alter existing)
-- 5 page files created/rewritten
-- 1 route added in App.tsx
-- Types auto-updated
-- All Bangla labels, teal headers, Galaxy Net aesthetic
-- Mobile-responsive with overflow-x-auto tables
-
-### Files
-- Migration: `create bw_sale_customers, bw_sale_collections, bw_sale_recurring + alter bw_sales_invoices`
-- `src/pages/dashboard/bw-sale/Pop.tsx`
-- `src/pages/dashboard/bw-sale/Invoices.tsx`
-- `src/pages/dashboard/bw-sale/Collection.tsx`
-- `src/pages/dashboard/bw-sale/Recurring.tsx`
-- `src/pages/dashboard/bw-sale/CustomerView.tsx` (new)
-- `src/App.tsx`
+- Portal is fully separate from admin dashboard — different auth, different layout
+- Customer data comes from `bw_sale_customers` + `bw_sales_invoices` tables
+- Edge function uses service role key to query `bw_sale_customers` securely
+- Mobile-responsive: sidebar collapses on mobile, tables scroll horizontally
+- Galaxy Net aesthetic: dark sidebar, teal header rows, clean white content area
 
