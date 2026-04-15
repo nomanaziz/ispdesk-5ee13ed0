@@ -20,6 +20,7 @@ const PACKAGE_TYPES = [
   { value: "business", label: "Business", color: "bg-green-600" },
   { value: "personal", label: "Personal", color: "bg-amber-500" },
   { value: "dedicated", label: "Dedicated", color: "bg-purple-600" },
+  { value: "pop", label: "POP", color: "bg-indigo-500" },
 ];
 
 export default function Packages() {

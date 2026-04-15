@@ -118,7 +118,6 @@ import LeaveApply from "@/pages/dashboard/leave/Apply";
 import LeaveApproval from "@/pages/dashboard/leave/Approval";
 
 // Branch
-import BranchPackages from "@/pages/dashboard/branches/BranchPackages";
 import BranchTariff from "@/pages/dashboard/branches/Tariff";
 import BranchAddManager from "@/pages/dashboard/branches/AddManager";
 import BranchManagers from "@/pages/dashboard/branches/Managers";
@@ -381,7 +380,6 @@ const App = () => (
               <Route path="/dashboard/leave/approval" element={<P><LeaveApproval /></P>} />
 
               {/* Branch */}
-              <Route path="/dashboard/branches/packages" element={<P><BranchPackages /></P>} />
               <Route path="/dashboard/branches/tariff" element={<P><BranchTariff /></P>} />
               <Route path="/dashboard/branches/add-manager" element={<P><BranchAddManager /></P>} />
               <Route path="/dashboard/branches/managers" element={<P><BranchManagers /></P>} />

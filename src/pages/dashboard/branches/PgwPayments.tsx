@@ -92,9 +92,9 @@ export default function PgwPayments() {
             <DialogHeader><DialogTitle>নতুন PGW পেমেন্ট</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>রিসেলার *</Label>
+                <Label>POP *</Label>
                 <Select value={form.reseller_id} onValueChange={(v) => setForm({ ...form, reseller_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="রিসেলার বাছাই করুন" /></SelectTrigger>
+                   <SelectTrigger><SelectValue placeholder="POP বাছাই করুন" /></SelectTrigger>
                   <SelectContent>
                     {resellers?.map((r) => (
                       <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
@@ -138,7 +138,7 @@ export default function PgwPayments() {
                 <div className="bg-muted p-3 rounded-md text-sm space-y-1">
                   <div className="flex justify-between"><span>ট্যারিফ রেট:</span> <strong>৳{previewTariff}</strong></div>
                   <div className="flex justify-between"><span>আমাদের শেয়ার:</span> <strong>৳{previewTariff}</strong></div>
-                  <div className="flex justify-between"><span>রিসেলার শেয়ার:</span> <strong>৳{previewResellerShare > 0 ? previewResellerShare : 0}</strong></div>
+                  <div className="flex justify-between"><span>POP শেয়ার:</span> <strong>৳{previewResellerShare > 0 ? previewResellerShare : 0}</strong></div>
                 </div>
               )}
 
@@ -165,11 +165,11 @@ export default function PgwPayments() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>#</TableHead>
-                    <TableHead>রিসেলার</TableHead>
+                    <TableHead>POP</TableHead>
                     <TableHead>ক্লায়েন্ট</TableHead>
                     <TableHead>মোট (৳)</TableHead>
                     <TableHead>আমাদের (৳)</TableHead>
-                    <TableHead>রিসেলার (৳)</TableHead>
+                    <TableHead>POP (৳)</TableHead>
                     <TableHead>মেথড</TableHead>
                     <TableHead>তারিখ</TableHead>
                   </TableRow>

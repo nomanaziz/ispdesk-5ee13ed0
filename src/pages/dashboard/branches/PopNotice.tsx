@@ -35,7 +35,7 @@ export default function PopNotice() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">POP নোটিশ</h1>
-        <p className="text-sm text-muted-foreground">রিসেলার / POP ম্যানেজারদের নোটিশ পাঠান</p>
+        <p className="text-sm text-muted-foreground">POP ম্যানেজারদের নোটিশ পাঠান</p>
       </div>
 
       <Card className="max-w-2xl">
@@ -48,9 +48,9 @@ export default function PopNotice() {
           <div>
             <Label>প্রাপক (ফাঁকা রাখলে সকলকে যাবে)</Label>
             <Select value={form.reseller_id} onValueChange={(v) => setForm({ ...form, reseller_id: v })}>
-              <SelectTrigger><SelectValue placeholder="সকল রিসেলার" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="সকল POP" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">সকল রিসেলার</SelectItem>
+                <SelectItem value="all">সকল POP</SelectItem>
                 {resellers?.map((r) => (
                   <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                 ))}

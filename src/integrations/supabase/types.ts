@@ -4314,6 +4314,7 @@ export type Database = {
           is_daily_recharge: boolean
           mikrotik_profile: string | null
           mikrotik_server_id: string | null
+          min_activation_days: number
           name: string
           package_id: string | null
           protocol_type: string | null
@@ -4327,6 +4328,7 @@ export type Database = {
           is_daily_recharge?: boolean
           mikrotik_profile?: string | null
           mikrotik_server_id?: string | null
+          min_activation_days?: number
           name: string
           package_id?: string | null
           protocol_type?: string | null
@@ -4340,6 +4342,7 @@ export type Database = {
           is_daily_recharge?: boolean
           mikrotik_profile?: string | null
           mikrotik_server_id?: string | null
+          min_activation_days?: number
           name?: string
           package_id?: string | null
           protocol_type?: string | null
