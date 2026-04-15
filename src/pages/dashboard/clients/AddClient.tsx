@@ -133,6 +133,25 @@ export default function AddClient() {
       if (editMode && editClientId) {
         const { error } = await supabase.from("clients").update(payload).eq("id", editClientId);
         if (error) throw error;
+
+        // Update MikroTik PPP secret if server and username exist (fire-and-forget)
+        if (form.mikrotik_id && form.username) {
+          supabase.functions.invoke("manage-mikrotik-ppp", {
+            body: {
+              mikrotik_id: form.mikrotik_id,
+              username: form.username,
+              action: "update",
+              password: form.password || undefined,
+              profile: form.profile || undefined,
+              remote_address: form.remote_address || undefined,
+              disabled: form.billing_status !== "Active",
+            },
+          }).then(({ data, error: mkErr }) => {
+            if (mkErr) toast.error("MikroTik আপডেট ব্যর্থ: " + (mkErr.message || "Unknown"));
+            else if (data?.error) toast.error("MikroTik আপডেট ব্যর্থ: " + data.error);
+            else toast.success("MikroTik PPP আপডেট হয়েছে");
+          }).catch((e: any) => toast.error("MikroTik আপডেট ব্যর্থ: " + e.message));
+        }
       } else {
         const { data: insertedClient, error } = await supabase.from("clients").insert(payload).select("id").single();
         if (error) throw error;
