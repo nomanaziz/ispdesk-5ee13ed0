@@ -1,58 +1,29 @@
 
 
-## Plan: Switch to RouterOS API Protocol (Port 8728)
+## Plan: Fix New Request — 3 Issues
 
-### Problem
-The current `fetch-mikrotik-ppp` edge function uses HTTP REST API (`/rest/ppp/secret`), which requires the **www** service enabled on MikroTik. But your devices only have the **API service** (port 8728) enabled — this uses MikroTik's proprietary binary protocol over raw TCP, not HTTP.
-
-### Solution
-Rewrite the edge function to use MikroTik's native RouterOS API protocol via `Deno.connect()` (raw TCP). The protocol works like this:
-
-```text
-TCP Connect → Send /login sentence → Authenticate
-  → Send /ppp/secret/print sentence → Receive PPP users
-  → Parse response → Upsert to mikrotik_clients
-```
-
-### RouterOS API Protocol (how it works)
-- Each "word" is length-prefixed (variable-length encoding)
-- A "sentence" is a sequence of words terminated by an empty word (0x00)
-- Login: send `/login`, `=name=admin`, `=password=xxx`, then empty word
-- Fetch PPP: send `/ppp/secret/print`, then empty word
-- Response comes back as `!re` sentences with `=name=...`, `=password=...`, etc.
+### Problems Identified
+1. **Prefill data not received in AddClient** — `handleConvertToClient` passes data via `navigate("/dashboard/clients/add", { state: { prefill: {...} } })`, but `AddClient.tsx` never reads `useLocation().state` to populate the form.
+2. **Status set to "Completed" immediately on Convert click** — Before the client is actually created in the system. Should only mark completed after client is successfully saved.
+3. **Action menu too complex** — User wants simplified actions: "Assign To" button directly in the Assigned To column, status change via a simple button/badge click, and only Edit + Delete in the action dropdown.
 
 ### Changes
 
-**1. Rewrite `supabase/functions/fetch-mikrotik-ppp/index.ts`**
-- Implement RouterOS API protocol helper functions:
-  - `encodeWord(word)` — length-prefix encoding
-  - `writeSentence(conn, words[])` — send a sentence
-  - `readSentence(conn)` — read a response sentence
-- Login flow: `/login` + credentials
-- Fetch PPP secrets: `/ppp/secret/print`
-- Parse `!re` responses into objects
-- Use `device.api_port` directly (default 8728) — no more port guessing
-- Keep the same filtering logic (skip usernames already in `clients` table)
-- Keep the same upsert logic to `mikrotik_clients`
+**1. `src/pages/dashboard/clients/AddClient.tsx`**
+- Import `useLocation` from react-router-dom
+- On mount, check `location.state?.prefill` and populate form fields (name, contact, email, address, zone_id, sub_zone_id, package_id, monthly_bill, billing_date, customer_type, connection_type)
+- Also store the `request_id` from prefill so that after successful client creation, we can mark the request as "Completed"
+- After successful save (`saveMutation.onSuccess`), if `request_id` exists, update `client_requests.setup_status = "Completed"`
 
-**2. Also update `supabase/functions/enforce-billing/index.ts`**
-- The billing enforcement function also needs to use RouterOS API to disable PPP users
-- Change from HTTP REST (`/rest/ppp/secret/set`) to RouterOS API (`/ppp/secret/set`)
+**2. `src/pages/dashboard/clients/NewRequest.tsx`**
+- **Convert to Client**: Remove the immediate `setup_status = "Completed"` update. Just navigate with prefill data + `request_id`. Completion happens only after client is actually saved in AddClient.
+- **Assign To column**: Make the assigned names clickable or add a small "Assign" button directly in the cell (opens the assign dialog).
+- **Status column**: Make the status badge clickable — cycle through statuses or show a small popover/select to change status directly.
+- **Action dropdown**: Simplify to only 2 items — Edit and Delete. Move assign and status controls to their respective columns.
 
 ### Files
-| File | Action |
+| File | Change |
 |------|--------|
-| `supabase/functions/fetch-mikrotik-ppp/index.ts` | REWRITE — use RouterOS TCP API instead of REST |
-| `supabase/functions/enforce-billing/index.ts` | UPDATE — use RouterOS TCP API for disabling PPP users |
-
-### Key Technical Detail
-```text
-// RouterOS API word encoding (length prefix)
-length < 0x80       → 1 byte
-length < 0x4000     → 2 bytes (0x80 | high, low)
-length < 0x200000   → 3 bytes
-length < 0x10000000 → 4 bytes
-```
-
-No new dependencies needed — pure TCP via `Deno.connect()`.
+| `src/pages/dashboard/clients/AddClient.tsx` | Read prefill from location state, mark request completed after save |
+| `src/pages/dashboard/clients/NewRequest.tsx` | Simplify action menu, move assign/status to columns, fix convert logic |
 
