@@ -160,6 +160,7 @@ interface RoleModuleState {
 }
 
 export default function Users() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState("100");
@@ -170,13 +171,13 @@ export default function Users() {
 
   // Dialogs
   const [showNewUserDialog, setShowNewUserDialog] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
   const [showNewRoleDialog, setShowNewRoleDialog] = useState(false);
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
-  const [editingUser, setEditingUser] = useState<any>(null);
   const [editingRole, setEditingRole] = useState<any>(null);
 
   // New User form
-  const [newUser, setNewUser] = useState({ username: "", password: "", status: "Active", employee_id: "", role_id: "" });
+  const [newUser, setNewUser] = useState({ username: "", password: "", confirm_password: "", status: "Active", employee_id: "", role_id: "" });
 
   // New Role form
   const [newRole, setNewRole] = useState({ name: "", status: "Active", redirect_url: "" });
