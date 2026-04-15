@@ -1,23 +1,35 @@
 
 
-## Plan: Update MikroTik Version Options to 3
+## Plan: Filter Out Already-Existing Clients from MikroTik Import
 
-The reference image shows 3 version options in the dropdown:
-1. **Version 6.43 or older**
-2. **Version greater 6.43 or older 7.0**
-3. **Newer than version 7.0**
+### Overview
+Update the Import page to exclude PPP users whose `name` (PPP ID) already exists in the `clients` table (`username` column). This way only un-imported users are shown.
 
-Currently the code only has `v3` and `v2`.
+### Approach
+In `src/pages/dashboard/mikrotik/Import.tsx`, after fetching `mikrotik_clients`, also fetch all `username` values from the `clients` table. Then filter out any `mikrotik_clients` row where `c.name` matches an existing client's `username`.
 
-### Changes — `src/pages/dashboard/mikrotik/Servers.tsx`
+### Changes — `src/pages/dashboard/mikrotik/Import.tsx`
 
-1. Update the `defaultForm` version default to match the new naming
-2. Update the version `<Select>` in the dialog to show 3 options:
-   - `6.43_or_older` → "Version 6.43 or older"
-   - `gt6.43_lt7.0` → "Version greater 6.43 or older 7.0"
-   - `7.0_or_newer` → "Newer than version 7.0"
-3. Update the version `<Badge>` display in the table to show readable labels
+1. Add a new `useQuery` to fetch existing client usernames:
+   ```typescript
+   const { data: existingUsernames = [] } = useQuery({
+     queryKey: ["existing_client_usernames"],
+     queryFn: async () => {
+       const { data } = await supabase.from("clients").select("username");
+       return (data || []).map(c => c.username?.toLowerCase());
+     },
+   });
+   ```
+
+2. Update the filtering logic to exclude matches:
+   ```typescript
+   const filtered = clients
+     .filter((c: any) => !existingUsernames.includes(c.name?.toLowerCase()))
+     .filter((c: any) =>
+       [c.name, c.caller_id, c.server_name].some(v => v?.toLowerCase().includes(search.toLowerCase()))
+     );
+   ```
 
 ### Files
-- 1 file edited: `src/pages/dashboard/mikrotik/Servers.tsx`
+- 1 file edited: `src/pages/dashboard/mikrotik/Import.tsx`
 
