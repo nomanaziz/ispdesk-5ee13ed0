@@ -1,36 +1,48 @@
 
 
-## Plan: Fix MikroTik Import Flow
+## Plan: Enforce Client Request Workflow Logic
 
-### Problem 1: "Export to Client List" doesn't prefill MikroTik fields
-The Import page sends `username`, `password`, `server_name`, `mikrotik_id`, `profile`, `mac_address` via `navigate()` state, but `AddClient.tsx` only reads `name`, `contact`, `email`, `address`, `zone_id`, `connection_type`, `package_id`, `monthly_bill`, `customer_type` in its `useEffect`. The MikroTik-specific fields are ignored.
+### Current Problem
+All status changes are freely available — no enforcement of the required sequential workflow.
 
-**Fix in `AddClient.tsx`**: Add these fields to the prefill `useEffect`:
-- `username`, `password`, `profile`, `mikrotik_id`, `remote_address`, `server_name`, `mac_address`
-- Also auto-trigger `fetch-mikrotik-profiles` when `mikrotik_id` is prefilled so the profile dropdown populates
+### Required Workflow
+```text
+New Request (Pending)
+  → Assign Employee → status=Processing, phy=In Progress
+    → Change Phy to "Done"
+      → Change status to "Contacted" (required step)
+        → "Convert to Client" available
+          → Success → status=Completed
+          → Failure → stays as Contacted
+```
 
-### Problem 2: Bulk Import should auto-load unmatched MikroTik users
-Currently BulkImport only works via Excel upload. It should instead:
+### Changes in `src/pages/dashboard/clients/NewRequest.tsx`
 
-**Redesign `BulkImport.tsx`**:
-1. On page load, query `mikrotik_clients` where `exported = false` and filter out any whose `name` (username) already exists in `clients.username`
-2. Display these unmatched users in the editable table with auto-populated fields:
-   - `C.Code` = MikroTik username
-   - `UserName` = MikroTik username  
-   - `Password` = MikroTik password
-   - `Server` = MikroTik device name
-   - `Profile` = MikroTik profile
-   - `R.Address` = MikroTik remote_address
-   - `Prot.Type` = service (pppoe/dhcp)
-   - `M.Bill` = auto-fill from matching `isp_packages` by profile (500 default)
-   - `Package` = matched package name from profile
-3. Keep the Excel upload as an alternative option
-4. After successful import, mark `mikrotik_clients` records as `exported = true`
+**1. Gate the Status dropdown based on workflow state**
+- If not assigned yet → no status change allowed (must assign first)
+- If `phy !== "Done"` → only show current status (can't change normal status until phy is done)
+- If `phy === "Done"` → allow changing to "Contacted" only (from Processing)
+- "Completed" is NOT manually selectable — only set automatically after successful convert
 
-### Files to Change
+**2. Gate Physical Connectivity dropdown**
+- Only show Phy status change when assigned (status = Processing or later)
+- Allow: Pending → In Progress → Done (sequential, already mostly works via assign)
+- Add a "Mark Done" option in the Phy badge dropdown
 
+**3. Gate "Convert to Client" action**
+- Only available when `phy === "Done"` AND `status === "Contacted"`
+- Currently only checks `phy === "Done"` — add `status === "Contacted"` check
+
+**4. Auto-complete on successful convert**
+- In `AddClient.tsx`, after successful save with `request_id` in state, update `client_requests.setup_status = "Completed"`
+- This already exists partially — verify it works and ensure it only fires on success
+
+**5. Make Phy status clickable for status change**
+- The Phy badge should be a dropdown (like the status badge) allowing: mark as "Done" when currently "In Progress"
+
+### Files
 | File | Change |
 |------|--------|
-| `src/pages/dashboard/clients/AddClient.tsx` | Add MikroTik fields (`username`, `password`, `profile`, `mikrotik_id`, `remote_address`) to prefill useEffect; auto-fetch profiles when mikrotik_id prefilled |
-| `src/pages/dashboard/mikrotik/BulkImport.tsx` | Auto-load unmatched MikroTik users on mount, pre-populate fields, mark exported after import |
+| `src/pages/dashboard/clients/NewRequest.tsx` | Gate status/phy dropdowns based on workflow, require Contacted before Convert, make phy badge interactive |
+| `src/pages/dashboard/clients/AddClient.tsx` | Ensure request status → Completed only on successful save |
 
