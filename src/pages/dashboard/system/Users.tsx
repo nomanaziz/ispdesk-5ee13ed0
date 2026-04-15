@@ -261,15 +261,15 @@ export default function Users() {
                 <Plus className="h-3 w-3" /> New User
               </Button>
             </div>
-            <div className="p-4 bg-card space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+             <div className="p-3 sm:p-4 bg-card space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><Label className="text-xs mb-1 block">USER STATUS</Label><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="all">সকল</SelectItem><SelectItem value="Active">Active</SelectItem><SelectItem value="InActive">InActive</SelectItem></SelectContent></Select></div>
                 <div><Label className="text-xs mb-1 block">EMPLOYEE</Label><Select value={employeeFilter} onValueChange={setEmployeeFilter}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="all">সকল</SelectItem><SelectItem value="none">Without Employee</SelectItem>{employees.map((e: any) => (<SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>))}</SelectContent></Select></div>
                 <div><Label className="text-xs mb-1 block">USER ROLE</Label><Select value={roleFilter} onValueChange={setRoleFilter}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="all">সকল</SelectItem>{appRoles.map((r: any) => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}</SelectContent></Select></div>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">SHOW</span><Select value={entriesPerPage} onValueChange={setEntriesPerPage}><SelectTrigger className="h-8 w-20 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="10">10</SelectItem><SelectItem value="25">25</SelectItem><SelectItem value="50">50</SelectItem><SelectItem value="100">100</SelectItem></SelectContent></Select><span className="text-xs text-muted-foreground">ENTRIES</span></div>
-                <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">SEARCH:</span><Input value={search} onChange={e => setSearch(e.target.value)} className="h-8 w-48 text-xs" /></div>
+                <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">SEARCH:</span><Input value={search} onChange={e => setSearch(e.target.value)} className="h-8 w-full sm:w-48 text-xs" /></div>
               </div>
               <div className="overflow-x-auto border rounded-md">
                 <Table>
@@ -432,7 +432,7 @@ export default function Users() {
 
       {/* ======== NEW USER WIZARD ======== */}
       <Dialog open={showNewUserDialog} onOpenChange={(v) => { setShowNewUserDialog(v); if (!v) setWizardStep(1); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[95vw] max-w-lg">
           <DialogHeader><DialogTitle className="text-center text-lg">Create New User</DialogTitle></DialogHeader>
           <div className="flex items-center justify-center gap-6 py-2">
             {[{ step: 1, icon: User, label: "User Info" }, { step: 2, icon: Briefcase, label: "Employee Assign" }, { step: 3, icon: Shield, label: "User Role(Group)" }].map(({ step, icon: Icon, label }) => (
