@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
     const ip = device.ip_address;
     const port = device.api_port || 8728;
     const apiUser = device.username || "admin";
-    const apiPass = device.password || "";
+    const apiPass = device.password_encrypted || "";
 
     const conn = await Deno.connect({ hostname: ip, port });
 
