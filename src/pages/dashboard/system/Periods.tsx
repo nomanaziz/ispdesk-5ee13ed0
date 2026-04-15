@@ -41,7 +41,25 @@ export default function Periods() {
           <CalendarDays className="h-4 w-4" /> বিলিং পিরিয়ড কনফিগারেশন
         </div>
         <div className="p-5 space-y-5 bg-card">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs mb-1 block">বিলিং মোড</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10" />
+                <Select value={form.billing_mode} onValueChange={v => setForm(p => ({ ...p, billing_mode: v }))}>
+                  <SelectTrigger className="pl-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="month_to_month">মাস টু মাস</SelectItem>
+                    <SelectItem value="date_to_date">ডেট টু ডেট</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {form.billing_mode === "month_to_month"
+                  ? "সকল ক্লায়েন্টের বিল একই তারিখে জেনারেট হবে"
+                  : "প্রতিটি ক্লায়েন্টের কানেকশন তারিখ অনুযায়ী বিল জেনারেট হবে"}
+              </p>
+            </div>
             <div>
               <Label className="text-xs mb-1 block">সাইকেল টাইপ</Label>
               <div className="relative">
@@ -57,13 +75,17 @@ export default function Periods() {
                 </Select>
               </div>
             </div>
-            <div>
-              <Label className="text-xs mb-1 block">বিলিং দিন (মাসের)</Label>
-              <div className="relative">
-                <CalendarDays className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input type="number" min={1} max={28} value={form.billing_day} onChange={e => setForm(p => ({ ...p, billing_day: parseInt(e.target.value) || 1 }))} className="pl-9" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {form.billing_mode === "month_to_month" && (
+              <div>
+                <Label className="text-xs mb-1 block">বিলিং দিন (মাসের)</Label>
+                <div className="relative">
+                  <CalendarDays className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input type="number" min={1} max={28} value={form.billing_day} onChange={e => setForm(p => ({ ...p, billing_day: parseInt(e.target.value) || 1 }))} className="pl-9" />
+                </div>
               </div>
-            </div>
+            )}
             <div>
               <Label className="text-xs mb-1 block">গ্রেস পিরিয়ড (দিন)</Label>
               <div className="relative">
