@@ -101,17 +101,20 @@ export default function UserReview() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/system/users")} className="h-8 w-8">
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="p-2 rounded-lg bg-primary/10">
-          <UsersIcon className="h-6 w-6 text-primary" />
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/system/users")} className="h-8 w-8 shrink-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="p-2 rounded-lg bg-primary/10">
+            <UsersIcon className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-foreground">App Users</h1>
+            <p className="text-xs text-muted-foreground">User Review</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">App Users <span className="text-sm font-normal text-muted-foreground">User Review</span></h1>
-        </div>
-        <div className="ml-auto text-xs text-muted-foreground">সিস্টেম &gt; App Users &gt; User Review</div>
+        <div className="sm:ml-auto text-xs text-muted-foreground pl-11 sm:pl-0">সিস্টেম &gt; App Users &gt; User Review</div>
       </div>
 
       {/* User Basic Information */}
@@ -120,13 +123,13 @@ export default function UserReview() {
           <UsersIcon className="h-4 w-4" /> User Basic Information
         </div>
         <div className="bg-card divide-y">
-          {/* Step 1 - User Information */}
-          <div className="flex items-center justify-between px-5 py-3.5">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-foreground">Step 1- User Information</span>
-              <span className="text-muted-foreground">:</span>
+          {/* Step 1 */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">Step 1- User Information</span>
+              <span className="text-muted-foreground hidden sm:inline">:</span>
               <span className="text-sm">{user.username}</span>
-              <Badge className={`text-[10px] ml-2 ${user.status === "Active" ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}`}>
+              <Badge className={`text-[10px] ${user.status === "Active" ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}`}>
                 {user.status}
               </Badge>
             </div>
@@ -143,14 +146,14 @@ export default function UserReview() {
             </div>
           </div>
 
-          {/* Step 2 - Employee Assign */}
-          <div className="flex items-center justify-between px-5 py-3.5">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-foreground">Step 2- Employee Assign</span>
-              <span className="text-muted-foreground">:</span>
+          {/* Step 2 */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">Step 2- Employee Assign</span>
+              <span className="text-muted-foreground hidden sm:inline">:</span>
               <span className="text-sm">{user.employees?.name || <span className="text-muted-foreground italic">Not Assigned</span>}</span>
             </div>
-            <Button size="sm" className="gap-1 h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => {
+            <Button size="sm" className="gap-1 h-7 text-xs bg-green-600 hover:bg-green-700 self-start sm:self-auto" onClick={() => {
               setEditForm({ employee_id: user.employee_id || "" });
               setEditStep(2);
             }}>
@@ -158,14 +161,14 @@ export default function UserReview() {
             </Button>
           </div>
 
-          {/* Step 3 - User Role Information */}
-          <div className="flex items-center justify-between px-5 py-3.5">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-foreground">Step 3- User Role Information</span>
-              <span className="text-muted-foreground">:</span>
+          {/* Step 3 */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">Step 3- User Role Information</span>
+              <span className="text-muted-foreground hidden sm:inline">:</span>
               <span className="text-sm">{user.app_roles?.name || <span className="text-muted-foreground italic">Not Assigned</span>}</span>
             </div>
-            <Button size="sm" className="gap-1 h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => {
+            <Button size="sm" className="gap-1 h-7 text-xs bg-green-600 hover:bg-green-700 self-start sm:self-auto" onClick={() => {
               setEditForm({ role_id: user.role_id || "" });
               setEditStep(3);
             }}>
@@ -173,29 +176,29 @@ export default function UserReview() {
             </Button>
           </div>
 
-          {/* Step 4 - Module Assign (View only) */}
-          <div className="flex items-center justify-between px-5 py-3.5">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-foreground">Step 4- Module Assign</span>
-              <span className="text-muted-foreground">:</span>
+          {/* Step 4 */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">Step 4- Module Assign</span>
+              <span className="text-muted-foreground hidden sm:inline">:</span>
               <span className="text-sm text-muted-foreground">
                 {assignedModuleGroups.length > 0 ? assignedModuleGroups.join(", ") : "No modules assigned"}
               </span>
             </div>
-            <Button size="sm" className="gap-1 h-7 text-xs bg-blue-600 hover:bg-blue-700" onClick={() => setEditStep(4)}>
+            <Button size="sm" className="gap-1 h-7 text-xs bg-blue-600 hover:bg-blue-700 self-start sm:self-auto" onClick={() => setEditStep(4)}>
               <Eye className="h-3 w-3" /> View
             </Button>
           </div>
         </div>
       </div>
 
-      {/* User Login History (placeholder) */}
+      {/* User Login History */}
       <div className="border rounded-lg overflow-hidden">
         <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
           <Shield className="h-4 w-4" /> User Login History
         </div>
-        <div className="p-4 bg-card space-y-3">
-          <div className="flex items-center justify-between">
+        <div className="p-3 sm:p-4 bg-card space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">SHOW</span>
               <Select defaultValue="100">
@@ -206,7 +209,7 @@ export default function UserReview() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">SEARCH:</span>
-              <Input className="h-8 w-48 text-xs" />
+              <Input className="h-8 w-full sm:w-48 text-xs" />
             </div>
           </div>
           <div className="overflow-x-auto border rounded-md">
@@ -218,16 +221,18 @@ export default function UserReview() {
                   <TableHead className="text-xs text-white text-center">Country</TableHead>
                   <TableHead className="text-xs text-white text-center">Region</TableHead>
                   <TableHead className="text-xs text-white text-center">City/Town</TableHead>
+                  <TableHead className="text-xs text-white text-center">Zip/Postal</TableHead>
                   <TableHead className="text-xs text-white text-center">Organization</TableHead>
                   <TableHead className="text-xs text-white text-center">Status</TableHead>
                   <TableHead className="text-xs text-white text-center">LoggedIn On</TableHead>
                   <TableHead className="text-xs text-white text-center">LoggedOut On</TableHead>
                   <TableHead className="text-xs text-white text-center">Duration</TableHead>
+                  <TableHead className="text-xs text-white text-center">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center text-muted-foreground py-6 text-xs">
+                  <TableCell colSpan={12} className="text-center text-muted-foreground py-6 text-xs">
                     লগইন হিস্ট্রি পরবর্তীতে যোগ হবে
                   </TableCell>
                 </TableRow>
@@ -238,12 +243,10 @@ export default function UserReview() {
         </div>
       </div>
 
-      {/* ==================== EDIT STEP 1 DIALOG ==================== */}
+      {/* Edit Step 1 */}
       <Dialog open={editStep === 1} onOpenChange={() => setEditStep(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center">Edit User Information</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader><DialogTitle className="text-center">Edit User Information</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <Label className="text-xs">USER NAME <span className="text-destructive">*</span></Label>
@@ -261,12 +264,10 @@ export default function UserReview() {
         </DialogContent>
       </Dialog>
 
-      {/* ==================== EDIT STEP 2 DIALOG ==================== */}
+      {/* Edit Step 2 */}
       <Dialog open={editStep === 2} onOpenChange={() => setEditStep(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center">Employee Assign</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader><DialogTitle className="text-center">Employee Assign</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <Label className="text-xs">EMPLOYEE</Label>
@@ -288,12 +289,10 @@ export default function UserReview() {
         </DialogContent>
       </Dialog>
 
-      {/* ==================== EDIT STEP 3 DIALOG ==================== */}
+      {/* Edit Step 3 */}
       <Dialog open={editStep === 3} onOpenChange={() => setEditStep(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center">User Role Information</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader><DialogTitle className="text-center">User Role Information</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <Label className="text-xs">USER ROLE</Label>
@@ -314,12 +313,10 @@ export default function UserReview() {
         </DialogContent>
       </Dialog>
 
-      {/* ==================== VIEW STEP 4 DIALOG ==================== */}
+      {/* View Step 4 */}
       <Dialog open={editStep === 4} onOpenChange={() => setEditStep(null)}>
-        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-center">Assigned Modules</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="w-[95vw] max-w-lg max-h-[70vh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="text-center">Assigned Modules</DialogTitle></DialogHeader>
           <div className="space-y-3">
             {assignedModuleGroups.length === 0 ? (
               <p className="text-center text-muted-foreground text-sm py-4">কোনো মডিউল অ্যাসাইন করা হয়নি</p>

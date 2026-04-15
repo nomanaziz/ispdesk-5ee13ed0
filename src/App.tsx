@@ -213,6 +213,7 @@ import AffiliationAdd from "@/pages/dashboard/affiliation/AddAffiliator";
 
 // System
 import SystemUsers from "@/pages/dashboard/system/Users";
+import UserReview from "@/pages/dashboard/system/UserReview";
 import SystemCompany from "@/pages/dashboard/system/Company";
 import SystemInvoice from "@/pages/dashboard/system/Invoice";
 import SystemPeriods from "@/pages/dashboard/system/Periods";
@@ -465,6 +466,7 @@ const App = () => (
 
               {/* System */}
               <Route path="/dashboard/system/users" element={<P><SystemUsers /></P>} />
+              <Route path="/dashboard/system/users/:id" element={<P><UserReview /></P>} />
               <Route path="/dashboard/system/company" element={<P><SystemCompany /></P>} />
               <Route path="/dashboard/system/invoice" element={<P><SystemInvoice /></P>} />
               <Route path="/dashboard/system/periods" element={<P><SystemPeriods /></P>} />
