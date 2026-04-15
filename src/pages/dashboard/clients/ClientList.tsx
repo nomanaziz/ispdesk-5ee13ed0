@@ -1,19 +1,25 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, FileSpreadsheet, FileText, Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, MoreVertical, Edit, MessageSquare } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Search, FileSpreadsheet, FileText, Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, MoreVertical, Edit, MessageSquare, CalendarClock, Crown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
+import { format, parseISO, differenceInDays, isAfter, isBefore } from "date-fns";
+import { cn } from "@/lib/utils";
 
 export default function ClientList() {
   const [search, setSearch] = useState("");
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const queryClient = useQueryClient();
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ["clients-list"],
@@ -25,6 +31,21 @@ export default function ClientList() {
       if (error) throw error;
       return data;
     },
+  });
+
+  const updateExpireMutation = useMutation({
+    mutationFn: async ({ id, date }: { id: string; date: string }) => {
+      const { error } = await supabase
+        .from("clients")
+        .update({ expire_date: date })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+      toast.success("মেয়াদ আপডেট হয়েছে");
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const stats = useMemo(() => {
@@ -54,6 +75,26 @@ export default function ClientList() {
   const toggleAll = () => {
     if (selectedIds.length === filtered.length) setSelectedIds([]);
     else setSelectedIds(filtered.map((c: any) => c.id));
+  };
+
+  const getExpireBadge = (expireDate: string | null, isVip: boolean) => {
+    if (isVip) {
+      return { color: "bg-purple-500/10 text-purple-600 border-purple-500/30", label: "VIP" };
+    }
+    if (!expireDate) {
+      return { color: "bg-muted text-muted-foreground", label: "N/A" };
+    }
+    const now = new Date();
+    const expire = parseISO(expireDate);
+    const daysLeft = differenceInDays(expire, now);
+
+    if (daysLeft < 0) {
+      return { color: "bg-red-500/10 text-red-600 border-red-500/30", label: format(expire, "dd/MM") };
+    } else if (daysLeft <= 7) {
+      return { color: "bg-amber-500/10 text-amber-600 border-amber-500/30", label: format(expire, "dd/MM") };
+    } else {
+      return { color: "bg-green-500/10 text-green-600 border-green-500/30", label: format(expire, "dd/MM") };
+    }
   };
 
   const summaryCards = [
@@ -115,13 +156,9 @@ export default function ClientList() {
               <TableHead className="text-xs">Cus. Name</TableHead>
               <TableHead className="text-xs">Mobile</TableHead>
               <TableHead className="text-xs">Zone</TableHead>
-              <TableHead className="text-xs">Conn. Type</TableHead>
-              <TableHead className="text-xs">Cus. Type</TableHead>
-              <TableHead className="text-xs">R.Address</TableHead>
               <TableHead className="text-xs">Package/Speed</TableHead>
               <TableHead className="text-xs">M.Bill</TableHead>
-              <TableHead className="text-xs">MAC Addr</TableHead>
-              <TableHead className="text-xs">Server</TableHead>
+              <TableHead className="text-xs">Expire</TableHead>
               <TableHead className="text-xs">B.Status</TableHead>
               <TableHead className="text-xs">M.Status</TableHead>
               <TableHead className="text-xs">Action</TableHead>
@@ -129,61 +166,97 @@ export default function ClientList() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={17} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={13} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={17} className="text-center py-8">কোনো ক্লায়েন্ট পাওয়া যায়নি</TableCell></TableRow>
+              <TableRow><TableCell colSpan={13} className="text-center py-8">কোনো ক্লায়েন্ট পাওয়া যায়নি</TableCell></TableRow>
             ) : (
-              filtered.map((c: any) => (
-                <TableRow key={c.id}>
-                  <TableCell><Checkbox checked={selectedIds.includes(c.id)} onCheckedChange={() => toggleSelect(c.id)} /></TableCell>
-                  <TableCell className="text-xs font-medium">{c.client_id}</TableCell>
-                  <TableCell className="text-xs">
-                    <div>{c.username || c.user_id || "-"}</div>
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    <div className="flex items-center gap-1">
-                      <span>{showPasswords[c.id] ? (c.password || "****") : "••••"}</span>
-                      <button onClick={() => togglePassword(c.id)} className="text-muted-foreground hover:text-foreground">
-                        {showPasswords[c.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                      </button>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-xs font-medium">{c.name}</TableCell>
-                  <TableCell className="text-xs">{c.contact}</TableCell>
-                  <TableCell className="text-xs">{c.zones?.name || "-"}</TableCell>
-                  <TableCell className="text-xs">{c.connection_type || "-"}</TableCell>
-                  <TableCell className="text-xs">{c.client_type || "-"}</TableCell>
-                  <TableCell className="text-xs">{c.remote_address || "-"}</TableCell>
-                  <TableCell className="text-xs">
-                    {c.isp_packages ? `${c.isp_packages.name}/${c.isp_packages.bandwidth_down}Mb` : "-"}
-                  </TableCell>
-                  <TableCell className="text-xs">{c.monthly_bill || 0}</TableCell>
-                  <TableCell className="text-xs font-mono text-[10px]">{c.mac_address || "-"}</TableCell>
-                  <TableCell className="text-xs">{c.server_name || "-"}</TableCell>
-                  <TableCell className="text-xs">
-                    <Badge variant={c.billing_status === "Active" ? "default" : "secondary"} className="text-[10px]">
-                      {c.billing_status || "Active"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    <Badge variant={c.mikrotik_status === "online" ? "default" : "outline"} className={`text-[10px] ${c.mikrotik_status === "online" ? "bg-green-500" : ""}`}>
-                      {c.mikrotik_status || "-"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost" className="h-7 w-7"><MoreVertical className="h-4 w-4" /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem><Edit className="h-3 w-3 mr-2" /> Edit</DropdownMenuItem>
-                        <DropdownMenuItem><MessageSquare className="h-3 w-3 mr-2" /> SMS</DropdownMenuItem>
-                        <DropdownMenuItem><Eye className="h-3 w-3 mr-2" /> View</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+              filtered.map((c: any) => {
+                const expireBadge = getExpireBadge(c.expire_date, c.is_vip);
+                return (
+                  <TableRow key={c.id}>
+                    <TableCell><Checkbox checked={selectedIds.includes(c.id)} onCheckedChange={() => toggleSelect(c.id)} /></TableCell>
+                    <TableCell className="text-xs font-medium">{c.client_id}</TableCell>
+                    <TableCell className="text-xs">
+                      <div>{c.username || c.user_id || "-"}</div>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <div className="flex items-center gap-1">
+                        <span>{showPasswords[c.id] ? (c.password || "****") : "••••"}</span>
+                        <button onClick={() => togglePassword(c.id)} className="text-muted-foreground hover:text-foreground">
+                          {showPasswords[c.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                        </button>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs font-medium">
+                      <div className="flex items-center gap-1">
+                        {c.is_vip && <Crown className="h-3 w-3 text-purple-500" />}
+                        {c.name}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs">{c.contact}</TableCell>
+                    <TableCell className="text-xs">{c.zones?.name || "-"}</TableCell>
+                    <TableCell className="text-xs">
+                      {c.isp_packages ? `${c.isp_packages.name}/${c.isp_packages.bandwidth_down}Mb` : "-"}
+                    </TableCell>
+                    <TableCell className="text-xs">{c.monthly_bill || 0}</TableCell>
+                    <TableCell className="text-xs">
+                      {c.is_vip ? (
+                        <Badge variant="outline" className={`text-[10px] cursor-default ${expireBadge.color}`}>
+                          <Crown className="h-2.5 w-2.5 mr-0.5" /> VIP
+                        </Badge>
+                      ) : (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button>
+                              <Badge variant="outline" className={`text-[10px] cursor-pointer hover:opacity-80 transition-opacity ${expireBadge.color}`}>
+                                <CalendarClock className="h-2.5 w-2.5 mr-0.5" />
+                                {expireBadge.label}
+                              </Badge>
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={c.expire_date ? parseISO(c.expire_date) : undefined}
+                              onSelect={(date) => {
+                                if (date) {
+                                  updateExpireMutation.mutate({
+                                    id: c.id,
+                                    date: format(date, "yyyy-MM-dd"),
+                                  });
+                                }
+                              }}
+                              className={cn("p-3 pointer-events-auto")}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <Badge variant={c.billing_status === "Active" ? "default" : "secondary"} className="text-[10px]">
+                        {c.billing_status || "Active"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <Badge variant={c.mikrotik_status === "online" ? "default" : "outline"} className={`text-[10px] ${c.mikrotik_status === "online" ? "bg-green-500" : ""}`}>
+                        {c.mikrotik_status || "-"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost" className="h-7 w-7"><MoreVertical className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem><Edit className="h-3 w-3 mr-2" /> Edit</DropdownMenuItem>
+                          <DropdownMenuItem><MessageSquare className="h-3 w-3 mr-2" /> SMS</DropdownMenuItem>
+                          <DropdownMenuItem><Eye className="h-3 w-3 mr-2" /> View</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
