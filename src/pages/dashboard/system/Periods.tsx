@@ -7,13 +7,14 @@ import { useSystemSetting } from "@/hooks/useSystemSetting";
 import { Save, CalendarDays, Calendar, Clock } from "lucide-react";
 
 interface PeriodsConfig {
+  billing_mode: string;
   cycle_type: string;
   billing_day: number;
   grace_period_days: number;
   auto_generate: boolean;
 }
 
-const defaults: PeriodsConfig = { cycle_type: "monthly", billing_day: 1, grace_period_days: 5, auto_generate: true };
+const defaults: PeriodsConfig = { billing_mode: "month_to_month", cycle_type: "monthly", billing_day: 1, grace_period_days: 5, auto_generate: true };
 
 export default function Periods() {
   const { value, isLoading, save, isSaving } = useSystemSetting<PeriodsConfig>("billing_periods", defaults);
