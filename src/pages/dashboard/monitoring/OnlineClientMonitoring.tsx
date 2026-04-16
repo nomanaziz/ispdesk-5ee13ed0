@@ -605,7 +605,15 @@ export default function OnlineClientMonitoring() {
             </div>
           </div>
           {showFilters && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t">
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "online" | "offline")}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="All Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All ({onlineCount + offlineCount})</SelectItem>
+                  <SelectItem value="online">Online ({onlineCount})</SelectItem>
+                  <SelectItem value="offline">Offline ({offlineCount})</SelectItem>
+                </SelectContent>
+              </Select>
               <Select value={filterServer} onValueChange={setFilterServer}>
                 <SelectTrigger className="h-9"><SelectValue placeholder="All Servers" /></SelectTrigger>
                 <SelectContent>
