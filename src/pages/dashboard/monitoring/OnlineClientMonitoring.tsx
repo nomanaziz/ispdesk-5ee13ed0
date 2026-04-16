@@ -345,8 +345,10 @@ export default function OnlineClientMonitoring() {
             <TableHead>Profile</TableHead>
             <TableHead>Service</TableHead>
             <TableHead>IP Address</TableHead>
+            <TableHead>Mac Address</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Duration</TableHead>
+            <TableHead>R.Days</TableHead>
             <TableHead>
               <ArrowUpFromLine className="h-3.5 w-3.5 inline mr-1" />Upload
             </TableHead>
