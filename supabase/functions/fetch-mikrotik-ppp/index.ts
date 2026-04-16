@@ -373,6 +373,7 @@ Deno.serve(async (req) => {
     // ── ACTION: sync-online ──
     if (action === "sync-online") {
       const allActiveUsernames: Set<string> = new Set();
+      const allSecrets: Map<string, { disabled: boolean }> = new Map();
       const errors: string[] = [];
 
       for (const device of devices) {
@@ -386,10 +387,22 @@ Deno.serve(async (req) => {
           conn = await Deno.connect({ hostname: ip, port });
           await mikrotikLogin(conn, username, password);
 
+          // Fetch active sessions for online status
           const activeConns = await mikrotikCommand(conn, "/ppp/active/print");
           for (const ac of activeConns) {
             if (ac.name) {
               allActiveUsernames.add(ac.name.toLowerCase());
+            }
+          }
+
+          // Fetch PPP secrets for enabled/disabled status
+          const secrets = await mikrotikCommand(conn, "/ppp/secret/print");
+          for (const s of secrets) {
+            if (s.name) {
+              const key = `${s.name.toLowerCase()}::${device.id}`;
+              allSecrets.set(key, {
+                disabled: s.disabled === "true" || s.disabled === "yes",
+              });
             }
           }
         } catch (err: any) {
@@ -401,16 +414,20 @@ Deno.serve(async (req) => {
 
       const { data: allClients } = await supabase
         .from("clients")
-        .select("id, username, is_online");
+        .select("id, username, is_online, mikrotik_id, mikrotik_status");
 
       let onlineCount = 0;
       let offlineCount = 0;
+      let statusSynced = 0;
 
       if (allClients && allClients.length > 0) {
         const onlineIds: string[] = [];
         const offlineIds: string[] = [];
+        const enableIds: string[] = [];
+        const disableIds: string[] = [];
 
         for (const client of allClients) {
+          // Online/offline sync
           const isOnline = client.username ? allActiveUsernames.has(client.username.toLowerCase()) : false;
           if (isOnline && !client.is_online) {
             onlineIds.push(client.id);
@@ -419,8 +436,23 @@ Deno.serve(async (req) => {
           }
           if (isOnline) onlineCount++;
           else offlineCount++;
+
+          // MikroTik enabled/disabled sync
+          if (client.username && client.mikrotik_id) {
+            const key = `${client.username.toLowerCase()}::${client.mikrotik_id}`;
+            const secret = allSecrets.get(key);
+            if (secret) {
+              const mkStatus = secret.disabled ? "disabled" : "enabled";
+              if (client.mikrotik_status !== mkStatus) {
+                if (mkStatus === "enabled") enableIds.push(client.id);
+                else disableIds.push(client.id);
+                statusSynced++;
+              }
+            }
+          }
         }
 
+        // Batch update is_online
         for (let i = 0; i < onlineIds.length; i += 100) {
           const batch = onlineIds.slice(i, i + 100);
           await supabase.from("clients").update({ is_online: true }).in("id", batch);
@@ -429,10 +461,20 @@ Deno.serve(async (req) => {
           const batch = offlineIds.slice(i, i + 100);
           await supabase.from("clients").update({ is_online: false }).in("id", batch);
         }
+
+        // Batch update mikrotik_status
+        for (let i = 0; i < enableIds.length; i += 100) {
+          const batch = enableIds.slice(i, i + 100);
+          await supabase.from("clients").update({ mikrotik_status: "enabled" }).in("id", batch);
+        }
+        for (let i = 0; i < disableIds.length; i += 100) {
+          const batch = disableIds.slice(i, i + 100);
+          await supabase.from("clients").update({ mikrotik_status: "disabled" }).in("id", batch);
+        }
       }
 
       return new Response(
-        JSON.stringify({ ok: true, online: onlineCount, offline: offlineCount, errors }),
+        JSON.stringify({ ok: true, online: onlineCount, offline: offlineCount, status_synced: statusSynced, errors }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
