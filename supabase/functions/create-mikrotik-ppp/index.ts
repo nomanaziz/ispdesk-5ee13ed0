@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
     if (!mikrotik_id || !username || !password) {
       return new Response(
         JSON.stringify({ error: "mikrotik_id, username, and password are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
     if (devErr || !device) {
       return new Response(
         JSON.stringify({ error: "MikroTik device not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
     console.error("create-mikrotik-ppp error:", err);
     return new Response(
       JSON.stringify({ error: err.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
