@@ -297,13 +297,13 @@ export default function BillingList() {
                       <TableCell>
                         {isDue ? (
                           <div className="flex items-center gap-1">
-                            <Badge variant="destructive" className="text-xs">Due</Badge>
-                            <Button size="sm" variant="outline" className="h-6 text-[10px] px-1.5" onClick={() => { setPayClient(c); setPayBilling(b); }}>
+                            <Badge variant="destructive" className="text-[10px] h-6 flex items-center">Due</Badge>
+                            <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
                               Pay
                             </Button>
                           </div>
                         ) : (
-                          <Badge className="text-xs bg-emerald-500/20 text-emerald-600 border-emerald-500/30" variant="outline">Paid</Badge>
+                          <Badge className="text-[10px] h-6 flex items-center bg-emerald-500/20 text-emerald-600 border-emerald-500/30" variant="outline">Paid</Badge>
                         )}
                       </TableCell>
                       <TableCell>

@@ -75,6 +75,7 @@ function formatBps(bps: string | null): string {
 export default function OnlineClientMonitoring() {
   const [activeTab, setActiveTab] = useState("online");
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
+  const [offlineClients, setOfflineClients] = useState<ActiveSession[]>([]);
   const [mismatchData, setMismatchData] = useState<{ disabledInSystem: MismatchRecord[]; enabledInSystem: MismatchRecord[]; profileMismatch: MismatchRecord[] }>({ disabledInSystem: [], enabledInSystem: [], profileMismatch: [] });
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -83,6 +84,7 @@ export default function OnlineClientMonitoring() {
   const [totalClients, setTotalClients] = useState(0);
   const [onlineCount, setOnlineCount] = useState(0);
   const [offlineCount, setOfflineCount] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<"all" | "online" | "offline">("all");
 
   // Filters
   const [filterServer, setFilterServer] = useState("all");
@@ -129,6 +131,43 @@ export default function OnlineClientMonitoring() {
         setOnlineCount(data.online_count || data.sessions.length);
         setOfflineCount(data.offline_count || 0);
         setTotalClients(data.total_clients || 0);
+
+        // Load offline clients from DB
+        const onlineUsernames = new Set((data.sessions as ActiveSession[]).map(s => s.name));
+        const { data: allClients } = await supabase
+          .from("clients")
+          .select("id, client_id, name, contact, username, remote_address, zone:zones(name), sub_zone:sub_zones(name), box:boxes(name), connection_type, profile, status, mikrotik_id, server_name, total_upload, total_download, mac_address")
+          .eq("status", "active");
+        
+        if (allClients) {
+          const offline = allClients
+            .filter((c: any) => c.username && !onlineUsernames.has(c.username))
+            .map((c: any): ActiveSession => ({
+              name: c.username || "",
+              address: c.remote_address || "",
+              uptime: "—",
+              caller_id: c.mac_address || "",
+              service: "pppoe",
+              encoding: "",
+              server_name: c.server_name || "",
+              device_id: c.mikrotik_id || "",
+              client_id: c.id,
+              client_code: c.client_id,
+              client_name: c.name,
+              contact: c.contact,
+              zone_name: c.zone?.name || "",
+              sub_zone_name: c.sub_zone?.name || "",
+              box_name: c.box?.name || "",
+              connection_type: c.connection_type,
+              profile: c.profile,
+              status: "offline",
+              mikrotik_id: c.mikrotik_id,
+              total_upload: c.total_upload || 0,
+              total_download: c.total_download || 0,
+            }));
+          setOfflineClients(offline);
+          setOfflineCount(offline.length);
+        }
       }
       if (data?.mismatch) {
         setMismatchData(data.mismatch);
@@ -295,7 +334,10 @@ export default function OnlineClientMonitoring() {
     return () => clearInterval(interval);
   }, [loadActiveSessions]);
 
-  const filteredSessions = sessions.filter((s) => {
+  // Combine online and offline based on filter
+  const combinedSessions = statusFilter === "online" ? sessions : statusFilter === "offline" ? offlineClients : [...sessions, ...offlineClients];
+
+  const filteredSessions = combinedSessions.filter((s) => {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       if (
@@ -391,7 +433,9 @@ export default function OnlineClientMonitoring() {
                 <TableCell className="font-mono text-xs">{s.address || "—"}</TableCell>
                 <TableCell className="font-mono text-xs">{s.caller_id || "—"}</TableCell>
                 <TableCell>
-                  <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Online</Badge>
+                <Badge className={s.status === "offline" ? "bg-destructive/20 text-destructive border-destructive/30" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"}>
+                  {s.status === "offline" ? "Offline" : "Online"}
+                </Badge>
                 </TableCell>
                 <TableCell className="font-mono text-xs">{s.uptime || "—"}</TableCell>
                 <TableCell className="font-mono text-xs">—</TableCell>
@@ -561,7 +605,15 @@ export default function OnlineClientMonitoring() {
             </div>
           </div>
           {showFilters && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t">
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "online" | "offline")}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="All Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All ({onlineCount + offlineCount})</SelectItem>
+                  <SelectItem value="online">Online ({onlineCount})</SelectItem>
+                  <SelectItem value="offline">Offline ({offlineCount})</SelectItem>
+                </SelectContent>
+              </Select>
               <Select value={filterServer} onValueChange={setFilterServer}>
                 <SelectTrigger className="h-9"><SelectValue placeholder="All Servers" /></SelectTrigger>
                 <SelectContent>

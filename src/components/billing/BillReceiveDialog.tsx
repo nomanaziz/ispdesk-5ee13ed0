@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
 
@@ -21,6 +22,7 @@ interface Props {
 
 export default function BillReceiveDialog({ open, onOpenChange, client, billing, invalidateKey }: Props) {
   const queryClient = useQueryClient();
+  const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const monthlyBill = Number(client?.monthly_bill || 0);
@@ -37,6 +39,25 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
   const [remarks, setRemarks] = useState("");
   const [setNextBilling, setSetNextBilling] = useState(true);
   const [sendSms, setSendSms] = useState(false);
+  const [receivedBy, setReceivedBy] = useState(user?.id || "");
+
+  // Fetch employees/profiles for "Received By" dropdown
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["profiles-for-receive"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .order("full_name");
+      return data || [];
+    },
+    enabled: open,
+  });
+
+  // Filter: admin sees all, non-admin sees only self
+  const availableProfiles = isAdmin
+    ? profiles
+    : profiles.filter((p: any) => p.user_id === user?.id);
 
   useEffect(() => {
     if (open) {
@@ -51,8 +72,9 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
       setSetNextBilling(true);
       setSendSms(false);
       setApplyVat(false);
+      setReceivedBy(user?.id || "");
     }
-  }, [open, billing, dueAmount, monthlyBill]);
+  }, [open, billing, dueAmount, monthlyBill, user?.id]);
 
   const totalReceived = receivedAmount - discount + (applyVat ? vatAmount : 0);
   const balanceDue = monthlyBill - alreadyPaid - totalReceived;
@@ -79,6 +101,7 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
           status: newStatus,
           pay_date: receivedDate,
           payment_method: paymentMethod,
+          collected_by: receivedBy || null,
           discount: discount,
           vat: applyVat ? vatAmount : 0,
         }).eq("id", billing.id);
@@ -95,6 +118,7 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
         payment_method: paymentMethod,
         note: finalRemarks || null,
         transaction_id: transactionNo || null,
+        received_by: receivedBy || null,
         status: "approved",
       });
 
@@ -115,6 +139,8 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
   };
 
   if (!client) return null;
+
+  const receivedByName = availableProfiles.find((p: any) => p.user_id === receivedBy)?.full_name || "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -157,6 +183,21 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
             <div>
               <Label className="text-xs">Due Amount</Label>
               <Input value={dueAmount > 0 ? dueAmount : 0} readOnly className="h-8 text-xs bg-muted text-red-500 font-bold" />
+            </div>
+            <div>
+              <Label className="text-xs">Received By</Label>
+              <Select value={receivedBy} onValueChange={setReceivedBy}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProfiles.map((p: any) => (
+                    <SelectItem key={p.user_id} value={p.user_id}>
+                      {p.full_name || p.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label className="text-xs">Payment Method</Label>
