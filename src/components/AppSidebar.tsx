@@ -20,15 +20,15 @@ import { NavLink, useLocation } from "react-router-dom";
 import { Sidebar, SidebarContent, useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface MenuItem { title: string; url: string; icon: LucideIcon; }
-interface MenuGroup { label: string; icon: LucideIcon; iconColor: string; items: MenuItem[]; defaultOpen?: boolean; }
+interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; }
 
 const menuGroups: MenuGroup[] = [
   {
     label: "ড্যাশবোর্ড",
     icon: LayoutDashboard,
-    iconColor: "text-blue-400",
     defaultOpen: true,
     items: [
       { title: "বিলিং ওভারভিউ", url: "/dashboard", icon: CreditCard },
@@ -39,7 +39,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "ওয়েবসাইট প্যানেল",
     icon: Globe,
-    iconColor: "text-purple-400",
     items: [
       { title: "হোমপেজ এডিটর", url: "/dashboard/website/homepage", icon: Monitor },
       { title: "পেজ", url: "/dashboard/website/pages", icon: FileText },
@@ -51,7 +50,6 @@ const menuGroups: MenuGroup[] = [
       { title: "সার্ভিস", url: "/dashboard/website/services", icon: Wrench },
       { title: "উৎসব", url: "/dashboard/website/festivals", icon: Megaphone },
       { title: "মেনু এডিটর", url: "/dashboard/website/menu", icon: List },
-
       { title: "মিডিয়া লাইব্রেরি", url: "/dashboard/website/media", icon: FolderOpen },
       { title: "About পেজ", url: "/dashboard/website/about", icon: BookOpen },
       { title: "সাইট সেটিংস", url: "/dashboard/website/settings", icon: Cog },
@@ -60,7 +58,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "কনফিগারেশন",
     icon: Settings,
-    iconColor: "text-slate-400",
     items: [
       { title: "জোন", url: "/dashboard/config/zones", icon: MapPin },
       { title: "সাব জোন", url: "/dashboard/config/sub-zones", icon: Layers },
@@ -79,7 +76,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "VAS",
     icon: Wrench,
-    iconColor: "text-teal-400",
     items: [
       { title: "VAS কনফিগ", url: "/dashboard/vas/config", icon: Cog },
       { title: "সাবস্ক্রিপশন", url: "/dashboard/vas/subscriptions", icon: Users },
@@ -89,7 +85,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "ক্লায়েন্ট",
     icon: Users,
-    iconColor: "text-emerald-400",
     items: [
       { title: "নতুন রিকোয়েস্ট", url: "/dashboard/clients/new-request", icon: MessageSquare },
       { title: "নতুন যোগ করুন", url: "/dashboard/clients/add", icon: UserPlus },
@@ -103,7 +98,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "বিলিং",
     icon: CreditCard,
-    iconColor: "text-amber-400",
     items: [
       { title: "বিলিং তালিকা", url: "/dashboard/billing", icon: CreditCard },
       { title: "দৈনিক বিল কালেকশন", url: "/dashboard/billing/daily-collection", icon: Wallet },
@@ -113,7 +107,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "MikroTik সার্ভার",
     icon: Server,
-    iconColor: "text-cyan-400",
     items: [
       { title: "সার্ভার", url: "/dashboard/mikrotik/servers", icon: Server },
       { title: "সার্ভার ব্যাকআপ", url: "/dashboard/mikrotik/backup", icon: HardDrive },
@@ -124,7 +117,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "HR ও পেরোল",
     icon: UserCog,
-    iconColor: "text-violet-400",
     items: [
       { title: "ডিপার্টমেন্ট", url: "/dashboard/hr/departments", icon: Building2 },
       { title: "পে-হেড", url: "/dashboard/hr/payheads", icon: DollarSign },
@@ -147,7 +139,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "OLT ম্যানেজমেন্ট",
     icon: Cpu,
-    iconColor: "text-red-400",
     items: [
       { title: "OLT ডিভাইস", url: "/dashboard/olt", icon: Server },
       { title: "ONU তালিকা", url: "/dashboard/olt/onu", icon: List },
@@ -160,7 +151,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "নেটওয়ার্ক মনিটরিং",
     icon: Activity,
-    iconColor: "text-orange-400",
     items: [
       { title: "অনলাইন মনিটরিং", url: "/dashboard/monitoring/online", icon: Wifi },
       { title: "সুইচ তালিকা", url: "/dashboard/monitoring/switches", icon: Network },
@@ -175,7 +165,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "নেটওয়ার্ক ডায়াগ্রাম",
     icon: Network,
-    iconColor: "text-sky-400",
     items: [
       { title: "ডায়াগ্রাম", url: "/dashboard/network/diagram", icon: Network },
       { title: "নেটওয়ার্ক POP", url: "/dashboard/network/pop", icon: Radio },
@@ -188,7 +177,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "ছুটি ম্যানেজমেন্ট",
     icon: CalendarDays,
-    iconColor: "text-lime-400",
     items: [
       { title: "ক্যাটাগরি", url: "/dashboard/leave/categories", icon: FolderOpen },
       { title: "সেটআপ", url: "/dashboard/leave/setup", icon: Settings },
@@ -199,7 +187,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "POP ম্যানেজমেন্ট",
     icon: Store,
-    iconColor: "text-indigo-400",
     items: [
       { title: "ট্যারিফ কনফিগ", url: "/dashboard/branches/tariff", icon: Settings },
       { title: "POP যোগ করুন", url: "/dashboard/branches/add-manager", icon: UserPlus },
@@ -213,7 +200,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "ইভেন্ট ও ছুটি",
     icon: Calendar,
-    iconColor: "text-rose-400",
     items: [
       { title: "ইভেন্ট ও ছুটি", url: "/dashboard/events", icon: Calendar },
     ],
@@ -221,7 +207,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "সাপোর্ট ও টিকেটিং",
     icon: Headphones,
-    iconColor: "text-fuchsia-400",
     items: [
       { title: "সাপোর্ট ক্যাটাগরি", url: "/dashboard/support/categories", icon: FolderOpen },
       { title: "ক্লায়েন্ট সাপোর্ট", url: "/dashboard/support/tickets", icon: Headphones },
@@ -231,7 +216,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "টাস্ক ম্যানেজমেন্ট",
     icon: CheckSquare,
-    iconColor: "text-yellow-400",
     items: [
       { title: "টাস্ক ক্যাটাগরি", url: "/dashboard/tasks/categories", icon: FolderOpen },
       { title: "টাস্ক", url: "/dashboard/tasks", icon: CheckSquare },
@@ -241,7 +225,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "ব্যান্ডউইথ ক্রয়",
     icon: Wifi,
-    iconColor: "text-blue-300",
     items: [
       { title: "আইটেম", url: "/dashboard/bw-buy/items", icon: Package },
       { title: "আইটেম ক্যাটাগরি", url: "/dashboard/bw-buy/categories", icon: FolderOpen },
@@ -252,7 +235,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "ব্যান্ডউইথ বিক্রয়",
     icon: BarChart,
-    iconColor: "text-emerald-300",
     items: [
       { title: "POP", url: "/dashboard/bw-sale/pop", icon: Radio },
       { title: "বিক্রয় ইনভয়েস", url: "/dashboard/bw-sale/invoices", icon: FileText },
@@ -263,7 +245,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "ক্রয়",
     icon: ShoppingCart,
-    iconColor: "text-orange-400",
     items: [
       { title: "ভেন্ডর", url: "/dashboard/purchases/vendors", icon: Store },
       { title: "রিকুইজিশন", url: "/dashboard/purchases/requisitions", icon: ClipboardList },
@@ -274,7 +255,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "বিক্রয় ও সার্ভিস",
     icon: Receipt,
-    iconColor: "text-pink-400",
     items: [
       { title: "প্রোডাক্ট ইনভয়েস", url: "/dashboard/sales/product-invoice", icon: FileText },
       { title: "সার্ভিস ইনভয়েস", url: "/dashboard/sales/service-invoice", icon: FileText },
@@ -283,7 +263,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "ইনভেন্টরি",
     icon: Boxes,
-    iconColor: "text-amber-300",
     items: [
       { title: "ইউনিট", url: "/dashboard/inventory/units", icon: CircleDot },
       { title: "স্টোর লোকেশন", url: "/dashboard/inventory/locations", icon: Store },
@@ -295,7 +274,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "অ্যাসেট",
     icon: Archive,
-    iconColor: "text-stone-400",
     items: [
       { title: "অ্যাসেট তালিকা", url: "/dashboard/assets", icon: Archive },
       { title: "নষ্ট আইটেম", url: "/dashboard/assets/destroyed", icon: Trash2 },
@@ -304,7 +282,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "অ্যাকাউন্টিং",
     icon: BarChart3,
-    iconColor: "text-green-400",
     items: [
       { title: "ড্যাশবোর্ড", url: "/dashboard/accounting", icon: PieChart },
       { title: "চার্ট অফ অ্যাকাউন্টস", url: "/dashboard/accounting/chart", icon: BookOpen },
@@ -323,7 +300,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "রিপোর্ট",
     icon: FileBarChart,
-    iconColor: "text-cyan-300",
     items: [
       { title: "বিল কালেকশন", url: "/dashboard/reports/bill-collection", icon: Wallet },
       { title: "ছাড় রিপোর্ট", url: "/dashboard/reports/discount", icon: Tag },
@@ -338,7 +314,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "SMS সার্ভিস",
     icon: Send,
-    iconColor: "text-green-300",
     items: [
       { title: "ব্যক্তিগত SMS", url: "/dashboard/sms/individual", icon: MessageSquare },
       { title: "SMS টেমপ্লেট", url: "/dashboard/sms/templates", icon: FileText },
@@ -350,7 +325,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "অ্যাফিলিয়েশন",
     icon: Link2,
-    iconColor: "text-purple-400",
     items: [
       { title: "অ্যাফিলিয়েট পার্টনার", url: "/dashboard/affiliation/partners", icon: Users },
       { title: "অ্যাফিলিয়েটর যোগ", url: "/dashboard/affiliation/add", icon: UserPlus },
@@ -359,7 +333,6 @@ const menuGroups: MenuGroup[] = [
   {
     label: "সিস্টেম",
     icon: Cog,
-    iconColor: "text-gray-400",
     items: [
       { title: "অ্যাপ ইউজার", url: "/dashboard/system/users", icon: Users },
       { title: "রোল", url: "/dashboard/system/roles", icon: Shield },
@@ -380,6 +353,8 @@ function CollapsibleGroup({ group }: { group: MenuGroup }) {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { resolvedMode } = useTheme();
+  const isLight = resolvedMode === "light";
   const isActiveGroup = group.items.some(item =>
     item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url)
   );
@@ -393,9 +368,11 @@ function CollapsibleGroup({ group }: { group: MenuGroup }) {
           return (
             <NavLink key={item.url} to={item.url}
               className={cn("flex items-center justify-center w-10 h-10 rounded-lg mb-0.5 transition-colors",
-                isActive ? "bg-white/10 text-white" : "text-slate-400 hover:text-white hover:bg-white/5"
+                isActive
+                  ? "bg-primary/15 text-primary"
+                  : isLight ? "text-muted-foreground hover:text-primary hover:bg-primary/5" : "text-slate-400 hover:text-white hover:bg-white/5"
               )} title={group.label}>
-              <group.icon className={cn("h-4 w-4", group.iconColor)} />
+              <group.icon className="h-4 w-4" />
             </NavLink>
           );
         })}
@@ -404,25 +381,31 @@ function CollapsibleGroup({ group }: { group: MenuGroup }) {
   }
 
   return (
-    <div className="mb-1">
+    <div className="mb-0.5">
       <button onClick={() => setOpen(!open)}
-        className={cn("w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors rounded-lg mx-2",
-          isActiveGroup ? "text-white" : "text-slate-300 hover:text-white hover:bg-white/5"
+        className={cn("w-full flex items-center gap-3 px-4 py-2 text-[13px] font-semibold transition-colors rounded-lg mx-2 uppercase tracking-wider",
+          isActiveGroup
+            ? "text-primary"
+            : isLight ? "text-muted-foreground hover:text-foreground" : "text-slate-400 hover:text-white"
         )} style={{ width: "calc(100% - 16px)" }}>
-        <group.icon className={cn("h-4 w-4 shrink-0", group.iconColor)} />
+        <group.icon className="h-4 w-4 shrink-0" />
         <span className="flex-1 text-left truncate">{group.label}</span>
-        {open ? <ChevronDown className="h-3.5 w-3.5 text-slate-500" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-500" />}
+        {open ? <ChevronDown className="h-3 w-3 opacity-50" /> : <ChevronRight className="h-3 w-3 opacity-50" />}
       </button>
       {open && (
-        <div className="ml-6 mr-2 mt-0.5 space-y-0.5 border-l border-white/10 pl-3">
+        <div className="mx-2 mt-0.5 space-y-0.5">
           {group.items.map((item) => {
             const isActive = item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url);
             return (
               <NavLink key={item.url} to={item.url}
-                className={cn("flex items-center gap-2.5 px-3 py-2 text-[13px] rounded-md transition-colors",
-                  isActive ? "bg-white/10 text-white font-medium" : "text-slate-400 hover:text-white hover:bg-white/5"
+                className={cn("flex items-center gap-2.5 px-4 py-[7px] text-[13px] rounded-lg transition-colors ml-3",
+                  isActive
+                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                    : isLight
+                      ? "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
                 )}>
-                <item.icon className="h-3.5 w-3.5" />
+                <item.icon className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{item.title}</span>
               </NavLink>
             );
@@ -436,23 +419,32 @@ function CollapsibleGroup({ group }: { group: MenuGroup }) {
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { resolvedMode } = useTheme();
+  const isLight = resolvedMode === "light";
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
-      <div className="flex flex-col h-full bg-[#1e2139] text-white">
-        <div className={cn("flex items-center gap-2.5 px-4 py-4 border-b border-white/10 shrink-0", collapsed && "justify-center px-2")}>
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shrink-0">
-            <Activity className="h-4 w-4 text-white" />
+      <div className={cn(
+        "flex flex-col h-full transition-colors",
+        isLight ? "bg-card text-foreground border-r border-sidebar-border" : "bg-sidebar text-sidebar-foreground"
+      )}>
+        <div className={cn(
+          "flex items-center gap-2.5 px-4 py-4 shrink-0",
+          collapsed && "justify-center px-2",
+          isLight ? "border-b border-sidebar-border" : "border-b border-white/10"
+        )}>
+          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
+            <Activity className="h-4 w-4 text-primary-foreground" />
           </div>
           {!collapsed && (
             <div>
               <h1 className="text-base font-bold leading-tight">ISP Desk</h1>
-              <p className="text-[10px] text-slate-400 leading-tight">ERP System</p>
+              <p className={cn("text-[10px] leading-tight", isLight ? "text-muted-foreground" : "text-slate-400")}>ERP System</p>
             </div>
           )}
         </div>
         <ScrollArea className="flex-1">
-          <SidebarContent className="bg-transparent py-3">
+          <SidebarContent className="bg-transparent py-2">
             {menuGroups.map((group) => (
               <CollapsibleGroup key={group.label} group={group} />
             ))}

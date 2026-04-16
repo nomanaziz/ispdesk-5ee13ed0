@@ -1,16 +1,27 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { TopBar } from "@/components/TopBar";
+import { ThemeCustomizer } from "@/components/ThemeCustomizer";
+import { useTheme } from "@/contexts/ThemeContext";
+import { cn } from "@/lib/utils";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { settings } = useTheme();
+
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={!settings.sidebarCollapsed}>
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <TopBar />
-          <main className="flex-1 p-3 sm:p-5 overflow-auto">{children}</main>
+          <main className={cn(
+            "flex-1 p-3 sm:p-5 overflow-auto",
+            settings.contentWidth === "compact" && "max-w-6xl mx-auto w-full"
+          )}>
+            {children}
+          </main>
         </div>
+        <ThemeCustomizer />
       </div>
     </SidebarProvider>
   );

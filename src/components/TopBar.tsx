@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Globe, Search } from "lucide-react";
+import { LogOut, User, Globe, Search, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,20 +29,13 @@ export function TopBar() {
 
   return (
     <>
-      <header className="h-14 border-b border-border/50 bg-card/80 backdrop-blur-md flex items-center justify-between px-3 sm:px-5 gap-3">
+      <header className="h-[62px] border-b border-border/40 bg-card/95 backdrop-blur-sm flex items-center justify-between px-4 sm:px-6 gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <SidebarTrigger className="text-muted-foreground hover:text-foreground shrink-0" />
-          <div className="hidden md:block min-w-0">
-            <p className="text-sm font-medium truncate">
-              Welcome, <span className="text-primary">{displayName}</span>
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 h-9 px-3 text-muted-foreground hover:text-foreground w-48 justify-start hidden sm:flex"
+            className="gap-2 h-9 px-3 text-muted-foreground hover:text-foreground w-52 justify-start hidden sm:flex border-border/60 bg-muted/30"
             onClick={() => setSearchOpen(true)}
           >
             <Search className="h-4 w-4" />
@@ -51,25 +44,25 @@ export function TopBar() {
               ⌘K
             </kbd>
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 sm:hidden"
-            onClick={() => setSearchOpen(true)}
-          >
+          <Button variant="ghost" size="sm" className="h-9 sm:hidden" onClick={() => setSearchOpen(true)}>
             <Search className="h-4 w-4" />
           </Button>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
           <Link to="/" target="_blank">
-            <Button variant="ghost" size="sm" className="gap-1.5 h-9 text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
               <Globe className="h-4 w-4" />
-              <span className="hidden sm:inline text-xs">ওয়েবসাইট</span>
             </Button>
           </Link>
           <ThemeSwitcher />
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground relative">
+            <Bell className="h-4 w-4" />
+            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-2 h-9 px-2">
-                <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
+                <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center text-primary text-sm font-bold shrink-0">
                   {displayName.charAt(0).toUpperCase()}
                 </div>
                 <div className="hidden sm:block text-left min-w-0">

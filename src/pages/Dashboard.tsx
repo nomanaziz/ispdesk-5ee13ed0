@@ -17,24 +17,24 @@ import {
   PieChart, Pie, Cell, Legend
 } from "recharts";
 
-// ─── Color Palette ───────────────────────────────
+// ─── Vuexy-style light-bg color palette ───────────────────────────────
 const CARD_STYLES = [
-  { bg: "bg-red-500", text: "text-white" },
-  { bg: "bg-blue-500", text: "text-white" },
-  { bg: "bg-emerald-500", text: "text-white" },
-  { bg: "bg-amber-500", text: "text-white" },
-  { bg: "bg-violet-500", text: "text-white" },
-  { bg: "bg-pink-500", text: "text-white" },
-  { bg: "bg-cyan-500", text: "text-white" },
-  { bg: "bg-orange-500", text: "text-white" },
-  { bg: "bg-teal-500", text: "text-white" },
-  { bg: "bg-indigo-500", text: "text-white" },
-  { bg: "bg-rose-500", text: "text-white" },
-  { bg: "bg-lime-600", text: "text-white" },
-  { bg: "bg-sky-500", text: "text-white" },
-  { bg: "bg-fuchsia-500", text: "text-white" },
-  { bg: "bg-yellow-500", text: "text-white" },
-  { bg: "bg-green-600", text: "text-white" },
+  { bg: "bg-red-500/10", text: "text-red-500" },
+  { bg: "bg-blue-500/10", text: "text-blue-500" },
+  { bg: "bg-emerald-500/10", text: "text-emerald-500" },
+  { bg: "bg-amber-500/10", text: "text-amber-500" },
+  { bg: "bg-violet-500/10", text: "text-violet-500" },
+  { bg: "bg-pink-500/10", text: "text-pink-500" },
+  { bg: "bg-cyan-500/10", text: "text-cyan-500" },
+  { bg: "bg-orange-500/10", text: "text-orange-500" },
+  { bg: "bg-teal-500/10", text: "text-teal-500" },
+  { bg: "bg-indigo-500/10", text: "text-indigo-500" },
+  { bg: "bg-rose-500/10", text: "text-rose-500" },
+  { bg: "bg-lime-600/10", text: "text-lime-600" },
+  { bg: "bg-sky-500/10", text: "text-sky-500" },
+  { bg: "bg-fuchsia-500/10", text: "text-fuchsia-500" },
+  { bg: "bg-yellow-500/10", text: "text-yellow-500" },
+  { bg: "bg-green-600/10", text: "text-green-600" },
 ];
 
 const PIE_COLORS = ["#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#f97316"];
@@ -289,14 +289,14 @@ function StatCard({ title, value, icon: Icon, colorIndex }: {
   const style = CARD_STYLES[colorIndex % CARD_STYLES.length];
   return (
     <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-3 sm:p-4">
+      <CardContent className="p-3">
         <div className="flex items-center gap-3">
-          <div className={`p-3 rounded-lg ${style.bg} ${style.text} shrink-0`}>
+          <div className={`p-2.5 rounded-lg ${style.bg} ${style.text} shrink-0`}>
             <Icon className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] text-muted-foreground truncate leading-tight">{title}</p>
-            <p className="text-lg sm:text-xl font-bold tracking-tight leading-tight">{value}</p>
+            <p className="text-xl font-bold tracking-tight leading-tight">{value}</p>
+            <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">{title}</p>
           </div>
         </div>
       </CardContent>
