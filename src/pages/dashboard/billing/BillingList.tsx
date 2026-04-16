@@ -264,7 +264,7 @@ export default function BillingList() {
                   <TableHead className="text-right">Advance</TableHead>
                   <TableHead>Pay Date</TableHead>
                   <TableHead>B.Status</TableHead>
-                  <TableHead>M.Online</TableHead>
+                  <TableHead>M.Status</TableHead>
                   <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -283,7 +283,12 @@ export default function BillingList() {
                         <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
                       </TableCell>
                       <TableCell>{(page - 1) * perPage + i + 1}</TableCell>
-                      <TableCell className="font-mono text-xs">{c.client_id}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className={`inline-block h-2 w-2 rounded-full ${c.isOnlineLive ? "bg-green-500" : "bg-gray-400"}`} />
+                          {c.client_id}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-xs">{c.username || c.remote_address || "-"}</TableCell>
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell>{c.contact || "-"}</TableCell>
@@ -314,20 +319,7 @@ export default function BillingList() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <Switch
-                            checked={Boolean(c.isOnlineLive)}
-                            onCheckedChange={() => undefined}
-                            className="pointer-events-none scale-75"
-                            aria-label={c.isOnlineLive ? "Online" : "Offline"}
-                          />
-                          <Badge variant={c.isOnlineLive ? "default" : "secondary"} className="text-[10px] h-6">
-                            {c.isOnlineLive ? "Online" : "Offline"}
-                          </Badge>
-                          {c.mikrotik_status === "disabled" ? (
-                            <Badge variant="destructive" className="text-[10px] h-6">Disabled</Badge>
-                          ) : null}
-                        </div>
+                        <MikrotikToggle client={c} queryClient={queryClient} />
                       </TableCell>
                       <TableCell>
                         <ClientActionButtons client={c} mode="billing" invalidateKey="billing-list" />
@@ -393,5 +385,47 @@ function SummaryCard({ icon: Icon, label, value, color, bg }: { icon: any; label
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function MikrotikToggle({ client, queryClient }: { client: any; queryClient: any }) {
+  const [loading, setLoading] = useState(false);
+  const isEnabled = client.mikrotik_status !== "disabled";
+
+  const handleToggle = async (checked: boolean) => {
+    if (!client.mikrotik_id || !client.username) {
+      toast.error("MikroTik সার্ভার বা ইউজারনেম নেই");
+      return;
+    }
+    setLoading(true);
+    try {
+      const action = checked ? "enable" : "disable";
+      const { data, error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
+        body: {
+          mikrotik_id: client.mikrotik_id,
+          username: client.username,
+          client_id: client.id,
+          action,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(data?.message || `${client.username} ${action}d`);
+      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+    } catch (err: any) {
+      toast.error(err.message || "MikroTik অপারেশন ব্যর্থ");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Switch
+      checked={isEnabled}
+      onCheckedChange={handleToggle}
+      disabled={loading || !client.mikrotik_id}
+      className={`scale-75 ${loading ? "opacity-50" : ""}`}
+      aria-label={isEnabled ? "Enabled" : "Disabled"}
+    />
   );
 }
