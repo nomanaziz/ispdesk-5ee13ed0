@@ -82,7 +82,6 @@ function useStats() {
         supabase.from("clients").select("id, client_id, name, monthly_bill, expire_date").eq("status", "expired").order("expire_date", { ascending: false }).limit(10),
         // ONU online
         supabase.from("onu_list").select("id, status"),
-      ] as const);
       ]);
 
       // Fetch client names for latest billing
