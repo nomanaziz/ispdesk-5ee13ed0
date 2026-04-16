@@ -256,6 +256,11 @@ import PortalDashboard from "@/pages/portal/PortalDashboard";
 import PortalInvoices from "@/pages/portal/PortalInvoices";
 import PortalPurchaseOrders from "@/pages/portal/PortalPurchaseOrders";
 import PortalSupport from "@/pages/portal/PortalSupport";
+import PortalNotices from "@/pages/portal/PortalNotices";
+import PortalCompanyInfo from "@/pages/portal/PortalCompanyInfo";
+import PortalMediaServers from "@/pages/portal/PortalMediaServers";
+import PortalLedger from "@/pages/portal/PortalLedger";
+import PortalLiveUsage from "@/pages/portal/PortalLiveUsage";
 
 // Reseller
 import ResellerProtectedRoute from "@/components/ResellerProtectedRoute";
@@ -526,6 +531,11 @@ const App = () => (
               <Route path="/portal/invoices" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalInvoices /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/purchase-orders" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalPurchaseOrders /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/support" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalSupport /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/notices" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalNotices /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/company" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalCompanyInfo /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/media" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalMediaServers /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/ledger" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalLedger /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/live-usage" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalLiveUsage /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
 
               {/* Reseller Portal */}
               <Route path="/reseller" element={<Navigate to="/reseller/dashboard" replace />} />
