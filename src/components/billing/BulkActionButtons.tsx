@@ -1,0 +1,104 @@
+import { Button } from "@/components/ui/button";
+import {
+  FileSpreadsheet, FileText, RefreshCw, Download, Ban, CheckCircle,
+  MapPin, Building, ArrowRightLeft, Star, StarOff, Settings,
+  MessageSquare, Mail, CalendarPlus, Zap
+} from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+
+interface Props {
+  selectedCount: number;
+  onGenerateExcel: () => void;
+  onGeneratePdf: () => void;
+  onSyncClients: () => void;
+  onDisableSelected: () => void;
+  onEnableSelected: () => void;
+  onBulkStatusChange: () => void;
+  onBulkZoneChange: () => void;
+  onBulkDistrictChange: () => void;
+  onBulkThanaChange: () => void;
+  onDownloadInvoice: () => void;
+  onSmsSelected: () => void;
+  onEmailSelected: () => void;
+  onBulkDateExtend: () => void;
+  onMigrateServer: () => void;
+  onBulkVip: () => void;
+  onBulkRemoveVip: () => void;
+  onBulkProfileChange: () => void;
+}
+
+export default function BulkActionButtons({
+  selectedCount,
+  onGenerateExcel,
+  onGeneratePdf,
+  onSyncClients,
+  onDisableSelected,
+  onEnableSelected,
+  onBulkStatusChange,
+  onBulkZoneChange,
+  onBulkDistrictChange,
+  onBulkThanaChange,
+  onDownloadInvoice,
+  onSmsSelected,
+  onEmailSelected,
+  onBulkDateExtend,
+  onMigrateServer,
+  onBulkVip,
+  onBulkRemoveVip,
+  onBulkProfileChange,
+}: Props) {
+  const requireSelection = (fn: () => void) => {
+    if (selectedCount === 0) {
+      toast({ title: "কোনো ক্লায়েন্ট সিলেক্ট করা হয়নি", variant: "destructive" });
+      return;
+    }
+    fn();
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Row 1 */}
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn icon={FileSpreadsheet} label="Excel" onClick={onGenerateExcel} color="bg-emerald-600 hover:bg-emerald-700 text-white" />
+        <ActionBtn icon={FileText} label="PDF" onClick={onGeneratePdf} color="bg-red-600 hover:bg-red-700 text-white" />
+        <ActionBtn icon={RefreshCw} label="Sync Clients" onClick={onSyncClients} />
+        <ActionBtn icon={Ban} label="Disable Selected" onClick={() => requireSelection(onDisableSelected)} />
+        <ActionBtn icon={Zap} label="Status Change" onClick={() => requireSelection(onBulkStatusChange)} />
+        <ActionBtn icon={MapPin} label="Zone Change" onClick={() => requireSelection(onBulkZoneChange)} />
+        <ActionBtn icon={Building} label="District Change" onClick={() => requireSelection(onBulkDistrictChange)} />
+        <ActionBtn icon={Building} label="Thana Change" onClick={() => requireSelection(onBulkThanaChange)} />
+        <ActionBtn icon={CheckCircle} label="Enable Selected" onClick={() => requireSelection(onEnableSelected)} />
+        <ActionBtn icon={Download} label="Invoice" onClick={() => requireSelection(onDownloadInvoice)} />
+      </div>
+      {/* Row 2 */}
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn icon={MessageSquare} label="SMS Selected" onClick={() => requireSelection(onSmsSelected)} />
+        <ActionBtn icon={Mail} label="Email Selected" onClick={() => requireSelection(onEmailSelected)} />
+        <ActionBtn icon={CalendarPlus} label="Date Extend" onClick={() => requireSelection(onBulkDateExtend)} />
+        <ActionBtn icon={ArrowRightLeft} label="Migrate Server" onClick={() => requireSelection(onMigrateServer)} color="bg-blue-600 hover:bg-blue-700 text-white" />
+        <ActionBtn icon={Star} label="VIP" onClick={() => requireSelection(onBulkVip)} />
+        <ActionBtn icon={StarOff} label="Remove VIP" onClick={() => requireSelection(onBulkRemoveVip)} />
+        <ActionBtn icon={Settings} label="Profile Change" onClick={() => requireSelection(onBulkProfileChange)} />
+      </div>
+      {selectedCount > 0 && (
+        <p className="text-xs text-muted-foreground">{selectedCount} জন ক্লায়েন্ট সিলেক্ট করা হয়েছে</p>
+      )}
+    </div>
+  );
+}
+
+function ActionBtn({ icon: Icon, label, onClick, color }: {
+  icon: any; label: string; onClick: () => void; color?: string;
+}) {
+  return (
+    <Button
+      size="sm"
+      variant={color ? "default" : "outline"}
+      className={`h-7 text-xs px-2 ${color || ""}`}
+      onClick={onClick}
+    >
+      <Icon className="h-3.5 w-3.5 mr-1" />
+      {label}
+    </Button>
+  );
+}

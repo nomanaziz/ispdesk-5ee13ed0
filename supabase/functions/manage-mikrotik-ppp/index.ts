@@ -171,7 +171,7 @@ async function mikrotikCommand(conn: Deno.TcpConn, command: string, params?: Rec
   return results;
 }
 
-// Supported actions: update, disable, enable, remove
+// Supported actions: update, disable, enable, remove, list-profiles
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -186,9 +186,9 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { mikrotik_id, client_id, username, action, password, profile, remote_address, disabled } = body;
 
-    if (!mikrotik_id || !username || !action) {
+    if (!mikrotik_id || !action) {
       return new Response(
-        JSON.stringify({ error: "mikrotik_id, username, and action are required" }),
+        JSON.stringify({ error: "mikrotik_id and action are required" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -215,6 +215,25 @@ Deno.serve(async (req) => {
 
     try {
       await mikrotikLogin(conn, apiUser, apiPass);
+
+      // Handle list-profiles action separately
+      if (action === "list-profiles") {
+        const profiles = await mikrotikCommand(conn, "/ppp/profile/print");
+        conn.close();
+        return new Response(
+          JSON.stringify({ success: true, profiles }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!username) {
+        conn.close();
+        return new Response(
+          JSON.stringify({ error: "username is required for this action" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
 
       // Find the PPP secret by name
       const secrets = await mikrotikCommand(conn, "/ppp/secret/print", { "?name": username });
