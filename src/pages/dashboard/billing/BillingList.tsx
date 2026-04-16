@@ -191,6 +191,25 @@ export default function BillingList() {
 
   const notImplemented = () => toast.info("শীঘ্রই আসছে — এই ফিচার এখনো তৈরি হচ্ছে");
 
+  const [syncing, setSyncing] = useState(false);
+  const handleSyncClients = async () => {
+    setSyncing(true);
+    toast.info("ক্লায়েন্ট সিঙ্ক হচ্ছে...");
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-mikrotik-ppp", {
+        body: { action: "sync-online", device_id: "all" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`সিঙ্ক সম্পন্ন — Online: ${data?.online || 0}, Offline: ${data?.offline || 0}${data?.status_synced ? `, Status synced: ${data.status_synced}` : ""}`);
+      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+    } catch (err: any) {
+      toast.error(err.message || "সিঙ্ক ব্যর্থ হয়েছে");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <div className="space-y-3 p-4">
       <h1 className="text-xl font-bold text-foreground">বিলিং তালিকা (Billing List)</h1>
@@ -218,7 +237,7 @@ export default function BillingList() {
         selectedCount={selectedIds.size}
         onGenerateExcel={notImplemented}
         onGeneratePdf={notImplemented}
-        onSyncClients={notImplemented}
+        onSyncClients={handleSyncClients}
         onDisableSelected={() => handleDisableEnable("disable")}
         onEnableSelected={() => handleDisableEnable("enable")}
         onBulkStatusChange={() => setStatusChangeOpen(true)}
