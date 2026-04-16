@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
     if (!mikrotik_id || !username || !action) {
       return new Response(
         JSON.stringify({ error: "mikrotik_id, username, and action are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
     if (devErr || !device) {
       return new Response(
         JSON.stringify({ error: "MikroTik device not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -240,7 +240,7 @@ Deno.serve(async (req) => {
         conn.close();
         return new Response(
           JSON.stringify({ error: `PPP secret '${username}' not found` }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -348,7 +348,7 @@ Deno.serve(async (req) => {
           conn.close();
           return new Response(
             JSON.stringify({ error: `Unknown action: ${action}. Use: update, disable, enable, disconnect, status, remove` }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
       }
 
@@ -365,7 +365,7 @@ Deno.serve(async (req) => {
     console.error("manage-mikrotik-ppp error:", err);
     return new Response(
       JSON.stringify({ error: err.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
