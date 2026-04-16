@@ -721,83 +721,120 @@ export default function OnlineClientMonitoring() {
           ) : trafficDialog.data ? (
             <div className="space-y-4">
               {/* Status + IP */}
-              <div className="grid grid-cols-2 gap-3">
-                <Card>
-                  <CardContent className="p-3 text-center">
-                    <p className="text-xs text-muted-foreground">Status</p>
-                    <Badge className={trafficDialog.data.has_active_session ? "bg-emerald-500/20 text-emerald-400" : "bg-destructive/20 text-destructive"}>
-                      {trafficDialog.data.has_active_session ? "Online" : "Offline"}
-                    </Badge>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-3 text-center">
-                    <p className="text-xs text-muted-foreground">IP</p>
-                    <p className="font-mono text-sm">{trafficDialog.data.current_id || trafficDialog.session?.address || "—"}</p>
-                  </CardContent>
-                </Card>
-              </div>
+              {(() => {
+                const isOnline = trafficDialog.session?.status !== "offline" || trafficDialog.data.has_active_session;
+                const sessionData = trafficDialog.data.session;
+                const sessionUploadBytes = sessionData ? parseInt(sessionData.upload_bytes || "0", 10) : 0;
+                const sessionDownloadBytes = sessionData ? parseInt(sessionData.download_bytes || "0", 10) : 0;
+                const cumulativeUpload = (trafficDialog.session?.total_upload || 0) + sessionUploadBytes;
+                const cumulativeDownload = (trafficDialog.session?.total_download || 0) + sessionDownloadBytes;
 
-              {/* Live traffic (online only) */}
-              {trafficDialog.data.has_active_session && trafficDialog.data.session && (
-                <div className="grid grid-cols-2 gap-3">
-                  <Card>
-                    <CardContent className="p-3 text-center">
-                      <p className="text-xs text-muted-foreground">Uptime</p>
-                      <p className="font-mono text-sm">{trafficDialog.data.session.uptime || "—"}</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-3 text-center">
-                      <p className="text-xs text-muted-foreground">Caller ID</p>
-                      <p className="font-mono text-xs">{trafficDialog.data.session.caller_id || "—"}</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+                return (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Card>
+                        <CardContent className="p-3 text-center">
+                          <p className="text-xs text-muted-foreground">Status</p>
+                          <Badge className={isOnline ? "bg-emerald-500/20 text-emerald-400" : "bg-destructive/20 text-destructive"}>
+                            {isOnline ? "Online" : "Offline"}
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-3 text-center">
+                          <p className="text-xs text-muted-foreground">IP</p>
+                          <p className="font-mono text-sm">{trafficDialog.data.current_id || trafficDialog.session?.address || "—"}</p>
+                        </CardContent>
+                      </Card>
+                    </div>
 
-              {trafficDialog.data.has_active_session && trafficDialog.data.live_traffic && (
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">⚡ Live Speed</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Card className="border-emerald-500/30">
-                      <CardContent className="p-3 text-center">
-                        <ArrowDownToLine className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
-                        <p className="text-xs text-muted-foreground">Download</p>
-                        <p className="font-bold text-emerald-500">{formatBps(trafficDialog.data.live_traffic.rx_bps)}</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-blue-500/30">
-                      <CardContent className="p-3 text-center">
-                        <ArrowUpFromLine className="h-4 w-4 mx-auto text-blue-500 mb-1" />
-                        <p className="text-xs text-muted-foreground">Upload</p>
-                        <p className="font-bold text-blue-500">{formatBps(trafficDialog.data.live_traffic.tx_bps)}</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              )}
+                    {/* Session info (online only) */}
+                    {isOnline && sessionData && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <Card>
+                          <CardContent className="p-3 text-center">
+                            <p className="text-xs text-muted-foreground">Uptime</p>
+                            <p className="font-mono text-sm">{sessionData.uptime || "—"}</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-3 text-center">
+                            <p className="text-xs text-muted-foreground">Caller ID</p>
+                            <p className="font-mono text-xs">{sessionData.caller_id || "—"}</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
 
-              {/* Cumulative Traffic (always visible) */}
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">📊 Cumulative Traffic (Total)</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <Card className="border-blue-500/20 bg-blue-500/5">
-                    <CardContent className="p-3 text-center">
-                      <ArrowUpFromLine className="h-4 w-4 mx-auto text-blue-500 mb-1" />
-                      <p className="text-xs text-muted-foreground">Total Upload</p>
-                      <p className="font-bold text-blue-500 text-lg">{formatBytes(trafficDialog.session?.total_upload || 0)}</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-emerald-500/20 bg-emerald-500/5">
-                    <CardContent className="p-3 text-center">
-                      <ArrowDownToLine className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
-                      <p className="text-xs text-muted-foreground">Total Download</p>
-                      <p className="font-bold text-emerald-500 text-lg">{formatBytes(trafficDialog.session?.total_download || 0)}</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
+                    {/* Live speed (online only) */}
+                    {isOnline && trafficDialog.data.live_traffic && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">⚡ Live Speed</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Card className="border-emerald-500/30">
+                            <CardContent className="p-3 text-center">
+                              <ArrowDownToLine className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
+                              <p className="text-xs text-muted-foreground">Download</p>
+                              <p className="font-bold text-emerald-500">{formatBps(trafficDialog.data.live_traffic.rx_bps)}</p>
+                            </CardContent>
+                          </Card>
+                          <Card className="border-blue-500/30">
+                            <CardContent className="p-3 text-center">
+                              <ArrowUpFromLine className="h-4 w-4 mx-auto text-blue-500 mb-1" />
+                              <p className="text-xs text-muted-foreground">Upload</p>
+                              <p className="font-bold text-blue-500">{formatBps(trafficDialog.data.live_traffic.tx_bps)}</p>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Current Session Bytes (online only) */}
+                    {isOnline && sessionData && (sessionUploadBytes > 0 || sessionDownloadBytes > 0) && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">📡 Current Session Usage</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Card className="border-blue-500/20">
+                            <CardContent className="p-3 text-center">
+                              <ArrowUpFromLine className="h-4 w-4 mx-auto text-blue-500 mb-1" />
+                              <p className="text-xs text-muted-foreground">Session Upload</p>
+                              <p className="font-bold text-blue-500">{formatBytes(sessionUploadBytes)}</p>
+                            </CardContent>
+                          </Card>
+                          <Card className="border-emerald-500/20">
+                            <CardContent className="p-3 text-center">
+                              <ArrowDownToLine className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
+                              <p className="text-xs text-muted-foreground">Session Download</p>
+                              <p className="font-bold text-emerald-500">{formatBytes(sessionDownloadBytes)}</p>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cumulative Traffic (always visible) */}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">📊 Cumulative Traffic (Total)</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Card className="border-blue-500/20 bg-blue-500/5">
+                          <CardContent className="p-3 text-center">
+                            <ArrowUpFromLine className="h-4 w-4 mx-auto text-blue-500 mb-1" />
+                            <p className="text-xs text-muted-foreground">Total Upload</p>
+                            <p className="font-bold text-blue-500 text-lg">{formatBytes(cumulativeUpload)}</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="border-emerald-500/20 bg-emerald-500/5">
+                          <CardContent className="p-3 text-center">
+                            <ArrowDownToLine className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
+                            <p className="text-xs text-muted-foreground">Total Download</p>
+                            <p className="font-bold text-emerald-500 text-lg">{formatBytes(cumulativeDownload)}</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Recent Traffic History */}
               {trafficDialog.trafficHistory.length > 0 && (
