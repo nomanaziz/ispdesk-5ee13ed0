@@ -1,73 +1,96 @@
 
 
-## Software-wide Bangla Localization
+## Vuexy-Style Theme Overhaul
 
 ### লক্ষ্য
 
-পুরো software-এ consistent Bangla language ব্যবহার করা। Default language Bangla, কিছু technical term ইংরেজিতেই থাকবে।
+পুরো admin panel-কে Vuexy demo-এর মতো modern, clean, professional look দেওয়া। Customizer panel, card design, sidebar, topbar, login page — সব upgrade হবে। তবে data-dense layout বজায় রাখার জন্য gap কম রাখব।
 
-### Scope
+### Vuexy থেকে যা নেওয়া হবে
 
-পুরো ERP-তে 200+ files আছে — সব একসাথে convert করা impractical এবং risky। তাই **phased approach** নেব।
+1. **Customizer Panel (ডান পাশে Settings drawer)** — Primary color picker, Light/Dark/System theme, Sidebar layout (expanded/collapsed), Content width (compact/wide)
+2. **Card Design** — Subtle shadow, light border, icon-with-background style, clean typography
+3. **Sidebar** — White/light background option, cleaner menu styling, better active state highlight
+4. **TopBar** — Cleaner layout, notification bell, search bar styling
+5. **Login Page** — Vuexy-style centered card with illustration
 
-### Translation Rules
+### পরিবর্তন সমূহ
 
-| Original | Bangla | কারণ |
-|----------|--------|------|
-| Cash | ক্যাশ | নগদ একটি payment method (bKash/Nagad), confusion এড়াতে |
-| bKash, Nagad, Rocket | bKash, Nagad, Rocket | Brand names — অপরিবর্তিত |
-| Client / Customer | ক্লায়েন্ট / কাস্টমার | Bangla |
-| Bill / Invoice | বিল / ইনভয়েস | Bangla transliteration |
-| MikroTik, OLT, ONU, PPPoE, MAC, IP | অপরিবর্তিত | Technical terms |
-| Status: Active/Inactive/Pending | সক্রিয়/নিষ্ক্রিয়/অপেক্ষমান | Bangla |
-| Enable/Disable | চালু/বন্ধ | Bangla |
-| Online/Offline | অনলাইন/অফলাইন | Transliteration |
-| Save/Cancel/Delete/Edit/Add | সংরক্ষণ/বাতিল/মুছুন/সম্পাদনা/যোগ | Bangla |
-| Search | অনুসন্ধান | Bangla |
-| Date/Amount/Total/Due/Paid | তারিখ/পরিমাণ/মোট/বকেয়া/পরিশোধিত | Bangla |
-| Numbers (1,2,3) | English digits রাখব | Tables-এ readable |
+#### 1. Theme System Upgrade (`ThemeContext.tsx` + `index.css`)
 
-### Phased Plan
+- Primary color dynamic switching: 7টি preset color (Vuexy-style — purple, blue, teal, red, orange, green, cyan)
+- Light/Dark/System mode support (System = OS preference follow করবে)
+- CSS variables dynamically update হবে primary color change-এ
+- Skin: Default (shadow-based) vs Bordered (border-based cards)
 
-**Phase 1 (এখন) — Core Billing & Client Pages** (high-traffic):
-1. `BillingList.tsx` — column headers, buttons, dialogs, status badges
-2. `BillReceiveDialog.tsx` — labels, buttons, payment methods
-3. `ClientList.tsx` — column headers, action buttons
-4. `AddClient.tsx` — form labels
-5. `Dashboard.tsx` — stat cards, section titles
-6. `AppSidebar.tsx` — menu items (যেগুলো এখনো English)
-7. `TopBar.tsx` — buttons, search placeholder
-8. Common components: `BulkActionButtons`, `BillingFilterPanel`, status badges
+#### 2. Customizer Drawer (`src/components/ThemeCustomizer.tsx` — নতুন)
 
-**Phase 2 (পরবর্তী request-এ) — Other modules**:
-- Accounting, HR, Inventory, Reports, Monitoring, OLT pages
-- প্রতিটি module-এর জন্য আলাদা request করতে পারবেন
+Vuexy-র মতো ডান পাশে একটা floating button (settings gear icon), click করলে Sheet/Drawer open হবে:
+- **Theming** section: Primary Color circles (7 colors), Theme (Light/Dark/System icons)
+- **Layout** section: Sidebar mode (Expanded/Collapsed), Content (Compact/Wide)
+- Reset button
+- সব settings localStorage-এ save হবে
 
-### Approach
+#### 3. ThemeSwitcher Replacement
 
-- Hardcoded English strings গুলো সরাসরি Bangla string দিয়ে replace করব (no i18n library এখন)
-- Brand names, technical acronyms, code/config keys অপরিবর্তিত রাখব
-- Toast messages, error messages, placeholder texts — সব Bangla
-- Form validation messages Bangla
-- Date/number formatting JavaScript locale `bn-BD` ব্যবহার করব যেখানে সম্ভব (তবে table-এ English digits keep করব readability-র জন্য)
+বর্তমান Popover-based ThemeSwitcher remove হবে — Customizer drawer তার কাজ করবে। TopBar-এ শুধু light/dark toggle icon থাকবে (quick switch)।
 
-### Files (Phase 1)
+#### 4. Card Styling (`index.css` + `card.tsx`)
+
+- Cards-এ softer shadow: `shadow-sm hover:shadow-md`
+- Bordered skin-এ: `shadow-none border` style
+- StatCard redesign: Vuexy-style — icon একটু বড়, light background avatar (e.g., `bg-primary/10 text-primary`), value bigger
+- Dashboard-এ gap কম: `gap-2` (data dense)
+
+#### 5. Sidebar Restyle (`AppSidebar.tsx`)
+
+- Light theme-এ white background sidebar (Vuexy-style)
+- Dark theme-এ current dark sidebar
+- Active item: primary color left border + light primary background
+- Group label: uppercase, smaller, muted color
+- Better hover effects
+
+#### 6. TopBar Restyle (`TopBar.tsx`)
+
+- Cleaner search input (Vuexy-style `⌘K` search)
+- Bell icon for notifications placeholder
+- User avatar dropdown improvement
+- Quick theme toggle (sun/moon icon)
+
+#### 7. Login Page Restyle (`Login.tsx`)
+
+- Vuexy-style: centered card, left side এ decorative SVG shapes (tree/geometric)
+- Cleaner form layout
+- Primary-color submit button (gradient remove, solid primary)
+- "ISP Desk"-এ স্বাগতম header
+- বাংলা labels
+
+#### 8. Dashboard Cards Restyle (`Dashboard.tsx`)
+
+- StatCard: Vuexy-style light-bg avatar instead of solid colored bg
+- e.g., `bg-blue-500/10 text-blue-500` icon container
+- Value font larger, label smaller
+- Compact gap between cards
+
+### Files
 
 | File | Change |
 |------|--------|
-| `src/pages/dashboard/billing/BillingList.tsx` | Column headers, buttons, toasts → Bangla |
-| `src/components/billing/BillReceiveDialog.tsx` | Labels, payment method labels (Cash→ক্যাশ), buttons |
-| `src/components/billing/BulkActionButtons.tsx` | Button labels |
-| `src/components/billing/BillingFilterPanel.tsx` | Filter labels |
-| `src/pages/dashboard/clients/ClientList.tsx` | Headers, buttons, status |
-| `src/pages/dashboard/clients/AddClient.tsx` | Form labels, placeholders |
-| `src/pages/Dashboard.tsx` | Stat card labels, section titles |
-| `src/components/AppSidebar.tsx` | English menu items → Bangla |
-| `src/components/TopBar.tsx` | Search placeholder, button labels |
-| `src/components/GlobalClientSearch.tsx` | Search placeholder, empty states |
+| `src/contexts/ThemeContext.tsx` | Primary color + skin + layout settings যোগ |
+| `src/index.css` | CSS variables update, light/dark mode refine, bordered skin |
+| `src/components/ThemeCustomizer.tsx` | **নতুন** — Vuexy-style settings drawer |
+| `src/components/ThemeSwitcher.tsx` | Quick light/dark toggle-এ simplify |
+| `src/components/TopBar.tsx` | Notification bell, quick toggle, cleaner layout |
+| `src/components/AppSidebar.tsx` | Light/dark adaptive sidebar, better active states |
+| `src/components/DashboardLayout.tsx` | Content width support (compact/wide) |
+| `src/pages/Login.tsx` | Vuexy-style centered card, বাংলা labels, solid button |
+| `src/pages/Dashboard.tsx` | StatCard restyle — light avatar bg, compact gaps |
+| `src/components/ui/card.tsx` | Skin-aware shadow vs bordered |
+| `src/App.tsx` | ThemeCustomizer mount |
 
-### Note
+### Approach
 
-- Phase 2 শুরু করতে চাইলে শুধু বলবেন "accounting Bangla করো" বা "HR Bangla করো" — তখন ওই module ধরব
-- কোনো specific term-এর Bangla পছন্দ না হলে বলবেন, সঠিক করে দেব
+- Phase 1 (এখন): Theme system + Customizer + Card + Sidebar + TopBar + Login + Dashboard
+- বেশি gap রাখব না — data-dense ISP ERP-র জন্য compact layout
+- Vuexy-র exact copy না, Vuexy-inspired — আমাদের existing structure-এ adapt করব
 
