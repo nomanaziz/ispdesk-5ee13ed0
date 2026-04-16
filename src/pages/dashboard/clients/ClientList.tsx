@@ -196,15 +196,15 @@ export default function ClientList() {
   };
 
   const summaryCards = [
-    { label: "Running Clients", count: stats.running, icon: Users, color: "bg-blue-600" },
-    { label: "New Clients", count: stats.newClients, icon: UserPlus, color: "bg-green-600" },
-    { label: "Renewed Clients", count: stats.renewed, icon: RefreshCw, color: "bg-purple-600" },
-    { label: "Waiver Clients", count: stats.waiver, icon: Gift, color: "bg-orange-600" },
+    { label: "চলমান ক্লায়েন্ট", count: stats.running, icon: Users, color: "bg-blue-600" },
+    { label: "নতুন ক্লায়েন্ট", count: stats.newClients, icon: UserPlus, color: "bg-green-600" },
+    { label: "নবায়নকৃত ক্লায়েন্ট", count: stats.renewed, icon: RefreshCw, color: "bg-purple-600" },
+    { label: "ফ্রি/ছাড় ক্লায়েন্ট", count: stats.waiver, icon: Gift, color: "bg-orange-600" },
   ];
 
   return (
     <div className="space-y-3 p-4">
-      <h1 className="text-xl font-bold">Client List <span className="text-sm font-normal text-muted-foreground">View All Client</span></h1>
+      <h1 className="text-xl font-bold">ক্লায়েন্ট তালিকা <span className="text-sm font-normal text-muted-foreground">সকল ক্লায়েন্ট দেখুন</span></h1>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -269,23 +269,23 @@ export default function ClientList() {
           <TableHeader>
             <TableRow className="bg-primary/10">
               <TableHead className="w-8"><Checkbox checked={paginated.length > 0 && selectedIds.size === paginated.length} onCheckedChange={toggleAll} /></TableHead>
-              <TableHead className="text-xs">C.Code</TableHead>
+              <TableHead className="text-xs">ক্লা. কোড</TableHead>
               <TableHead className="text-xs">ID/IP</TableHead>
-              <TableHead className="text-xs">Password</TableHead>
-              <TableHead className="text-xs">Cus. Name</TableHead>
-              <TableHead className="text-xs">Mobile</TableHead>
-              <TableHead className="text-xs">Zone</TableHead>
-              <TableHead className="text-xs">Package/Speed</TableHead>
-              <TableHead className="text-xs">M.Bill</TableHead>
-              <TableHead className="text-xs">Expire</TableHead>
-              <TableHead className="text-xs">Conn. Type</TableHead>
-              <TableHead className="text-xs">Cus. Type</TableHead>
-              <TableHead className="text-xs">R.Address</TableHead>
-              <TableHead className="text-xs">MAC Addrs</TableHead>
-              <TableHead className="text-xs">Server</TableHead>
-              <TableHead className="text-xs">B.Status</TableHead>
-              <TableHead className="text-xs">M.Status</TableHead>
-              <TableHead className="text-xs">Action</TableHead>
+              <TableHead className="text-xs">পাসওয়ার্ড</TableHead>
+              <TableHead className="text-xs">কাস্টমার নাম</TableHead>
+              <TableHead className="text-xs">মোবাইল</TableHead>
+              <TableHead className="text-xs">জোন</TableHead>
+              <TableHead className="text-xs">প্যাকেজ/স্পিড</TableHead>
+              <TableHead className="text-xs">মাসিক বিল</TableHead>
+              <TableHead className="text-xs">মেয়াদ</TableHead>
+              <TableHead className="text-xs">কানেকশন টাইপ</TableHead>
+              <TableHead className="text-xs">কাস্টমার টাইপ</TableHead>
+              <TableHead className="text-xs">রিমোট অ্যাড্রেস</TableHead>
+              <TableHead className="text-xs">MAC অ্যাড্রেস</TableHead>
+              <TableHead className="text-xs">সার্ভার</TableHead>
+              <TableHead className="text-xs">বিল স্ট্যাটাস</TableHead>
+              <TableHead className="text-xs">MikroTik স্ট্যাটাস</TableHead>
+              <TableHead className="text-xs">অ্যাকশন</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
