@@ -33,7 +33,7 @@ const PortalDashboard = () => {
       if (customer?.type !== "client") return null;
       const { data } = await supabase
         .from("clients")
-        .select("*, isp_packages(name, speed, price), zones(name)")
+        .select("*, isp_packages(name, price), zones(name)")
         .eq("id", customer!.sub)
         .maybeSingle();
       return data;
@@ -182,7 +182,7 @@ const PortalDashboard = () => {
             <dl className="space-y-2.5 text-sm">
               <Row label="Username" value={customer?.username || "—"} />
               <Row label="Package" value={pkgName} />
-              <Row label="Speed" value={clientRow?.speed || clientRow?.isp_packages?.speed || "—"} />
+              <Row label="Speed" value={clientRow?.speed || "—"} />
               <Row label="Connection" value={clientRow?.connection_type || "—"} />
               <Row label="Protocol" value={clientRow?.protocol_type || "—"} />
               <Row label="Status" value={
