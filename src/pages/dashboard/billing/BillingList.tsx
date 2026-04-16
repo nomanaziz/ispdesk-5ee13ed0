@@ -387,3 +387,45 @@ function SummaryCard({ icon: Icon, label, value, color, bg }: { icon: any; label
     </Card>
   );
 }
+
+function MikrotikToggle({ client, queryClient }: { client: any; queryClient: any }) {
+  const [loading, setLoading] = useState(false);
+  const isEnabled = client.mikrotik_status !== "disabled";
+
+  const handleToggle = async (checked: boolean) => {
+    if (!client.mikrotik_id || !client.username) {
+      toast.error("MikroTik সার্ভার বা ইউজারনেম নেই");
+      return;
+    }
+    setLoading(true);
+    try {
+      const action = checked ? "enable" : "disable";
+      const { data, error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
+        body: {
+          mikrotik_id: client.mikrotik_id,
+          username: client.username,
+          client_id: client.id,
+          action,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(data?.message || `${client.username} ${action}d`);
+      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+    } catch (err: any) {
+      toast.error(err.message || "MikroTik অপারেশন ব্যর্থ");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Switch
+      checked={isEnabled}
+      onCheckedChange={handleToggle}
+      disabled={loading || !client.mikrotik_id}
+      className={`scale-75 ${loading ? "opacity-50" : ""}`}
+      aria-label={isEnabled ? "Enabled" : "Disabled"}
+    />
+  );
+}
