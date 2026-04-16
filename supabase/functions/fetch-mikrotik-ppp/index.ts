@@ -451,7 +451,9 @@ Deno.serve(async (req) => {
                 if (mkStatus === "enabled") enableIds.push(client.id);
                 else disableIds.push(client.id);
                 statusSynced++;
-              }
+        }
+
+        console.log(`[sync-online] Matched ${allSecrets.size} secrets. Online: ${onlineIds.length} new, Offline: ${offlineIds.length} new, Enable: ${enableIds.length}, Disable: ${disableIds.length}`);
             }
           }
         }
