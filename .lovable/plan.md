@@ -1,58 +1,68 @@
 
 
-## Dashboard Colorful Redesign + Stats Enhancement
+## Client List ও Billing List — Unified Filter, Bulk Actions, Toggle, Bill Receive
 
-Screenshot (image-57) অনুযায়ী Dashboard-এর stat cards গুলো colorful icon সহ redesign করা হবে এবং নতুন stats যোগ হবে। Online Monitoring table-এ Mac Address, Last Offline columns যোগ হবে।
+৪টি প্রধান কাজ: (1) Filter design unified ও compact, (2) Client List-এ bulk actions কাজ করানো + MikroTik toggle, (3) Billing List-এ MikroTik toggle + Pay/Due buttons, (4) Bill Receive dialog।
 
 ---
 
-### 1. Dashboard — Colorful StatCard Redesign
+### 1. Unified Filter — Client List কে BillingFilterPanel ব্যবহার করানো
 
-Screenshot-এর মতো প্রতিটি card-এ বড় colorful square icon থাকবে (solid background সহ):
-- লাল, নীল, সবুজ, হলুদ, বেগুনি, পিংক — প্রতিটি row-এ ৬টি card
+Client List-এর নিজের inline filter কোড সরিয়ে `BillingFilterPanel` component ব্যবহার করবে। এতে দুই পেজে একই design ও filter options থাকবে।
 
-**নতুন Stats যোগ হবে:**
+**BillingFilterPanel compact করা:**
+- Filter row-এর select height `h-7` করা হবে (বর্তমান `h-8`)
+- Label font `text-[10px]` করা হবে
+- Grid `lg:grid-cols-7` করা হবে (বর্তমান `lg:grid-cols-6`)
+- Date row 6-column এর বদলে 4-column
 
-| Card | Data Source |
-|------|------------|
-| Total Client | `clients` count |
-| This Month Join | `clients` where `created_at >= month_start` |
-| Last Month Join | `clients` where `created_at` in last month |
-| This Month Active | `clients` active + `created_at >= month_start` |
-| Last Month Active | billing paid last month count |
-| Home Client | `clients` where `connection_type = 'Home'` count |
-| Total Active Now | `clients` active count |
-| Home Active Now | Home + active count |
-| Total Expired | `clients` expired count |
-| Home Expired | Home + expired |
-| Pending Client | `clients` pending |
-| Left Client | `clients` left |
-| Extended Client | `clients` extended status |
-| Grace Client | `clients` grace status |
-| Due Client | billing unpaid this month |
-| Suspend Client | `clients` suspended |
-| Today Home Sales | billing paid today |
-| Yesterday Home Sales | billing paid yesterday |
-| This Month Sales | billing total paid this month |
-| This Month Profit | income - expense |
-| Last Month Profit | last month income - expense |
-| Online In This Month | unique online sessions |
-| Total POP | network_pops count |
-| Last Month Sales | billing paid last month |
+### 2. Client List — Bulk Actions কাজ করানো + MikroTik Toggle
 
-**Bottom Section — 3টি Table:**
-- **Latest Invoices** (Inv No, User, Amount)
-- **Upcoming Expire** (Username, Bill, Expire Time)
-- **Latest Expired** (Username, Bill, Expire Time)
+**Bulk Actions:** Client List-এর top action buttons (Generate Excel, Bulk Profile Change, Bulk Status Change) এখন কিছু করে না। এগুলো কাজ করাতে:
+- Billing List-এর মতো `BulkActionButtons` component ব্যবহার করা হবে
+- `handleDisableEnable` function যোগ হবে (Billing List-এ যেভাবে আছে)
+- Dialog components (BulkStatusChangeDialog, BulkProfileChangeDialog, etc.) import করা হবে
 
-### 2. Online Monitoring — Mac Address ও Last Offline Column
+**MikroTik Toggle Button:** প্রতিটি row-তে M.Status column-এ Badge-এর বদলে `Switch` toggle button বসবে:
+- Green = enabled, click করলে → `manage-mikrotik-ppp` action: `disable` call
+- Red/off = disabled, click করলে → `manage-mikrotik-ppp` action: `enable` call
+- Loading state থাকবে toggle-এ
 
-Table-তে নতুন columns:
-- **Mac Address** — `caller_id` from active session (already available)
-- **R.Days** — remaining days (from billing expire date)
-- **Last Offline** — `client_traffic_logs` last record where client went offline
+### 3. Billing List — MikroTik Toggle + Pay/Due Buttons
 
-Edge function-এ `caller-id` already আসে, শুধু UI-তে Mac Address column যোগ করতে হবে।
+**MikroTik Toggle:** Client List-এর মতোই `Switch` toggle button — same component।
+
+**Pay/Due Column:** B.Status column-এ:
+- Status `paid` হলে → সবুজ "Paid" badge
+- Status `unpaid`/`partial` হলে → লাল "Due" badge + "Pay" button
+- "Pay" button click করলে → Bill Receive Dialog open
+
+### 4. Bill Receive Dialog — নতুন Component
+
+Screenshot অনুযায়ী `BillReceiveDialog` তৈরি হবে:
+
+**Fields (pre-filled from client + billing data):**
+
+| Left Column | Right Column |
+|-------------|-------------|
+| Received Date (today default) | User Name (readonly) |
+| Client Code (readonly) | Mobile No. (readonly) |
+| Package (readonly) | Receive From (client name) |
+| Monthly Bill (readonly) | Due Amount (auto-calculated) |
+| Received By (current user dropdown) | Payment Method (bKash/Cash/Nagad etc.) |
+
+**Bottom Table (readonly summary):**
+- Payable Amount, Discount, Received Amount (editable), VAT Amount (+ Apply VAT checkbox), Total Received Amount, Receipt/Transaction No., Balance Due, Remarks/Note
+
+**Checkboxes:**
+- "Set Next Billing Date?" — checked হলে expire_date extend করবে
+- "Send SMS?" — checked হলে payment confirmation SMS পাঠাবে
+
+**Submit Logic:**
+- `billing` table-এ update: `paid`, `due`, `status`, `pay_date`, `payment_method`, `collected_by`, `vat`, `discount`
+- যদি received > due → advance হিসাবে save হবে, remarks-এ "Advance Pay" auto-add
+- যদি "Set Next Billing Date" checked → `clients.expire_date` 30 দিন extend
+- Data refresh after submit
 
 ---
 
@@ -60,6 +70,8 @@ Edge function-এ `caller-id` already আসে, শুধু UI-তে Mac Addr
 
 | File | Change |
 |------|--------|
-| `src/pages/Dashboard.tsx` | পুরো redesign — colorful cards, নতুন stats, bottom tables |
-| `src/pages/dashboard/monitoring/OnlineClientMonitoring.tsx` | Mac Address, R.Days columns যোগ |
+| `src/components/billing/BillingFilterPanel.tsx` | Compact styling (smaller heights, tighter grid) |
+| `src/pages/dashboard/clients/ClientList.tsx` | BillingFilterPanel ব্যবহার, bulk actions working, MikroTik toggle |
+| `src/pages/dashboard/billing/BillingList.tsx` | MikroTik toggle column, Pay/Due buttons, BillReceiveDialog integration |
+| `src/components/billing/BillReceiveDialog.tsx` | **নতুন** — Bill Receive dialog (screenshot অনুযায়ী) |
 
