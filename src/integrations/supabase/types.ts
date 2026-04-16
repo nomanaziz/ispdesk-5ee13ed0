@@ -1591,6 +1591,51 @@ export type Database = {
           },
         ]
       }
+      client_traffic_logs: {
+        Row: {
+          client_id: string | null
+          device_id: string | null
+          download_bytes: number
+          id: string
+          recorded_at: string
+          upload_bytes: number
+          username: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          device_id?: string | null
+          download_bytes?: number
+          id?: string
+          recorded_at?: string
+          upload_bytes?: number
+          username?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          device_id?: string | null
+          download_bytes?: number
+          id?: string
+          recorded_at?: string
+          upload_bytes?: number
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_traffic_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_traffic_logs_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "mikrotik_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_types: {
         Row: {
           created_at: string
@@ -1674,6 +1719,8 @@ export type Database = {
           speed: string | null
           status: string
           sub_zone_id: string | null
+          total_download: number
+          total_upload: number
           updated_at: string
           user_id: string | null
           username: string | null
@@ -1738,6 +1785,8 @@ export type Database = {
           speed?: string | null
           status?: string
           sub_zone_id?: string | null
+          total_download?: number
+          total_upload?: number
           updated_at?: string
           user_id?: string | null
           username?: string | null
@@ -1802,6 +1851,8 @@ export type Database = {
           speed?: string | null
           status?: string
           sub_zone_id?: string | null
+          total_download?: number
+          total_upload?: number
           updated_at?: string
           user_id?: string | null
           username?: string | null

@@ -405,6 +405,42 @@ Deno.serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+        case "ping": {
+          const targetIp = body.target_ip || secret?.["remote-address"];
+          if (!targetIp) {
+            conn.close();
+            return new Response(
+              JSON.stringify({ error: "No IP address available for ping" }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          const pingResults = await mikrotikCommand(conn, "/ping", {
+            address: targetIp,
+            count: "4",
+          });
+          conn.close();
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: `Ping to ${targetIp} completed`,
+              ping_results: pingResults.map((r) => ({
+                host: r.host || targetIp,
+                seq: r.seq || null,
+                time: r.time || null,
+                ttl: r.ttl || null,
+                status: r.status || (r.time ? "ok" : "timeout"),
+              })),
+              summary: {
+                sent: pingResults.length,
+                received: pingResults.filter((r) => r.time && r.time !== "timeout").length,
+                packet_loss: pingResults.length > 0
+                  ? `${Math.round(((pingResults.length - pingResults.filter((r) => r.time && r.time !== "timeout").length) / pingResults.length) * 100)}%`
+                  : "100%",
+              },
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         case "remove": {
           try {
             const active = await getActiveSessions(conn, username);
