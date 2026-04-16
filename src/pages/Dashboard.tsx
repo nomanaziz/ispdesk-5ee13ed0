@@ -254,7 +254,7 @@ function useStats() {
         totalDiscount,
         incTM, expTM,
         paidSalary: sum(salaryThisMonth.data),
-        smsBalance: smsBalance.data?.value || "0",
+        smsBalance: smsBalance.data?.setting_value || "0",
         pendingTickets: ticketsPending.count ?? 0,
         processingTickets: ticketsProcessing.count ?? 0,
         pendingTasks: tasksPending.count ?? 0,
