@@ -215,72 +215,72 @@ export default function AddClient() {
   const SectionHeader = ({ icon, title }: { icon: string; title: string }) => (
     <div className="bg-primary text-primary-foreground px-4 py-2 rounded-t-lg font-semibold flex items-center gap-2">
       <span>{icon}</span> {title}
-      <span className="text-xs font-normal ml-2">Fill Up All Required(*) Field Data</span>
+      <span className="text-xs font-normal ml-2">আবশ্যক (*) ফিল্ডগুলো পূরণ করুন</span>
     </div>
   );
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Client <span className="text-sm font-normal text-muted-foreground">{editMode ? "Edit Client" : "Add New Client"}</span></h1>
+        <h1 className="text-2xl font-bold">ক্লায়েন্ট <span className="text-sm font-normal text-muted-foreground">{editMode ? "ক্লায়েন্ট সম্পাদনা" : "নতুন ক্লায়েন্ট যোগ"}</span></h1>
       </div>
 
       {/* Personal Information */}
       <div className="border rounded-lg">
-        <SectionHeader icon="👤" title="Personal Information" />
+        <SectionHeader icon="👤" title="ব্যক্তিগত তথ্য" />
         <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-1 md:row-span-3 flex flex-col items-center gap-2">
             <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center text-4xl text-muted-foreground">👤</div>
-            <span className="text-xs text-muted-foreground">Profile Picture</span>
+            <span className="text-xs text-muted-foreground">প্রোফাইল ছবি</span>
           </div>
           <div className="md:col-span-2">
-            <Label>Customer Name *</Label>
+            <Label>কাস্টমার নাম *</Label>
             <Input value={form.name} onChange={e => setField("name", e.target.value)} />
           </div>
           <div>
-            <Label>Remarks/Special Note</Label>
+            <Label>মন্তব্য/বিশেষ নোট</Label>
             <Textarea value={form.remarks} onChange={e => setField("remarks", e.target.value)} className="h-20" />
           </div>
           <div>
-            <Label>Occupation</Label>
+            <Label>পেশা</Label>
             <Select value={form.occupation} onValueChange={v => setField("occupation", v)}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="Student">Student</SelectItem>
-                <SelectItem value="Private Job Holder">Private Job Holder</SelectItem>
-                <SelectItem value="Govt Job Holder">Govt Job Holder</SelectItem>
-                <SelectItem value="Business">Business</SelectItem>
-                <SelectItem value="Housewife">Housewife</SelectItem>
-                <SelectItem value="Teacher">Teacher</SelectItem>
-                <SelectItem value="Doctor">Doctor</SelectItem>
-                <SelectItem value="Engineer">Engineer</SelectItem>
-                <SelectItem value="Farmer">Farmer</SelectItem>
-                <SelectItem value="Retired">Retired</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
+                <SelectItem value="Student">ছাত্র/ছাত্রী</SelectItem>
+                <SelectItem value="Private Job Holder">প্রাইভেট চাকরি</SelectItem>
+                <SelectItem value="Govt Job Holder">সরকারি চাকরি</SelectItem>
+                <SelectItem value="Business">ব্যবসা</SelectItem>
+                <SelectItem value="Housewife">গৃহিণী</SelectItem>
+                <SelectItem value="Teacher">শিক্ষক</SelectItem>
+                <SelectItem value="Doctor">ডাক্তার</SelectItem>
+                <SelectItem value="Engineer">ইঞ্জিনিয়ার</SelectItem>
+                <SelectItem value="Farmer">কৃষক</SelectItem>
+                <SelectItem value="Retired">অবসরপ্রাপ্ত</SelectItem>
+                <SelectItem value="Other">অন্যান্য</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>NID/Birth Certificate No *</Label>
+            <Label>NID/জন্ম সনদ নম্বর *</Label>
             <Input value={form.nid_number} onChange={e => setField("nid_number", e.target.value)} />
           </div>
           <div>
-            <Label>Gender</Label>
+            <Label>লিঙ্গ</Label>
             <Select value={form.gender} onValueChange={v => setField("gender", v)}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="Male">Male</SelectItem>
-                <SelectItem value="Female">Female</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
+                <SelectItem value="Male">পুরুষ</SelectItem>
+                <SelectItem value="Female">মহিলা</SelectItem>
+                <SelectItem value="Other">অন্যান্য</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Father Name</Label>
+            <Label>পিতার নাম</Label>
             <Input value={form.father_name} onChange={e => setField("father_name", e.target.value)} />
           </div>
           <div>
-            <Label>Date of Birth</Label>
+            <Label>জন্ম তারিখ</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -288,7 +288,7 @@ export default function AddClient() {
                   className={cn("w-full justify-start text-left font-normal", !form.date_of_birth && "text-muted-foreground")}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {form.date_of_birth ? format(new Date(form.date_of_birth), "PPP") : <span>Select date</span>}
+                  {form.date_of_birth ? format(new Date(form.date_of_birth), "PPP") : <span>তারিখ নির্বাচন</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -304,7 +304,7 @@ export default function AddClient() {
             </Popover>
           </div>
           <div>
-            <Label>Mother Name</Label>
+            <Label>মাতার নাম</Label>
             <Input value={form.mother_name} onChange={e => setField("mother_name", e.target.value)} />
           </div>
         </div>
@@ -312,54 +312,54 @@ export default function AddClient() {
 
       {/* Contact Information */}
       <div className="border rounded-lg">
-        <SectionHeader icon="📍" title="Contact Information" />
+        <SectionHeader icon="📍" title="যোগাযোগের তথ্য" />
         <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <Label>Map Latitude</Label>
+            <Label>মানচিত্র অক্ষাংশ</Label>
             <Input value={form.latitude} onChange={e => setField("latitude", e.target.value)} />
           </div>
           <div>
-            <Label>Mobile Number *</Label>
+            <Label>মোবাইল নম্বর *</Label>
             <Input value={form.contact} onChange={e => setField("contact", e.target.value)} />
           </div>
           <div>
-            <Label>District</Label>
-            <Input disabled placeholder="From Zone" />
+            <Label>জেলা</Label>
+            <Input disabled placeholder="জোন থেকে" />
           </div>
           <div className="md:row-span-2">
-            <Label>Present Address</Label>
+            <Label>বর্তমান ঠিকানা</Label>
             <Textarea value={form.address} onChange={e => setField("address", e.target.value)} className="h-full min-h-[80px]" />
           </div>
           <div>
-            <Label>Map Longitude</Label>
+            <Label>মানচিত্র দ্রাঘিমাংশ</Label>
             <Input value={form.longitude} onChange={e => setField("longitude", e.target.value)} />
           </div>
           <div>
-            <Label>Phone Number</Label>
+            <Label>ফোন নম্বর</Label>
             <Input value={form.phone_number} onChange={e => setField("phone_number", e.target.value)} />
           </div>
           <div>
-            <Label>Upazila/Thana</Label>
-            <Input disabled placeholder="From Zone" />
+            <Label>উপজেলা/থানা</Label>
+            <Input disabled placeholder="জোন থেকে" />
           </div>
           <div>
-            <Label>Email Address</Label>
+            <Label>ইমেইল ঠিকানা</Label>
             <Input type="email" value={form.email} onChange={e => setField("email", e.target.value)} />
           </div>
           <div>
-            <Label>Road Number</Label>
+            <Label>রোড নম্বর</Label>
             <Input value={form.road_number} onChange={e => setField("road_number", e.target.value)} />
           </div>
           <div>
-            <Label>House Number</Label>
+            <Label>বাড়ি নম্বর</Label>
             <Input value={form.house_number} onChange={e => setField("house_number", e.target.value)} />
           </div>
           <div>
-            <Label>Permanent Address</Label>
+            <Label>স্থায়ী ঠিকানা</Label>
             <Textarea value={form.permanent_address} onChange={e => setField("permanent_address", e.target.value)} className="h-20" />
             <div className="flex items-center gap-2 mt-1">
               <Checkbox checked={form.same_address} onCheckedChange={v => setField("same_address", v)} id="same-addr" />
-              <label htmlFor="same-addr" className="text-xs">Same As Present Address?</label>
+              <label htmlFor="same-addr" className="text-xs">বর্তমান ঠিকানার মতই?</label>
             </div>
           </div>
         </div>
