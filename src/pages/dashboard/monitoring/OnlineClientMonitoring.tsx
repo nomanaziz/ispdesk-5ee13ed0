@@ -142,7 +142,7 @@ export default function OnlineClientMonitoring() {
         const onlineUsernames = new Set((data.sessions as ActiveSession[]).map(s => s.name));
         const { data: allClients } = await supabase
           .from("clients")
-          .select("id, client_id, name, contact, username, remote_address, zone:zones(name), sub_zone:sub_zones(name), box:boxes(name), connection_type, profile, status, mikrotik_id, server_name, total_upload, total_download, mac_address")
+          .select("id, client_id, name, contact, username, remote_address, zone:zones(name), sub_zone:sub_zones(name), box:boxes(name), connection_type, profile, status, mikrotik_id, server_name, total_upload, total_download, mac_address, mikrotik_device:mikrotik_devices(name)")
           .eq("status", "active");
         
         if (allClients) {
@@ -155,7 +155,7 @@ export default function OnlineClientMonitoring() {
               caller_id: c.mac_address || "",
               service: "pppoe",
               encoding: "",
-              server_name: c.server_name || "",
+              server_name: c.mikrotik_device?.name || c.server_name || "",
               device_id: c.mikrotik_id || "",
               client_id: c.id,
               client_code: c.client_id,
