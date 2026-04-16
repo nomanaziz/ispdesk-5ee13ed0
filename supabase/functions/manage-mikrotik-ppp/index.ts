@@ -236,6 +236,63 @@ Deno.serve(async (req) => {
         );
       }
 
+      if (!secret && action === "update") {
+        let createPassword = password;
+        let createProfile = profile;
+        let createRemoteAddress = remote_address;
+
+        if (client_id) {
+          const { data: clientFallback } = await supabase
+            .from("clients")
+            .select("password, profile, remote_address")
+            .eq("id", client_id)
+            .maybeSingle();
+
+          createPassword = createPassword || clientFallback?.password || undefined;
+          createProfile = createProfile ?? clientFallback?.profile ?? undefined;
+          createRemoteAddress = createRemoteAddress ?? clientFallback?.remote_address ?? undefined;
+        }
+
+        if (!createPassword) {
+          conn.close();
+          return new Response(
+            JSON.stringify({ error: `PPP secret '${username}' not found and no password was available to create it` }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const createParams: Record<string, string> = {
+          name: username,
+          password: createPassword,
+          service: "pppoe",
+          disabled: disabled === true || disabled === "yes" ? "yes" : "no",
+        };
+
+        if (createProfile) createParams.profile = createProfile;
+        if (createRemoteAddress) createParams["remote-address"] = createRemoteAddress;
+
+        await mikrotikCommand(conn, "/ppp/secret/add", createParams);
+
+        const createdStatus = createParams.disabled === "yes" ? "disabled" : "enabled";
+        await insertClientLog(
+          supabase,
+          client_id || null,
+          device.name,
+          `[PPP] ${username} secret was missing, so it was created automatically`
+        );
+
+        conn.close();
+        return new Response(
+          JSON.stringify({
+            success: true,
+            created: true,
+            message: `PPP secret '${username}' was missing, so it was created automatically`,
+            mikrotik_status: createdStatus,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       if (!secret) {
         conn.close();
         return new Response(
