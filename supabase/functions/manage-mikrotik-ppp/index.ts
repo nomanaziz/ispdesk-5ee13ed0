@@ -234,28 +234,6 @@ Deno.serve(async (req) => {
         );
       }
 
-    const { data: device, error: devErr } = await supabase
-      .from("mikrotik_devices")
-      .select("*")
-      .eq("id", mikrotik_id)
-      .single();
-
-    if (devErr || !device) {
-      return new Response(
-        JSON.stringify({ error: "MikroTik device not found" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const ip = device.ip_address;
-    const port = device.api_port || 8728;
-    const apiUser = device.username || "admin";
-    const apiPass = device.password_encrypted || "";
-
-    const conn = await Deno.connect({ hostname: ip, port });
-
-    try {
-      await mikrotikLogin(conn, apiUser, apiPass);
 
       // Find the PPP secret by name
       const secrets = await mikrotikCommand(conn, "/ppp/secret/print", { "?name": username });
