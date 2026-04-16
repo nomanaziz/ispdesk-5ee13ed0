@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Package, Search, Globe, Plus, Edit, Trash2, Power, PowerOff } from "lucide-react";
+import { Package, Search, Globe, Plus, Edit, Trash2, Power, PowerOff, Eye } from "lucide-react";
 
 const PACKAGE_TYPES = [
   { value: "home", label: "Home", color: "bg-blue-500" },
@@ -57,6 +57,15 @@ export default function Packages() {
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["isp-packages"] }); toast.success("হোমপেজ ভিজিবিলিটি আপডেট"); },
+    onError: () => toast.error("আপডেট ব্যর্থ"),
+  });
+
+  const togglePortal = useMutation({
+    mutationFn: async ({ id, show }: { id: string; show: boolean }) => {
+      const { error } = await supabase.from("isp_packages").update({ portal_visible: show } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["isp-packages"] }); toast.success("পোর্টাল ভিজিবিলিটি আপডেট"); },
     onError: () => toast.error("আপডেট ব্যর্থ"),
   });
 
@@ -216,12 +225,13 @@ export default function Packages() {
                     <TableHead>প্রোটোকল</TableHead>
                     <TableHead>স্ট্যাটাস</TableHead>
                     <TableHead className="text-center"><div className="flex items-center justify-center gap-1"><Globe className="h-3.5 w-3.5" /> হোমপেজ</div></TableHead>
+                    <TableHead className="text-center"><div className="flex items-center justify-center gap-1"><Eye className="h-3.5 w-3.5" /> পোর্টাল</div></TableHead>
                     <TableHead className="text-right">অ্যাকশন</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered?.length === 0 && (
-                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">কোনো প্যাকেজ পাওয়া যায়নি</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">কোনো প্যাকেজ পাওয়া যায়নি</TableCell></TableRow>
                   )}
                   {filtered?.map((pkg) => (
                     <TableRow key={pkg.id} className={selected.has(pkg.id) ? "bg-muted/50" : ""}>
@@ -238,6 +248,9 @@ export default function Packages() {
                       </TableCell>
                       <TableCell className="text-center">
                         <Switch checked={pkg.show_on_homepage ?? false} onCheckedChange={(c) => toggleHomepage.mutate({ id: pkg.id, show: c })} />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Switch checked={(pkg as any).portal_visible ?? true} onCheckedChange={(c) => togglePortal.mutate({ id: pkg.id, show: c })} />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">

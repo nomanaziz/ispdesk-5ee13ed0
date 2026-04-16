@@ -48,9 +48,14 @@ export default function Tariff() {
   });
 
   const { data: packages } = useQuery({
-    queryKey: ["isp-packages-pop-select"],
+    queryKey: ["isp-packages-sellable-select"],
     queryFn: async () => {
-      const { data } = await supabase.from("isp_packages").select("id, name, price").eq("status", "active").eq("package_type", "pop");
+      const { data } = await supabase
+        .from("isp_packages")
+        .select("id, name, price, package_type")
+        .eq("status", "active")
+        .in("package_type", ["home", "corporate", "business", "dedicated"])
+        .order("name");
       return data ?? [];
     },
   });
@@ -177,12 +182,19 @@ export default function Tariff() {
                 <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. XYZ POP" />
               </div>
               <div>
-                <Label>প্যাকেজ সিলেক্ট (POP)</Label>
+                <Label>প্যাকেজ সিলেক্ট</Label>
                 <Select value={form.package_id} onValueChange={(v) => setForm({ ...form, package_id: v })}>
                   <SelectTrigger><SelectValue placeholder="প্যাকেজ বাছাই করুন" /></SelectTrigger>
                   <SelectContent>
-                    {packages?.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name} — ৳{p.price}</SelectItem>
+                    {packages?.length === 0 && (
+                      <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                        কোনো sellable প্যাকেজ পাওয়া যায়নি। Config → Packages থেকে যোগ করুন।
+                      </div>
+                    )}
+                    {packages?.map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} — ৳{p.price} {p.package_type ? `(${p.package_type})` : ""}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
