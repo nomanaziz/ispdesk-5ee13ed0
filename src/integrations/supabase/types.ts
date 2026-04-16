@@ -1643,6 +1643,7 @@ export type Database = {
           gender: string | null
           house_number: string | null
           id: string
+          is_online: boolean
           is_vip: boolean | null
           joining_date: string | null
           latitude: string | null
@@ -1706,6 +1707,7 @@ export type Database = {
           gender?: string | null
           house_number?: string | null
           id?: string
+          is_online?: boolean
           is_vip?: boolean | null
           joining_date?: string | null
           latitude?: string | null
@@ -1769,6 +1771,7 @@ export type Database = {
           gender?: string | null
           house_number?: string | null
           id?: string
+          is_online?: boolean
           is_vip?: boolean | null
           joining_date?: string | null
           latitude?: string | null
