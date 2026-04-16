@@ -334,7 +334,10 @@ export default function OnlineClientMonitoring() {
     return () => clearInterval(interval);
   }, [loadActiveSessions]);
 
-  const filteredSessions = sessions.filter((s) => {
+  // Combine online and offline based on filter
+  const combinedSessions = statusFilter === "online" ? sessions : statusFilter === "offline" ? offlineClients : [...sessions, ...offlineClients];
+
+  const filteredSessions = combinedSessions.filter((s) => {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       if (
@@ -430,7 +433,9 @@ export default function OnlineClientMonitoring() {
                 <TableCell className="font-mono text-xs">{s.address || "—"}</TableCell>
                 <TableCell className="font-mono text-xs">{s.caller_id || "—"}</TableCell>
                 <TableCell>
-                  <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Online</Badge>
+                <Badge className={s.status === "offline" ? "bg-destructive/20 text-destructive border-destructive/30" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"}>
+                  {s.status === "offline" ? "Offline" : "Online"}
+                </Badge>
                 </TableCell>
                 <TableCell className="font-mono text-xs">{s.uptime || "—"}</TableCell>
                 <TableCell className="font-mono text-xs">—</TableCell>
