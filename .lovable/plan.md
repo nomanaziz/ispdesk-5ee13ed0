@@ -1,39 +1,64 @@
 
 
-## Billing List — Filter + MikroTik Status Sync Fix
+## Billing Commitment Date (বিলিং তারিখ) System
 
-### সমস্যা
+### সংক্ষেপ
 
-1. **Billing list-এ Personal/Free/Inactive client আসছে** — query-তে কোনো filter নেই, সব client fetch হচ্ছে
-2. **MikroTik status সঠিক sync হচ্ছে না** — MikroTik-এ disable করা আছে কিন্তু software-এ enable দেখাচ্ছে। Sync Clients বাটন press করলে edge function call হচ্ছে কিন্তু DB-তে সব `mikrotik_status: enabled` রয়ে যাচ্ছে
+প্রতিটি client-এর একটি `billing_date` (1-27) থাকবে — সে প্রতি মাসে কত তারিখের মধ্যে বিল দিবে। এই তারিখ পার হলে MikroTik auto-disable হবে। বিল পরিশোধ করলে auto-enable হবে। Expire date click করে extend করা যাবে।
 
-### পরিবর্তন
+---
 
-#### 1. BillingList.tsx — Query Filter
+### পরিবর্তন সমূহ
 
-Supabase query-তে filter যোগ:
-- `billing_status` = "Active" only (Personal, Free, Left বাদ)
-- `status` = "active" only (inactive বাদ)
+#### 1. Billing List Table — `Ex.Date` কলাম উন্নতি
 
-```
-.eq("status", "active")
-.eq("billing_status", "Active")
-```
+**`BillingList.tsx`** — বর্তমান `মেয়াদ` কলামে:
+- `billing_date` number (1-27) দেখাবে বড় করে, নিচে ক্যালেন্ডার আইকন
+- Click করলে একটি Popover খুলবে — Select dropdown (1-27) দিয়ে `billing_date` update করা যাবে
+- `expire_date`-ও click করে extend করা যাবে — click করলে Popover-এ next billing date auto-calculate হবে (current month-এর `billing_date` তারিখ), save করলে `expire_date` update হবে
 
-এতে শুধু active + billable client আসবে। Summary cards-ও accurate হবে।
+#### 2. BillReceiveDialog — Auto-enable on Paid
 
-#### 2. Edge Function Debug — `fetch-mikrotik-ppp` sync-online
+**`BillReceiveDialog.tsx`** — বিল full paid হলে:
+- `mikrotik_status` = "enabled" DB-তে update
+- `manage-mikrotik-ppp` edge function invoke করে MikroTik-এ enable করবে
+- `expire_date` next month-এর `billing_date` তারিখে set হবে
 
-Edge function-এ console log যোগ করে debug করতে হবে। সম্ভাব্য সমস্যা:
-- MikroTik API থেকে `disabled` field-এর value কেমন আসছে (`"true"`, `"yes"`, বা অন্য কিছু)
-- Edge function-এ `disabled` field check সঠিক কিনা
+#### 3. Enforce Billing Edge Function — `billing_date` ভিত্তিক
 
-Log যোগ করব: কতগুলো secret fetch হলো, কতগুলোর `disabled=true`, কতগুলো status update হলো — এতে debug সহজ হবে।
+**`enforce-billing/index.ts`** — বর্তমান `expire_date` based logic-এর সাথে `billing_date` logic যোগ:
+- প্রতিটি client-এর `billing_date` check করবে
+- আজকের তারিখ যদি `billing_date`-এর পরে হয় এবং current month-এ paid না হলে → disable
+- System setting থেকে `cutoff_time` পড়বে (same day / next day)
+- VIP এবং Free client বাদ যাবে
+
+#### 4. System Setup — Enforcement Timing
+
+**`Setup.tsx`** — Billing Enforcement সেকশনে:
+- "কোন সময় বন্ধ হবে" — cutoff time selector (already exists)
+- "Same date নাকি Next date" — নতুন option যোগ: `enforcement_day: "same" | "next"` — billing_date-এর দিনেই disable হবে নাকি পরের দিন
+
+#### 5. Billing Date Edit Popover Component
+
+**নতুন ফাইল: `src/components/billing/BillingDatePopover.tsx`**
+- Click করলে Popover open
+- Select (1-27) দিয়ে billing_date change
+- Save করলে DB update + toast
 
 ### Files
 
 | File | Change |
 |------|--------|
-| `src/pages/dashboard/billing/BillingList.tsx` | Query-তে `.eq("status", "active").eq("billing_status", "Active")` filter যোগ |
-| `supabase/functions/fetch-mikrotik-ppp/index.ts` | sync-online action-এ debug logs যোগ — disabled field-এর actual value log করা |
+| `src/components/billing/BillingDatePopover.tsx` | **নতুন** — Billing date edit popover (1-27 select) |
+| `src/pages/dashboard/billing/BillingList.tsx` | `মেয়াদ` কলামে BillingDatePopover ব্যবহার, expire_date extend |
+| `src/components/billing/BillReceiveDialog.tsx` | Full paid হলে MikroTik auto-enable + expire_date extend |
+| `supabase/functions/enforce-billing/index.ts` | `billing_date` ভিত্তিক disable logic, `enforcement_day` setting support |
+| `src/pages/dashboard/system/Setup.tsx` | `enforcement_day` (same/next) option যোগ |
+
+### Technical Details
+
+- `clients.billing_date` column already exists (integer, default 1)
+- Range: 1-27 (28+ allowed নয় — shortest month consideration)
+- Enforce billing cron: checks `billing_date` against current date, respects `cutoff_time` and `enforcement_day`
+- Auto-enable on payment: calls `manage-mikrotik-ppp` with action "enable" after successful bill receive
 
