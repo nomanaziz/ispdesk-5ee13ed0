@@ -256,6 +256,11 @@ import PortalInvoices from "@/pages/portal/PortalInvoices";
 import PortalPurchaseOrders from "@/pages/portal/PortalPurchaseOrders";
 import PortalSupport from "@/pages/portal/PortalSupport";
 
+// Reseller
+import ResellerProtectedRoute from "@/components/ResellerProtectedRoute";
+import { ResellerLayout } from "@/components/ResellerLayout";
+import ResellerDashboard from "@/pages/reseller/ResellerDashboard";
+
 const queryClient = new QueryClient();
 
 const P = ({ children }: { children: React.ReactNode }) => (
