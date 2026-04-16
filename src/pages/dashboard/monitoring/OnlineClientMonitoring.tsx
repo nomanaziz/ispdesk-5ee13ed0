@@ -131,6 +131,43 @@ export default function OnlineClientMonitoring() {
         setOnlineCount(data.online_count || data.sessions.length);
         setOfflineCount(data.offline_count || 0);
         setTotalClients(data.total_clients || 0);
+
+        // Load offline clients from DB
+        const onlineUsernames = new Set((data.sessions as ActiveSession[]).map(s => s.name));
+        const { data: allClients } = await supabase
+          .from("clients")
+          .select("id, client_id, name, contact, username, remote_address, zone:zones(name), sub_zone:sub_zones(name), box:boxes(name), connection_type, profile, status, mikrotik_id, server_name, total_upload, total_download, mac_address")
+          .eq("status", "active");
+        
+        if (allClients) {
+          const offline = allClients
+            .filter((c: any) => c.username && !onlineUsernames.has(c.username))
+            .map((c: any): ActiveSession => ({
+              name: c.username || "",
+              address: c.remote_address || "",
+              uptime: "—",
+              caller_id: c.mac_address || "",
+              service: "pppoe",
+              encoding: "",
+              server_name: c.server_name || "",
+              device_id: c.mikrotik_id || "",
+              client_id: c.id,
+              client_code: c.client_id,
+              client_name: c.name,
+              contact: c.contact,
+              zone_name: c.zone?.name || "",
+              sub_zone_name: c.sub_zone?.name || "",
+              box_name: c.box?.name || "",
+              connection_type: c.connection_type,
+              profile: c.profile,
+              status: "offline",
+              mikrotik_id: c.mikrotik_id,
+              total_upload: c.total_upload || 0,
+              total_download: c.total_download || 0,
+            }));
+          setOfflineClients(offline);
+          setOfflineCount(offline.length);
+        }
       }
       if (data?.mismatch) {
         setMismatchData(data.mismatch);
