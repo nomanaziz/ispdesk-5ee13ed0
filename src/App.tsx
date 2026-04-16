@@ -525,6 +525,12 @@ const App = () => (
               <Route path="/portal/purchase-orders" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalPurchaseOrders /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/support" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalSupport /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
 
+              {/* Reseller Portal */}
+              <Route path="/reseller" element={<Navigate to="/reseller/dashboard" replace />} />
+              <Route path="/reseller/login" element={<Navigate to="/login" replace />} />
+              <Route path="/reseller/dashboard" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ResellerDashboard /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
         </BrowserRouter>
