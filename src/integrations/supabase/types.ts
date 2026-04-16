@@ -3263,6 +3263,7 @@ export type Database = {
       olt_devices: {
         Row: {
           branch_id: string | null
+          brand_model: string | null
           connection_type: Database["public"]["Enums"]["connection_type"]
           cpu_usage: number | null
           created_at: string
@@ -3277,10 +3278,16 @@ export type Database = {
           memory_usage: number | null
           mikrotik_id: string | null
           name: string
+          olt_version: string | null
           online_onus: number | null
           password_encrypted: string | null
           port: number
           serial_number: string | null
+          snmp_community: string | null
+          snmp_enabled: boolean | null
+          snmp_ip: string | null
+          snmp_port: number | null
+          snmp_version: string | null
           status: Database["public"]["Enums"]["device_status"]
           total_onus: number | null
           updated_at: string
@@ -3290,6 +3297,7 @@ export type Database = {
         }
         Insert: {
           branch_id?: string | null
+          brand_model?: string | null
           connection_type?: Database["public"]["Enums"]["connection_type"]
           cpu_usage?: number | null
           created_at?: string
@@ -3304,10 +3312,16 @@ export type Database = {
           memory_usage?: number | null
           mikrotik_id?: string | null
           name: string
+          olt_version?: string | null
           online_onus?: number | null
           password_encrypted?: string | null
           port?: number
           serial_number?: string | null
+          snmp_community?: string | null
+          snmp_enabled?: boolean | null
+          snmp_ip?: string | null
+          snmp_port?: number | null
+          snmp_version?: string | null
           status?: Database["public"]["Enums"]["device_status"]
           total_onus?: number | null
           updated_at?: string
@@ -3317,6 +3331,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string | null
+          brand_model?: string | null
           connection_type?: Database["public"]["Enums"]["connection_type"]
           cpu_usage?: number | null
           created_at?: string
@@ -3331,10 +3346,16 @@ export type Database = {
           memory_usage?: number | null
           mikrotik_id?: string | null
           name?: string
+          olt_version?: string | null
           online_onus?: number | null
           password_encrypted?: string | null
           port?: number
           serial_number?: string | null
+          snmp_community?: string | null
+          snmp_enabled?: boolean | null
+          snmp_ip?: string | null
+          snmp_port?: number | null
+          snmp_version?: string | null
           status?: Database["public"]["Enums"]["device_status"]
           total_onus?: number | null
           updated_at?: string

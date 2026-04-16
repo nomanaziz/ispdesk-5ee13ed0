@@ -6,22 +6,22 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Server, Wifi, WifiOff, Cpu, Pencil, Trash2, Eye, Search } from "lucide-react";
-import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { Plus, Server, Wifi, WifiOff, Cpu, Pencil, Trash2, Search } from "lucide-react";
 
 const vendors = ["huawei","bdcom","vsol","dbc","syrotech","solitine","corelink","c-data","ecom","hsgq","phyhome"] as const;
-
-type OltDevice = Tables<"olt_devices">;
 
 const emptyForm = {
   name: "", ip_address: "", port: 23, connection_type: "telnet" as "telnet" | "ssh",
   vendor: "huawei" as typeof vendors[number], username: "", password_encrypted: "",
   branch_id: null as string | null, mikrotik_id: null as string | null, description: "",
+  snmp_enabled: false, snmp_ip: "", snmp_port: 161, snmp_community: "public",
+  snmp_version: "v2c", brand_model: "", olt_version: "",
 };
 
 export default function OltDevices() {
@@ -36,8 +36,8 @@ export default function OltDevices() {
   const { data: devices = [] } = useQuery({
     queryKey: ["olt-devices"],
     queryFn: async () => {
-      const { data } = await supabase.from("olt_devices").select("*, branches(name)").order("created_at", { ascending: false });
-      return (data || []) as (OltDevice & { branches: { name: string } | null })[];
+      const { data } = await supabase.from("olt_devices").select("*, branches(name), mikrotik_devices(name)").order("created_at", { ascending: false });
+      return (data || []) as any[];
     },
   });
 
@@ -61,12 +61,16 @@ export default function OltDevices() {
 
   const saveMut = useMutation({
     mutationFn: async () => {
-      const payload: TablesInsert<"olt_devices"> = {
+      const payload: any = {
         name: form.name, ip_address: form.ip_address, port: form.port,
         connection_type: form.connection_type, vendor: form.vendor,
         username: form.username, password_encrypted: form.password_encrypted,
         branch_id: form.branch_id || null, mikrotik_id: form.mikrotik_id || null,
         description: form.description || null,
+        snmp_enabled: form.snmp_enabled, snmp_ip: form.snmp_ip || null,
+        snmp_port: form.snmp_port, snmp_community: form.snmp_community || "public",
+        snmp_version: form.snmp_version, brand_model: form.brand_model || null,
+        olt_version: form.olt_version || null,
       };
       if (editId) {
         const { error } = await supabase.from("olt_devices").update(payload).eq("id", editId);
@@ -97,9 +101,17 @@ export default function OltDevices() {
   const totalOnu = onuCounts.length;
 
   const openAdd = () => { setEditId(null); setForm(emptyForm); setOpen(true); };
-  const openEdit = (d: OltDevice) => {
+  const openEdit = (d: any) => {
     setEditId(d.id);
-    setForm({ name: d.name, ip_address: d.ip_address, port: d.port, connection_type: d.connection_type, vendor: d.vendor, username: d.username || "", password_encrypted: d.password_encrypted || "", branch_id: d.branch_id, mikrotik_id: d.mikrotik_id, description: d.description || "" });
+    setForm({
+      name: d.name, ip_address: d.ip_address, port: d.port, connection_type: d.connection_type,
+      vendor: d.vendor, username: d.username || "", password_encrypted: d.password_encrypted || "",
+      branch_id: d.branch_id, mikrotik_id: d.mikrotik_id, description: d.description || "",
+      snmp_enabled: d.snmp_enabled || false, snmp_ip: d.snmp_ip || "",
+      snmp_port: d.snmp_port ?? 161, snmp_community: d.snmp_community || "public",
+      snmp_version: d.snmp_version || "v2c", brand_model: d.brand_model || "",
+      olt_version: d.olt_version || "",
+    });
     setOpen(true);
   };
 
@@ -155,20 +167,21 @@ export default function OltDevices() {
                   <TableHead>#</TableHead>
                   <TableHead>নাম</TableHead>
                   <TableHead>Vendor</TableHead>
+                  <TableHead>Brand/Model</TableHead>
                   <TableHead>IP:Port</TableHead>
-                  <TableHead>Connection</TableHead>
+                  <TableHead>SNMP</TableHead>
                   <TableHead>ব্রাঞ্চ</TableHead>
+                  <TableHead>MikroTik</TableHead>
                   <TableHead>স্ট্যাটাস</TableHead>
                   <TableHead>CPU%</TableHead>
                   <TableHead>Mem%</TableHead>
-                  <TableHead>Uptime</TableHead>
                   <TableHead>ONU</TableHead>
                   <TableHead>অ্যাকশন</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paged.length === 0 ? (
-                  <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">কোনো OLT পাওয়া যায়নি</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">কোনো OLT পাওয়া যায়নি</TableCell></TableRow>
                 ) : paged.map((d, i) => {
                   const stats = getOnuStats(d.id);
                   return (
@@ -176,15 +189,20 @@ export default function OltDevices() {
                       <TableCell>{page * perPage + i + 1}</TableCell>
                       <TableCell className="font-medium">{d.name}</TableCell>
                       <TableCell><Badge variant="outline" className="capitalize">{d.vendor}</Badge></TableCell>
+                      <TableCell className="text-xs">{d.brand_model || "—"}</TableCell>
                       <TableCell className="font-mono text-sm">{d.ip_address}:{d.port}</TableCell>
-                      <TableCell className="uppercase text-xs">{d.connection_type}</TableCell>
+                      <TableCell>
+                        <Badge variant={d.snmp_enabled ? "default" : "secondary"} className="text-[10px]">
+                          {d.snmp_enabled ? "ON" : "OFF"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{d.branches?.name || "—"}</TableCell>
+                      <TableCell className="text-xs">{d.mikrotik_devices?.name || "—"}</TableCell>
                       <TableCell>
                         <Badge variant={d.status === "online" ? "default" : "destructive"}>{d.status}</Badge>
                       </TableCell>
                       <TableCell>{d.cpu_usage ?? "—"}%</TableCell>
                       <TableCell>{d.memory_usage ?? "—"}%</TableCell>
-                      <TableCell className="text-xs">{d.uptime || "—"}</TableCell>
                       <TableCell>
                         <span className="text-emerald-600">{stats.online}</span>/<span>{stats.total}</span>
                       </TableCell>
@@ -211,15 +229,12 @@ export default function OltDevices() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editId ? "OLT সম্পাদনা" : "নতুন OLT যোগ করুন"}</DialogTitle></DialogHeader>
           <div className="grid gap-4">
-            <div><Label>নাম *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+            {/* Basic Info */}
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>IP Address *</Label><Input value={form.ip_address} onChange={e => setForm(f => ({ ...f, ip_address: e.target.value }))} /></div>
-              <div><Label>Port</Label><Input type="number" value={form.port} onChange={e => setForm(f => ({ ...f, port: Number(e.target.value) }))} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+              <div><Label>নাম *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
               <div>
                 <Label>Vendor</Label>
                 <Select value={form.vendor} onValueChange={v => setForm(f => ({ ...f, vendor: v as any }))}>
@@ -227,6 +242,16 @@ export default function OltDevices() {
                   <SelectContent>{vendors.map(v => <SelectItem key={v} value={v} className="capitalize">{v}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Brand / Model</Label><Input placeholder="e.g. MA5608T" value={form.brand_model} onChange={e => setForm(f => ({ ...f, brand_model: e.target.value }))} /></div>
+              <div><Label>OLT Version</Label><Input placeholder="e.g. V800R013" value={form.olt_version} onChange={e => setForm(f => ({ ...f, olt_version: e.target.value }))} /></div>
+            </div>
+
+            {/* Connection */}
+            <div className="grid grid-cols-3 gap-4">
+              <div><Label>IP Address *</Label><Input value={form.ip_address} onChange={e => setForm(f => ({ ...f, ip_address: e.target.value }))} /></div>
+              <div><Label>Port</Label><Input type="number" value={form.port} onChange={e => setForm(f => ({ ...f, port: Number(e.target.value) }))} /></div>
               <div>
                 <Label>Connection</Label>
                 <Select value={form.connection_type} onValueChange={v => setForm(f => ({ ...f, connection_type: v as any }))}>
@@ -239,19 +264,51 @@ export default function OltDevices() {
               <div><Label>Username</Label><Input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} /></div>
               <div><Label>Password</Label><Input type="password" value={form.password_encrypted} onChange={e => setForm(f => ({ ...f, password_encrypted: e.target.value }))} /></div>
             </div>
-            <div>
-              <Label>ব্রাঞ্চ</Label>
-              <Select value={form.branch_id || "none"} onValueChange={v => setForm(f => ({ ...f, branch_id: v === "none" ? null : v }))}>
-                <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                <SelectContent><SelectItem value="none">—</SelectItem>{branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
-              </Select>
+
+            {/* SNMP Section */}
+            <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">SNMP Configuration</Label>
+                <Switch checked={form.snmp_enabled} onCheckedChange={v => setForm(f => ({ ...f, snmp_enabled: v }))} />
+              </div>
+              {form.snmp_enabled && (
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div><Label>SNMP IP</Label><Input placeholder={form.ip_address || "OLT IP"} value={form.snmp_ip} onChange={e => setForm(f => ({ ...f, snmp_ip: e.target.value }))} /></div>
+                    <div><Label>SNMP Port</Label><Input type="number" value={form.snmp_port} onChange={e => setForm(f => ({ ...f, snmp_port: Number(e.target.value) }))} /></div>
+                    <div>
+                      <Label>Version</Label>
+                      <Select value={form.snmp_version} onValueChange={v => setForm(f => ({ ...f, snmp_version: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="v1">v1</SelectItem>
+                          <SelectItem value="v2c">v2c</SelectItem>
+                          <SelectItem value="v3">v3</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div><Label>Community String</Label><Input value={form.snmp_community} onChange={e => setForm(f => ({ ...f, snmp_community: e.target.value }))} /></div>
+                </div>
+              )}
             </div>
-            <div>
-              <Label>MikroTik লিংক</Label>
-              <Select value={form.mikrotik_id || "none"} onValueChange={v => setForm(f => ({ ...f, mikrotik_id: v === "none" ? null : v }))}>
-                <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                <SelectContent><SelectItem value="none">—</SelectItem>{mikrotiks.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
-              </Select>
+
+            {/* Links */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>ব্রাঞ্চ</Label>
+                <Select value={form.branch_id || "none"} onValueChange={v => setForm(f => ({ ...f, branch_id: v === "none" ? null : v }))}>
+                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+                  <SelectContent><SelectItem value="none">—</SelectItem>{branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>MikroTik লিংক</Label>
+                <Select value={form.mikrotik_id || "none"} onValueChange={v => setForm(f => ({ ...f, mikrotik_id: v === "none" ? null : v }))}>
+                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+                  <SelectContent><SelectItem value="none">—</SelectItem>{mikrotiks.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
             </div>
             <div><Label>বিবরণ</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
           </div>
