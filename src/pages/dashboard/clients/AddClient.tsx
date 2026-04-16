@@ -367,14 +367,13 @@ export default function AddClient() {
 
       {/* Network & Product Information */}
       <div className="border rounded-lg">
-        <SectionHeader icon="📡" title="Network & Product Information" />
+        <SectionHeader icon="📡" title="নেটওয়ার্ক ও প্রোডাক্ট তথ্য" />
         <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <Label>Server *</Label>
+            <Label>সার্ভার *</Label>
             <Select value={form.mikrotik_id} onValueChange={v => {
               setField("mikrotik_id", v);
               setField("profile", "");
-              // Fetch PPP profiles from this server
               setLoadingProfiles(true);
               supabase.functions.invoke("fetch-mikrotik-profiles", { body: { device_id: v } })
                 .then(({ data }) => {
@@ -384,103 +383,103 @@ export default function AddClient() {
                 .catch(() => setMikrotikProfiles([]))
                 .finally(() => setLoadingProfiles(false));
             }}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {mikrotiks?.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Protocol Type *</Label>
+            <Label>প্রোটোকল টাইপ *</Label>
             <Select value={form.protocol_type} onValueChange={v => setField("protocol_type", v)}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {(protocolTypes as any[])?.map((p: any) => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Zone *</Label>
+            <Label>জোন *</Label>
             <Select value={form.zone_id} onValueChange={v => { setField("zone_id", v); setField("sub_zone_id", ""); setField("box_id", ""); }}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {zones?.map(z => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Sub Zone</Label>
+            <Label>সাব জোন</Label>
             <Select value={form.sub_zone_id} onValueChange={v => setField("sub_zone_id", v)}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {filteredSubZones?.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Box</Label>
+            <Label>বক্স</Label>
             <Select value={form.box_id} onValueChange={v => setField("box_id", v)}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {filteredBoxes?.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Connection Type *</Label>
+            <Label>কানেকশন টাইপ *</Label>
             <Select value={form.connection_type} onValueChange={v => setField("connection_type", v)}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {connectionTypes?.map(ct => <SelectItem key={ct.id} value={ct.name}>{ct.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Cable Requirement (Metre)</Label>
-            <Input type="number" value={form.cable_length} onChange={e => setField("cable_length", e.target.value)} placeholder="Example: 100" />
+            <Label>ক্যাবল প্রয়োজন (মিটার)</Label>
+            <Input type="number" value={form.cable_length} onChange={e => setField("cable_length", e.target.value)} placeholder="উদাহরণ: 100" />
           </div>
           <div>
-            <Label>Fiber Code</Label>
-            <Input value={form.fiber_code} onChange={e => setField("fiber_code", e.target.value)} placeholder="Example: 121" />
+            <Label>ফাইবার কোড</Label>
+            <Input value={form.fiber_code} onChange={e => setField("fiber_code", e.target.value)} placeholder="উদাহরণ: 121" />
           </div>
           <div>
-            <Label>Number of Core</Label>
-            <Input type="number" value={form.core_count} onChange={e => setField("core_count", e.target.value)} placeholder="Example: 2" />
+            <Label>কোর সংখ্যা</Label>
+            <Input type="number" value={form.core_count} onChange={e => setField("core_count", e.target.value)} placeholder="উদাহরণ: 2" />
           </div>
           <div>
-            <Label>Core Color</Label>
-            <Input value={form.core_color} onChange={e => setField("core_color", e.target.value)} placeholder="Example: Red" />
+            <Label>কোর কালার</Label>
+            <Input value={form.core_color} onChange={e => setField("core_color", e.target.value)} placeholder="উদাহরণ: লাল" />
           </div>
           <div>
-            <Label>Device</Label>
+            <Label>ডিভাইস</Label>
             <Select value={form.device_type} onValueChange={v => setField("device_type", v)}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="ONU">ONU</SelectItem>
-                <SelectItem value="Router">Router</SelectItem>
-                <SelectItem value="Switch">Switch</SelectItem>
+                <SelectItem value="Router">রাউটার</SelectItem>
+                <SelectItem value="Switch">সুইচ</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Device MAC/Serial No</Label>
+            <Label>ডিভাইস MAC/সিরিয়াল নম্বর</Label>
             <Input value={form.device_serial} onChange={e => setField("device_serial", e.target.value)} />
           </div>
           <div>
-            <Label>Vendor</Label>
+            <Label>ভেন্ডর</Label>
             <Select value={form.vendor} onValueChange={v => setField("vendor", v)}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Huawei">Huawei</SelectItem>
                 <SelectItem value="BDCOM">BDCOM</SelectItem>
                 <SelectItem value="VSOL">VSOL</SelectItem>
                 <SelectItem value="Syrotech">Syrotech</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
+                <SelectItem value="Other">অন্যান্য</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Purchase Date</Label>
+            <Label>ক্রয়ের তারিখ</Label>
             <Input type="date" value={form.purchase_date} onChange={e => setField("purchase_date", e.target.value)} />
           </div>
         </div>
@@ -488,29 +487,29 @@ export default function AddClient() {
 
       {/* Service Information */}
       <div className="border rounded-lg">
-        <SectionHeader icon="🔒" title="Service Information" />
+        <SectionHeader icon="🔒" title="সার্ভিস তথ্য" />
         <div className="p-4 grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
-            <Label>Client Code *</Label>
+            <Label>ক্লায়েন্ট কোড *</Label>
             <Input value={form.client_id} onChange={e => setField("client_id", e.target.value)} />
           </div>
           <div>
-            <Label>Package *</Label>
+            <Label>প্যাকেজ *</Label>
             <Select value={form.package_id} onValueChange={v => {
               setField("package_id", v);
               const pkg = packages?.find(p => p.id === v);
               if (pkg) setField("monthly_bill", pkg.price);
             }}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {packages?.map(p => <SelectItem key={p.id} value={p.id}>{p.name} - ৳{p.price}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Profile</Label>
+            <Label>প্রোফাইল</Label>
             <Select value={form.profile} onValueChange={v => setField("profile", v)} disabled={loadingProfiles}>
-              <SelectTrigger><SelectValue placeholder={loadingProfiles ? "Loading..." : mikrotikProfiles.length > 0 ? "Select Profile" : "Select Server First"} /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={loadingProfiles ? "লোড হচ্ছে..." : mikrotikProfiles.length > 0 ? "প্রোফাইল নির্বাচন" : "প্রথমে সার্ভার নির্বাচন"} /></SelectTrigger>
               <SelectContent>
                 {mikrotikProfiles.map(p => (
                   <SelectItem key={p.name} value={p.name}>{p.name}{p.rateLimit ? ` (${p.rateLimit})` : ""}</SelectItem>
@@ -519,16 +518,16 @@ export default function AddClient() {
             </Select>
           </div>
           <div>
-            <Label>Client Type *</Label>
+            <Label>ক্লায়েন্ট টাইপ *</Label>
             <Select value={form.client_type} onValueChange={v => setField("client_type", v)}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {clientTypes?.map((ct: any) => <SelectItem key={ct.id} value={ct.name}>{ct.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Billing Status *</Label>
+            <Label>বিলিং স্ট্যাটাস *</Label>
             <Select value={form.billing_status} onValueChange={v => setField("billing_status", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -537,49 +536,49 @@ export default function AddClient() {
             </Select>
           </div>
           <div>
-            <Label>Username/IP *</Label>
+            <Label>ইউজারনেম/IP *</Label>
             <Input value={form.username} onChange={e => setField("username", e.target.value)} />
           </div>
           <div>
-            <Label>Remote Address</Label>
+            <Label>রিমোট অ্যাড্রেস</Label>
             <Input value={form.remote_address} onChange={e => setField("remote_address", e.target.value)} />
           </div>
           <div>
-            <Label>Password *</Label>
+            <Label>পাসওয়ার্ড *</Label>
             <Input value={form.password} onChange={e => setField("password", e.target.value)} />
           </div>
           <div>
-            <Label>Joining Date *</Label>
+            <Label>যোগদানের তারিখ *</Label>
             <Input type="date" value={form.joining_date} onChange={e => setField("joining_date", e.target.value)} />
           </div>
           <div>
-            <Label>Monthly Bill *</Label>
+            <Label>মাসিক বিল *</Label>
             <Input type="number" value={form.monthly_bill} onChange={e => setField("monthly_bill", Number(e.target.value))} />
           </div>
           <div>
-            <Label>Billing Start Month *</Label>
+            <Label>বিলিং শুরুর মাস *</Label>
             <Input type="month" value={form.billing_start_month} onChange={e => setField("billing_start_month", e.target.value)} />
           </div>
           <div>
-            <Label>Expire Date *</Label>
+            <Label>মেয়াদ শেষের তারিখ *</Label>
             <Input type="date" value={form.expire_date} onChange={e => setField("expire_date", e.target.value)} />
           </div>
           <div>
-            <Label>Reference By</Label>
+            <Label>রেফারেন্স</Label>
             <Input value={form.reference_by} onChange={e => setField("reference_by", e.target.value)} />
           </div>
           <div className="flex items-center gap-3 pt-6">
-            <Label>Is VIP Client?</Label>
+            <Label>VIP ক্লায়েন্ট?</Label>
             <Switch checked={form.is_vip} onCheckedChange={v => setField("is_vip", v)} />
           </div>
           <div>
-            <Label>Connected By</Label>
+            <Label>সংযোগ দিয়েছেন</Label>
             <Input value={form.connected_by} onChange={e => setField("connected_by", e.target.value)} />
           </div>
           <div>
-            <Label>Affiliator</Label>
+            <Label>অ্যাফিলিয়েটর</Label>
             <Select value={form.affiliator_id} onValueChange={v => setField("affiliator_id", v)}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {affiliates?.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
               </SelectContent>
@@ -590,9 +589,9 @@ export default function AddClient() {
 
       {/* Footer */}
       <div className="flex justify-between items-center py-4">
-        <Button variant="outline" onClick={() => navigate("/dashboard/clients")}><ArrowLeft className="h-4 w-4 mr-1" /> Go To List</Button>
+        <Button variant="outline" onClick={() => navigate("/dashboard/clients")}><ArrowLeft className="h-4 w-4 mr-1" /> তালিকায় ফিরুন</Button>
         <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-          <Save className="h-4 w-4 mr-1" /> {saveMutation.isPending ? "সেভ হচ্ছে..." : "Save & Exit"}
+          <Save className="h-4 w-4 mr-1" /> {saveMutation.isPending ? "সেভ হচ্ছে..." : "সংরক্ষণ ও বের হন"}
         </Button>
       </div>
     </div>
