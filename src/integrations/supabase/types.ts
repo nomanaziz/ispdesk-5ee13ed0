@@ -1636,6 +1636,47 @@ export type Database = {
           },
         ]
       }
+      client_traffic_monthly: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          id: string
+          month: string
+          total_download: number | null
+          total_upload: number | null
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          month: string
+          total_download?: number | null
+          total_upload?: number | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          month?: string
+          total_download?: number | null
+          total_upload?: number | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_traffic_monthly_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_types: {
         Row: {
           created_at: string

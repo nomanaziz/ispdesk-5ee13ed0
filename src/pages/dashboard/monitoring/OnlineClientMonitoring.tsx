@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import {
   RefreshCw, Users, Wifi, WifiOff, Search, Filter, ChevronDown, ChevronUp,
   AlertTriangle, ShieldAlert, ShieldCheck, Activity, Radio, RotateCcw,
-  MessageSquare, Send, ArrowUpFromLine, ArrowDownToLine,
+  MessageSquare, Send, ArrowUpFromLine, ArrowDownToLine, History,
 } from "lucide-react";
 
 interface ActiveSession {
@@ -55,6 +55,13 @@ interface MismatchRecord {
   mk_profile: string;
   db_status: string;
   mk_disabled: boolean;
+}
+
+interface TrafficLog {
+  id: string;
+  upload_bytes: number;
+  download_bytes: number;
+  recorded_at: string;
 }
 
 function formatBytes(bytes: number): string {
@@ -100,7 +107,7 @@ export default function OnlineClientMonitoring() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Action dialogs
-  const [trafficDialog, setTrafficDialog] = useState<{ open: boolean; loading: boolean; data: any; username: string }>({ open: false, loading: false, data: null, username: "" });
+  const [trafficDialog, setTrafficDialog] = useState<{ open: boolean; loading: boolean; data: any; username: string; session: ActiveSession | null; trafficHistory: TrafficLog[] }>({ open: false, loading: false, data: null, username: "", session: null, trafficHistory: [] });
   const [pingDialog, setPingDialog] = useState<{ open: boolean; loading: boolean; data: any; username: string }>({ open: false, loading: false, data: null, username: "" });
   const [smsDialog, setSmsDialog] = useState<{ open: boolean; contact: string; username: string }>({ open: false, contact: "", username: "" });
   const [smsMessage, setSmsMessage] = useState("");
@@ -132,7 +139,6 @@ export default function OnlineClientMonitoring() {
         setOfflineCount(data.offline_count || 0);
         setTotalClients(data.total_clients || 0);
 
-        // Load offline clients from DB
         const onlineUsernames = new Set((data.sessions as ActiveSession[]).map(s => s.name));
         const { data: allClients } = await supabase
           .from("clients")
@@ -195,19 +201,39 @@ export default function OnlineClientMonitoring() {
     }
   };
 
-  // Action: Live Traffic
+  // Action: Live Traffic — now includes cumulative data for offline users
   const handleLiveTraffic = async (session: ActiveSession) => {
-    setTrafficDialog({ open: true, loading: true, data: null, username: session.name });
+    setTrafficDialog({ open: true, loading: true, data: null, username: session.name, session, trafficHistory: [] });
+    
+    // Load traffic history from DB in parallel with MikroTik status
+    const historyPromise = supabase
+      .from("client_traffic_logs")
+      .select("id, upload_bytes, download_bytes, recorded_at")
+      .eq("username", session.name)
+      .order("recorded_at", { ascending: false })
+      .limit(20);
+
     try {
-      const { data, error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
-        body: {
-          mikrotik_id: session.device_id || session.mikrotik_id,
-          username: session.name,
-          action: "status",
-        },
-      });
-      if (error) throw error;
-      setTrafficDialog((prev) => ({ ...prev, loading: false, data }));
+      const [mkResult, historyResult] = await Promise.all([
+        supabase.functions.invoke("manage-mikrotik-ppp", {
+          body: {
+            mikrotik_id: session.device_id || session.mikrotik_id,
+            username: session.name,
+            action: "status",
+          },
+        }),
+        historyPromise,
+      ]);
+
+      const mkData = mkResult.error ? null : mkResult.data;
+      const history = (historyResult.data || []) as TrafficLog[];
+
+      setTrafficDialog((prev) => ({
+        ...prev,
+        loading: false,
+        data: mkData || { has_active_session: false },
+        trafficHistory: history,
+      }));
     } catch (err: any) {
       toast.error("Live traffic ব্যর্থ: " + err.message);
       setTrafficDialog((prev) => ({ ...prev, loading: false }));
@@ -234,7 +260,6 @@ export default function OnlineClientMonitoring() {
     }
   };
 
-  // Action: Re-check (single client refresh)
   const handleRecheck = async (session: ActiveSession) => {
     toast.info(`${session.name} re-checking...`);
     try {
@@ -253,7 +278,6 @@ export default function OnlineClientMonitoring() {
     }
   };
 
-  // SMS: single
   const handleSendSingleSms = async () => {
     if (!smsMessage || !smsDialog.contact) return;
     setSendingSms(true);
@@ -276,7 +300,6 @@ export default function OnlineClientMonitoring() {
     }
   };
 
-  // SMS: bulk
   const handleSendBulkSms = async () => {
     if (!bulkSmsMessage || selectedIds.size === 0) return;
     setSendingSms(true);
@@ -306,7 +329,6 @@ export default function OnlineClientMonitoring() {
     }
   };
 
-  // Selection handlers
   const toggleSelect = (name: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -334,7 +356,6 @@ export default function OnlineClientMonitoring() {
     return () => clearInterval(interval);
   }, [loadActiveSessions]);
 
-  // Combine online and offline based on filter
   const combinedSessions = statusFilter === "online" ? sessions : statusFilter === "offline" ? offlineClients : [...sessions, ...offlineClients];
 
   const filteredSessions = combinedSessions.filter((s) => {
@@ -403,7 +424,7 @@ export default function OnlineClientMonitoring() {
         <TableBody>
           {data.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={19} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={21} className="text-center py-8 text-muted-foreground">
                 কোনো ডেটা পাওয়া যায়নি
               </TableCell>
             </TableRow>
@@ -684,13 +705,13 @@ export default function OnlineClientMonitoring() {
 
       <p className="text-xs text-muted-foreground text-right">Auto-refresh: প্রতি ৬০ সেকেন্ডে | Traffic data: প্রতি ১৫ মিনিটে</p>
 
-      {/* Live Traffic Dialog */}
-      <Dialog open={trafficDialog.open} onOpenChange={(o) => !o && setTrafficDialog({ open: false, loading: false, data: null, username: "" })}>
-        <DialogContent>
+      {/* Enhanced Live Traffic Dialog */}
+      <Dialog open={trafficDialog.open} onOpenChange={(o) => !o && setTrafficDialog({ open: false, loading: false, data: null, username: "", session: null, trafficHistory: [] })}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-emerald-500" />
-              Live Traffic — {trafficDialog.username}
+              Traffic Monitor — {trafficDialog.username}
             </DialogTitle>
           </DialogHeader>
           {trafficDialog.loading ? (
@@ -699,6 +720,7 @@ export default function OnlineClientMonitoring() {
             </div>
           ) : trafficDialog.data ? (
             <div className="space-y-4">
+              {/* Status + IP */}
               <div className="grid grid-cols-2 gap-3">
                 <Card>
                   <CardContent className="p-3 text-center">
@@ -711,11 +733,13 @@ export default function OnlineClientMonitoring() {
                 <Card>
                   <CardContent className="p-3 text-center">
                     <p className="text-xs text-muted-foreground">IP</p>
-                    <p className="font-mono text-sm">{trafficDialog.data.current_id || "—"}</p>
+                    <p className="font-mono text-sm">{trafficDialog.data.current_id || trafficDialog.session?.address || "—"}</p>
                   </CardContent>
                 </Card>
               </div>
-              {trafficDialog.data.session && (
+
+              {/* Live traffic (online only) */}
+              {trafficDialog.data.has_active_session && trafficDialog.data.session && (
                 <div className="grid grid-cols-2 gap-3">
                   <Card>
                     <CardContent className="p-3 text-center">
@@ -731,22 +755,78 @@ export default function OnlineClientMonitoring() {
                   </Card>
                 </div>
               )}
-              {trafficDialog.data.live_traffic && (
+
+              {trafficDialog.data.has_active_session && trafficDialog.data.live_traffic && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">⚡ Live Speed</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Card className="border-emerald-500/30">
+                      <CardContent className="p-3 text-center">
+                        <ArrowDownToLine className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
+                        <p className="text-xs text-muted-foreground">Download</p>
+                        <p className="font-bold text-emerald-500">{formatBps(trafficDialog.data.live_traffic.rx_bps)}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-blue-500/30">
+                      <CardContent className="p-3 text-center">
+                        <ArrowUpFromLine className="h-4 w-4 mx-auto text-blue-500 mb-1" />
+                        <p className="text-xs text-muted-foreground">Upload</p>
+                        <p className="font-bold text-blue-500">{formatBps(trafficDialog.data.live_traffic.tx_bps)}</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              )}
+
+              {/* Cumulative Traffic (always visible) */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">📊 Cumulative Traffic (Total)</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <Card className="border-emerald-500/30">
-                    <CardContent className="p-3 text-center">
-                      <ArrowDownToLine className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
-                      <p className="text-xs text-muted-foreground">Download</p>
-                      <p className="font-bold text-emerald-500">{formatBps(trafficDialog.data.live_traffic.rx_bps)}</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-blue-500/30">
+                  <Card className="border-blue-500/20 bg-blue-500/5">
                     <CardContent className="p-3 text-center">
                       <ArrowUpFromLine className="h-4 w-4 mx-auto text-blue-500 mb-1" />
-                      <p className="text-xs text-muted-foreground">Upload</p>
-                      <p className="font-bold text-blue-500">{formatBps(trafficDialog.data.live_traffic.tx_bps)}</p>
+                      <p className="text-xs text-muted-foreground">Total Upload</p>
+                      <p className="font-bold text-blue-500 text-lg">{formatBytes(trafficDialog.session?.total_upload || 0)}</p>
                     </CardContent>
                   </Card>
+                  <Card className="border-emerald-500/20 bg-emerald-500/5">
+                    <CardContent className="p-3 text-center">
+                      <ArrowDownToLine className="h-4 w-4 mx-auto text-emerald-500 mb-1" />
+                      <p className="text-xs text-muted-foreground">Total Download</p>
+                      <p className="font-bold text-emerald-500 text-lg">{formatBytes(trafficDialog.session?.total_download || 0)}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Recent Traffic History */}
+              {trafficDialog.trafficHistory.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1">
+                    <History className="h-3.5 w-3.5" /> Recent Traffic Snapshots (Last 20)
+                  </p>
+                  <div className="rounded-md border max-h-48 overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs py-1.5">Time</TableHead>
+                          <TableHead className="text-xs py-1.5 text-right">Upload</TableHead>
+                          <TableHead className="text-xs py-1.5 text-right">Download</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {trafficDialog.trafficHistory.map((log) => (
+                          <TableRow key={log.id}>
+                            <TableCell className="text-xs py-1.5 font-mono">
+                              {new Date(log.recorded_at).toLocaleString("bn-BD", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}
+                            </TableCell>
+                            <TableCell className="text-xs py-1.5 text-right text-blue-500">{formatBytes(log.upload_bytes)}</TableCell>
+                            <TableCell className="text-xs py-1.5 text-right text-emerald-500">{formatBytes(log.download_bytes)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               )}
             </div>
@@ -792,12 +872,12 @@ export default function OnlineClientMonitoring() {
                   <TableBody>
                     {(pingDialog.data.ping_results || []).map((r: any, i: number) => (
                       <TableRow key={i}>
-                        <TableCell>{r.seq || i + 1}</TableCell>
+                        <TableCell>{r.seq}</TableCell>
                         <TableCell className="font-mono text-xs">{r.host}</TableCell>
-                        <TableCell className="font-mono">{r.time || "—"}</TableCell>
+                        <TableCell>{r.time || "—"}</TableCell>
                         <TableCell>{r.ttl || "—"}</TableCell>
                         <TableCell>
-                          <Badge variant={r.status === "ok" ? "default" : "destructive"} className="text-xs">
+                          <Badge variant={r.status === "timeout" ? "destructive" : "default"}>
                             {r.status}
                           </Badge>
                         </TableCell>
@@ -808,30 +888,31 @@ export default function OnlineClientMonitoring() {
               </div>
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-4">ডেটা পাওয়া যায়নি</p>
+            <p className="text-center text-muted-foreground py-4">পিং ডেটা পাওয়া যায়নি</p>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Single SMS Dialog */}
+      {/* SMS Dialog */}
       <Dialog open={smsDialog.open} onOpenChange={(o) => !o && setSmsDialog({ open: false, contact: "", username: "" })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>SMS — {smsDialog.username}</DialogTitle>
+            <DialogTitle>SMS পাঠান — {smsDialog.username}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>মোবাইল নম্বর</Label>
-              <Input value={smsDialog.contact} readOnly className="mt-1" />
+              <Input value={smsDialog.contact} readOnly />
             </div>
             <div>
               <Label>মেসেজ</Label>
-              <Textarea rows={3} value={smsMessage} onChange={(e) => setSmsMessage(e.target.value)} placeholder="মেসেজ লিখুন..." className="mt-1" />
+              <Textarea value={smsMessage} onChange={(e) => setSmsMessage(e.target.value)} rows={3} />
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleSendSingleSms} disabled={!smsMessage || sendingSms}>
-              <Send className="h-4 w-4 mr-1" />{sendingSms ? "পাঠানো হচ্ছে..." : "SMS পাঠান"}
+            <Button onClick={handleSendSingleSms} disabled={sendingSms || !smsMessage}>
+              {sendingSms ? <RefreshCw className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+              পাঠান
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -841,20 +922,16 @@ export default function OnlineClientMonitoring() {
       <Dialog open={bulkSmsDialog} onOpenChange={setBulkSmsDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Bulk SMS — {selectedIds.size} জন নির্বাচিত</DialogTitle>
+            <DialogTitle>Bulk SMS — {selectedIds.size} জন</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              {selectedIds.size} জন online client-কে SMS পাঠানো হবে
-            </p>
-            <div>
-              <Label>মেসেজ</Label>
-              <Textarea rows={4} value={bulkSmsMessage} onChange={(e) => setBulkSmsMessage(e.target.value)} placeholder="বাল্ক মেসেজ লিখুন..." className="mt-1" />
-            </div>
+          <div>
+            <Label>মেসেজ</Label>
+            <Textarea value={bulkSmsMessage} onChange={(e) => setBulkSmsMessage(e.target.value)} rows={4} />
           </div>
           <DialogFooter>
-            <Button onClick={handleSendBulkSms} disabled={!bulkSmsMessage || sendingSms}>
-              <Send className="h-4 w-4 mr-1" />{sendingSms ? "পাঠানো হচ্ছে..." : `${selectedIds.size} জনকে SMS পাঠান`}
+            <Button onClick={handleSendBulkSms} disabled={sendingSms || !bulkSmsMessage}>
+              {sendingSms ? <RefreshCw className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+              সবাইকে পাঠান
             </Button>
           </DialogFooter>
         </DialogContent>

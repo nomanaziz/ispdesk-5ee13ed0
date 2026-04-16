@@ -134,6 +134,11 @@ async function mikrotikCommand(conn: Deno.TcpConn, command: string, params?: Rec
   return results;
 }
 
+function getCurrentMonthStart(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -145,7 +150,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get all enabled MikroTik devices
     const { data: devices, error: devErr } = await supabase
       .from("mikrotik_devices")
       .select("*")
@@ -158,7 +162,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get all clients with usernames (for mapping)
     const { data: allClients } = await supabase
       .from("clients")
       .select("id, username, mikrotik_id")
@@ -173,6 +176,7 @@ Deno.serve(async (req) => {
 
     let totalCollected = 0;
     const errors: string[] = [];
+    const currentMonth = getCurrentMonthStart();
 
     for (const device of devices) {
       try {
@@ -184,14 +188,12 @@ Deno.serve(async (req) => {
         try {
           await mikrotikLogin(conn, device.username || "admin", device.password_encrypted || "");
 
-          // Get active PPP sessions with byte counters
           const activeSessions = await mikrotikCommand(conn, "/ppp/active/print");
 
           conn.close();
 
           if (activeSessions.length === 0) continue;
 
-          // Get the last recorded values for these usernames to compute delta
           const usernames = activeSessions.map((s) => s.name).filter(Boolean);
           
           const { data: lastLogs } = await supabase
@@ -201,7 +203,6 @@ Deno.serve(async (req) => {
             .eq("device_id", device.id)
             .order("recorded_at", { ascending: false });
 
-          // Get the most recent log per username
           const lastLogMap = new Map<string, { upload_bytes: number; download_bytes: number }>();
           if (lastLogs) {
             for (const log of lastLogs) {
@@ -215,26 +216,20 @@ Deno.serve(async (req) => {
           }
 
           const trafficLogs: any[] = [];
-          const clientUpdates: { id: string; upload_delta: number; download_delta: number }[] = [];
+          const clientUpdates: { id: string; username: string; upload_delta: number; download_delta: number }[] = [];
 
           for (const session of activeSessions) {
             const username = session.name;
             if (!username) continue;
 
-            // MikroTik bytes-in = download (server perspective: bytes coming in from internet for client)
-            // bytes-out = upload (bytes going out to internet from client)
-            // Actually in PPP active: bytes-in = upload from client, bytes-out = download to client
             const currentUpload = parseInt(session["bytes-in"] || "0", 10);
             const currentDownload = parseInt(session["bytes-out"] || "0", 10);
 
-            // These are cumulative from session start, so we store them as-is for delta calculation
-            // Delta = current - last recorded. If no last record, this is first reading — store full value
             const lastReading = lastLogMap.get(username);
             let uploadDelta = currentUpload;
             let downloadDelta = currentDownload;
 
             if (lastReading) {
-              // If current < last, session was restarted — use full current value
               uploadDelta = currentUpload >= lastReading.upload_bytes 
                 ? currentUpload - lastReading.upload_bytes 
                 : currentUpload;
@@ -243,21 +238,20 @@ Deno.serve(async (req) => {
                 : currentDownload;
             }
 
-            // Store the current cumulative values for next delta calculation
             const clientInfo = clientMap.get(username);
             
             trafficLogs.push({
               client_id: clientInfo?.id || null,
               username,
               device_id: device.id,
-              upload_bytes: currentUpload, // Store cumulative for delta calc
+              upload_bytes: currentUpload,
               download_bytes: currentDownload,
             });
 
-            // Track increments for client totals
             if (clientInfo && (uploadDelta > 0 || downloadDelta > 0)) {
               clientUpdates.push({
                 id: clientInfo.id,
+                username,
                 upload_delta: uploadDelta,
                 download_delta: downloadDelta,
               });
@@ -276,16 +270,8 @@ Deno.serve(async (req) => {
             }
           }
 
-          // Update client totals using RPC or individual updates
+          // Update client totals + monthly aggregation
           for (const upd of clientUpdates) {
-            await supabase
-              .from("clients")
-              .update({
-                total_upload: undefined, // We'll use raw SQL approach
-              })
-              .eq("id", upd.id);
-            
-            // Use rpc-free approach: read current + write new
             const { data: currentClient } = await supabase
               .from("clients")
               .select("total_upload, total_download")
@@ -300,6 +286,35 @@ Deno.serve(async (req) => {
                   total_download: (Number(currentClient.total_download) || 0) + upd.download_delta,
                 })
                 .eq("id", upd.id);
+            }
+
+            // Upsert monthly traffic
+            const { data: existing } = await supabase
+              .from("client_traffic_monthly")
+              .select("id, total_upload, total_download")
+              .eq("client_id", upd.id)
+              .eq("month", currentMonth)
+              .maybeSingle();
+
+            if (existing) {
+              await supabase
+                .from("client_traffic_monthly")
+                .update({
+                  total_upload: (Number(existing.total_upload) || 0) + upd.upload_delta,
+                  total_download: (Number(existing.total_download) || 0) + upd.download_delta,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", existing.id);
+            } else {
+              await supabase
+                .from("client_traffic_monthly")
+                .insert({
+                  client_id: upd.id,
+                  username: upd.username,
+                  month: currentMonth,
+                  total_upload: upd.upload_delta,
+                  total_download: upd.download_delta,
+                });
             }
           }
 
