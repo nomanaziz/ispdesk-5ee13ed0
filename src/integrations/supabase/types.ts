@@ -637,10 +637,13 @@ export type Database = {
           min_recharge: number | null
           name: string
           nid_number: string | null
+          password: string | null
+          portal_enabled: boolean
           status: string
           tariff_id: string | null
           use_prefix: boolean
           user_id: string | null
+          username: string | null
         }
         Insert: {
           address?: string | null
@@ -655,10 +658,13 @@ export type Database = {
           min_recharge?: number | null
           name: string
           nid_number?: string | null
+          password?: string | null
+          portal_enabled?: boolean
           status?: string
           tariff_id?: string | null
           use_prefix?: boolean
           user_id?: string | null
+          username?: string | null
         }
         Update: {
           address?: string | null
@@ -673,10 +679,13 @@ export type Database = {
           min_recharge?: number | null
           name?: string
           nid_number?: string | null
+          password?: string | null
+          portal_enabled?: boolean
           status?: string
           tariff_id?: string | null
           use_prefix?: boolean
           user_id?: string | null
+          username?: string | null
         }
         Relationships: [
           {

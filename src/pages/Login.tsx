@@ -1,31 +1,53 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { PortalAuthProvider, usePortalAuth } from "@/contexts/PortalAuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Activity, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Activity, User, Lock, Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const Login = () => {
-  const [email, setEmail] = useState("");
+const LoginInner = () => {
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { signIn } = useAuth();
+  const { login: portalLogin } = usePortalAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    const id = identifier.trim();
     try {
-      await signIn(email, password);
-      navigate("/dashboard");
+      // Email → Admin/Staff via Supabase auth
+      if (id.includes("@")) {
+        await signIn(id, password);
+        navigate("/dashboard");
+        return;
+      }
+      // Otherwise → Portal auth (client / reseller / bw_customer)
+      const result = await portalLogin(id, password);
+      if (result.error) {
+        toast({ title: "লগইন ব্যর্থ", description: result.error, variant: "destructive" });
+        return;
+      }
+      switch (result.type) {
+        case "reseller":
+          navigate("/reseller/dashboard", { replace: true });
+          break;
+        case "client":
+        case "bw_customer":
+        default:
+          navigate("/portal/dashboard", { replace: true });
+      }
     } catch (err: any) {
-      toast({ title: "ত্রুটি", description: err.message, variant: "destructive" });
+      toast({ title: "ত্রুটি", description: err.message || "লগইন ব্যর্থ", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -33,15 +55,8 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-muted/30 relative overflow-hidden">
-      {/* Decorative shapes */}
       <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
       <div className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-primary/8 blur-3xl" />
-      <svg className="absolute top-0 left-0 w-48 h-48 text-primary/5" viewBox="0 0 200 200">
-        <path d="M 100 0 C 100 55 55 100 0 100 C 55 100 100 145 100 200 C 100 145 145 100 200 100 C 145 100 100 55 100 0" fill="currentColor" />
-      </svg>
-      <svg className="absolute bottom-0 right-0 w-36 h-36 text-primary/5" viewBox="0 0 200 200">
-        <circle cx="100" cy="100" r="80" fill="currentColor" />
-      </svg>
 
       <div className="w-full max-w-[420px] relative z-10">
         <Card className="shadow-xl border-border/50">
@@ -61,17 +76,18 @@ const Login = () => {
           <CardContent className="pt-4 pb-8 px-6 sm:px-8">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-sm">ইমেইল</Label>
+                <Label htmlFor="identifier" className="text-sm">ইমেইল / ইউজারনেম / PPP ID</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@yourisp.com"
+                    id="identifier"
+                    type="text"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder="admin@yourisp.com বা PPP ID"
                     className="pl-10 h-11"
                     required
+                    autoComplete="username"
                   />
                 </div>
               </div>
@@ -93,6 +109,7 @@ const Login = () => {
                     placeholder="••••••••"
                     className="pl-10 pr-10 h-11"
                     required
+                    autoComplete="current-password"
                   />
                   <button
                     type="button"
@@ -111,13 +128,13 @@ const Login = () => {
                 </label>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full h-11 font-medium"
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full h-11 font-medium" disabled={isLoading}>
                 {isLoading ? "লোড হচ্ছে..." : "সাইন ইন"}
               </Button>
+
+              <p className="text-xs text-center text-muted-foreground pt-2">
+                Admin (ইমেইল), ক্লায়েন্ট (PPP ID), এবং রিসেলার সবাই এখানে লগইন করতে পারবেন
+              </p>
             </form>
           </CardContent>
         </Card>
@@ -129,5 +146,11 @@ const Login = () => {
     </div>
   );
 };
+
+const Login = () => (
+  <PortalAuthProvider>
+    <LoginInner />
+  </PortalAuthProvider>
+);
 
 export default Login;
