@@ -5,154 +5,173 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Users, DollarSign, Wifi, AlertTriangle, UserPlus, UserX, UserCheck, UserMinus,
-  CreditCard, CheckCircle, Clock, XCircle, Monitor, Ban, CalendarX, FileText,
-  Radio, Headphones, Wrench, Activity, Receipt, Banknote, ShoppingCart, MessageSquare,
-  TrendingUp, TrendingDown, Wallet, Package
+  Users, UserPlus, UserCheck, UserMinus, UserX, Home, ShieldCheck, Clock,
+  XCircle, Ban, CalendarX, AlertTriangle, DollarSign, TrendingUp, TrendingDown,
+  Wifi, Radio, Pause, Timer, ShieldAlert, CreditCard, Receipt, Banknote,
+  Activity, FileText
 } from "lucide-react";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
-} from "recharts";
 
-const CHART_COLORS = [
-  "hsl(var(--primary))", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
-  "#06b6d4", "#ec4899", "#14b8a6", "#f97316", "#6366f1"
+// ─── Color Palette for Cards ───────────────────────────────
+const CARD_STYLES = [
+  { bg: "bg-red-500", text: "text-white" },
+  { bg: "bg-blue-500", text: "text-white" },
+  { bg: "bg-emerald-500", text: "text-white" },
+  { bg: "bg-amber-500", text: "text-white" },
+  { bg: "bg-violet-500", text: "text-white" },
+  { bg: "bg-pink-500", text: "text-white" },
+  { bg: "bg-cyan-500", text: "text-white" },
+  { bg: "bg-orange-500", text: "text-white" },
+  { bg: "bg-teal-500", text: "text-white" },
+  { bg: "bg-indigo-500", text: "text-white" },
+  { bg: "bg-rose-500", text: "text-white" },
+  { bg: "bg-lime-600", text: "text-white" },
 ];
 
 function useStats() {
   return useQuery({
-    queryKey: ["dashboard-billing-overview"],
+    queryKey: ["dashboard-stats-v2"],
     queryFn: async () => {
-      const currentMonth = new Date().toISOString().slice(0, 7);
+      const now = new Date();
+      const currentMonth = now.toISOString().slice(0, 7);
       const monthStart = `${currentMonth}-01`;
+      const today = now.toISOString().slice(0, 10);
+      const yesterday = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthStart = lastMonth.toISOString().slice(0, 10);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
 
       const [
         clientsAll, clientsActive, clientsInactive, clientsLeft,
-        billing, onus, ticketsOpen, ticketsProcessing,
-        recentBilling, incomeEntries, expenseEntries,
-        bwBills, bwSaleInvoices, branchFunding,
-        installFees, serviceInvoices, productInvoices,
-        zones, subZones,
+        clientsPending, clientsSuspended, clientsExpired, clientsExtended, clientsGrace,
+        thisMonthJoin, lastMonthJoin,
+        homeClients, homeActive, homeExpired,
+        billingThisMonth, billingLastMonth,
+        billingToday, billingYesterday,
+        incomeThisMonth, expenseThisMonth,
+        incomeLastMonth, expenseLastMonth,
+        latestBilling, upcomingExpire, latestExpired,
+        onlineOnu,
       ] = await Promise.all([
         supabase.from("clients").select("id", { count: "exact", head: true }),
         supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "inactive"),
         supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "left"),
-        supabase.from("billing").select("amount, paid, discount, due, status, client_id").gte("month", monthStart),
-        supabase.from("onu_list").select("id, status"),
-        supabase.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "open"),
-        supabase.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "processing"),
-        supabase.from("billing").select("id, bill_id, amount, paid, due, status, client_id").eq("status", "unpaid").order("due", { ascending: false }).limit(20),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "suspended"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "expired"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "extended"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "grace"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).gte("created_at", monthStart),
+        supabase.from("clients").select("id", { count: "exact", head: true }).gte("created_at", lastMonthStart).lte("created_at", lastMonthEnd),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("connection_type", "Home"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("connection_type", "Home").eq("status", "active"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("connection_type", "Home").eq("status", "expired"),
+        supabase.from("billing").select("amount, paid, status").gte("month", monthStart),
+        supabase.from("billing").select("amount, paid, status").gte("month", lastMonthStart).lte("month", lastMonthEnd),
+        supabase.from("billing").select("paid").eq("status", "paid").gte("pay_date", today),
+        supabase.from("billing").select("paid").eq("status", "paid").gte("pay_date", yesterday).lt("pay_date", today),
         supabase.from("income_entries").select("amount").gte("income_date", monthStart),
         supabase.from("expense_entries").select("amount").gte("expense_date", monthStart),
-        supabase.from("bw_purchase_bills").select("amount, paid, status"),
-        supabase.from("bw_sales_invoices").select("amount, status"),
-        supabase.from("branch_funding").select("amount, type"),
-        supabase.from("installation_fees").select("amount, paid, status").gte("fee_date", monthStart),
-        supabase.from("bw_sales_invoices").select("amount").gte("month", monthStart),
-        supabase.from("installation_fees").select("amount").gte("fee_date", monthStart),
-        supabase.from("zones").select("id, name"),
-        supabase.from("sub_zones").select("id, name"),
+        supabase.from("income_entries").select("amount").gte("income_date", lastMonthStart).lte("income_date", lastMonthEnd),
+        supabase.from("expense_entries").select("amount").gte("expense_date", lastMonthStart).lte("expense_date", lastMonthEnd),
+        // Latest invoices (billing)
+        supabase.from("billing").select("bill_id, amount, paid, status, client_id").order("created_at", { ascending: false }).limit(10),
+        // Upcoming expire
+        supabase.from("clients").select("id, client_id, name, monthly_bill, expire_date").eq("status", "active").not("expire_date", "is", null).order("expire_date", { ascending: true }).limit(10),
+        // Latest expired
+        supabase.from("clients").select("id, client_id, name, monthly_bill, expire_date").eq("status", "expired").order("expire_date", { ascending: false }).limit(10),
+        // ONU online
+        supabase.from("onu_list").select("id, status"),
       ]);
 
-      // Fetch clients with join data for unpaid table
-      const unpaidClients: { name: string; contact: string; amount: number; due: number }[] = [];
-      if (recentBilling.data) {
-        const clientIds = [...new Set(recentBilling.data.map(b => b.client_id))];
-        if (clientIds.length > 0) {
-          const { data: cData } = await supabase.from("clients").select("id, name, contact").in("id", clientIds);
-          const clientMap = new Map((cData || []).map(c => [c.id, c]));
-          for (const b of recentBilling.data) {
-            const client = clientMap.get(b.client_id);
-            unpaidClients.push({
-              name: client?.name || "Unknown",
-              contact: client?.contact || "-",
-              amount: Number(b.amount) || 0,
-              due: Number(b.due) || 0,
-            });
-          }
+      // Fetch client names for latest billing
+      const latestInvoices: { bill_id: string; amount: number; client_name: string; status: string }[] = [];
+      if (latestBilling.data) {
+        const cIds = [...new Set(latestBilling.data.map(b => b.client_id))];
+        const { data: cData } = cIds.length > 0 ? await supabase.from("clients").select("id, name").in("id", cIds) : { data: [] };
+        const cMap = new Map((cData || []).map(c => [c.id, c.name]));
+        for (const b of latestBilling.data) {
+          latestInvoices.push({
+            bill_id: b.bill_id,
+            amount: Number(b.amount) || 0,
+            client_name: cMap.get(b.client_id) || "Unknown",
+            status: b.status,
+          });
         }
       }
 
-      const billingData = billing.data ?? [];
-      const onuData = onus.data ?? [];
+      const sum = (arr: any[] | null) => (arr || []).reduce((s, e) => s + (Number(e.amount || e.paid) || 0), 0);
+      const onuData = onlineOnu.data ?? [];
+      const billingTM = billingThisMonth.data ?? [];
+      const dueCount = billingTM.filter(b => b.status === "unpaid").length;
 
-      const totalClients = clientsAll.count ?? 0;
-      const runningClients = clientsActive.count ?? 0;
-      const inactiveClients = clientsInactive.count ?? 0;
-      const leftClients = clientsLeft.count ?? 0;
+      const thisMonthSales = billingTM.filter(b => b.status === "paid").reduce((s, b) => s + (Number(b.paid) || 0), 0);
+      const lastMonthSales = (billingLastMonth.data ?? []).filter(b => b.status === "paid").reduce((s, b) => s + (Number(b.paid) || 0), 0);
 
-      const billingClients = billingData.length;
-      const paidClients = billingData.filter(b => b.status === "paid").length;
-      const partialPaid = billingData.filter(b => b.status === "partial").length;
-      const unpaidClientsCount = billingData.filter(b => b.status === "unpaid").length;
-
-      const onlineOnu = onuData.filter(o => o.status === "online").length;
-      const totalOnu = onuData.length;
-
-      const monthlyBill = billingData.reduce((s, b) => s + (Number(b.amount) || 0), 0);
-      const collectedBill = billingData.reduce((s, b) => s + (Number(b.paid) || 0), 0);
-      const totalDiscount = billingData.reduce((s, b) => s + (Number(b.discount) || 0), 0);
-      const totalDue = billingData.reduce((s, b) => s + (Number(b.due) || 0), 0);
-
-      const totalIncome = (incomeEntries.data ?? []).reduce((s, e) => s + (Number(e.amount) || 0), 0);
-      const totalExpense = (expenseEntries.data ?? []).reduce((s, e) => s + (Number(e.amount) || 0), 0);
-
-      const bwBillsData = bwBills.data ?? [];
-      const bwProviderBill = bwBillsData.reduce((s, b) => s + (Number(b.amount) || 0), 0);
-      const bwProviderDue = bwBillsData.reduce((s, b) => s + ((Number(b.amount) || 0) - (Number(b.paid) || 0)), 0);
-      const bwPopBill = (bwSaleInvoices.data ?? []).reduce((s, b) => s + (Number(b.amount) || 0), 0);
-
-      const fundingData = branchFunding.data ?? [];
-      const popFund = fundingData.filter(f => f.type === "allocation").reduce((s, f) => s + (Number(f.amount) || 0), 0);
-
-      const serviceInv = (serviceInvoices.data ?? []).reduce((s, i) => s + (Number(i.amount) || 0), 0);
-      const productInv = (productInvoices.data ?? []).reduce((s, i) => s + (Number(i.amount) || 0), 0);
-
-      // Zone chart data
-      const zoneChartData = (zones.data ?? []).slice(0, 8).map(z => ({ name: z.name, value: Math.floor(Math.random() * 20) + 1 }));
-      const subZoneChartData = (subZones.data ?? []).slice(0, 8).map(z => ({ name: z.name, value: Math.floor(Math.random() * 15) + 1 }));
-
-      // Monthly new clients chart (last 6 months)
-      const monthlyNewClients = Array.from({ length: 6 }, (_, i) => {
-        const d = new Date();
-        d.setMonth(d.getMonth() - (5 - i));
-        return { month: d.toLocaleString("bn-BD", { month: "short" }), clients: Math.floor(Math.random() * 30) + 5 };
-      });
+      const incTM = sum(incomeThisMonth.data);
+      const expTM = sum(expenseThisMonth.data);
+      const incLM = sum(incomeLastMonth.data);
+      const expLM = sum(expenseLastMonth.data);
 
       return {
-        totalClients, runningClients, inactiveClients, leftClients,
-        billingClients, paidClients, partialPaid, unpaidClientsCount,
-        onlineOnu, totalOnu,
-        pendingTickets: ticketsOpen.count ?? 0,
-        processingTickets: ticketsProcessing.count ?? 0,
-        monthlyBill, collectedBill, totalDiscount, totalDue,
-        totalIncome, totalExpense,
-        bwProviderBill, bwProviderDue, bwPopBill, popFund,
-        serviceInv, productInv,
-        unpaidClients,
-        zoneChartData, subZoneChartData, monthlyNewClients,
+        totalClients: clientsAll.count ?? 0,
+        thisMonthJoin: thisMonthJoin.count ?? 0,
+        lastMonthJoin: lastMonthJoin.count ?? 0,
+        homeClients: homeClients.count ?? 0,
+        totalActive: clientsActive.count ?? 0,
+        homeActive: homeActive.count ?? 0,
+        totalExpired: clientsExpired.count ?? 0,
+        homeExpired: homeExpired.count ?? 0,
+        pendingClients: clientsPending.count ?? 0,
+        leftClients: clientsLeft.count ?? 0,
+        extendedClients: clientsExtended.count ?? 0,
+        graceClients: clientsGrace.count ?? 0,
+        dueClients: dueCount,
+        suspendClients: clientsSuspended.count ?? 0,
+        inactiveClients: clientsInactive.count ?? 0,
+        todaySales: sum(billingToday.data),
+        yesterdaySales: sum(billingYesterday.data),
+        thisMonthSales,
+        lastMonthSales,
+        thisMonthProfit: incTM - expTM,
+        lastMonthProfit: incLM - expLM,
+        onlineOnu: onuData.filter(o => o.status === "online").length,
+        totalOnu: onuData.length,
+        totalPop: 0,
+        latestInvoices,
+        upcomingExpire: (upcomingExpire.data ?? []).map(c => ({
+          client_id: c.client_id,
+          name: c.name,
+          bill: Number(c.monthly_bill) || 0,
+          expire: c.expire_date || "",
+        })),
+        latestExpired: (latestExpired.data ?? []).map(c => ({
+          client_id: c.client_id,
+          name: c.name,
+          bill: Number(c.monthly_bill) || 0,
+          expire: c.expire_date || "",
+        })),
       };
     },
     refetchInterval: 30000,
   });
 }
 
-function StatCard({ title, value, icon: Icon, color, subtitle }: {
-  title: string; value: string | number; icon: React.ElementType; color: string; subtitle?: string;
+// ─── Colorful Stat Card ────────────────────────────────────
+function StatCard({ title, value, icon: Icon, colorIndex }: {
+  title: string; value: string | number; icon: React.ElementType; colorIndex: number;
 }) {
+  const style = CARD_STYLES[colorIndex % CARD_STYLES.length];
   return (
     <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4 sm:p-5">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1 min-w-0">
-            <p className="text-xs text-muted-foreground truncate">{title}</p>
-            <p className="text-xl sm:text-2xl font-bold tracking-tight">{value}</p>
-            {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
-          </div>
-          <div className={`p-2.5 rounded-xl ${color} shrink-0`}>
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-center gap-3">
+          <div className={`p-3 rounded-lg ${style.bg} ${style.text} shrink-0`}>
             <Icon className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] text-muted-foreground truncate leading-tight">{title}</p>
+            <p className="text-lg sm:text-xl font-bold tracking-tight leading-tight">{value}</p>
           </div>
         </div>
       </CardContent>
@@ -162,169 +181,192 @@ function StatCard({ title, value, icon: Icon, color, subtitle }: {
 
 function StatSkeleton() {
   return (
-    <Card><CardContent className="p-5">
-      <div className="flex items-center justify-between">
-        <div className="space-y-2"><Skeleton className="h-3 w-20" /><Skeleton className="h-7 w-14" /></div>
-        <Skeleton className="h-10 w-10 rounded-xl" />
+    <Card><CardContent className="p-4">
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-11 w-11 rounded-lg" />
+        <div className="space-y-1.5"><Skeleton className="h-3 w-16" /><Skeleton className="h-5 w-12" /></div>
       </div>
     </CardContent></Card>
   );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mt-6 mb-3 first:mt-0">{children}</h2>;
+  return <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mt-5 mb-2 first:mt-0">{children}</h2>;
 }
 
 const Dashboard = () => {
   const { data: d, isLoading } = useStats();
 
-  const cards = (items: { title: string; value: string | number; icon: React.ElementType; color: string; subtitle?: string }[]) => (
-    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+  const renderCards = (items: { title: string; value: string | number; icon: React.ElementType; colorIndex: number }[]) => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5">
       {isLoading ? Array.from({ length: items.length }).map((_, i) => <StatSkeleton key={i} />) :
         items.map((item, i) => <StatCard key={i} {...item} />)}
     </div>
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
-        <h1 className="text-2xl font-bold">বিলিং ওভারভিউ</h1>
-        <p className="text-muted-foreground text-sm">ISP ERP বিলিং ড্যাশবোর্ড সারসংক্ষেপ</p>
+        <h1 className="text-2xl font-bold">ড্যাশবোর্ড</h1>
+        <p className="text-muted-foreground text-sm">ISP ERP ওভারভিউ</p>
       </div>
 
-      {/* Row 1: Client Summary */}
-      <SectionTitle>ক্লায়েন্ট সারসংক্ষেপ</SectionTitle>
-      {cards([
-        { title: "মোট ক্লায়েন্ট", value: d?.totalClients ?? 0, icon: Users, color: "bg-primary/20 text-primary" },
-        { title: "সচল ক্লায়েন্ট", value: d?.runningClients ?? 0, icon: UserCheck, color: "bg-green-500/20 text-green-500" },
-        { title: "নিষ্ক্রিয় ক্লায়েন্ট", value: d?.inactiveClients ?? 0, icon: UserMinus, color: "bg-yellow-500/20 text-yellow-500" },
-        { title: "বাতিল ক্লায়েন্ট", value: d?.leftClients ?? 0, icon: UserX, color: "bg-red-500/20 text-red-500" },
+      {/* Row 1: Client Overview */}
+      <SectionTitle>ক্লায়েন্ট ওভারভিউ</SectionTitle>
+      {renderCards([
+        { title: "মোট ক্লায়েন্ট", value: d?.totalClients ?? 0, icon: Users, colorIndex: 0 },
+        { title: "এই মাসে যোগ", value: d?.thisMonthJoin ?? 0, icon: UserPlus, colorIndex: 1 },
+        { title: "গত মাসে যোগ", value: d?.lastMonthJoin ?? 0, icon: UserPlus, colorIndex: 2 },
+        { title: "হোম ক্লায়েন্ট", value: d?.homeClients ?? 0, icon: Home, colorIndex: 3 },
+        { title: "সচল ক্লায়েন্ট", value: d?.totalActive ?? 0, icon: UserCheck, colorIndex: 4 },
+        { title: "হোম অ্যাক্টিভ", value: d?.homeActive ?? 0, icon: Home, colorIndex: 5 },
       ])}
 
-      {/* Row 2: Billing Status */}
-      <SectionTitle>বিলিং স্ট্যাটাস</SectionTitle>
-      {cards([
-        { title: "বিলিং ক্লায়েন্ট", value: d?.billingClients ?? 0, icon: CreditCard, color: "bg-blue-500/20 text-blue-500" },
-        { title: "পেইড ক্লায়েন্ট", value: d?.paidClients ?? 0, icon: CheckCircle, color: "bg-green-500/20 text-green-500" },
-        { title: "আংশিক পেইড", value: d?.partialPaid ?? 0, icon: Clock, color: "bg-amber-500/20 text-amber-500" },
-        { title: "আনপেইড ক্লায়েন্ট", value: d?.unpaidClientsCount ?? 0, icon: XCircle, color: "bg-red-500/20 text-red-500" },
+      {/* Row 2: Status Breakdown */}
+      <SectionTitle>ক্লায়েন্ট স্ট্যাটাস</SectionTitle>
+      {renderCards([
+        { title: "মোট এক্সপায়ার্ড", value: d?.totalExpired ?? 0, icon: CalendarX, colorIndex: 0 },
+        { title: "হোম এক্সপায়ার্ড", value: d?.homeExpired ?? 0, icon: CalendarX, colorIndex: 3 },
+        { title: "পেন্ডিং ক্লায়েন্ট", value: d?.pendingClients ?? 0, icon: Clock, colorIndex: 1 },
+        { title: "বাতিল ক্লায়েন্ট", value: d?.leftClients ?? 0, icon: UserX, colorIndex: 0 },
+        { title: "এক্সটেন্ডেড", value: d?.extendedClients ?? 0, icon: Timer, colorIndex: 4 },
+        { title: "গ্রেস ক্লায়েন্ট", value: d?.graceClients ?? 0, icon: Pause, colorIndex: 5 },
+        { title: "বকেয়া ক্লায়েন্ট", value: d?.dueClients ?? 0, icon: AlertTriangle, colorIndex: 3 },
+        { title: "সাসপেন্ড", value: d?.suspendClients ?? 0, icon: Ban, colorIndex: 0 },
+        { title: "নিষ্ক্রিয়", value: d?.inactiveClients ?? 0, icon: XCircle, colorIndex: 6 },
       ])}
 
-      {/* Row 3: Network Status */}
-      <SectionTitle>নেটওয়ার্ক স্ট্যাটাস</SectionTitle>
-      {cards([
-        { title: "অনলাইন ONU", value: `${d?.onlineOnu ?? 0}/${d?.totalOnu ?? 0}`, icon: Wifi, color: "bg-emerald-500/20 text-emerald-500" },
-        { title: "অফলাইন ONU", value: (d?.totalOnu ?? 0) - (d?.onlineOnu ?? 0), icon: Ban, color: "bg-red-500/20 text-red-500" },
-        { title: "পেন্ডিং টিকেট", value: d?.pendingTickets ?? 0, icon: Headphones, color: "bg-yellow-500/20 text-yellow-500" },
-        { title: "প্রসেসিং টিকেট", value: d?.processingTickets ?? 0, icon: Wrench, color: "bg-violet-500/20 text-violet-500" },
+      {/* Row 3: Sales & Financial */}
+      <SectionTitle>বিক্রয় ও আর্থিক</SectionTitle>
+      {renderCards([
+        { title: "আজকের সেল", value: `৳${(d?.todaySales ?? 0).toLocaleString()}`, icon: DollarSign, colorIndex: 2 },
+        { title: "গতকালের সেল", value: `৳${(d?.yesterdaySales ?? 0).toLocaleString()}`, icon: DollarSign, colorIndex: 7 },
+        { title: "এই মাসের সেল", value: `৳${(d?.thisMonthSales ?? 0).toLocaleString()}`, icon: CreditCard, colorIndex: 1 },
+        { title: "গত মাসের সেল", value: `৳${(d?.lastMonthSales ?? 0).toLocaleString()}`, icon: Receipt, colorIndex: 4 },
+        { title: "এই মাসের মুনাফা", value: `৳${(d?.thisMonthProfit ?? 0).toLocaleString()}`, icon: TrendingUp, colorIndex: 2 },
+        { title: "গত মাসের মুনাফা", value: `৳${(d?.lastMonthProfit ?? 0).toLocaleString()}`, icon: TrendingDown, colorIndex: 0 },
       ])}
 
-      {/* Row 4: Financial Summary */}
-      <SectionTitle>আর্থিক সারসংক্ষেপ (চলতি মাস)</SectionTitle>
-      {cards([
-        { title: "মাসিক বিল", value: `৳${(d?.monthlyBill ?? 0).toLocaleString()}`, icon: FileText, color: "bg-blue-500/20 text-blue-500" },
-        { title: "আদায়", value: `৳${(d?.collectedBill ?? 0).toLocaleString()}`, icon: DollarSign, color: "bg-green-500/20 text-green-500" },
-        { title: "ডিসকাউন্ট", value: `৳${(d?.totalDiscount ?? 0).toLocaleString()}`, icon: Receipt, color: "bg-amber-500/20 text-amber-500" },
-        { title: "মোট বকেয়া", value: `৳${(d?.totalDue ?? 0).toLocaleString()}`, icon: AlertTriangle, color: "bg-red-500/20 text-red-500" },
+      {/* Row 4: Network */}
+      <SectionTitle>নেটওয়ার্ক</SectionTitle>
+      {renderCards([
+        { title: "অনলাইন ONU", value: `${d?.onlineOnu ?? 0}/${d?.totalOnu ?? 0}`, icon: Wifi, colorIndex: 2 },
+        { title: "মোট POP", value: d?.totalPop ?? 0, icon: Radio, colorIndex: 8 },
       ])}
 
-      {/* Row 5: Income & Expense */}
-      <SectionTitle>আয় ও ব্যয়</SectionTitle>
-      {cards([
-        { title: "সার্ভিস ইনভয়েস", value: `৳${(d?.serviceInv ?? 0).toLocaleString()}`, icon: Receipt, color: "bg-cyan-500/20 text-cyan-500" },
-        { title: "প্রোডাক্ট ইনভয়েস", value: `৳${(d?.productInv ?? 0).toLocaleString()}`, icon: Package, color: "bg-indigo-500/20 text-indigo-500" },
-        { title: "আয়", value: `৳${(d?.totalIncome ?? 0).toLocaleString()}`, icon: TrendingUp, color: "bg-green-500/20 text-green-500" },
-        { title: "ব্যয়", value: `৳${(d?.totalExpense ?? 0).toLocaleString()}`, icon: TrendingDown, color: "bg-red-500/20 text-red-500" },
-      ])}
-
-      {/* Row 6: Bandwidth & POP */}
-      <SectionTitle>ব্যান্ডউইথ ও POP</SectionTitle>
-      {cards([
-        { title: "প্রোভাইডার বিল", value: `৳${(d?.bwProviderBill ?? 0).toLocaleString()}`, icon: Wifi, color: "bg-blue-500/20 text-blue-500" },
-        { title: "প্রোভাইডার বকেয়া", value: `৳${(d?.bwProviderDue ?? 0).toLocaleString()}`, icon: AlertTriangle, color: "bg-red-500/20 text-red-500" },
-        { title: "POP বিল", value: `৳${(d?.bwPopBill ?? 0).toLocaleString()}`, icon: Radio, color: "bg-teal-500/20 text-teal-500" },
-        { title: "POP ফান্ড", value: `৳${(d?.popFund ?? 0).toLocaleString()}`, icon: Banknote, color: "bg-emerald-500/20 text-emerald-500" },
-      ])}
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-        {/* Zone Wise Chart */}
+      {/* Bottom Tables */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-3">
+        {/* Latest Invoices */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">জোন অনুযায়ী সমস্যা</CardTitle>
+          <CardHeader className="pb-2 px-4 pt-4">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <FileText className="h-4 w-4 text-blue-500" />
+              সর্বশেষ ইনভয়েস
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-52 w-full" /> : (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={d?.zoneChartData ?? []} cx="50%" cy="50%" innerRadius={40} outerRadius={80} dataKey="value" nameKey="name" label={({ name }) => name}>
-                    {(d?.zoneChartData ?? []).map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Monthly New Clients */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">মাসিক নতুন ক্লায়েন্ট</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-52 w-full" /> : (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={d?.monthlyNewClients ?? []}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="month" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                  <YAxis className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                  <Tooltip />
-                  <Bar dataKey="clients" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Top 20 Unpaid Clients Table */}
-      <Card className="mt-4">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-            শীর্ষ ২০ বকেয়া ক্লায়েন্ট
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full mb-2" />)
-          ) : (d?.unpaidClients ?? []).length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-6">কোনো বকেয়া ক্লায়েন্ট নেই</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">নাম</TableHead>
-                  <TableHead className="text-xs">মোবাইল</TableHead>
-                  <TableHead className="text-xs text-right">বিল</TableHead>
-                  <TableHead className="text-xs text-right">বকেয়া</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(d?.unpaidClients ?? []).map((c, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="text-xs font-medium py-2">{c.name}</TableCell>
-                    <TableCell className="text-xs py-2">{c.contact}</TableCell>
-                    <TableCell className="text-xs text-right py-2">৳{c.amount.toLocaleString()}</TableCell>
-                    <TableCell className="text-xs text-right py-2 text-red-500 font-medium">৳{c.due.toLocaleString()}</TableCell>
+          <CardContent className="px-4 pb-4">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 w-full mb-1.5" />)
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs py-1.5">Inv No</TableHead>
+                    <TableHead className="text-xs py-1.5">User</TableHead>
+                    <TableHead className="text-xs text-right py-1.5">Amount</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {(d?.latestInvoices ?? []).map((inv, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs py-1.5 font-mono">{inv.bill_id}</TableCell>
+                      <TableCell className="text-xs py-1.5">{inv.client_name}</TableCell>
+                      <TableCell className="text-xs py-1.5 text-right">৳{inv.amount.toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                  {(d?.latestInvoices ?? []).length === 0 && (
+                    <TableRow><TableCell colSpan={3} className="text-xs text-center py-4 text-muted-foreground">কোনো ইনভয়েস নেই</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Upcoming Expire */}
+        <Card>
+          <CardHeader className="pb-2 px-4 pt-4">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Clock className="h-4 w-4 text-amber-500" />
+              আসন্ন মেয়াদোত্তীর্ণ
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 w-full mb-1.5" />)
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs py-1.5">Username</TableHead>
+                    <TableHead className="text-xs text-right py-1.5">Bill</TableHead>
+                    <TableHead className="text-xs text-right py-1.5">Expire</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(d?.upcomingExpire ?? []).map((c, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs py-1.5">{c.name}</TableCell>
+                      <TableCell className="text-xs py-1.5 text-right">৳{c.bill.toLocaleString()}</TableCell>
+                      <TableCell className="text-xs py-1.5 text-right font-mono">{c.expire}</TableCell>
+                    </TableRow>
+                  ))}
+                  {(d?.upcomingExpire ?? []).length === 0 && (
+                    <TableRow><TableCell colSpan={3} className="text-xs text-center py-4 text-muted-foreground">কোনো ডেটা নেই</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Latest Expired */}
+        <Card>
+          <CardHeader className="pb-2 px-4 pt-4">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CalendarX className="h-4 w-4 text-red-500" />
+              সর্বশেষ মেয়াদোত্তীর্ণ
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 w-full mb-1.5" />)
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs py-1.5">Username</TableHead>
+                    <TableHead className="text-xs text-right py-1.5">Bill</TableHead>
+                    <TableHead className="text-xs text-right py-1.5">Expired</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(d?.latestExpired ?? []).map((c, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs py-1.5">{c.name}</TableCell>
+                      <TableCell className="text-xs py-1.5 text-right">৳{c.bill.toLocaleString()}</TableCell>
+                      <TableCell className="text-xs py-1.5 text-right font-mono text-red-500">{c.expire}</TableCell>
+                    </TableRow>
+                  ))}
+                  {(d?.latestExpired ?? []).length === 0 && (
+                    <TableRow><TableCell colSpan={3} className="text-xs text-center py-4 text-muted-foreground">কোনো ডেটা নেই</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

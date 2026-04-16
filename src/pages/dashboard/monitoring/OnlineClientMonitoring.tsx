@@ -345,8 +345,10 @@ export default function OnlineClientMonitoring() {
             <TableHead>Profile</TableHead>
             <TableHead>Service</TableHead>
             <TableHead>IP Address</TableHead>
+            <TableHead>Mac Address</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Duration</TableHead>
+            <TableHead>R.Days</TableHead>
             <TableHead>
               <ArrowUpFromLine className="h-3.5 w-3.5 inline mr-1" />Upload
             </TableHead>
@@ -387,10 +389,12 @@ export default function OnlineClientMonitoring() {
                 <TableCell>{s.profile || "—"}</TableCell>
                 <TableCell>{s.service || "—"}</TableCell>
                 <TableCell className="font-mono text-xs">{s.address || "—"}</TableCell>
+                <TableCell className="font-mono text-xs">{s.caller_id || "—"}</TableCell>
                 <TableCell>
                   <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Online</Badge>
                 </TableCell>
                 <TableCell className="font-mono text-xs">{s.uptime || "—"}</TableCell>
+                <TableCell className="font-mono text-xs">—</TableCell>
                 <TableCell className="font-mono text-xs">{formatBytes(s.total_upload || 0)}</TableCell>
                 <TableCell className="font-mono text-xs">{formatBytes(s.total_download || 0)}</TableCell>
                 <TableCell>
