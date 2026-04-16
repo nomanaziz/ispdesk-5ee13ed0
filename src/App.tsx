@@ -391,6 +391,7 @@ const App = () => (
               <Route path="/dashboard/branches/tariff" element={<P><BranchTariff /></P>} />
               <Route path="/dashboard/branches/add-manager" element={<P><BranchAddManager /></P>} />
               <Route path="/dashboard/branches/managers" element={<P><BranchManagers /></P>} />
+              <Route path="/dashboard/branches/pop/:id" element={<P><PopProfile /></P>} />
               <Route path="/dashboard/branches/funding" element={<P><BranchFunding /></P>} />
               <Route path="/dashboard/branches/pgw-payments" element={<P><BranchPgwPayments /></P>} />
               <Route path="/dashboard/branches/pgw-settlement" element={<P><BranchPgwSettlement /></P>} />
