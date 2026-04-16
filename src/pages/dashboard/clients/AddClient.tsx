@@ -105,6 +105,8 @@ export default function AddClient() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!form.name || !form.client_id) throw new Error("নাম ও ক্লায়েন্ট কোড আবশ্যক");
+      const shouldSyncMikrotik = Boolean(form.mikrotik_id && form.username);
+      let mikrotikStatus = shouldSyncMikrotik ? "unknown" : null;
       const payload: any = {
         name: form.name, client_id: form.client_id, contact: form.contact, email: form.email,
         address: form.address, zone_id: form.zone_id || null, sub_zone_id: form.sub_zone_id || null,
@@ -129,15 +131,13 @@ export default function AddClient() {
         joining_date: form.joining_date || null, billing_start_month: form.billing_start_month || null,
         reference_by: form.reference_by || null, is_vip: form.is_vip || false,
         connected_by: form.connected_by || null, affiliator_id: form.affiliator_id || null,
+        mikrotik_status: mikrotikStatus,
       };
       if (editMode && editClientId) {
-        const { error } = await supabase.from("clients").update(payload).eq("id", editClientId);
-        if (error) throw error;
-
-        // Update MikroTik PPP secret if server and username exist (fire-and-forget)
-        if (form.mikrotik_id && form.username) {
-          supabase.functions.invoke("manage-mikrotik-ppp", {
+        if (shouldSyncMikrotik) {
+          const { data, error: mkErr } = await supabase.functions.invoke("manage-mikrotik-ppp", {
             body: {
+              client_id: editClientId,
               mikrotik_id: form.mikrotik_id,
               username: form.username,
               action: "update",
@@ -146,18 +146,37 @@ export default function AddClient() {
               remote_address: form.remote_address || undefined,
               disabled: form.billing_status !== "Active",
             },
-          }).then(({ data, error: mkErr }) => {
-            if (mkErr) toast.error("MikroTik আপডেট ব্যর্থ: " + (mkErr.message || "Unknown"));
-            else if (data?.error) toast.error("MikroTik আপডেট ব্যর্থ: " + data.error);
-            else {
-              toast.success("MikroTik PPP আপডেট হয়েছে");
-              if (data?.mikrotik_status) {
-                supabase.from("clients").update({ mikrotik_status: data.mikrotik_status }).eq("id", editClientId).then(() => {});
-              }
-            }
-          }).catch((e: any) => toast.error("MikroTik আপডেট ব্যর্থ: " + e.message));
+          });
+
+          if (mkErr) throw new Error(`MikroTik আপডেট ব্যর্থ: ${mkErr.message || "Unknown"}`);
+          if (data?.error) throw new Error(`MikroTik আপডেট ব্যর্থ: ${data.error}`);
+          mikrotikStatus = data?.mikrotik_status || "unknown";
+          payload.mikrotik_status = mikrotikStatus;
         }
+
+        const { error } = await supabase.from("clients").update(payload).eq("id", editClientId);
+        if (error) throw error;
       } else {
+        if (shouldSyncMikrotik) {
+          if (!form.password) throw new Error("MikroTik PPP তৈরি করতে পাসওয়ার্ড আবশ্যক");
+
+          const { data, error: mkErr } = await supabase.functions.invoke("create-mikrotik-ppp", {
+            body: {
+              mikrotik_id: form.mikrotik_id,
+              username: form.username,
+              password: form.password,
+              profile: form.profile || null,
+              remote_address: form.remote_address || null,
+              disabled: form.billing_status !== "Active",
+            },
+          });
+
+          if (mkErr) throw new Error(`MikroTik-এ PPPoE user তৈরি ব্যর্থ: ${mkErr.message || "Unknown error"}`);
+          if (data?.error) throw new Error(`MikroTik-এ PPPoE user তৈরি ব্যর্থ: ${data.error}`);
+          mikrotikStatus = data?.mikrotik_status || "unknown";
+          payload.mikrotik_status = mikrotikStatus;
+        }
+
         const { data: insertedClient, error } = await supabase.from("clients").insert(payload).select("id").single();
         if (error) throw error;
 
@@ -174,32 +193,6 @@ export default function AddClient() {
             status: "unpaid",
             generated: true,
             branch_id: form.branch_id || null,
-          });
-        }
-
-        // Create PPPoE user on MikroTik only for new clients (fire-and-forget)
-        if (form.mikrotik_id && form.username && form.password) {
-          supabase.functions.invoke("create-mikrotik-ppp", {
-            body: {
-              mikrotik_id: form.mikrotik_id,
-              username: form.username,
-              password: form.password,
-              profile: form.profile || null,
-              remote_address: form.remote_address || null,
-              disabled: form.billing_status !== "Active",
-            },
-          }).then(({ data, error: mkErr }) => {
-            if (mkErr) {
-              console.error("MikroTik PPPoE creation failed:", mkErr);
-              toast.error("MikroTik-এ PPPoE user তৈরি ব্যর্থ: " + (mkErr.message || "Unknown error"));
-            } else if (data?.error) {
-              toast.error("MikroTik-এ PPPoE user তৈরি ব্যর্থ: " + data.error);
-            } else {
-              toast.success("MikroTik-এ PPPoE user তৈরি হয়েছে");
-            }
-          }).catch((e: any) => {
-            console.error("MikroTik PPPoE error:", e);
-            toast.error("MikroTik-এ PPPoE user তৈরি ব্যর্থ: " + e.message);
           });
         }
       }
