@@ -33,7 +33,6 @@ export default function BillingList() {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // Dialogs
   const [migrateOpen, setMigrateOpen] = useState(false);
@@ -46,23 +45,51 @@ export default function BillingList() {
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["billing-list", filters.month],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .select(`
-          id, client_id, name, contact, username, remote_address, status,
-          client_type, connection_type, monthly_bill, expire_date, speed,
-          server_name, mac_address, protocol_type, profile, password,
-          mikrotik_id, mikrotik_status, is_vip, billing_date,
-          zone_id, sub_zone_id, box_id, package_id,
-          zone:zones(name),
-          package:isp_packages(name),
-          billing!billing_client_id_fkey(id, month, amount, paid, due, discount, advance, vat, status, pay_date)
-        `)
-        .order("client_id", { ascending: true });
+      const [clientsResult, sessionsResult] = await Promise.allSettled([
+        supabase
+          .from("clients")
+          .select(`
+            id, client_id, name, contact, username, remote_address, status,
+            client_type, connection_type, monthly_bill, expire_date, speed,
+            server_name, mac_address, protocol_type, profile, password,
+            mikrotik_id, mikrotik_status, is_vip, billing_date, is_online,
+            zone_id, sub_zone_id, box_id, package_id,
+            zone:zones(name),
+            package:isp_packages(name),
+            billing!billing_client_id_fkey(id, month, amount, paid, due, discount, advance, vat, status, pay_date)
+          `)
+          .order("client_id", { ascending: true }),
+        supabase.functions.invoke("fetch-mikrotik-ppp", {
+          body: { action: "active-sessions", device_id: "all" },
+        }),
+      ]);
+
+      if (clientsResult.status === "rejected") throw clientsResult.reason;
+
+      const { data, error } = clientsResult.value;
       if (error) throw error;
+
+      const hasLiveSessionData =
+        sessionsResult.status === "fulfilled" &&
+        !sessionsResult.value.error &&
+        Array.isArray(sessionsResult.value.data?.sessions);
+
+      const onlineUsernames = new Set<string>();
+      if (hasLiveSessionData) {
+        for (const session of sessionsResult.value.data.sessions as Array<{ name?: string }>) {
+          if (session.name) onlineUsernames.add(session.name.toLowerCase());
+        }
+      }
+
       return (data || []).map((c: any) => {
         const bill = (c.billing || []).find((b: any) => b.month === filters.month);
-        return { ...c, currentBill: bill || null };
+        return {
+          ...c,
+          currentBill: bill || null,
+          isOnlineLive: hasLiveSessionData
+            ? Boolean(c.username && onlineUsernames.has(c.username.toLowerCase()))
+            : Boolean(c.is_online),
+        };
       });
     },
   });
@@ -156,26 +183,6 @@ export default function BillingList() {
     queryClient.invalidateQueries({ queryKey: ["billing-list"] });
   };
 
-  const handleToggleMikrotik = async (client: any) => {
-    if (!client.mikrotik_id || !client.username) {
-      toast.error("MikroTik তথ্য নেই");
-      return;
-    }
-    const action = client.mikrotik_status === "enabled" ? "disable" : "enable";
-    setTogglingId(client.id);
-    try {
-      await supabase.functions.invoke("manage-mikrotik-ppp", {
-        body: { mikrotik_id: client.mikrotik_id, username: client.username, client_id: client.id, action },
-      });
-      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
-      toast.success(`${client.name} ${action === "disable" ? "Disabled" : "Enabled"} হয়েছে`);
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setTogglingId(null);
-    }
-  };
-
   const handleBulkVip = async (isVip: boolean) => {
     await supabase.from("clients").update({ is_vip: isVip }).in("id", [...selectedIds]);
     toast.success(`${selectedIds.size} জন ক্লায়েন্ট ${isVip ? "VIP" : "non-VIP"} করা হয়েছে`);
@@ -257,7 +264,7 @@ export default function BillingList() {
                   <TableHead className="text-right">Advance</TableHead>
                   <TableHead>Pay Date</TableHead>
                   <TableHead>B.Status</TableHead>
-                  <TableHead>M.Status</TableHead>
+                  <TableHead>M.Online</TableHead>
                   <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -307,12 +314,20 @@ export default function BillingList() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Switch
-                          checked={c.mikrotik_status === "enabled"}
-                          disabled={togglingId === c.id || !c.mikrotik_id}
-                          onCheckedChange={() => handleToggleMikrotik(c)}
-                          className="scale-75"
-                        />
+                        <div className="flex items-center gap-1.5">
+                          <Switch
+                            checked={Boolean(c.isOnlineLive)}
+                            onCheckedChange={() => undefined}
+                            className="pointer-events-none scale-75"
+                            aria-label={c.isOnlineLive ? "Online" : "Offline"}
+                          />
+                          <Badge variant={c.isOnlineLive ? "default" : "secondary"} className="text-[10px] h-6">
+                            {c.isOnlineLive ? "Online" : "Offline"}
+                          </Badge>
+                          {c.mikrotik_status === "disabled" ? (
+                            <Badge variant="destructive" className="text-[10px] h-6">Disabled</Badge>
+                          ) : null}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <ClientActionButtons client={c} mode="billing" invalidateKey="billing-list" />
