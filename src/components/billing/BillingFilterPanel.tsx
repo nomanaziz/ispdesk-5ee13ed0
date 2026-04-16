@@ -171,9 +171,9 @@ export default function BillingFilterPanel({ filters, onChange, onReset }: Props
       </div>
 
       {expanded && (
-        <div className="space-y-3 p-3 border border-border rounded-lg bg-muted/30">
+        <div className="space-y-2 p-2 border border-border rounded-lg bg-muted/30">
           {/* Row 1 */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-1.5">
             <FilterSelect label="Server" value={filters.server} onChange={(v) => set("server", v)}
               options={servers.map((s: any) => ({ value: s.id, label: s.name }))} />
             <FilterSelect label="Protocol Type" value={filters.protocolType} onChange={(v) => set("protocolType", v)}
@@ -186,12 +186,12 @@ export default function BillingFilterPanel({ filters, onChange, onReset }: Props
               options={subZones.map((s: any) => ({ value: s.id, label: s.name }))} />
             <FilterSelect label="Box" value={filters.box} onChange={(v) => set("box", v)}
               options={boxes.map((b: any) => ({ value: b.id, label: b.name }))} />
+            <FilterSelect label="Package" value={filters.packageFilter} onChange={(v) => set("packageFilter", v)}
+              options={packages.map((p: any) => ({ value: p.name, label: p.name }))} />
           </div>
 
           {/* Row 2 */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-            <FilterSelect label="Package" value={filters.packageFilter} onChange={(v) => set("packageFilter", v)}
-              options={packages.map((p: any) => ({ value: p.name, label: p.name }))} />
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-1.5">
             <FilterSelect label="Billing Status" value={filters.billingStatus} onChange={(v) => set("billingStatus", v)}
               options={billingStatuses.map((s: any) => ({ value: s.name, label: s.name }))} />
             <FilterSelect label="Payment Status" value={filters.paymentStatus} onChange={(v) => set("paymentStatus", v)}
@@ -210,20 +210,6 @@ export default function BillingFilterPanel({ filters, onChange, onReset }: Props
               options={connectionTypes.map((c: any) => ({ value: c.name, label: c.name }))} />
             <FilterSelect label="Client Type" value={filters.clientType} onChange={(v) => set("clientType", v)}
               options={clientTypes.map((c: any) => ({ value: c.name, label: c.name }))} />
-          </div>
-
-          {/* Row 3: Date ranges */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-            <DateInput label="From Expire Date" value={filters.fromExpireDate} onChange={(v) => set("fromExpireDate", v)} />
-            <DateInput label="To Expire Date" value={filters.toExpireDate} onChange={(v) => set("toExpireDate", v)} />
-            <DateInput label="From Effective Date" value={filters.fromEffectiveDate} onChange={(v) => set("fromEffectiveDate", v)} />
-            <DateInput label="To Effective Date" value={filters.toEffectiveDate} onChange={(v) => set("toEffectiveDate", v)} />
-            <DateInput label="From Non-Effective" value={filters.fromNonEffectiveDate} onChange={(v) => set("fromNonEffectiveDate", v)} />
-            <DateInput label="To Non-Effective" value={filters.toNonEffectiveDate} onChange={(v) => set("toNonEffectiveDate", v)} />
-          </div>
-
-          {/* Row 4 */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
             <FilterSelect label="Custom Status" value={filters.customStatus} onChange={(v) => set("customStatus", v)}
               options={[
                 { value: "active", label: "Active" },
@@ -231,6 +217,12 @@ export default function BillingFilterPanel({ filters, onChange, onReset }: Props
                 { value: "personal", label: "Personal" },
                 { value: "left", label: "Left" },
               ]} />
+          </div>
+
+          {/* Row 3: Date ranges */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5">
+            <DateInput label="From Expire Date" value={filters.fromExpireDate} onChange={(v) => set("fromExpireDate", v)} />
+            <DateInput label="To Expire Date" value={filters.toExpireDate} onChange={(v) => set("toExpireDate", v)} />
             <DateInput label="From Date" value={filters.fromDate} onChange={(v) => set("fromDate", v)} />
             <DateInput label="To Date" value={filters.toDate} onChange={(v) => set("toDate", v)} />
           </div>
@@ -249,9 +241,9 @@ function FilterSelect({ label, value, onChange, options, placeholder }: {
 }) {
   return (
     <div>
-      <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
+      <label className="text-[10px] text-muted-foreground mb-0.5 block">{label}</label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-8 text-xs">
+        <SelectTrigger className="h-7 text-[11px]">
           <SelectValue placeholder={placeholder || `সকল ${label}`} />
         </SelectTrigger>
         <SelectContent>
@@ -272,8 +264,8 @@ function DateInput({ label, value, onChange }: {
 }) {
   return (
     <div>
-      <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
-      <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} className="h-8 text-xs" />
+      <label className="text-[10px] text-muted-foreground mb-0.5 block">{label}</label>
+      <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} className="h-7 text-[11px]" />
     </div>
   );
 }
