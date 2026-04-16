@@ -1435,6 +1435,75 @@ export type Database = {
           },
         ]
       }
+      client_notices: {
+        Row: {
+          active: boolean
+          attachment_url: string | null
+          body: string
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          ends_at: string | null
+          id: string
+          pinned: boolean
+          starts_at: string
+          target_scope: string
+          title: string
+          type: string
+          updated_at: string
+          zone_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          attachment_url?: string | null
+          body: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          pinned?: boolean
+          starts_at?: string
+          target_scope?: string
+          title: string
+          type?: string
+          updated_at?: string
+          zone_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          attachment_url?: string | null
+          body?: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          pinned?: boolean
+          starts_at?: string
+          target_scope?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_notices_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_notices_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_request_assignments: {
         Row: {
           assigned_at: string
@@ -3081,6 +3150,62 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      media_servers: {
+        Row: {
+          active: boolean
+          branch_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          password: string | null
+          sort_order: number
+          type: string
+          updated_at: string
+          url: string
+          username: string | null
+        }
+        Insert: {
+          active?: boolean
+          branch_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          password?: string | null
+          sort_order?: number
+          type?: string
+          updated_at?: string
+          url: string
+          username?: string | null
+        }
+        Update: {
+          active?: boolean
+          branch_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          password?: string | null
+          sort_order?: number
+          type?: string
+          updated_at?: string
+          url?: string
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_servers_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mikrotik_backups: {
         Row: {
@@ -5436,6 +5561,47 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      support_ticket_messages: {
+        Row: {
+          attachment_url: string | null
+          created_at: string
+          id: string
+          message: string
+          sender_id: string | null
+          sender_name: string | null
+          sender_type: string
+          ticket_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          sender_id?: string | null
+          sender_name?: string | null
+          sender_type?: string
+          ticket_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string | null
+          sender_name?: string | null
+          sender_type?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
           },
         ]
       }
