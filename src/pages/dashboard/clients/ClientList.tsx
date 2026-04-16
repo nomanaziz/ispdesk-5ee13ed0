@@ -1,46 +1,42 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, FileSpreadsheet, FileText, Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, CalendarClock, Crown, ChevronUp, ChevronDown, Wifi } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, CalendarClock, Crown, Wifi, ChevronLeft, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import ClientActionButtons from "@/components/client-actions/ClientActionButtons";
+import BillingFilterPanel, { BillingFilters, defaultFilters } from "@/components/billing/BillingFilterPanel";
+import BulkActionButtons from "@/components/billing/BulkActionButtons";
+import ServerMigrationDialog from "@/components/billing/ServerMigrationDialog";
+import BulkStatusChangeDialog from "@/components/billing/BulkStatusChangeDialog";
+import BulkZoneChangeDialog from "@/components/billing/BulkZoneChangeDialog";
+import BulkProfileChangeDialog from "@/components/billing/BulkProfileChangeDialog";
 
 export default function ClientList() {
-  const [search, setSearch] = useState("");
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [perPage, setPerPage] = useState(100);
   const [currentPage, setCurrentPage] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<BillingFilters>(defaultFilters);
   const queryClient = useQueryClient();
 
-  // Filter states
-  const [filterServer, setFilterServer] = useState("");
-  const [filterProtocol, setFilterProtocol] = useState("");
-  const [filterProfile, setFilterProfile] = useState("");
-  const [filterZone, setFilterZone] = useState("");
-  const [filterSubZone, setFilterSubZone] = useState("");
-  const [filterBox, setFilterBox] = useState("");
-  const [filterPackage, setFilterPackage] = useState("");
-  const [filterClientType, setFilterClientType] = useState("");
-  const [filterConnType, setFilterConnType] = useState("");
-  const [filterBStatus, setFilterBStatus] = useState("");
-  const [filterMStatus, setFilterMStatus] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [filterFromDate, setFilterFromDate] = useState("");
-  const [filterToDate, setFilterToDate] = useState("");
+  // Dialogs
+  const [migrateOpen, setMigrateOpen] = useState(false);
+  const [statusChangeOpen, setStatusChangeOpen] = useState(false);
+  const [zoneChangeOpen, setZoneChangeOpen] = useState(false);
+  const [profileChangeOpen, setProfileChangeOpen] = useState(false);
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ["clients-list"],
@@ -51,81 +47,6 @@ export default function ClientList() {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
-    },
-  });
-
-  // Load filter options
-  const { data: servers } = useQuery({
-    queryKey: ["filter-servers"],
-    queryFn: async () => {
-      const { data } = await supabase.from("mikrotik_devices").select("id, name").eq("enabled", true);
-      return data || [];
-    },
-  });
-
-  const { data: protocolTypes } = useQuery({
-    queryKey: ["filter-protocol-types"],
-    queryFn: async () => {
-      const { data } = await supabase.from("protocol_types").select("id, name");
-      return data || [];
-    },
-  });
-
-  const { data: zones } = useQuery({
-    queryKey: ["filter-zones"],
-    queryFn: async () => {
-      const { data } = await supabase.from("zones").select("id, name");
-      return data || [];
-    },
-  });
-
-  const { data: subZones } = useQuery({
-    queryKey: ["filter-subzones", filterZone],
-    queryFn: async () => {
-      let q = supabase.from("sub_zones").select("id, name");
-      if (filterZone) q = q.eq("zone_id", filterZone);
-      const { data } = await q;
-      return data || [];
-    },
-  });
-
-  const { data: boxes } = useQuery({
-    queryKey: ["filter-boxes"],
-    queryFn: async () => {
-      const { data } = await supabase.from("boxes").select("id, name");
-      return data || [];
-    },
-  });
-
-  const { data: packages } = useQuery({
-    queryKey: ["filter-packages"],
-    queryFn: async () => {
-      const { data } = await supabase.from("isp_packages").select("id, name");
-      return data || [];
-    },
-  });
-
-  const { data: clientTypes } = useQuery({
-    queryKey: ["filter-client-types"],
-    queryFn: async () => {
-      const { data } = await supabase.from("client_types").select("id, name");
-      return data || [];
-    },
-  });
-
-  const { data: connTypes } = useQuery({
-    queryKey: ["filter-conn-types"],
-    queryFn: async () => {
-      const { data } = await supabase.from("connection_types_config").select("id, name");
-      return data || [];
-    },
-  });
-
-  const { data: billingStatuses } = useQuery({
-    queryKey: ["filter-billing-statuses"],
-    queryFn: async () => {
-      const { data } = await supabase.from("billing_statuses").select("id, name");
-      return data || [];
     },
   });
 
@@ -157,12 +78,25 @@ export default function ClientList() {
     }
   };
 
-  // Unique profiles from clients
-  const uniqueProfiles = useMemo(() => {
-    const profiles = new Set<string>();
-    (clients || []).forEach((c: any) => { if (c.profile) profiles.add(c.profile); });
-    return Array.from(profiles).sort();
-  }, [clients]);
+  const handleToggleMikrotik = async (client: any) => {
+    if (!client.mikrotik_id || !client.username) {
+      toast.error("MikroTik তথ্য নেই");
+      return;
+    }
+    const action = client.mikrotik_status === "enabled" ? "disable" : "enable";
+    setTogglingId(client.id);
+    try {
+      await supabase.functions.invoke("manage-mikrotik-ppp", {
+        body: { mikrotik_id: client.mikrotik_id, username: client.username, client_id: client.id, action },
+      });
+      queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+      toast.success(`${client.name} ${action === "disable" ? "Disabled" : "Enabled"} হয়েছে`);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const stats = useMemo(() => {
     const all = clients || [];
@@ -176,28 +110,31 @@ export default function ClientList() {
 
   const filtered = useMemo(() => {
     let list = clients || [];
-    if (search) {
-      const s = search.toLowerCase();
+    const f = filters;
+    if (f.search) {
+      const s = f.search.toLowerCase();
       list = list.filter((c: any) =>
         c.name?.toLowerCase().includes(s) || c.client_id?.toLowerCase().includes(s) || c.contact?.includes(s) || c.username?.toLowerCase().includes(s)
       );
     }
-    if (filterServer) list = list.filter((c: any) => c.mikrotik_id === filterServer);
-    if (filterProtocol) list = list.filter((c: any) => c.protocol_type === filterProtocol);
-    if (filterProfile) list = list.filter((c: any) => c.profile === filterProfile);
-    if (filterZone) list = list.filter((c: any) => c.zone_id === filterZone);
-    if (filterSubZone) list = list.filter((c: any) => c.sub_zone_id === filterSubZone);
-    if (filterBox) list = list.filter((c: any) => c.box_id === filterBox);
-    if (filterPackage) list = list.filter((c: any) => c.package_id === filterPackage);
-    if (filterClientType) list = list.filter((c: any) => c.client_type === filterClientType);
-    if (filterConnType) list = list.filter((c: any) => c.connection_type === filterConnType);
-    if (filterBStatus) list = list.filter((c: any) => c.billing_status === filterBStatus);
-    if (filterMStatus) list = list.filter((c: any) => c.mikrotik_status === filterMStatus);
-    if (filterStatus) list = list.filter((c: any) => c.status === filterStatus);
-    if (filterFromDate) list = list.filter((c: any) => c.created_at >= filterFromDate);
-    if (filterToDate) list = list.filter((c: any) => c.created_at <= filterToDate + "T23:59:59");
+    if (f.server !== "all") list = list.filter((c: any) => c.mikrotik_id === f.server);
+    if (f.protocolType !== "all") list = list.filter((c: any) => c.protocol_type === f.protocolType);
+    if (f.profile !== "all") list = list.filter((c: any) => c.profile === f.profile);
+    if (f.zone !== "all") list = list.filter((c: any) => c.zones?.name === f.zone);
+    if (f.subZone !== "all") list = list.filter((c: any) => c.sub_zone_id === f.subZone);
+    if (f.box !== "all") list = list.filter((c: any) => c.box_id === f.box);
+    if (f.packageFilter !== "all") list = list.filter((c: any) => c.isp_packages?.name === f.packageFilter);
+    if (f.clientType !== "all") list = list.filter((c: any) => c.client_type === f.clientType);
+    if (f.connectionType !== "all") list = list.filter((c: any) => c.connection_type === f.connectionType);
+    if (f.billingStatus !== "all") list = list.filter((c: any) => c.billing_status === f.billingStatus);
+    if (f.mikrotikStatus !== "all") list = list.filter((c: any) => c.mikrotik_status === f.mikrotikStatus);
+    if (f.customStatus !== "all") list = list.filter((c: any) => c.status === f.customStatus);
+    if (f.fromExpireDate) list = list.filter((c: any) => c.expire_date && c.expire_date >= f.fromExpireDate);
+    if (f.toExpireDate) list = list.filter((c: any) => c.expire_date && c.expire_date <= f.toExpireDate);
+    if (f.fromDate) list = list.filter((c: any) => c.created_at >= f.fromDate);
+    if (f.toDate) list = list.filter((c: any) => c.created_at <= f.toDate + "T23:59:59");
     return list;
-  }, [clients, search, filterServer, filterProtocol, filterProfile, filterZone, filterSubZone, filterBox, filterPackage, filterClientType, filterConnType, filterBStatus, filterMStatus, filterStatus, filterFromDate, filterToDate]);
+  }, [clients, filters]);
 
   const paginated = useMemo(() => {
     return filtered.slice(currentPage * perPage, (currentPage + 1) * perPage);
@@ -207,14 +144,45 @@ export default function ClientList() {
 
   const togglePassword = (id: string) => setShowPasswords(prev => ({ ...prev, [id]: !prev[id] }));
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    if (selectedIds.size === paginated.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(paginated.map((c: any) => c.id)));
+  }, [paginated, selectedIds.size]);
+
+  const selectedClients = useMemo(() =>
+    (clients || []).filter((c: any) => selectedIds.has(c.id)),
+    [clients, selectedIds]
+  );
+
+  const handleDisableEnable = async (action: "disable" | "enable") => {
+    for (const client of selectedClients) {
+      if (client.mikrotik_id && client.username) {
+        try {
+          await supabase.functions.invoke("manage-mikrotik-ppp", {
+            body: { mikrotik_id: client.mikrotik_id, username: client.username, client_id: client.id, action },
+          });
+        } catch { /* continue */ }
+      }
+    }
+    toast.success(`${selectedClients.length} জন ক্লায়েন্ট ${action === "disable" ? "disabled" : "enabled"} হয়েছে`);
+    queryClient.invalidateQueries({ queryKey: ["clients-list"] });
   };
 
-  const toggleAll = () => {
-    if (selectedIds.length === paginated.length) setSelectedIds([]);
-    else setSelectedIds(paginated.map((c: any) => c.id));
+  const handleBulkVip = async (isVip: boolean) => {
+    await supabase.from("clients").update({ is_vip: isVip }).in("id", [...selectedIds]);
+    toast.success(`${selectedIds.size} জন ক্লায়েন্ট ${isVip ? "VIP" : "non-VIP"} করা হয়েছে`);
+    queryClient.invalidateQueries({ queryKey: ["clients-list"] });
   };
+
+  const notImplemented = () => toast.info("শীঘ্রই আসছে — এই ফিচার এখনো তৈরি হচ্ছে");
 
   const getExpireBadge = (expireDate: string | null, isVip: boolean) => {
     if (isVip) return { color: "bg-purple-500/10 text-purple-600 border-purple-500/30", label: "VIP" };
@@ -227,176 +195,71 @@ export default function ClientList() {
     return { color: "bg-green-500/10 text-green-600 border-green-500/30", label: format(expire, "dd/MM") };
   };
 
-  const clearFilters = () => {
-    setFilterServer(""); setFilterProtocol(""); setFilterProfile(""); setFilterZone("");
-    setFilterSubZone(""); setFilterBox(""); setFilterPackage(""); setFilterClientType("");
-    setFilterConnType(""); setFilterBStatus(""); setFilterMStatus(""); setFilterStatus("");
-    setFilterFromDate(""); setFilterToDate("");
-  };
-
   const summaryCards = [
-    { label: "Running Clients", count: stats.running, desc: "Number of clients without LeftOut status", icon: Users, color: "bg-blue-600" },
-    { label: "New Clients", count: stats.newClients, desc: "Monthly number of clients those are new", icon: UserPlus, color: "bg-green-600" },
-    { label: "Renewed Clients", count: stats.renewed, desc: "Monthly number of newly renewed clients", icon: RefreshCw, color: "bg-purple-600" },
-    { label: "Waiver Clients", count: stats.waiver, desc: "Number of clients those are free/personal", icon: Gift, color: "bg-orange-600" },
+    { label: "Running Clients", count: stats.running, icon: Users, color: "bg-blue-600" },
+    { label: "New Clients", count: stats.newClients, icon: UserPlus, color: "bg-green-600" },
+    { label: "Renewed Clients", count: stats.renewed, icon: RefreshCw, color: "bg-purple-600" },
+    { label: "Waiver Clients", count: stats.waiver, icon: Gift, color: "bg-orange-600" },
   ];
 
-  const FilterSelect = ({ value, onChange, placeholder, options }: { value: string; onChange: (v: string) => void; placeholder: string; options: { value: string; label: string }[] }) => (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-8 text-xs">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="__all__">সকল</SelectItem>
-        {options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-      </SelectContent>
-    </Select>
-  );
-
-  const handleFilterChange = (setter: (v: string) => void) => (v: string) => {
-    setter(v === "__all__" ? "" : v);
-    setCurrentPage(0);
-  };
-
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Client List <span className="text-sm font-normal text-muted-foreground">View All Client</span></h1>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-2 justify-center p-3 border rounded-lg bg-card">
-        <Button variant="outline" size="sm"><FileSpreadsheet className="h-4 w-4 mr-1" /> Generate Excel</Button>
-        <Button variant="outline" size="sm"><FileText className="h-4 w-4 mr-1" /> Generate Pdf</Button>
-        <Button variant="outline" size="sm">Bulk Profile Change</Button>
-        <Button variant="outline" size="sm">Bulk Package Change</Button>
-        <Button variant="outline" size="sm">Bulk Status Change</Button>
-        <Button variant="default" size="sm" onClick={handleSyncOnline} disabled={syncing}>
-          <Wifi className="h-4 w-4 mr-1" />
-          {syncing ? "সিঙ্ক হচ্ছে..." : "Sync Clients & Server"}
-        </Button>
-      </div>
+    <div className="space-y-3 p-4">
+      <h1 className="text-xl font-bold">Client List <span className="text-sm font-normal text-muted-foreground">View All Client</span></h1>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {summaryCards.map((card) => (
           <Card key={card.label} className={`${card.color} text-white border-0`}>
-            <CardContent className="p-4 flex items-center gap-3">
-              <card.icon className="h-10 w-10 opacity-80" />
+            <CardContent className="p-3 flex items-center gap-2">
+              <card.icon className="h-8 w-8 opacity-80" />
               <div>
-                <div className="font-bold text-lg">{card.label}</div>
-                <div className="text-2xl font-bold">{card.count}</div>
-                <div className="text-xs opacity-80">{card.desc}</div>
+                <div className="font-semibold text-sm">{card.label}</div>
+                <div className="text-xl font-bold">{card.count}</div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Filter Toggle */}
-      <div className="border rounded-lg bg-card">
-        <button
-          className="w-full flex items-center justify-between p-3 text-sm font-medium hover:bg-muted/50 transition-colors"
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          <span>ফিল্টার অপশন</span>
-          {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
+      {/* Unified Filter */}
+      <BillingFilterPanel
+        filters={filters}
+        onChange={(f) => { setFilters(f); setCurrentPage(0); }}
+        onReset={() => { setFilters(defaultFilters); setCurrentPage(0); }}
+      />
 
-        {showFilters && (
-          <div className="p-3 pt-0 border-t">
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">Server</label>
-                <FilterSelect value={filterServer} onChange={handleFilterChange(setFilterServer)} placeholder="Server" options={(servers || []).map((s: any) => ({ value: s.id, label: s.name }))} />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">Protocol Type</label>
-                <FilterSelect value={filterProtocol} onChange={handleFilterChange(setFilterProtocol)} placeholder="Protocol" options={(protocolTypes || []).map((p: any) => ({ value: p.name, label: p.name }))} />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">Profile</label>
-                <FilterSelect value={filterProfile} onChange={handleFilterChange(setFilterProfile)} placeholder="Profile" options={uniqueProfiles.map(p => ({ value: p, label: p }))} />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">Zone</label>
-                <FilterSelect value={filterZone} onChange={handleFilterChange(setFilterZone)} placeholder="Zone" options={(zones || []).map((z: any) => ({ value: z.id, label: z.name }))} />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">Sub Zone</label>
-                <FilterSelect value={filterSubZone} onChange={handleFilterChange(setFilterSubZone)} placeholder="Sub Zone" options={(subZones || []).map((s: any) => ({ value: s.id, label: s.name }))} />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">Box</label>
-                <FilterSelect value={filterBox} onChange={handleFilterChange(setFilterBox)} placeholder="Box" options={(boxes || []).map((b: any) => ({ value: b.id, label: b.name }))} />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">Package</label>
-                <FilterSelect value={filterPackage} onChange={handleFilterChange(setFilterPackage)} placeholder="Package" options={(packages || []).map((p: any) => ({ value: p.id, label: p.name }))} />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">Client Type</label>
-                <FilterSelect value={filterClientType} onChange={handleFilterChange(setFilterClientType)} placeholder="Client Type" options={(clientTypes || []).map((t: any) => ({ value: t.name, label: t.name }))} />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">Connection Type</label>
-                <FilterSelect value={filterConnType} onChange={handleFilterChange(setFilterConnType)} placeholder="Conn. Type" options={(connTypes || []).map((t: any) => ({ value: t.name, label: t.name }))} />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">B.Status</label>
-                <FilterSelect value={filterBStatus} onChange={handleFilterChange(setFilterBStatus)} placeholder="B.Status" options={(billingStatuses || []).map((b: any) => ({ value: b.name, label: b.name }))} />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">M.Status</label>
-                <FilterSelect value={filterMStatus} onChange={handleFilterChange(setFilterMStatus)} placeholder="M.Status" options={[
-                  { value: "enabled", label: "Enabled" },
-                  { value: "disabled", label: "Disabled" },
-                  { value: "unknown", label: "Unknown" },
-                ]} />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">Status</label>
-                <FilterSelect value={filterStatus} onChange={handleFilterChange(setFilterStatus)} placeholder="Status" options={[
-                  { value: "active", label: "Active" },
-                  { value: "inactive", label: "Inactive" },
-                ]} />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">From Date</label>
-                <Input type="date" className="h-8 text-xs" value={filterFromDate} onChange={e => { setFilterFromDate(e.target.value); setCurrentPage(0); }} />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground mb-1 block">To Date</label>
-                <Input type="date" className="h-8 text-xs" value={filterToDate} onChange={e => { setFilterToDate(e.target.value); setCurrentPage(0); }} />
-              </div>
-            </div>
-            <div className="flex justify-end mt-2">
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs">ফিল্টার রিসেট</Button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Bulk Actions */}
+      <BulkActionButtons
+        selectedCount={selectedIds.size}
+        onGenerateExcel={notImplemented}
+        onGeneratePdf={notImplemented}
+        onSyncClients={handleSyncOnline}
+        onDisableSelected={() => handleDisableEnable("disable")}
+        onEnableSelected={() => handleDisableEnable("enable")}
+        onBulkStatusChange={() => setStatusChangeOpen(true)}
+        onBulkZoneChange={() => setZoneChangeOpen(true)}
+        onBulkDistrictChange={notImplemented}
+        onBulkThanaChange={notImplemented}
+        onDownloadInvoice={notImplemented}
+        onSmsSelected={notImplemented}
+        onEmailSelected={notImplemented}
+        onBulkDateExtend={notImplemented}
+        onMigrateServer={() => setMigrateOpen(true)}
+        onBulkVip={() => handleBulkVip(true)}
+        onBulkRemoveVip={() => handleBulkVip(false)}
+        onBulkProfileChange={() => setProfileChangeOpen(true)}
+      />
 
-      {/* Search + Entries */}
+      {/* Entries + Total */}
       <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="text-sm text-muted-foreground">মোট: {filtered.length} ক্লায়েন্ট</div>
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-muted-foreground">SHOW</span>
-            <Select value={String(perPage)} onValueChange={v => { setPerPage(Number(v)); setCurrentPage(0); }}>
-              <SelectTrigger className="h-7 w-16 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[25, 50, 100, 200, 500].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <span className="text-xs text-muted-foreground">ENTRIES</span>
-          </div>
-        </div>
-        <div className="relative w-64">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Search..." value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(0); }} />
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>মোট: {filtered.length} ক্লায়েন্ট</span>
+          <Select value={String(perPage)} onValueChange={v => { setPerPage(Number(v)); setCurrentPage(0); }}>
+            <SelectTrigger className="h-7 w-16 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {[25, 50, 100, 200, 500].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -405,7 +268,7 @@ export default function ClientList() {
         <Table>
           <TableHeader>
             <TableRow className="bg-primary/10">
-              <TableHead className="w-8"><Checkbox checked={selectedIds.length === paginated.length && paginated.length > 0} onCheckedChange={toggleAll} /></TableHead>
+              <TableHead className="w-8"><Checkbox checked={paginated.length > 0 && selectedIds.size === paginated.length} onCheckedChange={toggleAll} /></TableHead>
               <TableHead className="text-xs">C.Code</TableHead>
               <TableHead className="text-xs">ID/IP</TableHead>
               <TableHead className="text-xs">Password</TableHead>
@@ -434,12 +297,12 @@ export default function ClientList() {
               paginated.map((c: any) => {
                 const expireBadge = getExpireBadge(c.expire_date, c.is_vip);
                 return (
-                  <TableRow key={c.id}>
-                    <TableCell><Checkbox checked={selectedIds.includes(c.id)} onCheckedChange={() => toggleSelect(c.id)} /></TableCell>
+                  <TableRow key={c.id} data-state={selectedIds.has(c.id) ? "selected" : undefined}>
+                    <TableCell><Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} /></TableCell>
                     <TableCell className="text-xs font-medium">{c.client_id}</TableCell>
                     <TableCell className="text-xs">
                       <div className="flex items-center gap-1.5">
-                        <div className={cn("h-2 w-2 rounded-full shrink-0", c.is_online ? "bg-green-500" : "bg-gray-400")} title={c.is_online ? "Online" : "Offline"} />
+                        <div className={cn("h-2 w-2 rounded-full shrink-0", c.is_online ? "bg-green-500" : "bg-gray-400")} />
                         <span>{c.username || c.user_id || "-"}</span>
                       </div>
                     </TableCell>
@@ -472,7 +335,7 @@ export default function ClientList() {
                         <Popover>
                           <PopoverTrigger asChild>
                             <button>
-                              <Badge variant="outline" className={`text-[10px] cursor-pointer hover:opacity-80 transition-opacity ${expireBadge.color}`}>
+                              <Badge variant="outline" className={`text-[10px] cursor-pointer hover:opacity-80 ${expireBadge.color}`}>
                                 <CalendarClock className="h-2.5 w-2.5 mr-0.5" />
                                 {expireBadge.label}
                               </Badge>
@@ -483,9 +346,7 @@ export default function ClientList() {
                               mode="single"
                               selected={c.expire_date ? parseISO(c.expire_date) : undefined}
                               onSelect={(date) => {
-                                if (date) {
-                                  updateExpireMutation.mutate({ id: c.id, date: format(date, "yyyy-MM-dd") });
-                                }
+                                if (date) updateExpireMutation.mutate({ id: c.id, date: format(date, "yyyy-MM-dd") });
                               }}
                               className={cn("p-3 pointer-events-auto")}
                             />
@@ -504,18 +365,12 @@ export default function ClientList() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs">
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] ${
-                          c.mikrotik_status === "enabled"
-                            ? "bg-green-500/10 text-green-600 border-green-500/30"
-                            : c.mikrotik_status === "disabled"
-                            ? "bg-red-500/10 text-red-600 border-red-500/30"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {c.mikrotik_status === "enabled" ? "Enabled" : c.mikrotik_status === "disabled" ? "Disabled" : "Unknown"}
-                      </Badge>
+                      <Switch
+                        checked={c.mikrotik_status === "enabled"}
+                        disabled={togglingId === c.id || !c.mikrotik_id}
+                        onCheckedChange={() => handleToggleMikrotik(c)}
+                        className="scale-75"
+                      />
                     </TableCell>
                     <TableCell className="text-xs">
                       <ClientActionButtons client={c} mode="client" invalidateKey="clients-list" />
@@ -529,17 +384,23 @@ export default function ClientList() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">
-            পেজ {currentPage + 1} / {totalPages}
-          </span>
-          <div className="flex gap-1">
-            <Button variant="outline" size="sm" disabled={currentPage === 0} onClick={() => setCurrentPage(p => p - 1)}>আগে</Button>
-            <Button variant="outline" size="sm" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage(p => p + 1)}>পরে</Button>
-          </div>
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">পেজ {currentPage + 1} / {totalPages || 1}</span>
+        <div className="flex items-center gap-1">
+          <Button size="icon" variant="outline" className="h-8 w-8" disabled={currentPage <= 0} onClick={() => setCurrentPage(p => p - 1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="outline" className="h-8 w-8" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage(p => p + 1)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
-      )}
+      </div>
+
+      {/* Dialogs */}
+      <ServerMigrationDialog open={migrateOpen} onOpenChange={setMigrateOpen} selectedClients={selectedClients} />
+      <BulkStatusChangeDialog open={statusChangeOpen} onOpenChange={setStatusChangeOpen} selectedClientIds={[...selectedIds]} />
+      <BulkZoneChangeDialog open={zoneChangeOpen} onOpenChange={setZoneChangeOpen} selectedClientIds={[...selectedIds]} />
+      <BulkProfileChangeDialog open={profileChangeOpen} onOpenChange={setProfileChangeOpen} selectedClients={selectedClients} />
     </div>
   );
 }
