@@ -59,26 +59,26 @@ export default function BulkActionButtons({
     <div className="space-y-2">
       {/* Row 1 */}
       <div className="flex flex-wrap gap-1.5">
-        <ActionBtn icon={FileSpreadsheet} label="Excel" onClick={onGenerateExcel} color="bg-emerald-600 hover:bg-emerald-700 text-white" />
-        <ActionBtn icon={FileText} label="PDF" onClick={onGeneratePdf} color="bg-red-600 hover:bg-red-700 text-white" />
-        <ActionBtn icon={RefreshCw} label="Sync Clients" onClick={onSyncClients} />
-        <ActionBtn icon={Ban} label="Disable Selected" onClick={() => requireSelection(onDisableSelected)} />
-        <ActionBtn icon={Zap} label="Status Change" onClick={() => requireSelection(onBulkStatusChange)} />
-        <ActionBtn icon={MapPin} label="Zone Change" onClick={() => requireSelection(onBulkZoneChange)} />
-        <ActionBtn icon={Building} label="District Change" onClick={() => requireSelection(onBulkDistrictChange)} />
-        <ActionBtn icon={Building} label="Thana Change" onClick={() => requireSelection(onBulkThanaChange)} />
-        <ActionBtn icon={CheckCircle} label="Enable Selected" onClick={() => requireSelection(onEnableSelected)} />
-        <ActionBtn icon={Download} label="Invoice" onClick={() => requireSelection(onDownloadInvoice)} />
+        <ActionBtn icon={FileSpreadsheet} label="এক্সেল" onClick={onGenerateExcel} color="bg-emerald-600 hover:bg-emerald-700 text-white" />
+        <ActionBtn icon={FileText} label="পিডিএফ" onClick={onGeneratePdf} color="bg-red-600 hover:bg-red-700 text-white" />
+        <ActionBtn icon={RefreshCw} label="ক্লায়েন্ট সিঙ্ক" onClick={onSyncClients} />
+        <ActionBtn icon={Ban} label="বন্ধ করুন" onClick={() => requireSelection(onDisableSelected)} />
+        <ActionBtn icon={Zap} label="স্ট্যাটাস পরিবর্তন" onClick={() => requireSelection(onBulkStatusChange)} />
+        <ActionBtn icon={MapPin} label="জোন পরিবর্তন" onClick={() => requireSelection(onBulkZoneChange)} />
+        <ActionBtn icon={Building} label="জেলা পরিবর্তন" onClick={() => requireSelection(onBulkDistrictChange)} />
+        <ActionBtn icon={Building} label="থানা পরিবর্তন" onClick={() => requireSelection(onBulkThanaChange)} />
+        <ActionBtn icon={CheckCircle} label="চালু করুন" onClick={() => requireSelection(onEnableSelected)} />
+        <ActionBtn icon={Download} label="ইনভয়েস" onClick={() => requireSelection(onDownloadInvoice)} />
       </div>
       {/* Row 2 */}
       <div className="flex flex-wrap gap-1.5">
-        <ActionBtn icon={MessageSquare} label="SMS Selected" onClick={() => requireSelection(onSmsSelected)} />
-        <ActionBtn icon={Mail} label="Email Selected" onClick={() => requireSelection(onEmailSelected)} />
-        <ActionBtn icon={CalendarPlus} label="Date Extend" onClick={() => requireSelection(onBulkDateExtend)} />
-        <ActionBtn icon={ArrowRightLeft} label="Migrate Server" onClick={() => requireSelection(onMigrateServer)} color="bg-blue-600 hover:bg-blue-700 text-white" />
-        <ActionBtn icon={Star} label="VIP" onClick={() => requireSelection(onBulkVip)} />
-        <ActionBtn icon={StarOff} label="Remove VIP" onClick={() => requireSelection(onBulkRemoveVip)} />
-        <ActionBtn icon={Settings} label="Profile Change" onClick={() => requireSelection(onBulkProfileChange)} />
+        <ActionBtn icon={MessageSquare} label="SMS পাঠান" onClick={() => requireSelection(onSmsSelected)} />
+        <ActionBtn icon={Mail} label="ইমেইল পাঠান" onClick={() => requireSelection(onEmailSelected)} />
+        <ActionBtn icon={CalendarPlus} label="তারিখ বাড়ান" onClick={() => requireSelection(onBulkDateExtend)} />
+        <ActionBtn icon={ArrowRightLeft} label="সার্ভার মাইগ্রেট" onClick={() => requireSelection(onMigrateServer)} color="bg-blue-600 hover:bg-blue-700 text-white" />
+        <ActionBtn icon={Star} label="VIP করুন" onClick={() => requireSelection(onBulkVip)} />
+        <ActionBtn icon={StarOff} label="VIP বাতিল" onClick={() => requireSelection(onBulkRemoveVip)} />
+        <ActionBtn icon={Settings} label="প্রোফাইল পরিবর্তন" onClick={() => requireSelection(onBulkProfileChange)} />
       </div>
       {selectedCount > 0 && (
         <p className="text-xs text-muted-foreground">{selectedCount} জন ক্লায়েন্ট সিলেক্ট করা হয়েছে</p>

@@ -269,8 +269,8 @@ export default function BillingList() {
                       onCheckedChange={toggleSelectAll}
                     />
                   </TableHead>
-                  <TableHead className="w-10">SN</TableHead>
-                  <TableHead>C.Code</TableHead>
+                  <TableHead className="w-10">ক্রম</TableHead>
+                  <TableHead>ক্লায়েন্ট কোড</TableHead>
                   <TableHead>ID/IP</TableHead>
                   <TableHead>কাস্টমার নাম</TableHead>
                   <TableHead>মোবাইল</TableHead>
@@ -278,15 +278,15 @@ export default function BillingList() {
                   <TableHead>প্যাকেজ</TableHead>
                   <TableHead>স্পিড</TableHead>
                   <TableHead>মেয়াদ</TableHead>
-                  <TableHead>C.Status</TableHead>
-                  <TableHead className="text-right">M.Bill</TableHead>
-                  <TableHead className="text-right">Received</TableHead>
-                  <TableHead className="text-right">Due</TableHead>
-                  <TableHead className="text-right">Advance</TableHead>
-                  <TableHead>Pay Date</TableHead>
-                  <TableHead>B.Status</TableHead>
-                  <TableHead>M.Status</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead>স্ট্যাটাস</TableHead>
+                  <TableHead className="text-right">মাসিক বিল</TableHead>
+                  <TableHead className="text-right">পরিশোধিত</TableHead>
+                  <TableHead className="text-right">বকেয়া</TableHead>
+                  <TableHead className="text-right">অগ্রিম</TableHead>
+                  <TableHead>পরিশোধের তারিখ</TableHead>
+                  <TableHead>বিল স্ট্যাটাস</TableHead>
+                  <TableHead>MikroTik স্ট্যাটাস</TableHead>
+                  <TableHead>অ্যাকশন</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -332,13 +332,13 @@ export default function BillingList() {
                       <TableCell>
                         {isDue ? (
                           <div className="flex items-center gap-1">
-                            <Badge variant="destructive" className="text-[10px] h-6 flex items-center">Due</Badge>
+                            <Badge variant="destructive" className="text-[10px] h-6 flex items-center">বকেয়া</Badge>
                             <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
-                              Pay
+                              পরিশোধ
                             </Button>
                           </div>
                         ) : (
-                          <Badge className="text-[10px] h-6 flex items-center bg-emerald-500/20 text-emerald-600 border-emerald-500/30" variant="outline">Paid</Badge>
+                          <Badge className="text-[10px] h-6 flex items-center bg-emerald-500/20 text-emerald-600 border-emerald-500/30" variant="outline">পরিশোধিত</Badge>
                         )}
                       </TableCell>
                       <TableCell>
