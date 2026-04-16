@@ -1,45 +1,49 @@
 
 
-## সমস্যা
+## Online Client Monitoring পেজ
 
-`create-mikrotik-ppp`-এর `mikrotikCommand` function-এ query parameter (`?name`) ভুলভাবে encode হচ্ছে।
+Screenshot অনুযায়ী MikroTik-এর active PPPoE sessions দেখানোর একটা full-featured monitoring page তৈরি হবে।
 
-- **fetch-mikrotik-ppp** (সঠিক): `?` দিয়ে শুরু হলে `?name=value` পাঠায়
-- **create-mikrotik-ppp** (ভুল): সব param-এ `=` prefix দেয়, তাই `=?name=value` যায় — MikroTik এটা বুঝে না, empty result দেয়
+---
 
-ফলে existing secret check সবসময় empty আসে → `/ppp/secret/add` চলে → "already exists" error।
+### 1. Edge Function — Active Session Data
 
-এছাড়া user-এর আরেকটা requirement: Import from MikroTik-এ যদি password/profile change থাকে, সেটা update করতে হবে (শুধু skip না)।
+`fetch-mikrotik-ppp`-এ নতুন action `"active-sessions"` যোগ হবে:
+- সব enabled MikroTik device-এ `/ppp/active/print` চালাবে
+- প্রতি active session-এর `name`, `address` (IP), `uptime`, `caller-id`, `service`, `encoding` return করবে
+- সাথে device name (server) ও device id পাঠাবে
+- Client DB data (client_id, name, contact, zone, sub_zone, box, connection_type, profile) join করে পাঠাবে
 
-## সমাধান
+### 2. নতুন Page — `OnlineClientMonitoring.tsx`
 
-### 1. `create-mikrotik-ppp/index.ts` — mikrotikCommand fix + update logic
+**4টি Tab** (screenshot অনুযায়ী):
+- **Online Client Monitoring** — active sessions তালিকা
+- **Disabled in system enabled in MikroTik** — DB-তে status disabled কিন্তু MikroTik-এ secret enabled
+- **Enabled in system disabled in MikroTik** — DB-তে active কিন্তু MikroTik-এ disabled
+- **Profile Mismatch** — DB profile ≠ MikroTik profile
 
-**Query param fix** (line ~118-121):
-```typescript
-if (k.startsWith("?")) {
-  words.push(`${k}=${v}`);  // ?name=value
-} else {
-  words.push(`=${k}=${v}`);  // =key=value
-}
-```
+**Summary Cards:** Total Users, Online Users, Offline Users
 
-**Existing secret handling update**:
-- Secret পাওয়া গেলে password/profile/remote_address change আছে কি না check করবে
-- Change থাকলে `/ppp/secret/set` দিয়ে update করবে (`.id` ব্যবহার করে)
-- Change না থাকলে শুধু success return করবে, কিছু করবে না
+**Filters:** Server, Protocol, Status, Zone, Sub Zone, Box, Connection Type
 
-### 2. Frontend (`AddClient.tsx`) — কোনো change লাগবে না
-Frontend already `already_exists` handle করে এবং existing data merge করে। Edge function fix-ই যথেষ্ট।
+**Table Columns:** C.Code, ID/IP, Name, Mobile, Zone, Subzone, Box, Connection Type, Server, Profile, Service, IP Address, Status, Duration, Logout Time, Action
 
-## ফাইল
+**"Sync Clients & Servers" বাটন** — existing `sync-online` action call করবে
+
+### 3. Sidebar ও Route
+
+- `Network Monitoring` submenu-তে সবার উপরে "Online Monitoring" যোগ হবে
+- Route: `/dashboard/monitoring/online`
+- `App.tsx`-এ route add হবে
+
+---
+
+### Files
 
 | File | Change |
 |------|--------|
-| `supabase/functions/create-mikrotik-ppp/index.ts` | `?` param fix + existing secret update logic |
-
-## Expected Result
-- Import from MikroTik → Save → error আর আসবে না
-- Secret আগে থাকলে sync হবে (change থাকলে update, না থাকলে skip)
-- Secret না থাকলে নতুন create হবে
+| `src/pages/dashboard/monitoring/OnlineClientMonitoring.tsx` | **নতুন** — full page |
+| `supabase/functions/fetch-mikrotik-ppp/index.ts` | `active-sessions` action যোগ |
+| `src/components/AppSidebar.tsx` | Monitoring submenu-তে item যোগ |
+| `src/App.tsx` | Route যোগ |
 
