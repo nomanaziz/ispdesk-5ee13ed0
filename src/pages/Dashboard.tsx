@@ -126,7 +126,7 @@ function useStats() {
         // Salary this month
         supabase.from("payroll").select("net_pay").gte("created_at", monthStart),
         // SMS balance (system_settings)
-        supabase.from("system_settings").select("value").eq("key", "sms_balance").maybeSingle(),
+        supabase.from("system_settings").select("setting_value").eq("setting_key", "sms_balance").maybeSingle(),
       ]);
 
       // Fetch client names for latest billing
