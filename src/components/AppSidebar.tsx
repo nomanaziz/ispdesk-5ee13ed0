@@ -426,7 +426,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r-0">
       <div className={cn(
         "flex flex-col h-full transition-colors",
-        isLight ? "bg-card text-foreground border-r border-sidebar-border" : "bg-[#2b2c40] text-white"
+        isLight ? "bg-card text-foreground border-r border-sidebar-border" : "bg-sidebar text-sidebar-foreground"
       )}>
         <div className={cn(
           "flex items-center gap-2.5 px-4 py-4 shrink-0",
