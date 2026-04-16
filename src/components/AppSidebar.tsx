@@ -162,6 +162,7 @@ const menuGroups: MenuGroup[] = [
     icon: Activity,
     iconColor: "text-orange-400",
     items: [
+      { title: "Online Monitoring", url: "/dashboard/monitoring/online", icon: Wifi },
       { title: "Switch List", url: "/dashboard/monitoring/switches", icon: Network },
       { title: "Add Switch", url: "/dashboard/monitoring/add-switch", icon: UserPlus },
       { title: "POP DASS", url: "/dashboard/monitoring/pop-dass", icon: Monitor },
