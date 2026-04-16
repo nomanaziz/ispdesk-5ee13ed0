@@ -102,6 +102,7 @@ import PopIp from "@/pages/dashboard/monitoring/PopIp";
 import PopLog from "@/pages/dashboard/monitoring/PopLog";
 import PingTools from "@/pages/dashboard/monitoring/PingTools";
 import PopDevices from "@/pages/dashboard/monitoring/PopDevices";
+import OnlineClientMonitoring from "@/pages/dashboard/monitoring/OnlineClientMonitoring";
 
 // Network
 import NetworkDiagram from "@/pages/dashboard/network/Diagram";
@@ -357,6 +358,7 @@ const App = () => (
               <Route path="/dashboard/olt/sharing" element={<P><OltSharing /></P>} />
 
               {/* Network Monitoring */}
+              <Route path="/dashboard/monitoring/online" element={<P><OnlineClientMonitoring /></P>} />
               <Route path="/dashboard/monitoring/switches" element={<P><SwitchList /></P>} />
               <Route path="/dashboard/monitoring/add-switch" element={<P><AddSwitch /></P>} />
               <Route path="/dashboard/monitoring/pop-dass" element={<P><PopDass /></P>} />

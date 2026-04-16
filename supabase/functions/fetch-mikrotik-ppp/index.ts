@@ -221,9 +221,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── ACTION: sync-online ──
-    if (action === "sync-online") {
-      const allActiveUsernames: Set<string> = new Set();
+    // ── ACTION: active-sessions ──
+    if (action === "active-sessions") {
+      const allSessions: any[] = [];
+      const allSecrets: Map<string, { profile: string; disabled: boolean; server_name: string }> = new Map();
       const errors: string[] = [];
 
       for (const device of devices) {
@@ -240,6 +241,153 @@ Deno.serve(async (req) => {
           // Get active PPP connections
           const activeConns = await mikrotikCommand(conn, "/ppp/active/print");
           for (const ac of activeConns) {
+            allSessions.push({
+              name: ac.name || "",
+              address: ac.address || "",
+              uptime: ac.uptime || "",
+              caller_id: ac["caller-id"] || "",
+              service: ac.service || "",
+              encoding: ac.encoding || "",
+              server_name: device.name,
+              device_id: device.id,
+            });
+          }
+
+          // Get all secrets for mismatch detection
+          const secrets = await mikrotikCommand(conn, "/ppp/secret/print");
+          for (const s of secrets) {
+            if (s.name) {
+              allSecrets.set(`${s.name.toLowerCase()}::${device.id}`, {
+                profile: s.profile || "",
+                disabled: s.disabled === "true" || s.disabled === "yes",
+                server_name: device.name,
+              });
+            }
+          }
+        } catch (err: any) {
+          errors.push(`${device.name}: ${err.message}`);
+        } finally {
+          try { conn?.close(); } catch { /* ignore */ }
+        }
+      }
+
+      // Fetch clients from DB with zone/subzone/box names
+      const { data: clients } = await supabase
+        .from("clients")
+        .select(`
+          id, client_id, username, name, contact, status, profile, connection_type, mikrotik_id, is_online,
+          zones:zone_id(name),
+          sub_zones:sub_zone_id(name),
+          boxes:box_id(name)
+        `);
+
+      const clientMap = new Map<string, any>();
+      if (clients) {
+        for (const c of clients) {
+          if (c.username) {
+            clientMap.set(c.username.toLowerCase(), c);
+          }
+        }
+      }
+
+      // Enrich sessions with client data
+      const enrichedSessions = allSessions.map((s) => {
+        const client = clientMap.get(s.name.toLowerCase());
+        return {
+          ...s,
+          client_id: client?.id || null,
+          client_code: client?.client_id || "",
+          client_name: client?.name || "",
+          contact: client?.contact || "",
+          zone_name: (client?.zones as any)?.name || "",
+          sub_zone_name: (client?.sub_zones as any)?.name || "",
+          box_name: (client?.boxes as any)?.name || "",
+          connection_type: client?.connection_type || "",
+          profile: client?.profile || "",
+          status: client?.status || "",
+        };
+      });
+
+      // Build mismatch data
+      const disabledInSystem: any[] = [];
+      const enabledInSystem: any[] = [];
+      const profileMismatch: any[] = [];
+
+      if (clients) {
+        for (const client of clients) {
+          if (!client.username || !client.mikrotik_id) continue;
+          const key = `${client.username.toLowerCase()}::${client.mikrotik_id}`;
+          const mkSecret = allSecrets.get(key);
+          if (!mkSecret) continue;
+
+          const clientInfo = {
+            username: client.username,
+            client_code: client.client_id,
+            client_name: client.name,
+            contact: client.contact || "",
+            zone_name: (client.zones as any)?.name || "",
+            sub_zone_name: (client.sub_zones as any)?.name || "",
+            box_name: (client.boxes as any)?.name || "",
+            server_name: mkSecret.server_name,
+            db_profile: client.profile || "",
+            mk_profile: mkSecret.profile,
+            db_status: client.status,
+            mk_disabled: mkSecret.disabled,
+          };
+
+          // Disabled in system but enabled in MikroTik
+          if (client.status !== "active" && !mkSecret.disabled) {
+            disabledInSystem.push(clientInfo);
+          }
+
+          // Active in system but disabled in MikroTik
+          if (client.status === "active" && mkSecret.disabled) {
+            enabledInSystem.push(clientInfo);
+          }
+
+          // Profile mismatch
+          if (client.profile && mkSecret.profile && client.profile.toLowerCase() !== mkSecret.profile.toLowerCase()) {
+            profileMismatch.push(clientInfo);
+          }
+        }
+      }
+
+      const totalClients = clients?.length || 0;
+      const onlineCount = enrichedSessions.length;
+      const offlineCount = totalClients - onlineCount;
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          sessions: enrichedSessions,
+          online_count: onlineCount,
+          offline_count: offlineCount > 0 ? offlineCount : 0,
+          total_clients: totalClients,
+          mismatch: { disabledInSystem, enabledInSystem, profileMismatch },
+          errors,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── ACTION: sync-online ──
+    if (action === "sync-online") {
+      const allActiveUsernames: Set<string> = new Set();
+      const errors: string[] = [];
+
+      for (const device of devices) {
+        let conn: Deno.TcpConn | null = null;
+        try {
+          const username = device.username || "admin";
+          const password = device.password_encrypted || "";
+          const port = device.api_port || 8728;
+          const ip = device.ip_address;
+
+          conn = await Deno.connect({ hostname: ip, port });
+          await mikrotikLogin(conn, username, password);
+
+          const activeConns = await mikrotikCommand(conn, "/ppp/active/print");
+          for (const ac of activeConns) {
             if (ac.name) {
               allActiveUsernames.add(ac.name.toLowerCase());
             }
@@ -251,7 +399,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Fetch all clients with usernames
       const { data: allClients } = await supabase
         .from("clients")
         .select("id, username, is_online");
@@ -260,7 +407,6 @@ Deno.serve(async (req) => {
       let offlineCount = 0;
 
       if (allClients && allClients.length > 0) {
-        // Batch update: set online clients
         const onlineIds: string[] = [];
         const offlineIds: string[] = [];
 
@@ -275,7 +421,6 @@ Deno.serve(async (req) => {
           else offlineCount++;
         }
 
-        // Update in batches of 100
         for (let i = 0; i < onlineIds.length; i += 100) {
           const batch = onlineIds.slice(i, i + 100);
           await supabase.from("clients").update({ is_online: true }).in("id", batch);
@@ -292,9 +437,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── ACTION: sync-secrets (default / original behavior) ──
+    // ── ACTION: sync-secrets (default) ──
 
-    // Fetch existing client usernames to exclude
     const { data: existingClients } = await supabase
       .from("clients")
       .select("username");
