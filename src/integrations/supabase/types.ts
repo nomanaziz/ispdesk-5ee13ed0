@@ -630,20 +630,40 @@ export type Database = {
           branch_id: string | null
           client_code: string | null
           client_code_prefix: string | null
+          client_create_permission: boolean
+          company_name: string | null
           contact: string | null
           created_at: string
+          disable_clients: boolean
+          district_id: string | null
           email: string | null
+          fund_started: boolean
+          fund_started_at: string | null
           id: string
+          is_locked: boolean
+          logo_url: string | null
+          min_balance: number
           min_recharge: number | null
           name: string
+          national_id: string | null
           nid_number: string | null
           password: string | null
+          permissions: Json
+          phone: string | null
+          pop_code: string | null
+          pop_level: number
+          pop_prefix: string | null
+          pop_type: string
           portal_enabled: boolean
+          server_id: string | null
+          set_prefix_mikrotik: boolean
           status: string
           tariff_id: string | null
+          upazila_id: string | null
           use_prefix: boolean
           user_id: string | null
           username: string | null
+          zone_id: string | null
         }
         Insert: {
           address?: string | null
@@ -651,20 +671,40 @@ export type Database = {
           branch_id?: string | null
           client_code?: string | null
           client_code_prefix?: string | null
+          client_create_permission?: boolean
+          company_name?: string | null
           contact?: string | null
           created_at?: string
+          disable_clients?: boolean
+          district_id?: string | null
           email?: string | null
+          fund_started?: boolean
+          fund_started_at?: string | null
           id?: string
+          is_locked?: boolean
+          logo_url?: string | null
+          min_balance?: number
           min_recharge?: number | null
           name: string
+          national_id?: string | null
           nid_number?: string | null
           password?: string | null
+          permissions?: Json
+          phone?: string | null
+          pop_code?: string | null
+          pop_level?: number
+          pop_prefix?: string | null
+          pop_type?: string
           portal_enabled?: boolean
+          server_id?: string | null
+          set_prefix_mikrotik?: boolean
           status?: string
           tariff_id?: string | null
+          upazila_id?: string | null
           use_prefix?: boolean
           user_id?: string | null
           username?: string | null
+          zone_id?: string | null
         }
         Update: {
           address?: string | null
@@ -672,20 +712,40 @@ export type Database = {
           branch_id?: string | null
           client_code?: string | null
           client_code_prefix?: string | null
+          client_create_permission?: boolean
+          company_name?: string | null
           contact?: string | null
           created_at?: string
+          disable_clients?: boolean
+          district_id?: string | null
           email?: string | null
+          fund_started?: boolean
+          fund_started_at?: string | null
           id?: string
+          is_locked?: boolean
+          logo_url?: string | null
+          min_balance?: number
           min_recharge?: number | null
           name?: string
+          national_id?: string | null
           nid_number?: string | null
           password?: string | null
+          permissions?: Json
+          phone?: string | null
+          pop_code?: string | null
+          pop_level?: number
+          pop_prefix?: string | null
+          pop_type?: string
           portal_enabled?: boolean
+          server_id?: string | null
+          set_prefix_mikrotik?: boolean
           status?: string
           tariff_id?: string | null
+          upazila_id?: string | null
           use_prefix?: boolean
           user_id?: string | null
           username?: string | null
+          zone_id?: string | null
         }
         Relationships: [
           {
@@ -3987,6 +4047,44 @@ export type Database = {
           },
         ]
       }
+      pop_fund_start_logs: {
+        Row: {
+          action: string
+          created_at: string
+          created_by: string | null
+          effective_from: string | null
+          id: string
+          note: string | null
+          pop_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string | null
+          id?: string
+          note?: string | null
+          pop_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string | null
+          id?: string
+          note?: string | null
+          pop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pop_fund_start_logs_pop_id_fkey"
+            columns: ["pop_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pop_ip_addresses: {
         Row: {
           assigned_to: string | null
@@ -4056,6 +4154,47 @@ export type Database = {
             columns: ["pop_id"]
             isOneToOne: false
             referencedRelation: "pop_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pop_transactions: {
+        Row: {
+          amount: number
+          balance_after: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          pop_id: string
+          type: string
+        }
+        Insert: {
+          amount?: number
+          balance_after?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          pop_id: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          pop_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pop_transactions_pop_id_fkey"
+            columns: ["pop_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
             referencedColumns: ["id"]
           },
         ]

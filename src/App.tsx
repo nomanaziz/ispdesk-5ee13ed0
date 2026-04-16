@@ -122,6 +122,7 @@ import LeaveApproval from "@/pages/dashboard/leave/Approval";
 import BranchTariff from "@/pages/dashboard/branches/Tariff";
 import BranchAddManager from "@/pages/dashboard/branches/AddManager";
 import BranchManagers from "@/pages/dashboard/branches/Managers";
+import PopProfile from "@/pages/dashboard/branches/PopProfile";
 import BranchFunding from "@/pages/dashboard/branches/Funding";
 import BranchPgwPayments from "@/pages/dashboard/branches/PgwPayments";
 import BranchPgwSettlement from "@/pages/dashboard/branches/PgwSettlement";
@@ -390,6 +391,7 @@ const App = () => (
               <Route path="/dashboard/branches/tariff" element={<P><BranchTariff /></P>} />
               <Route path="/dashboard/branches/add-manager" element={<P><BranchAddManager /></P>} />
               <Route path="/dashboard/branches/managers" element={<P><BranchManagers /></P>} />
+              <Route path="/dashboard/branches/pop/:id" element={<P><PopProfile /></P>} />
               <Route path="/dashboard/branches/funding" element={<P><BranchFunding /></P>} />
               <Route path="/dashboard/branches/pgw-payments" element={<P><BranchPgwPayments /></P>} />
               <Route path="/dashboard/branches/pgw-settlement" element={<P><BranchPgwSettlement /></P>} />
