@@ -58,6 +58,7 @@ export default function BillingList() {
             package:isp_packages(name),
             billing!billing_client_id_fkey(id, month, amount, paid, due, discount, advance, vat, status, pay_date)
           `)
+          .eq("status", "active")
           .order("client_id", { ascending: true }),
         supabase.functions.invoke("fetch-mikrotik-ppp", {
           body: { action: "active-sessions", device_id: "all" },
