@@ -264,7 +264,7 @@ export default function BillingList() {
                   <TableHead className="text-right">Advance</TableHead>
                   <TableHead>Pay Date</TableHead>
                   <TableHead>B.Status</TableHead>
-                  <TableHead>M.Online</TableHead>
+                  <TableHead>M.Status</TableHead>
                   <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -283,7 +283,12 @@ export default function BillingList() {
                         <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
                       </TableCell>
                       <TableCell>{(page - 1) * perPage + i + 1}</TableCell>
-                      <TableCell className="font-mono text-xs">{c.client_id}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className={`inline-block h-2 w-2 rounded-full ${c.isOnlineLive ? "bg-green-500" : "bg-gray-400"}`} />
+                          {c.client_id}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-xs">{c.username || c.remote_address || "-"}</TableCell>
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell>{c.contact || "-"}</TableCell>
@@ -314,20 +319,7 @@ export default function BillingList() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <Switch
-                            checked={Boolean(c.isOnlineLive)}
-                            onCheckedChange={() => undefined}
-                            className="pointer-events-none scale-75"
-                            aria-label={c.isOnlineLive ? "Online" : "Offline"}
-                          />
-                          <Badge variant={c.isOnlineLive ? "default" : "secondary"} className="text-[10px] h-6">
-                            {c.isOnlineLive ? "Online" : "Offline"}
-                          </Badge>
-                          {c.mikrotik_status === "disabled" ? (
-                            <Badge variant="destructive" className="text-[10px] h-6">Disabled</Badge>
-                          ) : null}
-                        </div>
+                        <MikrotikToggle client={c} queryClient={queryClient} />
                       </TableCell>
                       <TableCell>
                         <ClientActionButtons client={c} mode="billing" invalidateKey="billing-list" />
