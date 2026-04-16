@@ -122,6 +122,7 @@ import LeaveApproval from "@/pages/dashboard/leave/Approval";
 import BranchTariff from "@/pages/dashboard/branches/Tariff";
 import BranchAddManager from "@/pages/dashboard/branches/AddManager";
 import BranchManagers from "@/pages/dashboard/branches/Managers";
+import PopProfile from "@/pages/dashboard/branches/PopProfile";
 import BranchFunding from "@/pages/dashboard/branches/Funding";
 import BranchPgwPayments from "@/pages/dashboard/branches/PgwPayments";
 import BranchPgwSettlement from "@/pages/dashboard/branches/PgwSettlement";
