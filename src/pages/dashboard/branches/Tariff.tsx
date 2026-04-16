@@ -167,7 +167,7 @@ export default function Tariff() {
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-1" /> ট্যারিফ যোগ করুন</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editId ? "ট্যারিফ এডিট" : "নতুন ট্যারিফ"}</DialogTitle>
             </DialogHeader>
