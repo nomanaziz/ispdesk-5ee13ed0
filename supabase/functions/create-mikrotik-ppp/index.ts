@@ -150,9 +150,9 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { mikrotik_id, username, password, profile, remote_address, disabled } = body;
 
-    if (!mikrotik_id || !username || !password) {
+    if (!mikrotik_id || !username) {
       return new Response(
-        JSON.stringify({ error: "mikrotik_id, username, and password are required" }),
+        JSON.stringify({ error: "mikrotik_id and username are required" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -182,7 +182,37 @@ Deno.serve(async (req) => {
     try {
       await mikrotikLogin(conn, apiUser, apiPass);
 
-      // Create PPP secret
+      // First check if PPP secret already exists
+      const existing = await mikrotikCommand(conn, "/ppp/secret/print", { "?name": username });
+
+      if (existing.length > 0) {
+        // Secret already exists — return success without creating
+        const secret = existing[0];
+        conn.close();
+
+        const isDisabled = secret.disabled === "true" || secret.disabled === "yes";
+        return new Response(
+          JSON.stringify({
+            success: true,
+            already_exists: true,
+            message: `PPPoE user '${username}' already exists on ${device.name}`,
+            mikrotik_status: isDisabled ? "disabled" : "enabled",
+            existing_profile: secret.profile || null,
+            existing_remote_address: secret["remote-address"] || null,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Secret does not exist — create it
+      if (!password) {
+        conn.close();
+        return new Response(
+          JSON.stringify({ error: "Password is required to create a new PPP secret" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+
       const params: Record<string, string> = {
         name: username,
         password: password,
@@ -201,6 +231,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
+          already_exists: false,
           message: `PPPoE user '${username}' created on ${device.name}`,
           mikrotik_status: disabled === true || disabled === "yes" ? "disabled" : "enabled",
         }),
