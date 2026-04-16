@@ -1,15 +1,24 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
+export type PortalUserType = "client" | "bw_customer" | "reseller";
+
 interface PortalCustomer {
   sub: string;
   name: string;
   code: string;
   username: string;
-  pop_id: string | null;
-  email: string | null;
-  mobile: string | null;
-  contact_person: string | null;
-  address: string | null;
+  type: PortalUserType;
+  pop_id?: string | null;
+  email?: string | null;
+  mobile?: string | null;
+  contact_person?: string | null;
+  address?: string | null;
+  branch_id?: string | null;
+  zone_id?: string | null;
+  package_id?: string | null;
+  monthly_bill?: number | null;
+  balance?: number | null;
+  tariff_id?: string | null;
   iat: number;
   exp: number;
 }
@@ -18,7 +27,7 @@ interface PortalAuthContextType {
   customer: PortalCustomer | null;
   token: string | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<{ error?: string }>;
+  login: (username: string, password: string) => Promise<{ error?: string; type?: PortalUserType }>;
   logout: () => void;
 }
 
@@ -71,7 +80,7 @@ export const PortalAuthProvider = ({ children }: { children: React.ReactNode }) 
       localStorage.setItem("portal_token", data.token);
       setToken(data.token);
       setCustomer(data.customer);
-      return {};
+      return { type: data.customer?.type as PortalUserType };
     } catch {
       return { error: "Network error. Please try again." };
     }
