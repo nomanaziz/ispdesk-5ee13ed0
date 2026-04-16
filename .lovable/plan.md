@@ -1,90 +1,134 @@
 
 
-## Unified Login System (সব ধরনের User-এর জন্য)
+## POP (Branch Manager) System — Full Implementation
 
-### সমস্যা
+### লক্ষ্য
 
-বর্তমানে দুটি আলাদা login page আছে এবং reseller-এর কোনো login নেই:
+দুটি image অনুযায়ী পূর্ণাঙ্গ POP system:
+1. **Add POP page** — Personal Info + Business/Login Info + Permission menu (multi-section form, image-1)
+2. **POP List page** — stats cards, filters, big table with toggles, action menu (image-2)
+3. **POP View page** — tabbed profile view (image-3)
+4. **Prepaid/Postpaid billing logic** + Fund Start workflow
 
-| User Type | Login Page | Method |
-|-----------|-----------|--------|
-| Admin/Staff | `/login` | Email + password (Supabase auth) |
-| Client (PPP user) | `/portal/login` | PPP Username/Client Code + password |
-| BW Sale Customer | `/portal/login` | Username + password |
-| **Reseller (POP/Branch Manager)** | ❌ **নেই** | — |
-| **MAC Reseller** | ❌ **নেই** | — |
+### ১. DB Migration
 
-User চান — একটাই login page (`/login`) যেখান থেকে **সব ধরনের user** তাদের credentials দিয়ে login করতে পারবে।
+**`branch_managers`-এ নতুন columns:**
+- `pop_code text unique` — auto: 0001, 0002, …
+- `pop_prefix text` — Mikrotik username prefix (ex: AB1)
+- `set_prefix_mikrotik boolean default false`
+- `pop_type text default 'prepaid'` — prepaid / postpaid
+- `phone text`, `national_id text`
+- `district_id uuid`, `upazila_id uuid`, `zone_id uuid`
+- `logo_url text`
+- `disable_clients boolean default true` ("Want to disable clients?")
+- `min_balance numeric default 0`
+- `fund_started boolean default false` — first off, on করলে পরের রাত থেকে billing
+- `fund_started_at timestamptz`
+- `is_locked boolean default false`
+- `client_create_permission boolean default true`
+- `pop_level int default 1`
+- `permissions jsonb default '{}'` — menu permissions object
 
-### সমাধান — Smart Universal Login
+**নতুন table — `pop_permissions_template`** (optional reference):
+- কোন কোন menu key allow করা যায় তার master list (পরে seed)
 
-`/login` page-কে **smart router** বানাব। User input বুঝে নিয়ে সঠিক জায়গায় auth করবে এবং সঠিক জায়গায় redirect করবে।
+**নতুন table — `pop_transactions`** (debit/credit log):
+- `id, pop_id, type ('debit'|'credit'|'fund_deduction'), amount, balance_after, description, created_by, created_at`
 
-#### Login Detection Logic
+**`reseller_tariffs`-এ already আছে** `selling_rate`, `activation_days`, `min_activation_days`, `is_daily_recharge` — এগুলোই prepaid/postpaid logic-এ ব্যবহার হবে।
 
-User শুধু **Username/Email** আর **Password** input দেবে। System order-এ check করবে:
+### ২. Page Structure
+
+#### A. `AddManager.tsx` — সম্পূর্ণ Redesign (image-1 অনুসরণে)
+
+তিনটি Card section:
+
+**Card 1 — Personal Information**
+Contact Person Name*, Email*, Mobile*, Phone, National ID, District*, Upazila*, Zone*, POP Code* (auto), POP Prefix, Set Prefix in Mikrotik?, **POP Type*** (prepaid/postpaid), Min Rechargeable Amount*, Address*, POP Logo (upload)
+
+**Card 2 — Business & Login Information**
+POP/Business Name*, Tariff Name* (reseller_tariffs select), Want to Disable Clients? (yes/no), Minimum Balance, **Username***, **Password***, **Confirm Password***
+
+**Card 3 — POP Menus (Permission Tree)**
+Checkbox tree — group → child items। "Select All Menus" toggle। Default-এ payment gateway-related সব unchecked, বাকি basic menus checked। Saved as `permissions` jsonb।
+
+Permission groups (admin website-এর mirror):
+- Configuration (Zone, Package, District, Upazila, Department, SubZone, Box, Device)
+- Mikrotik Client
+- Employee (Add, List, Salary)
+- Client (Add, List, Left, Scheduler, Change Request, Portal Manage)
+- Billing (List, Invoice, Daily Collection) — **Payment Gateway excluded**
+- Monitoring (Client Monitoring)
+- Client Support (Category, Daily/Monthly Complaint)
+- SMS Service (Template, Individual, Group, Gateway)
+- Reports (BTRC, Enable/Disable, Bill Collection, Messages, Processing Fee)
+- Fund History (Debit, Credit)
+- Tutorials
+
+#### B. `Managers.tsx` (POP List) — Full Rebuild (image-2 অনুসরণে)
+
+**Top stats cards (3):**
+- Total POPs
+- Total POP Clients (sum)
+- Online Clients
+
+**Filters row:** Fund Start, POP Type, Login Status, Client Enabled, POP Status, Creation From/To
+
+**Table columns:** Code, POP Name, POP Type (badge), ContactPerson, Server Name, Mobile, Company Name, Level, TariffName, Clients(Running), Clients(Enabled), Clients(Disabled), Clients(Left), RemainingFund, **ClientEnabled toggle**, **FundStart toggle**, **IsLocked toggle**, Action menu (3-dots)
+
+**Action dropdown:** View, Edit, Login as POP, Password Regenerate, Fund Deduction, POP Type Change, Send Email/Message, Delete
+
+#### C. নতুন `PopProfile.tsx` (image-3) — `/dashboard/branches/pop/:id`
+
+Left card: avatar, name, address, email, POP Code, mobile, running/left clients, remaining balance, Client Create Permission toggle, Set Prefix toggle, joining date, address, action buttons (Update, Send Email, POP Type Change, Password Regenerate, Login As POP, Add POP Client, Go to POPs)
+
+Right tabs:
+- **POP Information** — Service Info + Personal Info + Fund Info At A Glance (image-3 layout)
+- **Exported Clients** — clients বর্তমানে assigned
+- **Unexported Clients** — clients এ POP-এর অধীনে নেই
+- **Debited/Credited Transactions** — pop_transactions table
+- **POP Change Logs** — audit trail
+- **POP Fund Start Logs**
+- **POP Online Clients**
+
+### ৩. Billing Logic (Edge function update)
+
+`generate-monthly-billing` / `enforce-billing` update:
+- POP-এর `pop_type='prepaid'` হলে → POP-এর প্রতিটি client-এর জন্য **daily** balance থেকে `selling_rate / activation_days` deduct (e.g., ৳230/30 = ৳7.67/day)
+- `postpaid` হলে → daily auto-deduct **নেই**, monthly-end-এ একবার bill
+- `fund_started=false` হলে কোনো deduction নয়
+- POP balance < `min_balance` এবং `disable_clients=true` হলে → POP-এর সব client disabled
+
+### ৪. Routes (`App.tsx`)
 
 ```
-1. Input "@" আছে? → Admin/Staff (Supabase auth) → /dashboard
-2. clients table-এ username/client_id match? → Client portal → /portal/dashboard
-3. branch_managers (resellers) table-এ contact/email/code match? → Reseller portal → /reseller/dashboard
-4. bw_sale_customers table-এ username match? → BW portal → /portal/dashboard (bw view)
-5. কিছু না মিললে → "Invalid credentials" error
+/dashboard/branches/managers       → POP List (rebuilt)
+/dashboard/branches/add-manager    → Add POP (3-card form)
+/dashboard/branches/pop/:id        → POP Profile (tabbed view)
 ```
 
-### পরিবর্তন সমূহ
+### ৫. Files
 
-#### 1. DB Migration — Reseller-এ login fields যোগ
-- `branch_managers`-এ `username text unique`, `password text`, `portal_enabled boolean default true` যোগ
-- বর্তমান reseller-দের জন্য default username = `client_code` বা `contact`
-
-#### 2. Edge Function `portal-auth` Update
-- নতুন detection branch: clients fail হলে → **branch_managers** check করবে (`username`, `client_code`, `contact`, `email` যেকোনো একটায় match)
-- Token-এ `type: "reseller"` যোগ
-- Reseller-এর জন্য token payload-এ `branch_id`, `balance`, `tariff_id` ইত্যাদি
-
-#### 3. `Login.tsx` — Universal Login Form
-- Label পরিবর্তন: "ইমেইল" → **"ইমেইল / ইউজারনেম / PPP ID"**
-- Submit handler-এ দুই-step logic:
-  - Input-এ `@` থাকলে → Supabase `signIn()` → success হলে `/dashboard`
-  - নাহলে → portal-auth edge function call → token-এর `type` দেখে redirect:
-    - `client` / `bw_customer` → `/portal/dashboard`
-    - `reseller` → `/reseller/dashboard`
-- Loading/error handling বাংলায়
-
-#### 4. `/portal/login` Route
-- Backwards compatibility-র জন্য রাখব, কিন্তু সেটা `/login`-এ redirect করবে
-- বা UI-তে ছোট link: "এখানে সব user login করতে পারে"
-
-#### 5. Reseller Portal (basic skeleton)
-- `/reseller/login` removed (use `/login`)
-- `/reseller/dashboard` — minimal page (balance, tariff, client count)
-- `ResellerProtectedRoute` + `ResellerLayout` (PortalLayout-এর মতো, but reseller-specific menu)
-- Phase 1-এ শুধু dashboard + logout — পরে invoices/clients/etc যোগ হবে
-
-#### 6. `PortalAuthContext` Update
-- Customer type field: `"client" | "bw_customer" | "reseller"` discriminator হবে
-- Type-aware রকম helper
-
-### Files
-
-| File | Change |
+| File | Action |
 |------|--------|
-| migration | `branch_managers`-এ `username`, `password`, `portal_enabled` যোগ; existing-দের জন্য default fill |
-| `supabase/functions/portal-auth/index.ts` | Reseller branch যোগ — branch_managers query + token type |
-| `src/pages/Login.tsx` | Universal input, smart routing, বাংলা label |
-| `src/contexts/PortalAuthContext.tsx` | `type` field expand, reseller support |
-| `src/pages/portal/PortalLogin.tsx` | `/login`-এ redirect (deprecated) |
-| `src/components/ResellerProtectedRoute.tsx` | **নতুন** — reseller route guard |
-| `src/components/ResellerLayout.tsx` | **নতুন** — reseller portal layout |
-| `src/pages/reseller/ResellerDashboard.tsx` | **নতুন** — basic dashboard (balance, stats) |
-| `src/App.tsx` | `/reseller/*` routes mount, `/portal/login` → `/login` redirect |
+| migration | branch_managers + pop_transactions schema |
+| `src/pages/dashboard/branches/AddManager.tsx` | Full rebuild — 3-section form + permission tree |
+| `src/pages/dashboard/branches/Managers.tsx` | Full rebuild — stats, filters, toggles, action menu |
+| `src/pages/dashboard/branches/PopProfile.tsx` | **নতুন** — tabbed profile (image-3) |
+| `src/components/branches/PopActionMenu.tsx` | **নতুন** — dropdown action (login-as, regen, etc.) |
+| `src/components/branches/FundDeductionDialog.tsx` | **নতুন** |
+| `src/components/branches/PasswordRegenerateDialog.tsx` | **নতুন** |
+| `src/components/branches/PermissionTreeSelector.tsx` | **নতুন** — checkbox tree |
+| `src/App.tsx` | `/branches/pop/:id` route mount |
+| `supabase/functions/enforce-billing/index.ts` | prepaid/postpaid daily logic |
+| storage bucket | `pop-logos` (public) |
 
-### Approach & Notes
+### Approach
 
-- **Phase 1** (এখন): Universal login + reseller basic dashboard
-- **Phase 2** (পরে): Reseller-এর full portal (clients manage, recharge, invoices) — যখন বলবেন
-- **Security note**: Reseller/client password বর্তমানে **plain text**-এ আছে DB-তে। Production-এ এটা bcrypt hash করা উচিত — Phase 2-এ সেটাও handle করব
-- Admin login (Supabase auth) আগের মতোই কাজ করবে — শুধু same form থেকে route হবে
-- কেউ reseller create করার সময় Manager add form-এ username/password set করতে পারবে (পরে Managers.tsx update করব)
+- **Phase 1 (এখন):** DB migration, Add POP form, POP List rebuild, POP Profile basic view, Action dropdown (delete/edit/view/login-as/password-regenerate/fund-deduction), permissions JSON storage
+- **Phase 2 (পরে):** Billing engine prepaid logic, Reseller portal-এ permission enforcement (menu rendering check), fund start log audit table
+
+- Permission enforcement: Phase 1-এ store হবে; Phase 2-এ ResellerLayout-এ check করে menu render হবে
+- "Login as POP" → admin তার session preserve করে reseller token issue করে নতুন tab-এ `/reseller/dashboard` খুলবে
+- Bangla labels, compact spacing (Vuexy-inspired)
 
