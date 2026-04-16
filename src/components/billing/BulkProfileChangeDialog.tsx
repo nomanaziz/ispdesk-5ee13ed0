@@ -21,7 +21,7 @@ export default function BulkProfileChangeDialog({ open, onOpenChange, selectedCl
   const { data: packages = [] } = useQuery({
     queryKey: ["packages-for-bulk"],
     queryFn: async () => {
-      const { data } = await supabase.from("isp_packages").select("id, name, speed, price").eq("status", "active");
+      const { data } = await supabase.from("isp_packages").select("id, name, bandwidth_down, price").eq("status", "active");
       return data || [];
     },
   });
@@ -36,7 +36,7 @@ export default function BulkProfileChangeDialog({ open, onOpenChange, selectedCl
         .update({
           package_id: packageId,
           profile: selectedPkg?.name || "",
-          speed: selectedPkg?.speed || "",
+          speed: selectedPkg?.bandwidth_down || "",
           monthly_bill: selectedPkg?.price || 0,
         })
         .in("id", selectedClients.map((c) => c.id));
@@ -82,7 +82,7 @@ export default function BulkProfileChangeDialog({ open, onOpenChange, selectedCl
           <SelectTrigger><SelectValue placeholder="Package সিলেক্ট করুন" /></SelectTrigger>
           <SelectContent>
             {packages.map((p: any) => (
-              <SelectItem key={p.id} value={p.id}>{p.name} — {p.speed} — ৳{p.price}</SelectItem>
+              <SelectItem key={p.id} value={p.id}>{p.name} — {p.bandwidth_down} — ৳{p.price}</SelectItem>
             ))}
           </SelectContent>
         </Select>

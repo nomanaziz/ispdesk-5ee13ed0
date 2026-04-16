@@ -73,7 +73,7 @@ export default function BillingFilterPanel({ filters, onChange, onReset }: Props
   const { data: servers = [] } = useQuery({
     queryKey: ["filter-servers"],
     queryFn: async () => {
-      const { data } = await supabase.from("mikrotik_devices").select("id, name").eq("status", "active");
+      const { data } = await supabase.from("mikrotik_devices").select("id, name").eq("enabled", true);
       return data || [];
     },
   });

@@ -25,7 +25,7 @@ export default function ServerMigrationDialog({ open, onOpenChange, selectedClie
   const { data: servers = [] } = useQuery({
     queryKey: ["mikrotik-servers"],
     queryFn: async () => {
-      const { data } = await supabase.from("mikrotik_devices").select("id, name, ip_address").eq("status", "active");
+      const { data } = await supabase.from("mikrotik_devices").select("id, name, ip_address").eq("enabled", true);
       return data || [];
     },
   });
