@@ -397,14 +397,18 @@ Deno.serve(async (req) => {
 
           // Fetch PPP secrets for enabled/disabled status
           const secrets = await mikrotikCommand(conn, "/ppp/secret/print");
+          console.log(`[sync-online] Device ${device.name}: fetched ${secrets.length} secrets`);
+          let disabledCount = 0;
           for (const s of secrets) {
             if (s.name) {
               const key = `${s.name.toLowerCase()}::${device.id}`;
-              allSecrets.set(key, {
-                disabled: s.disabled === "true" || s.disabled === "yes",
-              });
+              // MikroTik may return "true"/"yes" or not include disabled field at all (meaning enabled)
+              const isDisabled = s.disabled === "true" || s.disabled === "yes";
+              if (isDisabled) disabledCount++;
+              allSecrets.set(key, { disabled: isDisabled });
             }
           }
+          console.log(`[sync-online] Device ${device.name}: ${disabledCount} disabled, ${secrets.length - disabledCount} enabled`);
         } catch (err: any) {
           errors.push(`${device.name}: ${err.message}`);
         } finally {
@@ -447,7 +451,9 @@ Deno.serve(async (req) => {
                 if (mkStatus === "enabled") enableIds.push(client.id);
                 else disableIds.push(client.id);
                 statusSynced++;
-              }
+        }
+
+        console.log(`[sync-online] Matched ${allSecrets.size} secrets. Online: ${onlineIds.length} new, Offline: ${offlineIds.length} new, Enable: ${enableIds.length}, Disable: ${disableIds.length}`);
             }
           }
         }
