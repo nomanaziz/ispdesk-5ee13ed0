@@ -171,7 +171,7 @@ async function mikrotikCommand(conn: Deno.TcpConn, command: string, params?: Rec
   return results;
 }
 
-// Supported actions: update, disable, enable, remove
+// Supported actions: update, disable, enable, remove, list-profiles
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -186,12 +186,53 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { mikrotik_id, client_id, username, action, password, profile, remote_address, disabled } = body;
 
-    if (!mikrotik_id || !username || !action) {
+    if (!mikrotik_id || !action) {
       return new Response(
-        JSON.stringify({ error: "mikrotik_id, username, and action are required" }),
+        JSON.stringify({ error: "mikrotik_id and action are required" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { data: device, error: devErr } = await supabase
+      .from("mikrotik_devices")
+      .select("*")
+      .eq("id", mikrotik_id)
+      .single();
+
+    if (devErr || !device) {
+      return new Response(
+        JSON.stringify({ error: "MikroTik device not found" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const ip = device.ip_address;
+    const port = device.api_port || 8728;
+    const apiUser = device.username || "admin";
+    const apiPass = device.password_encrypted || "";
+
+    const conn = await Deno.connect({ hostname: ip, port });
+
+    try {
+      await mikrotikLogin(conn, apiUser, apiPass);
+
+      // Handle list-profiles action separately
+      if (action === "list-profiles") {
+        const profiles = await mikrotikCommand(conn, "/ppp/profile/print");
+        conn.close();
+        return new Response(
+          JSON.stringify({ success: true, profiles }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!username) {
+        conn.close();
+        return new Response(
+          JSON.stringify({ error: "username is required for this action" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
     const { data: device, error: devErr } = await supabase
       .from("mikrotik_devices")
