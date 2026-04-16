@@ -137,7 +137,7 @@ function useStats() {
         lastMonthProfit: incLM - expLM,
         onlineOnu: onuData.filter(o => o.status === "online").length,
         totalOnu: onuData.length,
-        totalPop: totalPop.count ?? 0,
+        totalPop: 0,
         latestInvoices,
         upcomingExpire: (upcomingExpire.data ?? []).map(c => ({
           client_id: c.client_id,
