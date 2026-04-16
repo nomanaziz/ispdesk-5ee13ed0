@@ -36,7 +36,7 @@ export default function BulkProfileChangeDialog({ open, onOpenChange, selectedCl
         .update({
           package_id: packageId,
           profile: selectedPkg?.name || "",
-          speed: selectedPkg?.bandwidth_down || "",
+          speed: String(selectedPkg?.bandwidth_down || ""),
           monthly_bill: selectedPkg?.price || 0,
         })
         .in("id", selectedClients.map((c) => c.id));
