@@ -45,7 +45,6 @@ async function writeSentence(conn: Deno.TcpConn, words: string[]): Promise<void>
   for (const word of words) {
     parts.push(encodeWord(word));
   }
-  // End-of-sentence: zero-length word
   parts.push(new Uint8Array([0]));
 
   let totalLen = 0;
@@ -122,7 +121,6 @@ async function readSentence(conn: Deno.TcpConn): Promise<string[]> {
   return words;
 }
 
-// Parse a sentence like ["!re", "=name=user1", "=password=pass1", ...] into an object
 function parseSentenceAttrs(words: string[]): Record<string, string> {
   const attrs: Record<string, string> = {};
   for (const word of words) {
@@ -162,7 +160,11 @@ async function mikrotikCommand(
   const words = [command];
   if (params) {
     for (const [k, v] of Object.entries(params)) {
-      words.push(`=${k}=${v}`);
+      if (k.startsWith("?")) {
+        words.push(`${k}=${v}`);
+      } else {
+        words.push(`=${k}=${v}`);
+      }
     }
   }
   await writeSentence(conn, words);
@@ -197,6 +199,7 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
+    const action = body.action || "sync-secrets";
     const deviceId = body.device_id || "all";
 
     // Fetch enabled MikroTik devices
@@ -217,6 +220,79 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // ── ACTION: sync-online ──
+    if (action === "sync-online") {
+      const allActiveUsernames: Set<string> = new Set();
+      const errors: string[] = [];
+
+      for (const device of devices) {
+        let conn: Deno.TcpConn | null = null;
+        try {
+          const username = device.username || "admin";
+          const password = device.password_encrypted || "";
+          const port = device.api_port || 8728;
+          const ip = device.ip_address;
+
+          conn = await Deno.connect({ hostname: ip, port });
+          await mikrotikLogin(conn, username, password);
+
+          // Get active PPP connections
+          const activeConns = await mikrotikCommand(conn, "/ppp/active/print");
+          for (const ac of activeConns) {
+            if (ac.name) {
+              allActiveUsernames.add(ac.name.toLowerCase());
+            }
+          }
+        } catch (err: any) {
+          errors.push(`${device.name}: ${err.message}`);
+        } finally {
+          try { conn?.close(); } catch { /* ignore */ }
+        }
+      }
+
+      // Fetch all clients with usernames
+      const { data: allClients } = await supabase
+        .from("clients")
+        .select("id, username, is_online");
+
+      let onlineCount = 0;
+      let offlineCount = 0;
+
+      if (allClients && allClients.length > 0) {
+        // Batch update: set online clients
+        const onlineIds: string[] = [];
+        const offlineIds: string[] = [];
+
+        for (const client of allClients) {
+          const isOnline = client.username ? allActiveUsernames.has(client.username.toLowerCase()) : false;
+          if (isOnline && !client.is_online) {
+            onlineIds.push(client.id);
+          } else if (!isOnline && client.is_online) {
+            offlineIds.push(client.id);
+          }
+          if (isOnline) onlineCount++;
+          else offlineCount++;
+        }
+
+        // Update in batches of 100
+        for (let i = 0; i < onlineIds.length; i += 100) {
+          const batch = onlineIds.slice(i, i + 100);
+          await supabase.from("clients").update({ is_online: true }).in("id", batch);
+        }
+        for (let i = 0; i < offlineIds.length; i += 100) {
+          const batch = offlineIds.slice(i, i + 100);
+          await supabase.from("clients").update({ is_online: false }).in("id", batch);
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ ok: true, online: onlineCount, offline: offlineCount, errors }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── ACTION: sync-secrets (default / original behavior) ──
 
     // Fetch existing client usernames to exclude
     const { data: existingClients } = await supabase
@@ -239,21 +315,15 @@ Deno.serve(async (req) => {
         const port = device.api_port || 8728;
         const ip = device.ip_address;
 
-        // Connect via RouterOS API (raw TCP)
         conn = await Deno.connect({ hostname: ip, port });
-
-        // Login
         await mikrotikLogin(conn, username, password);
 
-        // Fetch PPP secrets
         const pppSecrets = await mikrotikCommand(conn, "/ppp/secret/print");
 
-        // Filter out usernames already in clients table
         const newSecrets = pppSecrets.filter(
           (s) => !existingUsernames.has(s.name?.toLowerCase())
         );
 
-        // Upsert into mikrotik_clients
         for (const secret of newSecrets) {
           const isDisabled = secret.disabled === "true" || secret.disabled === "yes";
           const { error: upsertErr } = await supabase
