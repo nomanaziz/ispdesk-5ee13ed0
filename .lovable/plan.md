@@ -1,68 +1,48 @@
 
 
-## Client List ও Billing List — Unified Filter, Bulk Actions, Toggle, Bill Receive
-
-৪টি প্রধান কাজ: (1) Filter design unified ও compact, (2) Client List-এ bulk actions কাজ করানো + MikroTik toggle, (3) Billing List-এ MikroTik toggle + Pay/Due buttons, (4) Bill Receive dialog।
+## ৩টি সমস্যা ঠিক করা — MikroTik Toggle, Pay Button, Received By, Offline Clients
 
 ---
 
-### 1. Unified Filter — Client List কে BillingFilterPanel ব্যবহার করানো
+### 1. MikroTik Toggle — DB Update যোগ
 
-Client List-এর নিজের inline filter কোড সরিয়ে `BillingFilterPanel` component ব্যবহার করবে। এতে দুই পেজে একই design ও filter options থাকবে।
+**সমস্যা:** `manage-mikrotik-ppp` edge function MikroTik-এ enable/disable করে কিন্তু `clients.mikrotik_status` DB-তে update করে না। তাই toggle visual state change হয় না।
 
-**BillingFilterPanel compact করা:**
-- Filter row-এর select height `h-7` করা হবে (বর্তমান `h-8`)
-- Label font `text-[10px]` করা হবে
-- Grid `lg:grid-cols-7` করা হবে (বর্তমান `lg:grid-cols-6`)
-- Date row 6-column এর বদলে 4-column
+**সমাধান:** `manage-mikrotik-ppp/index.ts`-এ `enable`, `disable`, `update` action-এর পর Supabase client দিয়ে `clients.mikrotik_status` update করবে:
+```
+await supabase.from("clients").update({ mikrotik_status: mikrotikStatus }).eq("username", username);
+```
+Frontend-এ `handleToggleMikrotik`-এ response-এর `mikrotik_status` দিয়ে optimistic update করবে।
 
-### 2. Client List — Bulk Actions কাজ করানো + MikroTik Toggle
+### 2. Pay Button — Green Color ও Same Size
 
-**Bulk Actions:** Client List-এর top action buttons (Generate Excel, Bulk Profile Change, Bulk Status Change) এখন কিছু করে না। এগুলো কাজ করাতে:
-- Billing List-এর মতো `BulkActionButtons` component ব্যবহার করা হবে
-- `handleDisableEnable` function যোগ হবে (Billing List-এ যেভাবে আছে)
-- Dialog components (BulkStatusChangeDialog, BulkProfileChangeDialog, etc.) import করা হবে
+**সমাধান:** `BillingList.tsx`-এ Pay button-এর class update:
+- Pay: `bg-emerald-500 hover:bg-emerald-600 text-white h-6 text-[10px] px-2`
+- Due badge: same `h-6` size
+- দুটোই same height ও consistent look
 
-**MikroTik Toggle Button:** প্রতিটি row-তে M.Status column-এ Badge-এর বদলে `Switch` toggle button বসবে:
-- Green = enabled, click করলে → `manage-mikrotik-ppp` action: `disable` call
-- Red/off = disabled, click করলে → `manage-mikrotik-ppp` action: `enable` call
-- Loading state থাকবে toggle-এ
+### 3. Received By — Employee/User Dropdown
 
-### 3. Billing List — MikroTik Toggle + Pay/Due Buttons
+**সমাধান:** `BillReceiveDialog.tsx`-এ:
+- `useAuth()` থেকে current user নেবে
+- `profiles` table থেকে employees/users list fetch করবে
+- "Received By" dropdown যোগ হবে — default: logged-in user
+- Admin হলে সব employee দেখবে ও যেকাউকে assign করতে পারবে
+- Non-admin হলে শুধু নিজের নামই দেখবে
+- Submit-এ `collected_by` field-এ selected user ID save হবে
 
-**MikroTik Toggle:** Client List-এর মতোই `Switch` toggle button — same component।
+### 4. Online Monitoring — Offline Clients ও Filter
 
-**Pay/Due Column:** B.Status column-এ:
-- Status `paid` হলে → সবুজ "Paid" badge
-- Status `unpaid`/`partial` হলে → লাল "Due" badge + "Pay" button
-- "Pay" button click করলে → Bill Receive Dialog open
+**সমাধান:** `OnlineClientMonitoring.tsx`-এ:
+- `fetch-mikrotik-ppp` edge function-এর `active-sessions` response-এ already `offline_count` ও `total_clients` আসে
+- Offline clients = DB-এর সব clients মাইনাস online sessions (username match)
+- নতুন state `offlineClients` যোগ হবে — DB থেকে clients load করে active session-এর username বাদ দেবে
+- Online tab-এ "Online" / "Offline" / "All" filter dropdown যোগ হবে
+- Offline client row-তে status "Offline" badge দেখাবে, uptime "—" হবে
 
-### 4. Bill Receive Dialog — নতুন Component
+### Edge Function-এ client_id fallback
 
-Screenshot অনুযায়ী `BillReceiveDialog` তৈরি হবে:
-
-**Fields (pre-filled from client + billing data):**
-
-| Left Column | Right Column |
-|-------------|-------------|
-| Received Date (today default) | User Name (readonly) |
-| Client Code (readonly) | Mobile No. (readonly) |
-| Package (readonly) | Receive From (client name) |
-| Monthly Bill (readonly) | Due Amount (auto-calculated) |
-| Received By (current user dropdown) | Payment Method (bKash/Cash/Nagad etc.) |
-
-**Bottom Table (readonly summary):**
-- Payable Amount, Discount, Received Amount (editable), VAT Amount (+ Apply VAT checkbox), Total Received Amount, Receipt/Transaction No., Balance Due, Remarks/Note
-
-**Checkboxes:**
-- "Set Next Billing Date?" — checked হলে expire_date extend করবে
-- "Send SMS?" — checked হলে payment confirmation SMS পাঠাবে
-
-**Submit Logic:**
-- `billing` table-এ update: `paid`, `due`, `status`, `pay_date`, `payment_method`, `collected_by`, `vat`, `discount`
-- যদি received > due → advance হিসাবে save হবে, remarks-এ "Advance Pay" auto-add
-- যদি "Set Next Billing Date" checked → `clients.expire_date` 30 দিন extend
-- Data refresh after submit
+`manage-mikrotik-ppp`-এ `client_id` না পেলে `username` দিয়ে client খুঁজে update করবে।
 
 ---
 
@@ -70,8 +50,9 @@ Screenshot অনুযায়ী `BillReceiveDialog` তৈরি হবে:
 
 | File | Change |
 |------|--------|
-| `src/components/billing/BillingFilterPanel.tsx` | Compact styling (smaller heights, tighter grid) |
-| `src/pages/dashboard/clients/ClientList.tsx` | BillingFilterPanel ব্যবহার, bulk actions working, MikroTik toggle |
-| `src/pages/dashboard/billing/BillingList.tsx` | MikroTik toggle column, Pay/Due buttons, BillReceiveDialog integration |
-| `src/components/billing/BillReceiveDialog.tsx` | **নতুন** — Bill Receive dialog (screenshot অনুযায়ী) |
+| `supabase/functions/manage-mikrotik-ppp/index.ts` | enable/disable/update-এর পর `clients.mikrotik_status` DB update |
+| `src/pages/dashboard/billing/BillingList.tsx` | Pay button green, same size as Due |
+| `src/components/billing/BillReceiveDialog.tsx` | "Received By" dropdown — employee list + current user default |
+| `src/pages/dashboard/monitoring/OnlineClientMonitoring.tsx` | Offline clients load + Online/Offline filter |
+| `src/pages/dashboard/clients/ClientList.tsx` | Toggle-এ optimistic update + DB sync |
 
