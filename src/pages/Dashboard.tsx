@@ -392,7 +392,7 @@ const Dashboard = () => {
         { title: "আয় (এই মাস)", value: `৳${(d?.incTM ?? 0).toLocaleString()}`, icon: TrendingUp, colorIndex: 2 },
         { title: "ব্যয় (এই মাস)", value: `৳${(d?.expTM ?? 0).toLocaleString()}`, icon: TrendingDown, colorIndex: 0 },
         { title: "বেতন পরিশোধ", value: `৳${(d?.paidSalary ?? 0).toLocaleString()}`, icon: Wallet, colorIndex: 4 },
-        { title: "SMS ব্যালেন্স", value: d?.smsBalance ?? "0", icon: MessageSquare, colorIndex: 5 },
+        { title: "SMS ব্যালেন্স", value: String(d?.smsBalance ?? "0"), icon: MessageSquare, colorIndex: 5 },
       ])}
 
       {/* Row 6: Tickets & Tasks */}
