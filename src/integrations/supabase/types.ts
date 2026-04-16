@@ -2752,6 +2752,7 @@ export type Database = {
           mikrotik_profile: string | null
           name: string
           package_type: string | null
+          portal_visible: boolean
           price: number
           protocol: string | null
           setup_fee: number | null
@@ -2768,6 +2769,7 @@ export type Database = {
           mikrotik_profile?: string | null
           name: string
           package_type?: string | null
+          portal_visible?: boolean
           price?: number
           protocol?: string | null
           setup_fee?: number | null
@@ -2784,6 +2786,7 @@ export type Database = {
           mikrotik_profile?: string | null
           name?: string
           package_type?: string | null
+          portal_visible?: boolean
           price?: number
           protocol?: string | null
           setup_fee?: number | null

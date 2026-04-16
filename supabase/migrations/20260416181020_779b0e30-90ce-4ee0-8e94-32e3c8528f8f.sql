@@ -1,0 +1,1 @@
+ALTER TABLE public.isp_packages ADD COLUMN IF NOT EXISTS portal_visible boolean NOT NULL DEFAULT true;
