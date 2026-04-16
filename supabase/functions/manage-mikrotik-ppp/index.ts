@@ -324,6 +324,15 @@ Deno.serve(async (req) => {
       let message = "";
       let mikrotikStatus: "enabled" | "disabled" | "removed" | "unknown" = normalizeMikrotikStatus(secret.disabled);
 
+      // Helper: update client mikrotik_status in DB
+      const updateClientMkStatus = async (status: string) => {
+        if (client_id) {
+          await supabase.from("clients").update({ mikrotik_status: status }).eq("id", client_id);
+        } else {
+          await supabase.from("clients").update({ mikrotik_status: status }).eq("username", username);
+        }
+      };
+
       switch (action) {
         case "update": {
           const params: Record<string, string> = { ".id": secretId };
@@ -334,6 +343,7 @@ Deno.serve(async (req) => {
           else if (disabled === false || disabled === "no") { params.disabled = "no"; mikrotikStatus = "enabled"; }
           else { mikrotikStatus = normalizeMikrotikStatus(secret.disabled); }
           await mikrotikCommand(conn, "/ppp/secret/set", params);
+          await updateClientMkStatus(mikrotikStatus);
           message = `PPP secret '${username}' updated`;
           break;
         }
@@ -349,6 +359,7 @@ Deno.serve(async (req) => {
           } catch (_) { /* no active session */ }
           mikrotikStatus = "disabled";
           message = `PPP secret '${username}' disabled and disconnected`;
+          await updateClientMkStatus(mikrotikStatus);
           await insertClientLog(supabase, client_id || null, device.name, `[PPP] ${username} disabled and disconnected`);
           break;
         }
@@ -356,6 +367,7 @@ Deno.serve(async (req) => {
           await mikrotikCommand(conn, "/ppp/secret/set", { ".id": secretId, disabled: "no" });
           mikrotikStatus = "enabled";
           message = `PPP secret '${username}' enabled`;
+          await updateClientMkStatus(mikrotikStatus);
           await insertClientLog(supabase, client_id || null, device.name, `[PPP] ${username} enabled`);
           break;
         }

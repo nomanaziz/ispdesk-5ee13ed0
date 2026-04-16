@@ -75,6 +75,7 @@ function formatBps(bps: string | null): string {
 export default function OnlineClientMonitoring() {
   const [activeTab, setActiveTab] = useState("online");
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
+  const [offlineClients, setOfflineClients] = useState<ActiveSession[]>([]);
   const [mismatchData, setMismatchData] = useState<{ disabledInSystem: MismatchRecord[]; enabledInSystem: MismatchRecord[]; profileMismatch: MismatchRecord[] }>({ disabledInSystem: [], enabledInSystem: [], profileMismatch: [] });
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -83,6 +84,7 @@ export default function OnlineClientMonitoring() {
   const [totalClients, setTotalClients] = useState(0);
   const [onlineCount, setOnlineCount] = useState(0);
   const [offlineCount, setOfflineCount] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<"all" | "online" | "offline">("all");
 
   // Filters
   const [filterServer, setFilterServer] = useState("all");
