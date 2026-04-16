@@ -20,6 +20,7 @@ import BulkStatusChangeDialog from "@/components/billing/BulkStatusChangeDialog"
 import BulkZoneChangeDialog from "@/components/billing/BulkZoneChangeDialog";
 import BulkProfileChangeDialog from "@/components/billing/BulkProfileChangeDialog";
 import BillReceiveDialog from "@/components/billing/BillReceiveDialog";
+import BillingDatePopover from "@/components/billing/BillingDatePopover";
 import { toast } from "sonner";
 
 const currentMonth = () => {
@@ -315,7 +316,9 @@ export default function BillingList() {
                       <TableCell>{c.zone?.name || "-"}</TableCell>
                       <TableCell>{c.package?.name || "-"}</TableCell>
                       <TableCell>{c.speed || "-"}</TableCell>
-                      <TableCell className="text-xs">{c.expire_date || "-"}</TableCell>
+                      <TableCell>
+                        <BillingDatePopover client={c} />
+                      </TableCell>
                       <TableCell>
                         <Badge variant={c.status === "active" ? "default" : c.status === "left" ? "destructive" : "secondary"} className="text-xs capitalize">
                           {c.status}

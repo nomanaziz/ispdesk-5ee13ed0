@@ -21,6 +21,7 @@ interface BillingEnforcement {
   cutoff_time: string;
   recheck_interval: string;
   grace_days: number;
+  enforcement_day: "same" | "next";
 }
 
 const defaults: SystemConfig = {
@@ -33,6 +34,7 @@ const enforcementDefaults: BillingEnforcement = {
   cutoff_time: "00:00",
   recheck_interval: "60",
   grace_days: 0,
+  enforcement_day: "same",
 };
 
 export default function Setup() {
@@ -211,6 +213,20 @@ export default function Setup() {
                 </Select>
               </div>
               <p className="text-[10px] text-muted-foreground mt-1">মেয়াদ শেষের পর অতিরিক্ত কত দিন অপেক্ষা করবে</p>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">এনফোর্সমেন্ট দিন</Label>
+              <div className="relative">
+                <CalendarClock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10" />
+                <Select value={enfForm.enforcement_day || "same"} onValueChange={v => setEnf("enforcement_day", v)}>
+                  <SelectTrigger className="pl-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="same">Same Day (billing_date তেই বন্ধ)</SelectItem>
+                    <SelectItem value="next">Next Day (পরের দিন বন্ধ)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">billing_date-এর দিনেই বন্ধ হবে নাকি পরের দিন</p>
             </div>
           </div>
 
