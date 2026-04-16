@@ -163,10 +163,10 @@ export default function BillingFilterPanel({ filters, onChange, onReset }: Props
         />
         <Button variant="outline" size="sm" onClick={() => setExpanded(!expanded)}>
           {expanded ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
-          {expanded ? "Hide Filters" : "Show Filters"}
+          {expanded ? "ফিল্টার লুকান" : "ফিল্টার দেখান"}
         </Button>
         <Button variant="ghost" size="sm" onClick={onReset}>
-          Reset
+          রিসেট
         </Button>
       </div>
 
@@ -174,57 +174,57 @@ export default function BillingFilterPanel({ filters, onChange, onReset }: Props
         <div className="space-y-2 p-2 border border-border rounded-lg bg-muted/30">
           {/* Row 1 */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-1.5">
-            <FilterSelect label="Server" value={filters.server} onChange={(v) => set("server", v)}
+            <FilterSelect label="সার্ভার" value={filters.server} onChange={(v) => set("server", v)}
               options={servers.map((s: any) => ({ value: s.id, label: s.name }))} />
-            <FilterSelect label="Protocol Type" value={filters.protocolType} onChange={(v) => set("protocolType", v)}
+            <FilterSelect label="প্রোটোকল টাইপ" value={filters.protocolType} onChange={(v) => set("protocolType", v)}
               options={protocolTypes.map((p: any) => ({ value: p.name, label: p.name }))} />
-            <FilterSelect label="Profile" value={filters.profile} onChange={(v) => set("profile", v)}
+            <FilterSelect label="প্রোফাইল" value={filters.profile} onChange={(v) => set("profile", v)}
               options={[]} placeholder="সকল প্রোফাইল" />
-            <FilterSelect label="Zone" value={filters.zone} onChange={(v) => set("zone", v)}
+            <FilterSelect label="জোন" value={filters.zone} onChange={(v) => set("zone", v)}
               options={zones.map((z: any) => ({ value: z.name, label: z.name }))} />
-            <FilterSelect label="Sub Zone" value={filters.subZone} onChange={(v) => set("subZone", v)}
+            <FilterSelect label="সাব জোন" value={filters.subZone} onChange={(v) => set("subZone", v)}
               options={subZones.map((s: any) => ({ value: s.id, label: s.name }))} />
-            <FilterSelect label="Box" value={filters.box} onChange={(v) => set("box", v)}
+            <FilterSelect label="বক্স" value={filters.box} onChange={(v) => set("box", v)}
               options={boxes.map((b: any) => ({ value: b.id, label: b.name }))} />
-            <FilterSelect label="Package" value={filters.packageFilter} onChange={(v) => set("packageFilter", v)}
+            <FilterSelect label="প্যাকেজ" value={filters.packageFilter} onChange={(v) => set("packageFilter", v)}
               options={packages.map((p: any) => ({ value: p.name, label: p.name }))} />
           </div>
 
           {/* Row 2 */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-1.5">
-            <FilterSelect label="Billing Status" value={filters.billingStatus} onChange={(v) => set("billingStatus", v)}
+            <FilterSelect label="বিলিং স্ট্যাটাস" value={filters.billingStatus} onChange={(v) => set("billingStatus", v)}
               options={billingStatuses.map((s: any) => ({ value: s.name, label: s.name }))} />
-            <FilterSelect label="Payment Status" value={filters.paymentStatus} onChange={(v) => set("paymentStatus", v)}
+            <FilterSelect label="পেমেন্ট স্ট্যাটাস" value={filters.paymentStatus} onChange={(v) => set("paymentStatus", v)}
               options={[
-                { value: "paid", label: "Paid" },
-                { value: "unpaid", label: "Unpaid" },
-                { value: "partial", label: "Partial" },
-                { value: "overdue", label: "Overdue" },
+                { value: "paid", label: "পরিশোধিত" },
+                { value: "unpaid", label: "অপরিশোধিত" },
+                { value: "partial", label: "আংশিক" },
+                { value: "overdue", label: "ওভারডিউ" },
               ]} />
-            <FilterSelect label="MikroTik Status" value={filters.mikrotikStatus} onChange={(v) => set("mikrotikStatus", v)}
+            <FilterSelect label="MikroTik স্ট্যাটাস" value={filters.mikrotikStatus} onChange={(v) => set("mikrotikStatus", v)}
               options={[
-                { value: "enabled", label: "Enabled" },
-                { value: "disabled", label: "Disabled" },
+                { value: "enabled", label: "চালু" },
+                { value: "disabled", label: "বন্ধ" },
               ]} />
-            <FilterSelect label="Connection Type" value={filters.connectionType} onChange={(v) => set("connectionType", v)}
+            <FilterSelect label="কানেকশন টাইপ" value={filters.connectionType} onChange={(v) => set("connectionType", v)}
               options={connectionTypes.map((c: any) => ({ value: c.name, label: c.name }))} />
-            <FilterSelect label="Client Type" value={filters.clientType} onChange={(v) => set("clientType", v)}
+            <FilterSelect label="ক্লায়েন্ট টাইপ" value={filters.clientType} onChange={(v) => set("clientType", v)}
               options={clientTypes.map((c: any) => ({ value: c.name, label: c.name }))} />
-            <FilterSelect label="Custom Status" value={filters.customStatus} onChange={(v) => set("customStatus", v)}
+            <FilterSelect label="কাস্টম স্ট্যাটাস" value={filters.customStatus} onChange={(v) => set("customStatus", v)}
               options={[
-                { value: "active", label: "Active" },
-                { value: "free", label: "Free" },
-                { value: "personal", label: "Personal" },
-                { value: "left", label: "Left" },
+                { value: "active", label: "সক্রিয়" },
+                { value: "free", label: "ফ্রি" },
+                { value: "personal", label: "পার্সোনাল" },
+                { value: "left", label: "চলে গেছে" },
               ]} />
           </div>
 
           {/* Row 3: Date ranges */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5">
-            <DateInput label="From Expire Date" value={filters.fromExpireDate} onChange={(v) => set("fromExpireDate", v)} />
-            <DateInput label="To Expire Date" value={filters.toExpireDate} onChange={(v) => set("toExpireDate", v)} />
-            <DateInput label="From Date" value={filters.fromDate} onChange={(v) => set("fromDate", v)} />
-            <DateInput label="To Date" value={filters.toDate} onChange={(v) => set("toDate", v)} />
+            <DateInput label="মেয়াদ শুরু" value={filters.fromExpireDate} onChange={(v) => set("fromExpireDate", v)} />
+            <DateInput label="মেয়াদ শেষ" value={filters.toExpireDate} onChange={(v) => set("toExpireDate", v)} />
+            <DateInput label="তারিখ থেকে" value={filters.fromDate} onChange={(v) => set("fromDate", v)} />
+            <DateInput label="তারিখ পর্যন্ত" value={filters.toDate} onChange={(v) => set("toDate", v)} />
           </div>
         </div>
       )}

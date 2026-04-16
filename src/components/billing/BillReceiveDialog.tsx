@@ -168,49 +168,49 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>বিল রিসিভ — {client.name} ({client.client_id})</DialogTitle>
+          <DialogTitle>বিল গ্রহণ — {client.name} ({client.client_id})</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Client Info - 2 columns */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs">Received Date</Label>
+              <Label className="text-xs">গ্রহণের তারিখ</Label>
               <Input type="date" value={receivedDate} onChange={e => setReceivedDate(e.target.value)} className="h-8 text-xs" />
             </div>
             <div>
-              <Label className="text-xs">User Name</Label>
+              <Label className="text-xs">ইউজার নেম</Label>
               <Input value={client.username || "-"} readOnly className="h-8 text-xs bg-muted" />
             </div>
             <div>
-              <Label className="text-xs">Client Code</Label>
+              <Label className="text-xs">ক্লায়েন্ট কোড</Label>
               <Input value={client.client_id} readOnly className="h-8 text-xs bg-muted" />
             </div>
             <div>
-              <Label className="text-xs">Mobile No.</Label>
+              <Label className="text-xs">মোবাইল নম্বর</Label>
               <Input value={client.contact || "-"} readOnly className="h-8 text-xs bg-muted" />
             </div>
             <div>
-              <Label className="text-xs">Package</Label>
+              <Label className="text-xs">প্যাকেজ</Label>
               <Input value={client.package?.name || client.isp_packages?.name || "-"} readOnly className="h-8 text-xs bg-muted" />
             </div>
             <div>
-              <Label className="text-xs">Receive From</Label>
+              <Label className="text-xs">গ্রহণ করা হয়েছে</Label>
               <Input value={client.name} readOnly className="h-8 text-xs bg-muted" />
             </div>
             <div>
-              <Label className="text-xs">Monthly Bill</Label>
+              <Label className="text-xs">মাসিক বিল</Label>
               <Input value={monthlyBill} readOnly className="h-8 text-xs bg-muted" />
             </div>
             <div>
-              <Label className="text-xs">Due Amount</Label>
+              <Label className="text-xs">বকেয়া পরিমাণ</Label>
               <Input value={dueAmount > 0 ? dueAmount : 0} readOnly className="h-8 text-xs bg-muted text-red-500 font-bold" />
             </div>
             <div>
-              <Label className="text-xs">Received By</Label>
+              <Label className="text-xs">গ্রহণকারী</Label>
               <Select value={receivedBy} onValueChange={setReceivedBy}>
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Select..." />
+                  <SelectValue placeholder="নির্বাচন করুন..." />
                 </SelectTrigger>
                 <SelectContent>
                   {availableProfiles.map((p: any) => (
@@ -222,16 +222,16 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Payment Method</Label>
+              <Label className="text-xs">পেমেন্ট মাধ্যম</Label>
               <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="cash">ক্যাশ</SelectItem>
                   <SelectItem value="bkash">bKash</SelectItem>
                   <SelectItem value="nagad">Nagad</SelectItem>
                   <SelectItem value="rocket">Rocket</SelectItem>
-                  <SelectItem value="bank">Bank Transfer</SelectItem>
-                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="bank">ব্যাংক ট্রান্সফার</SelectItem>
+                  <SelectItem value="online">অনলাইন</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -242,12 +242,12 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-muted/50">
-                  <th className="p-2 text-left">Payable</th>
-                  <th className="p-2 text-left">Discount</th>
-                  <th className="p-2 text-left">Received</th>
+                  <th className="p-2 text-left">প্রদেয়</th>
+                  <th className="p-2 text-left">ছাড়</th>
+                  <th className="p-2 text-left">গৃহীত</th>
                   <th className="p-2 text-left">VAT</th>
-                  <th className="p-2 text-left">Total</th>
-                  <th className="p-2 text-left">Balance</th>
+                  <th className="p-2 text-left">মোট</th>
+                  <th className="p-2 text-left">ব্যালেন্স</th>
                 </tr>
               </thead>
               <tbody>
@@ -267,7 +267,7 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
                   </td>
                   <td className="p-2 font-bold text-green-600">৳{totalReceived}</td>
                   <td className={`p-2 font-bold ${balanceDue > 0 ? "text-red-500" : "text-green-600"}`}>
-                    ৳{Math.abs(balanceDue)} {isAdvance && "(Advance)"}
+                    ৳{Math.abs(balanceDue)} {isAdvance && "(অগ্রিম)"}
                   </td>
                 </tr>
               </tbody>
@@ -277,12 +277,12 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
           {/* Transaction & Remarks */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs">Receipt/Transaction No.</Label>
-              <Input value={transactionNo} onChange={e => setTransactionNo(e.target.value)} className="h-8 text-xs" placeholder="Optional" />
+              <Label className="text-xs">রসিদ/ট্রানজেকশন নম্বর</Label>
+              <Input value={transactionNo} onChange={e => setTransactionNo(e.target.value)} className="h-8 text-xs" placeholder="ঐচ্ছিক" />
             </div>
             <div>
-              <Label className="text-xs">Remarks</Label>
-              <Textarea value={remarks} onChange={e => setRemarks(e.target.value)} className="text-xs h-8 min-h-[32px]" placeholder="Optional" />
+              <Label className="text-xs">মন্তব্য</Label>
+              <Textarea value={remarks} onChange={e => setRemarks(e.target.value)} className="text-xs h-8 min-h-[32px]" placeholder="ঐচ্ছিক" />
             </div>
           </div>
 
@@ -290,11 +290,11 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
           <div className="flex items-center gap-6">
             <label className="flex items-center gap-2 text-xs">
               <Checkbox checked={setNextBilling} onCheckedChange={(v) => setSetNextBilling(!!v)} />
-              Set Next Billing Date?
+              পরবর্তী বিলিং তারিখ সেট করবেন?
             </label>
             <label className="flex items-center gap-2 text-xs">
               <Checkbox checked={sendSms} onCheckedChange={(v) => setSendSms(!!v)} />
-              Send SMS?
+              SMS পাঠাবেন?
             </label>
           </div>
         </div>
@@ -302,7 +302,7 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>বাতিল</Button>
           <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? "প্রসেসিং..." : "রিসিভ করুন"}
+            {loading ? "প্রসেস হচ্ছে..." : "গ্রহণ করুন"}
           </Button>
         </DialogFooter>
       </DialogContent>
