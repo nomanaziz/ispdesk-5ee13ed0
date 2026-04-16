@@ -1,64 +1,73 @@
 
 
-## Billing Commitment Date (বিলিং তারিখ) System
+## Software-wide Bangla Localization
 
-### সংক্ষেপ
+### লক্ষ্য
 
-প্রতিটি client-এর একটি `billing_date` (1-27) থাকবে — সে প্রতি মাসে কত তারিখের মধ্যে বিল দিবে। এই তারিখ পার হলে MikroTik auto-disable হবে। বিল পরিশোধ করলে auto-enable হবে। Expire date click করে extend করা যাবে।
+পুরো software-এ consistent Bangla language ব্যবহার করা। Default language Bangla, কিছু technical term ইংরেজিতেই থাকবে।
 
----
+### Scope
 
-### পরিবর্তন সমূহ
+পুরো ERP-তে 200+ files আছে — সব একসাথে convert করা impractical এবং risky। তাই **phased approach** নেব।
 
-#### 1. Billing List Table — `Ex.Date` কলাম উন্নতি
+### Translation Rules
 
-**`BillingList.tsx`** — বর্তমান `মেয়াদ` কলামে:
-- `billing_date` number (1-27) দেখাবে বড় করে, নিচে ক্যালেন্ডার আইকন
-- Click করলে একটি Popover খুলবে — Select dropdown (1-27) দিয়ে `billing_date` update করা যাবে
-- `expire_date`-ও click করে extend করা যাবে — click করলে Popover-এ next billing date auto-calculate হবে (current month-এর `billing_date` তারিখ), save করলে `expire_date` update হবে
+| Original | Bangla | কারণ |
+|----------|--------|------|
+| Cash | ক্যাশ | নগদ একটি payment method (bKash/Nagad), confusion এড়াতে |
+| bKash, Nagad, Rocket | bKash, Nagad, Rocket | Brand names — অপরিবর্তিত |
+| Client / Customer | ক্লায়েন্ট / কাস্টমার | Bangla |
+| Bill / Invoice | বিল / ইনভয়েস | Bangla transliteration |
+| MikroTik, OLT, ONU, PPPoE, MAC, IP | অপরিবর্তিত | Technical terms |
+| Status: Active/Inactive/Pending | সক্রিয়/নিষ্ক্রিয়/অপেক্ষমান | Bangla |
+| Enable/Disable | চালু/বন্ধ | Bangla |
+| Online/Offline | অনলাইন/অফলাইন | Transliteration |
+| Save/Cancel/Delete/Edit/Add | সংরক্ষণ/বাতিল/মুছুন/সম্পাদনা/যোগ | Bangla |
+| Search | অনুসন্ধান | Bangla |
+| Date/Amount/Total/Due/Paid | তারিখ/পরিমাণ/মোট/বকেয়া/পরিশোধিত | Bangla |
+| Numbers (1,2,3) | English digits রাখব | Tables-এ readable |
 
-#### 2. BillReceiveDialog — Auto-enable on Paid
+### Phased Plan
 
-**`BillReceiveDialog.tsx`** — বিল full paid হলে:
-- `mikrotik_status` = "enabled" DB-তে update
-- `manage-mikrotik-ppp` edge function invoke করে MikroTik-এ enable করবে
-- `expire_date` next month-এর `billing_date` তারিখে set হবে
+**Phase 1 (এখন) — Core Billing & Client Pages** (high-traffic):
+1. `BillingList.tsx` — column headers, buttons, dialogs, status badges
+2. `BillReceiveDialog.tsx` — labels, buttons, payment methods
+3. `ClientList.tsx` — column headers, action buttons
+4. `AddClient.tsx` — form labels
+5. `Dashboard.tsx` — stat cards, section titles
+6. `AppSidebar.tsx` — menu items (যেগুলো এখনো English)
+7. `TopBar.tsx` — buttons, search placeholder
+8. Common components: `BulkActionButtons`, `BillingFilterPanel`, status badges
 
-#### 3. Enforce Billing Edge Function — `billing_date` ভিত্তিক
+**Phase 2 (পরবর্তী request-এ) — Other modules**:
+- Accounting, HR, Inventory, Reports, Monitoring, OLT pages
+- প্রতিটি module-এর জন্য আলাদা request করতে পারবেন
 
-**`enforce-billing/index.ts`** — বর্তমান `expire_date` based logic-এর সাথে `billing_date` logic যোগ:
-- প্রতিটি client-এর `billing_date` check করবে
-- আজকের তারিখ যদি `billing_date`-এর পরে হয় এবং current month-এ paid না হলে → disable
-- System setting থেকে `cutoff_time` পড়বে (same day / next day)
-- VIP এবং Free client বাদ যাবে
+### Approach
 
-#### 4. System Setup — Enforcement Timing
+- Hardcoded English strings গুলো সরাসরি Bangla string দিয়ে replace করব (no i18n library এখন)
+- Brand names, technical acronyms, code/config keys অপরিবর্তিত রাখব
+- Toast messages, error messages, placeholder texts — সব Bangla
+- Form validation messages Bangla
+- Date/number formatting JavaScript locale `bn-BD` ব্যবহার করব যেখানে সম্ভব (তবে table-এ English digits keep করব readability-র জন্য)
 
-**`Setup.tsx`** — Billing Enforcement সেকশনে:
-- "কোন সময় বন্ধ হবে" — cutoff time selector (already exists)
-- "Same date নাকি Next date" — নতুন option যোগ: `enforcement_day: "same" | "next"` — billing_date-এর দিনেই disable হবে নাকি পরের দিন
-
-#### 5. Billing Date Edit Popover Component
-
-**নতুন ফাইল: `src/components/billing/BillingDatePopover.tsx`**
-- Click করলে Popover open
-- Select (1-27) দিয়ে billing_date change
-- Save করলে DB update + toast
-
-### Files
+### Files (Phase 1)
 
 | File | Change |
 |------|--------|
-| `src/components/billing/BillingDatePopover.tsx` | **নতুন** — Billing date edit popover (1-27 select) |
-| `src/pages/dashboard/billing/BillingList.tsx` | `মেয়াদ` কলামে BillingDatePopover ব্যবহার, expire_date extend |
-| `src/components/billing/BillReceiveDialog.tsx` | Full paid হলে MikroTik auto-enable + expire_date extend |
-| `supabase/functions/enforce-billing/index.ts` | `billing_date` ভিত্তিক disable logic, `enforcement_day` setting support |
-| `src/pages/dashboard/system/Setup.tsx` | `enforcement_day` (same/next) option যোগ |
+| `src/pages/dashboard/billing/BillingList.tsx` | Column headers, buttons, toasts → Bangla |
+| `src/components/billing/BillReceiveDialog.tsx` | Labels, payment method labels (Cash→ক্যাশ), buttons |
+| `src/components/billing/BulkActionButtons.tsx` | Button labels |
+| `src/components/billing/BillingFilterPanel.tsx` | Filter labels |
+| `src/pages/dashboard/clients/ClientList.tsx` | Headers, buttons, status |
+| `src/pages/dashboard/clients/AddClient.tsx` | Form labels, placeholders |
+| `src/pages/Dashboard.tsx` | Stat card labels, section titles |
+| `src/components/AppSidebar.tsx` | English menu items → Bangla |
+| `src/components/TopBar.tsx` | Search placeholder, button labels |
+| `src/components/GlobalClientSearch.tsx` | Search placeholder, empty states |
 
-### Technical Details
+### Note
 
-- `clients.billing_date` column already exists (integer, default 1)
-- Range: 1-27 (28+ allowed নয় — shortest month consideration)
-- Enforce billing cron: checks `billing_date` against current date, respects `cutoff_time` and `enforcement_day`
-- Auto-enable on payment: calls `manage-mikrotik-ppp` with action "enable" after successful bill receive
+- Phase 2 শুরু করতে চাইলে শুধু বলবেন "accounting Bangla করো" বা "HR Bangla করো" — তখন ওই module ধরব
+- কোনো specific term-এর Bangla পছন্দ না হলে বলবেন, সঠিক করে দেব
 
