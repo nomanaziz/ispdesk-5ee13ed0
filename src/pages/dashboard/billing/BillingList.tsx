@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Users, Banknote, AlertTriangle, ChevronLeft, ChevronRight,
   UserCheck, Clock, TrendingUp, Receipt
@@ -18,7 +19,8 @@ import ServerMigrationDialog from "@/components/billing/ServerMigrationDialog";
 import BulkStatusChangeDialog from "@/components/billing/BulkStatusChangeDialog";
 import BulkZoneChangeDialog from "@/components/billing/BulkZoneChangeDialog";
 import BulkProfileChangeDialog from "@/components/billing/BulkProfileChangeDialog";
-import { toast } from "@/hooks/use-toast";
+import BillReceiveDialog from "@/components/billing/BillReceiveDialog";
+import { toast } from "sonner";
 
 const currentMonth = () => {
   const d = new Date();
@@ -31,12 +33,15 @@ export default function BillingList() {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // Dialogs
   const [migrateOpen, setMigrateOpen] = useState(false);
   const [statusChangeOpen, setStatusChangeOpen] = useState(false);
   const [zoneChangeOpen, setZoneChangeOpen] = useState(false);
   const [profileChangeOpen, setProfileChangeOpen] = useState(false);
+  const [payClient, setPayClient] = useState<any>(null);
+  const [payBilling, setPayBilling] = useState<any>(null);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["billing-list", filters.month],
@@ -80,8 +85,6 @@ export default function BillingList() {
       if (f.clientType !== "all" && c.client_type !== f.clientType) return false;
       if (f.mikrotikStatus !== "all" && c.mikrotik_status !== f.mikrotikStatus) return false;
       if (f.customStatus !== "all" && c.status !== f.customStatus) return false;
-
-      // Payment status
       if (f.paymentStatus !== "all") {
         const b = c.currentBill;
         const bs = b?.status?.toLowerCase() || "unpaid";
@@ -91,14 +94,9 @@ export default function BillingList() {
           if (!expDate || expDate >= now || bs === "paid") return false;
         } else if (f.paymentStatus !== bs) return false;
       }
-
-      // Billing status
       if (f.billingStatus !== "all" && c.billing_status !== f.billingStatus) return false;
-
-      // Date filters
       if (f.fromExpireDate && c.expire_date && c.expire_date < f.fromExpireDate) return false;
       if (f.toExpireDate && c.expire_date && c.expire_date > f.toExpireDate) return false;
-
       return true;
     });
   }, [clients, filters]);
@@ -107,7 +105,6 @@ export default function BillingList() {
     let total = clients.length, active = 0, paid = 0, unpaid = 0, overdue = 0;
     let received = 0, due = 0, monthlyBill = 0;
     const now = new Date();
-
     clients.forEach((c: any) => {
       if (c.status === "active") active++;
       const b = c.currentBill;
@@ -136,11 +133,8 @@ export default function BillingList() {
   }, []);
 
   const toggleSelectAll = useCallback(() => {
-    if (selectedIds.size === paginated.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(paginated.map((c: any) => c.id)));
-    }
+    if (selectedIds.size === paginated.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(paginated.map((c: any) => c.id)));
   }, [paginated, selectedIds.size]);
 
   const selectedClients = useMemo(() =>
@@ -158,24 +152,44 @@ export default function BillingList() {
         } catch { /* continue */ }
       }
     }
-    toast({ title: `${selectedClients.length} জন ক্লায়েন্ট ${action === "disable" ? "disabled" : "enabled"} হয়েছে` });
+    toast.success(`${selectedClients.length} জন ক্লায়েন্ট ${action === "disable" ? "disabled" : "enabled"} হয়েছে`);
     queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+  };
+
+  const handleToggleMikrotik = async (client: any) => {
+    if (!client.mikrotik_id || !client.username) {
+      toast.error("MikroTik তথ্য নেই");
+      return;
+    }
+    const action = client.mikrotik_status === "enabled" ? "disable" : "enable";
+    setTogglingId(client.id);
+    try {
+      await supabase.functions.invoke("manage-mikrotik-ppp", {
+        body: { mikrotik_id: client.mikrotik_id, username: client.username, client_id: client.id, action },
+      });
+      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+      toast.success(`${client.name} ${action === "disable" ? "Disabled" : "Enabled"} হয়েছে`);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const handleBulkVip = async (isVip: boolean) => {
     await supabase.from("clients").update({ is_vip: isVip }).in("id", [...selectedIds]);
-    toast({ title: `${selectedIds.size} জন ক্লায়েন্ট ${isVip ? "VIP" : "non-VIP"} করা হয়েছে` });
+    toast.success(`${selectedIds.size} জন ক্লায়েন্ট ${isVip ? "VIP" : "non-VIP"} করা হয়েছে`);
     queryClient.invalidateQueries({ queryKey: ["billing-list"] });
   };
 
-  const notImplemented = () => toast({ title: "শীঘ্রই আসছে", description: "এই ফিচার এখনো তৈরি হচ্ছে" });
+  const notImplemented = () => toast.info("শীঘ্রই আসছে — এই ফিচার এখনো তৈরি হচ্ছে");
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-3 p-4">
       <h1 className="text-xl font-bold text-foreground">বিলিং তালিকা (Billing List)</h1>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
         <SummaryCard icon={Users} label="মোট ক্লায়েন্ট" value={summary.total} color="text-blue-500" bg="bg-blue-500/10" />
         <SummaryCard icon={UserCheck} label="অ্যাক্টিভ" value={summary.active} color="text-emerald-500" bg="bg-emerald-500/10" />
         <SummaryCard icon={Receipt} label="পেইড" value={summary.paid} color="text-emerald-400" bg="bg-emerald-500/10" />
@@ -243,17 +257,19 @@ export default function BillingList() {
                   <TableHead className="text-right">Advance</TableHead>
                   <TableHead>Pay Date</TableHead>
                   <TableHead>B.Status</TableHead>
+                  <TableHead>M.Status</TableHead>
                   <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={18} className="text-center py-8 text-muted-foreground">লোড হচ্ছে...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={19} className="text-center py-8 text-muted-foreground">লোড হচ্ছে...</TableCell></TableRow>
                 ) : paginated.length === 0 ? (
-                  <TableRow><TableCell colSpan={18} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={19} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
                 ) : paginated.map((c: any, i: number) => {
                   const b = c.currentBill;
                   const bs = b?.status || "unpaid";
+                  const isDue = bs !== "paid";
                   return (
                     <TableRow key={c.id} data-state={selectedIds.has(c.id) ? "selected" : undefined}>
                       <TableCell>
@@ -279,9 +295,24 @@ export default function BillingList() {
                       <TableCell className="text-right">{Number(b?.advance || 0).toLocaleString()}</TableCell>
                       <TableCell className="text-xs">{b?.pay_date || "-"}</TableCell>
                       <TableCell>
-                        <Badge variant={bs === "paid" ? "default" : bs === "partial" ? "secondary" : "destructive"} className="text-xs">
-                          {bs === "paid" ? "Paid" : bs === "partial" ? "Partial" : "Due"}
-                        </Badge>
+                        {isDue ? (
+                          <div className="flex items-center gap-1">
+                            <Badge variant="destructive" className="text-xs">Due</Badge>
+                            <Button size="sm" variant="outline" className="h-6 text-[10px] px-1.5" onClick={() => { setPayClient(c); setPayBilling(b); }}>
+                              Pay
+                            </Button>
+                          </div>
+                        ) : (
+                          <Badge className="text-xs bg-emerald-500/20 text-emerald-600 border-emerald-500/30" variant="outline">Paid</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={c.mikrotik_status === "enabled"}
+                          disabled={togglingId === c.id || !c.mikrotik_id}
+                          onCheckedChange={() => handleToggleMikrotik(c)}
+                          className="scale-75"
+                        />
                       </TableCell>
                       <TableCell>
                         <ClientActionButtons client={c} mode="billing" invalidateKey="billing-list" />
@@ -323,6 +354,13 @@ export default function BillingList() {
       <BulkStatusChangeDialog open={statusChangeOpen} onOpenChange={setStatusChangeOpen} selectedClientIds={[...selectedIds]} />
       <BulkZoneChangeDialog open={zoneChangeOpen} onOpenChange={setZoneChangeOpen} selectedClientIds={[...selectedIds]} />
       <BulkProfileChangeDialog open={profileChangeOpen} onOpenChange={setProfileChangeOpen} selectedClients={selectedClients} />
+      <BillReceiveDialog
+        open={!!payClient}
+        onOpenChange={(v) => { if (!v) { setPayClient(null); setPayBilling(null); } }}
+        client={payClient}
+        billing={payBilling}
+        invalidateKey="billing-list"
+      />
     </div>
   );
 }
