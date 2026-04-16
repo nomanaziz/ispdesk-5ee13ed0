@@ -203,7 +203,7 @@ export default function AddClient() {
         await supabase.from("client_requests").update({ setup_status: "Completed" } as any).eq("id", requestId);
       }
       toast.success(editMode ? "ক্লায়েন্ট সফলভাবে আপডেট হয়েছে" : "ক্লায়েন্ট সফলভাবে যোগ হয়েছে");
-      navigate("/dashboard/clients/list");
+      navigate("/dashboard/clients");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -586,7 +586,7 @@ export default function AddClient() {
 
       {/* Footer */}
       <div className="flex justify-between items-center py-4">
-        <Button variant="outline" onClick={() => navigate("/dashboard/clients/list")}><ArrowLeft className="h-4 w-4 mr-1" /> Go To List</Button>
+        <Button variant="outline" onClick={() => navigate("/dashboard/clients")}><ArrowLeft className="h-4 w-4 mr-1" /> Go To List</Button>
         <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
           <Save className="h-4 w-4 mr-1" /> {saveMutation.isPending ? "সেভ হচ্ছে..." : "Save & Exit"}
         </Button>
