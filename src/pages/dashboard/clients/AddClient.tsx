@@ -158,13 +158,11 @@ export default function AddClient() {
         if (error) throw error;
       } else {
         if (shouldSyncMikrotik) {
-          if (!form.password) throw new Error("MikroTik PPP তৈরি করতে পাসওয়ার্ড আবশ্যক");
-
           const { data, error: mkErr } = await supabase.functions.invoke("create-mikrotik-ppp", {
             body: {
               mikrotik_id: form.mikrotik_id,
               username: form.username,
-              password: form.password,
+              password: form.password || null,
               profile: form.profile || null,
               remote_address: form.remote_address || null,
               disabled: form.billing_status !== "Active",
@@ -175,6 +173,12 @@ export default function AddClient() {
           if (data?.error) throw new Error(`MikroTik-এ PPPoE user তৈরি ব্যর্থ: ${data.error}`);
           mikrotikStatus = data?.mikrotik_status || "unknown";
           payload.mikrotik_status = mikrotikStatus;
+
+          // If secret already existed, merge its data into payload
+          if (data?.already_exists) {
+            if (data.existing_profile) payload.profile = data.existing_profile;
+            if (data.existing_remote_address) payload.remote_address = data.existing_remote_address;
+          }
         }
 
         const { data: insertedClient, error } = await supabase.from("clients").insert(payload).select("id").single();
