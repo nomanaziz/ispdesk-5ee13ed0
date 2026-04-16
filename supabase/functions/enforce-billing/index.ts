@@ -137,6 +137,7 @@ Deno.serve(async (req) => {
       enabled?: boolean;
       cutoff_time?: string;
       grace_days?: number;
+      enforcement_day?: "same" | "next";
     } | null;
 
     if (!settings?.enabled) {
@@ -146,36 +147,47 @@ Deno.serve(async (req) => {
       );
     }
 
-    const graceDays = settings.grace_days ?? 0;
     const cutoffTime = settings.cutoff_time ?? "00:00";
+    const enforcementDay = settings.enforcement_day ?? "same";
 
-    // 2. Calculate cutoff datetime (Dhaka UTC+6)
+    // 2. Calculate current time in Dhaka (UTC+6)
     const now = new Date();
-    const [cutoffHour, cutoffMin] = cutoffTime.split(":").map(Number);
-    const cutoffToday = new Date(now);
-    cutoffToday.setUTCHours(cutoffHour - 6, cutoffMin, 0, 0);
+    const dhakaOffset = 6 * 60 * 60 * 1000;
+    const dhakaTime = new Date(now.getTime() + dhakaOffset);
+    const dhakaDate = dhakaTime.getUTCDate();
+    const dhakaMonth = dhakaTime.getUTCMonth() + 1;
+    const dhakaYear = dhakaTime.getUTCFullYear();
+    const dhakaHour = dhakaTime.getUTCHours();
+    const dhakaMin = dhakaTime.getUTCMinutes();
 
-    if (now < cutoffToday) {
+    // Check cutoff time
+    const [cutoffHour, cutoffMin] = cutoffTime.split(":").map(Number);
+    const currentMinutes = dhakaHour * 60 + dhakaMin;
+    const cutoffMinutes = cutoffHour * 60 + cutoffMin;
+
+    if (currentMinutes < cutoffMinutes) {
       return new Response(
         JSON.stringify({ message: "Cutoff time not reached yet", processed: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // 3. Find expired non-VIP clients
-    const graceDate = new Date(now);
-    graceDate.setDate(graceDate.getDate() - graceDays);
-    const expireCutoff = graceDate.toISOString().split("T")[0];
+    // 3. Find clients whose billing_date has passed and have due
+    // If enforcement_day = "same", check billing_date <= today
+    // If enforcement_day = "next", check billing_date < today (i.e. billing_date was yesterday or earlier)
+    const checkDate = enforcementDay === "next" ? dhakaDate - 1 : dhakaDate;
 
+    // Current month string for billing check
+    const currentMonthStr = `${dhakaYear}-${String(dhakaMonth).padStart(2, "0")}`;
+
+    // Get active, non-VIP clients whose billing_date has passed
     const { data: expiredClients, error: clientsErr } = await supabase
       .from("clients")
-      .select("id, username, mikrotik_id, mikrotik_status, expire_date, name, client_id")
+      .select("id, username, mikrotik_id, mikrotik_status, billing_date, name, client_id, is_vip, expire_date")
+      .eq("status", "active")
       .eq("is_vip", false)
-      .neq("billing_status", "Paid")
-      .neq("billing_status", "Free")
-      .neq("billing_status", "Left")
-      .lte("expire_date", expireCutoff)
-      .eq("status", "active");
+      .lte("billing_date", checkDate)
+      .neq("mikrotik_status", "disabled");
 
     if (clientsErr) throw new Error(`Failed to query clients: ${clientsErr.message}`);
 
@@ -186,7 +198,42 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Get MikroTik servers
+    // 4. Check billing status for current month — only disable if not paid
+    const clientIds = expiredClients.map(c => c.id);
+    const { data: billingData } = await supabase
+      .from("billing")
+      .select("client_id, status, due")
+      .eq("month", currentMonthStr)
+      .in("client_id", clientIds);
+
+    const paidClients = new Set<string>();
+    if (billingData) {
+      for (const b of billingData) {
+        if (b.status === "paid" || Number(b.due || 0) <= 0) {
+          paidClients.add(b.client_id);
+        }
+      }
+    }
+
+    // Also check expire_date — if expire_date is in the future, skip
+    const clientsToDisable = expiredClients.filter(c => {
+      if (paidClients.has(c.id)) return false;
+      if (c.expire_date) {
+        const expDate = new Date(c.expire_date);
+        const todayStr = `${dhakaYear}-${String(dhakaMonth).padStart(2, "0")}-${String(dhakaDate).padStart(2, "0")}`;
+        if (c.expire_date > todayStr) return false;
+      }
+      return true;
+    });
+
+    if (clientsToDisable.length === 0) {
+      return new Response(
+        JSON.stringify({ message: "All clients are paid or not yet expired", processed: 0, checked: expiredClients.length }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 5. Get MikroTik servers
     const { data: servers } = await supabase
       .from("mikrotik_devices")
       .select("id, name, ip_address, api_port, username, password_encrypted, enabled")
@@ -194,10 +241,9 @@ Deno.serve(async (req) => {
 
     const serverMap = new Map((servers || []).map((s: any) => [s.id, s]));
 
-    // Group clients by mikrotik_id for connection reuse
-    const clientsByServer = new Map<string, typeof expiredClients>();
-    for (const client of expiredClients) {
-      if (client.mikrotik_status === "offline") continue;
+    // Group clients by mikrotik_id
+    const clientsByServer = new Map<string, typeof clientsToDisable>();
+    for (const client of clientsToDisable) {
       if (!client.mikrotik_id) continue;
       const list = clientsByServer.get(client.mikrotik_id) || [];
       list.push(client);
@@ -207,7 +253,7 @@ Deno.serve(async (req) => {
     let processed = 0;
     const results: any[] = [];
 
-    // Process each server with a single TCP connection
+    // Process each server
     for (const [serverId, clients] of clientsByServer) {
       const server = serverMap.get(serverId);
       if (!server) continue;
@@ -223,21 +269,17 @@ Deno.serve(async (req) => {
 
         for (const client of clients) {
           try {
-            // Find PPP secret by name
             const secrets = await mikrotikCommand(conn, "/ppp/secret/print", {
               "?name": client.username || "",
             });
 
             if (secrets.length > 0) {
               const secretId = secrets[0][".id"];
-
-              // Disable the PPP secret
               await mikrotikCommand(conn, "/ppp/secret/set", {
                 ".id": secretId,
                 disabled: "yes",
               });
 
-              // Disconnect active session
               try {
                 const activeSessions = await mikrotikCommand(conn, "/ppp/active/print", {
                   "?name": client.username || "",
@@ -257,10 +299,9 @@ Deno.serve(async (req) => {
             });
           }
 
-          // Update client status in DB
           await supabase
             .from("clients")
-            .update({ mikrotik_status: "offline" })
+            .update({ mikrotik_status: "disabled" })
             .eq("id", client.id);
 
           processed++;
@@ -271,14 +312,13 @@ Deno.serve(async (req) => {
           });
         }
       } catch (err: any) {
-        // Connection-level error — mark all clients from this server
         for (const client of clients) {
           results.push({
             client_id: client.client_id,
             name: client.name,
             error: `Server connection error: ${err.message}`,
           });
-          await supabase.from("clients").update({ mikrotik_status: "offline" }).eq("id", client.id);
+          await supabase.from("clients").update({ mikrotik_status: "disabled" }).eq("id", client.id);
           processed++;
         }
       } finally {
@@ -290,7 +330,8 @@ Deno.serve(async (req) => {
       JSON.stringify({
         message: "Billing enforcement complete",
         processed,
-        total_expired: expiredClients.length,
+        total_checked: expiredClients.length,
+        total_to_disable: clientsToDisable.length,
         results,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

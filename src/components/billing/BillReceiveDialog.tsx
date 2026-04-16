@@ -123,9 +123,31 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
       });
 
       // Extend expire date if checked
-      if (setNextBilling && client.expire_date) {
-        const newExpire = format(addDays(new Date(client.expire_date), 30), "yyyy-MM-dd");
+      if (setNextBilling) {
+        const bd = client.billing_date || 1;
+        const now = new Date();
+        let year = now.getFullYear();
+        let month = now.getMonth() + 2; // next month (0-indexed + 1 for next)
+        if (month > 12) { month -= 12; year++; }
+        const lastDay = new Date(year, month, 0).getDate();
+        const day = Math.min(bd, lastDay);
+        const newExpire = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
         await supabase.from("clients").update({ expire_date: newExpire }).eq("id", client.id);
+      }
+
+      // Auto-enable MikroTik if fully paid
+      if (newDue <= 0 && client.mikrotik_id && client.username) {
+        await supabase.from("clients").update({ mikrotik_status: "enabled" }).eq("id", client.id);
+        try {
+          await supabase.functions.invoke("manage-mikrotik-ppp", {
+            body: {
+              mikrotik_id: client.mikrotik_id,
+              username: client.username,
+              client_id: client.id,
+              action: "enable",
+            },
+          });
+        } catch { /* best effort */ }
       }
 
       toast.success("বিল রিসিভ সম্পন্ন হয়েছে");
