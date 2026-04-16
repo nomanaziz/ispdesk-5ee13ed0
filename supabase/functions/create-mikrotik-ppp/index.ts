@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
     if (!mikrotik_id || !username || !password) {
       return new Response(
         JSON.stringify({ error: "mikrotik_id, username, and password are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
