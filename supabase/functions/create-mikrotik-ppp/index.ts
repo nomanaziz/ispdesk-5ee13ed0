@@ -199,7 +199,11 @@ Deno.serve(async (req) => {
       conn.close();
 
       return new Response(
-        JSON.stringify({ success: true, message: `PPPoE user '${username}' created on ${device.name}` }),
+        JSON.stringify({
+          success: true,
+          message: `PPPoE user '${username}' created on ${device.name}`,
+          mikrotik_status: disabled === true || disabled === "yes" ? "disabled" : "enabled",
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } catch (cmdErr) {

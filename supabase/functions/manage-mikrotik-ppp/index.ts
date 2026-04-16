@@ -101,6 +101,43 @@ function parseSentenceAttrs(words: string[]): Record<string, string> {
   return attrs;
 }
 
+function normalizeMikrotikStatus(value?: string): "enabled" | "disabled" {
+  return value === "true" || value === "yes" ? "disabled" : "enabled";
+}
+
+async function getActiveSessions(conn: Deno.TcpConn, username: string) {
+  return await mikrotikCommand(conn, "/ppp/active/print", { "?name": username });
+}
+
+async function getLiveTraffic(conn: Deno.TcpConn, interfaceName?: string) {
+  if (!interfaceName) return null;
+
+  try {
+    const traffic = await mikrotikCommand(conn, "/interface/monitor-traffic", {
+      interface: interfaceName,
+      once: "",
+    });
+
+    return traffic[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+async function insertClientLog(
+  supabase: ReturnType<typeof createClient>,
+  clientId: string | null,
+  deviceName: string,
+  message: string,
+) {
+  if (!clientId) return;
+  await supabase.from("system_logs").insert({
+    user_id: clientId,
+    device_name: deviceName,
+    log_message: message,
+  });
+}
+
 async function mikrotikLogin(conn: Deno.TcpConn, username: string, password: string): Promise<void> {
   await writeSentence(conn, ["/login", `=name=${username}`, `=password=${password}`]);
   const reply = await readSentence(conn);
@@ -147,7 +184,7 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json();
-    const { mikrotik_id, username, action, password, profile, remote_address, disabled } = body;
+    const { mikrotik_id, client_id, username, action, password, profile, remote_address, disabled } = body;
 
     if (!mikrotik_id || !username || !action) {
       return new Response(
@@ -181,7 +218,25 @@ Deno.serve(async (req) => {
 
       // Find the PPP secret by name
       const secrets = await mikrotikCommand(conn, "/ppp/secret/print", { "?name": username });
-      if (secrets.length === 0) {
+      const secret = secrets[0];
+
+      if (!secret && action === "status") {
+        conn.close();
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: `PPP secret '${username}' not found`,
+            mikrotik_status: "unknown",
+            has_active_session: false,
+            current_id: null,
+            session: null,
+            live_traffic: null,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!secret) {
         conn.close();
         return new Response(
           JSON.stringify({ error: `PPP secret '${username}' not found` }),
@@ -189,10 +244,9 @@ Deno.serve(async (req) => {
         );
       }
 
-      const secretId = secrets[0][".id"];
+      const secretId = secret[".id"];
       let message = "";
-
-      let mikrotikStatus = "unknown";
+      let mikrotikStatus: "enabled" | "disabled" | "removed" | "unknown" = normalizeMikrotikStatus(secret.disabled);
 
       switch (action) {
         case "update": {
@@ -202,7 +256,7 @@ Deno.serve(async (req) => {
           if (remote_address !== undefined) params["remote-address"] = remote_address || "";
           if (disabled === true || disabled === "yes") { params.disabled = "yes"; mikrotikStatus = "disabled"; }
           else if (disabled === false || disabled === "no") { params.disabled = "no"; mikrotikStatus = "enabled"; }
-          else { mikrotikStatus = secrets[0].disabled === "true" ? "disabled" : "enabled"; }
+          else { mikrotikStatus = normalizeMikrotikStatus(secret.disabled); }
           await mikrotikCommand(conn, "/ppp/secret/set", params);
           message = `PPP secret '${username}' updated`;
           break;
@@ -210,37 +264,90 @@ Deno.serve(async (req) => {
         case "disable": {
           await mikrotikCommand(conn, "/ppp/secret/set", { ".id": secretId, disabled: "yes" });
           try {
-            const active = await mikrotikCommand(conn, "/ppp/active/print", { "?name": username });
+            const active = await getActiveSessions(conn, username);
             if (active.length > 0) {
-              await mikrotikCommand(conn, "/ppp/active/remove", { ".id": active[0][".id"] });
+              for (const session of active) {
+                await mikrotikCommand(conn, "/ppp/active/remove", { ".id": session[".id"] });
+              }
             }
           } catch (_) { /* no active session */ }
           mikrotikStatus = "disabled";
           message = `PPP secret '${username}' disabled and disconnected`;
+          await insertClientLog(supabase, client_id || null, device.name, `[PPP] ${username} disabled and disconnected`);
           break;
         }
         case "enable": {
           await mikrotikCommand(conn, "/ppp/secret/set", { ".id": secretId, disabled: "no" });
           mikrotikStatus = "enabled";
           message = `PPP secret '${username}' enabled`;
+          await insertClientLog(supabase, client_id || null, device.name, `[PPP] ${username} enabled`);
           break;
+        }
+        case "disconnect": {
+          const active = await getActiveSessions(conn, username);
+          for (const session of active) {
+            await mikrotikCommand(conn, "/ppp/active/remove", { ".id": session[".id"] });
+          }
+
+          mikrotikStatus = normalizeMikrotikStatus(secret.disabled);
+          message = active.length > 0
+            ? `PPP active session '${username}' disconnected`
+            : `PPP active session '${username}' was not connected`;
+          await insertClientLog(supabase, client_id || null, device.name, `[PPP] ${username} disconnected (${active.length} session)`);
+          break;
+        }
+        case "status": {
+          const active = await getActiveSessions(conn, username);
+          const current = active[0] || null;
+          const traffic = await getLiveTraffic(conn, current?.name || username);
+          conn.close();
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: active.length > 0 ? `PPP session '${username}' is online` : `PPP session '${username}' is offline`,
+              mikrotik_status,
+              has_active_session: active.length > 0,
+              current_id: current?.address || secret["remote-address"] || null,
+              session: current ? {
+                id: current[".id"] || null,
+                address: current.address || null,
+                caller_id: current["caller-id"] || null,
+                service: current.service || null,
+                uptime: current.uptime || null,
+                session_id: current["session-id"] || null,
+                download_bytes: current["bytes-in"] || null,
+                upload_bytes: current["bytes-out"] || null,
+              } : null,
+              live_traffic: traffic ? {
+                rx_bps: traffic["rx-bits-per-second"] || null,
+                tx_bps: traffic["tx-bits-per-second"] || null,
+                rx_pps: traffic["rx-packets-per-second"] || null,
+                tx_pps: traffic["tx-packets-per-second"] || null,
+              } : null,
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
         case "remove": {
           try {
-            const active = await mikrotikCommand(conn, "/ppp/active/print", { "?name": username });
+            const active = await getActiveSessions(conn, username);
             if (active.length > 0) {
-              await mikrotikCommand(conn, "/ppp/active/remove", { ".id": active[0][".id"] });
+              for (const session of active) {
+                await mikrotikCommand(conn, "/ppp/active/remove", { ".id": session[".id"] });
+              }
             }
           } catch (_) { /* no active session */ }
           await mikrotikCommand(conn, "/ppp/secret/remove", { ".id": secretId });
           mikrotikStatus = "removed";
           message = `PPP secret '${username}' removed`;
+          await insertClientLog(supabase, client_id || null, device.name, `[PPP] ${username} removed`);
           break;
         }
         default:
           conn.close();
           return new Response(
-            JSON.stringify({ error: `Unknown action: ${action}. Use: update, disable, enable, remove` }),
+            JSON.stringify({ error: `Unknown action: ${action}. Use: update, disable, enable, disconnect, status, remove` }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
       }
