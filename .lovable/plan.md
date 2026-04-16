@@ -1,33 +1,72 @@
 
 
-## Plan: M.Status কলামে MikroTik PPP Secret স্ট্যাটাস দেখানো
+## Plan: Client List ফিল্টার এবং Online/Offline ইন্ডিকেটর যোগ করা
 
-### সমস্যা
-বর্তমানে `M.Status` কলামে `mikrotik_status` ফিল্ড দেখায় যা device online/offline status। ইউজার চায় এটি MikroTik PPP secret-এর enabled/disabled status দেখাক:
-- **Enabled** (সবুজ) — MikroTik-এ PPP secret enabled আছে
-- **Disabled** (লাল) — MikroTik-এ PPP secret disabled আছে
-- **Unknown** (ধূসর) — MikroTik ডাটা নেই বা চেক করা হয়নি
+### Screenshot অনুযায়ী যা যোগ হবে
 
-### পরিকল্পনা
+**1. Filter Panel (Hide/Show টগল সহ)**
 
-**1. `mikrotik_status` ফিল্ডে সঠিক মান সংরক্ষণ**
-- Client create/update করার সময় `manage-mikrotik-ppp` থেকে response অনুযায়ী `mikrotik_status` সেট করা হবে: `enabled`, `disabled`, বা `unknown`
-- `AddClient.tsx`-এ MikroTik fire-and-forget callback-এ সফল হলে DB-তে `mikrotik_status` আপডেট করা হবে
+Summary cards-এর নিচে একটা collapsible filter section যোগ হবে:
+- **Server** — `mikrotik_devices` থেকে dropdown
+- **Protocol Type** — `protocol_types` থেকে dropdown
+- **Profile** — MikroTik profile (clients-এ unique profile values)
+- **Zone** — `zones` থেকে dropdown
+- **Sub Zone** — `sub_zones` থেকে dropdown (zone অনুযায়ী ফিল্টার)
+- **Box** — `boxes` থেকে dropdown
+- **Package** — `isp_packages` থেকে dropdown
+- **Client Type** — `client_types` থেকে dropdown
+- **Connection Type** — `connection_types_config` থেকে dropdown
+- **B.Status** — `billing_statuses` থেকে dropdown
+- **M.Status** — enabled/disabled/unknown dropdown
+- **Custom Status** — client-এর `status` field
+- **From Date / To Date** — created_at range filter
 
-**2. ClientList.tsx-এ M.Status Badge আপডেট**
-- `enabled` → সবুজ badge
-- `disabled` → লাল badge  
-- অন্যথায় → ধূসর "Unknown" badge
+নিচে "Hide ▲" বাটন — ক্লিক করলে filter panel collapse হবে।
 
-**3. `manage-mikrotik-ppp`-তে status return করা**
-- `enable` action → response-এ `mikrotik_status: "enabled"` 
-- `disable` action → `mikrotik_status: "disabled"`
-- `update` action → disabled param অনুযায়ী status return
+**2. Table-এ অতিরিক্ত কলাম (screenshot অনুযায়ী)**
 
-### ফাইল
+বর্তমান table-এ নিচের কলামগুলো যোগ হবে:
+- **Conn. Type** — connection_type
+- **Cus. Type** — client_type
+- **R.Address** — remote_address
+- **MAC Addrs** — mac_address
+- **Server** — server_name
+
+**3. ID/IP কলামে Online/Offline ইন্ডিকেটর**
+
+ID/IP সেলে username-এর নিচে ছোট ডট দেখাবে:
+- 🟢 **সবুজ ডট** — user online (MikroTik PPP active session আছে)
+- ⚫ **ধূসর ডট** — user offline
+
+এই online status `clients` table-এ একটা নতুন `is_online` boolean কলামে সংরক্ষণ হবে। "Sync Clients & Server" বাটন ক্লিক করলে `fetch-mikrotik-ppp` edge function call হবে এবং PPP active connections চেক করে `is_online` আপডেট করবে।
+
+**4. "Sync Clients & Server" বাটন**
+
+Action bar-এ "Sync Clients & Server" বাটন যোগ হবে। এটি:
+1. প্রতিটি enabled MikroTik device-এ `/ppp/active/print` চালাবে
+2. Active username list পাবে
+3. Clients table-এ match করে `is_online = true/false` সেট করবে
+4. Page refresh হবে
+
+**5. Entries per page**
+
+Table-র উপরে "SHOW [100] ENTRIES" dropdown যোগ হবে pagination-এর জন্য।
+
+---
+
+### ফাইল পরিবর্তন
+
 | File | Change |
 |------|--------|
-| `src/pages/dashboard/clients/ClientList.tsx` | M.Status badge-এ enabled/disabled/unknown দেখানো |
-| `src/pages/dashboard/clients/AddClient.tsx` | MikroTik callback-এ সফল হলে `mikrotik_status` DB-তে আপডেট |
-| `supabase/functions/manage-mikrotik-ppp/index.ts` | Response-এ `mikrotik_status` field return করা |
+| **Migration** | `clients` table-এ `is_online` (boolean, default false) কলাম যোগ |
+| `src/pages/dashboard/clients/ClientList.tsx` | Filter panel, extra columns, online dot, entries dropdown, Sync button |
+| `supabase/functions/fetch-mikrotik-ppp/index.ts` | নতুন action `sync-online` — PPP active connections চেক করে clients-এ `is_online` আপডেট |
+
+### Technical Details
+
+- Filter state: প্রতিটি filter-এর জন্য `useState` — all filters `useMemo`-তে combined apply হবে
+- Config data (zones, packages, etc.) `useQuery` দিয়ে load হবে
+- Online dot: `c.is_online ? "bg-green-500" : "bg-gray-400"` — 8px rounded circle
+- Sync button: `supabase.functions.invoke("fetch-mikrotik-ppp", { body: { action: "sync-online" } })` call করবে, তারপর `queryClient.invalidateQueries`
+- Pagination: `filtered.slice(page * perPage, (page+1) * perPage)` pattern
 
