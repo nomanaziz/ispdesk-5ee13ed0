@@ -117,7 +117,13 @@ async function mikrotikLogin(conn: Deno.TcpConn, username: string, password: str
 async function mikrotikCommand(conn: Deno.TcpConn, command: string, params?: Record<string, string>): Promise<Record<string, string>[]> {
   const words = [command];
   if (params) {
-    for (const [k, v] of Object.entries(params)) words.push(`=${k}=${v}`);
+    for (const [k, v] of Object.entries(params)) {
+      if (k.startsWith("?")) {
+        words.push(`${k}=${v}`);
+      } else {
+        words.push(`=${k}=${v}`);
+      }
+    }
   }
   await writeSentence(conn, words);
   const results: Record<string, string>[] = [];
@@ -186,19 +192,43 @@ Deno.serve(async (req) => {
       const existing = await mikrotikCommand(conn, "/ppp/secret/print", { "?name": username });
 
       if (existing.length > 0) {
-        // Secret already exists — return success without creating
+        // Secret already exists — check if update needed
         const secret = existing[0];
+        const needsUpdate: Record<string, string> = {};
+
+        if (password && password !== secret.password) needsUpdate.password = password;
+        if (profile && profile !== secret.profile) needsUpdate.profile = profile;
+        if (remote_address && remote_address !== secret["remote-address"]) needsUpdate["remote-address"] = remote_address;
+        if (disabled !== undefined) {
+          const wantDisabled = disabled === true || disabled === "yes";
+          const isCurrentlyDisabled = secret.disabled === "true" || secret.disabled === "yes";
+          if (wantDisabled !== isCurrentlyDisabled) needsUpdate.disabled = wantDisabled ? "yes" : "no";
+        }
+
+        let updated = false;
+        if (Object.keys(needsUpdate).length > 0 && secret[".id"]) {
+          // Update existing secret with changed attributes
+          await mikrotikCommand(conn, "/ppp/secret/set", { ".id": secret[".id"], ...needsUpdate });
+          updated = true;
+        }
+
         conn.close();
 
-        const isDisabled = secret.disabled === "true" || secret.disabled === "yes";
+        const isDisabled = needsUpdate.disabled
+          ? needsUpdate.disabled === "yes"
+          : secret.disabled === "true" || secret.disabled === "yes";
+
         return new Response(
           JSON.stringify({
             success: true,
             already_exists: true,
-            message: `PPPoE user '${username}' already exists on ${device.name}`,
+            updated,
+            message: updated
+              ? `PPPoE user '${username}' updated on ${device.name}`
+              : `PPPoE user '${username}' already exists on ${device.name}`,
             mikrotik_status: isDisabled ? "disabled" : "enabled",
-            existing_profile: secret.profile || null,
-            existing_remote_address: secret["remote-address"] || null,
+            existing_profile: needsUpdate.profile || secret.profile || null,
+            existing_remote_address: needsUpdate["remote-address"] || secret["remote-address"] || null,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
