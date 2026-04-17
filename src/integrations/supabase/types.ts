@@ -1023,6 +1023,103 @@ export type Database = {
           },
         ]
       }
+      bw_purchase_order_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          from_date: string | null
+          id: string
+          item_name: string
+          order_id: string
+          quantity: number
+          rate: number
+          to_date: string | null
+          total: number
+          unit: string | null
+          vat_percent: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          from_date?: string | null
+          id?: string
+          item_name: string
+          order_id: string
+          quantity?: number
+          rate?: number
+          to_date?: string | null
+          total?: number
+          unit?: string | null
+          vat_percent?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          from_date?: string | null
+          id?: string
+          item_name?: string
+          order_id?: string
+          quantity?: number
+          rate?: number
+          to_date?: string | null
+          total?: number
+          unit?: string | null
+          vat_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_purchase_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "bw_purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bw_purchase_orders: {
+        Row: {
+          billing_month: string | null
+          created_at: string
+          id: string
+          note: string | null
+          order_no: string
+          reseller_id: string
+          status: string
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          billing_month?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_no: string
+          reseller_id: string
+          status?: string
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_month?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_no?: string
+          reseller_id?: string
+          status?: string
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_purchase_orders_reseller_id_fkey"
+            columns: ["reseller_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bw_recurring_invoices: {
         Row: {
           amount: number | null
@@ -1057,6 +1154,56 @@ export type Database = {
             columns: ["pop_id"]
             isOneToOne: false
             referencedRelation: "bw_sale_pops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bw_reseller_users: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          mobile: string | null
+          name: string
+          password: string
+          permissions: Json
+          reseller_id: string
+          status: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          mobile?: string | null
+          name: string
+          password: string
+          permissions?: Json
+          reseller_id: string
+          status?: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          mobile?: string | null
+          name?: string
+          password?: string
+          permissions?: Json
+          reseller_id?: string
+          status?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_reseller_users_reseller_id_fkey"
+            columns: ["reseller_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
             referencedColumns: ["id"]
           },
         ]

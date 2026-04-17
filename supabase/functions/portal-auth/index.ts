@@ -116,10 +116,47 @@ Deno.serve(async (req) => {
         branch_id: reseller.branch_id,
         balance: reseller.balance,
         tariff_id: reseller.tariff_id,
+        permissions: { dashboard: true, invoices: true, purchases: true, tickets: true, users: true, settings: true },
       });
       await supabase.from("portal_login_log").insert({
         username: reseller.username || reseller.client_code,
         user_type: "reseller",
+        ip_address: ip,
+        user_agent: ua,
+        session_id: sid,
+        status: "active",
+      });
+      return json({ token, customer });
+    }
+
+    // 2b. RESELLER SUB-USER
+    const { data: subUser } = await supabase
+      .from("bw_reseller_users")
+      .select("id, reseller_id, name, username, password, email, mobile, status, permissions, branch_managers!inner(id, name, client_code, balance, tariff_id, branch_id)")
+      .eq("username", username)
+      .maybeSingle();
+
+    if (subUser) {
+      if (subUser.password !== password) return json({ error: "Invalid username or password" }, 401);
+      if (subUser.status !== "active") return json({ error: "Sub-user is inactive" }, 403);
+      const parent: any = subUser.branch_managers;
+      const { token, customer, sid } = issueToken({
+        sub: subUser.id,
+        parent_reseller_id: subUser.reseller_id,
+        name: subUser.name,
+        code: parent?.client_code || "",
+        username: subUser.username,
+        type: "reseller_sub",
+        email: subUser.email,
+        mobile: subUser.mobile,
+        branch_id: parent?.branch_id,
+        balance: parent?.balance,
+        tariff_id: parent?.tariff_id,
+        permissions: subUser.permissions,
+      });
+      await supabase.from("portal_login_log").insert({
+        username: subUser.username,
+        user_type: "reseller_sub",
         ip_address: ip,
         user_agent: ua,
         session_id: sid,

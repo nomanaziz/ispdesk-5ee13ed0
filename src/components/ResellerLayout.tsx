@@ -1,48 +1,94 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, LogOut, Wallet, Users, Activity } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  LayoutDashboard,
+  LogOut,
+  Receipt,
+  ShoppingCart,
+  LifeBuoy,
+  Users,
+  Settings,
+  Search,
+  Menu,
+  Activity,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const nav = [
-  { to: "/reseller/dashboard", label: "ড্যাশবোর্ড", icon: LayoutDashboard },
-  { to: "/reseller/balance", label: "ব্যালেন্স", icon: Wallet },
-  { to: "/reseller/clients", label: "ক্লায়েন্ট", icon: Users },
+type Key = "dashboard" | "invoices" | "purchases" | "tickets" | "users" | "settings";
+
+const allNav: { key: Key; to: string; label: string; icon: any }[] = [
+  { key: "dashboard", to: "/reseller/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "invoices", to: "/reseller/invoices", label: "Billing Invoices", icon: Receipt },
+  { key: "purchases", to: "/reseller/purchases", label: "Purchase Orders", icon: ShoppingCart },
+  { key: "tickets", to: "/reseller/tickets", label: "Support Tickets", icon: LifeBuoy },
+  { key: "users", to: "/reseller/users", label: "User Management", icon: Users },
+  { key: "settings", to: "/reseller/settings", label: "Company Settings", icon: Settings },
 ];
 
 export const ResellerLayout = ({ children }: { children: ReactNode }) => {
   const { customer, logout } = usePortalAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [search, setSearch] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
   };
 
+  // Sub-user permission filtering
+  const isSub = customer?.type === "reseller_sub";
+  const perms = customer?.permissions;
+  const nav = allNav
+    .filter((item) => (isSub && perms ? perms[item.key] : true))
+    .filter((item) => item.label.toLowerCase().includes(search.toLowerCase()));
+
+  const popLabel = customer?.name?.toUpperCase() || "RESELLER PORTAL";
+
   return (
     <div className="min-h-screen flex bg-muted/30">
-      <aside className="hidden md:flex w-60 flex-col border-r bg-card">
-        <div className="h-14 px-4 flex items-center gap-2 border-b">
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed md:static inset-y-0 left-0 z-40 w-64 flex-col bg-[hsl(217_45%_22%)] text-white transition-transform md:translate-x-0",
+          mobileOpen ? "translate-x-0 flex" : "-translate-x-full hidden md:flex",
+        )}
+      >
+        <div className="h-14 px-4 flex items-center gap-2 border-b border-white/10">
           <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
             <Activity className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="font-semibold">Reseller Portal</span>
+          <span className="font-semibold text-sm truncate">{popLabel}</span>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <div className="p-3 border-b border-white/10">
+          <div className="relative">
+            <Search className="h-4 w-4 absolute left-2.5 top-2.5 text-white/60" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Menu Search..."
+              className="pl-8 h-9 bg-white/10 border-white/10 text-white placeholder:text-white/50"
+            />
+          </div>
+        </div>
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {nav.map((item) => {
             const Icon = item.icon;
-            const active = location.pathname === item.to;
+            const active = location.pathname.startsWith(item.to);
             return (
               <Link
                 key={item.to}
                 to={item.to}
+                onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors uppercase tracking-wide",
                   active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-white/15 text-white"
+                    : "text-white/70 hover:bg-white/10 hover:text-white",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -51,22 +97,53 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
             );
           })}
         </nav>
-        <div className="p-3 border-t">
-          <Button variant="outline" size="sm" className="w-full" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" /> লগআউট
+        <div className="p-3 border-t border-white/10">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full bg-transparent border-white/20 text-white hover:bg-white/10 hover:text-white"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4 mr-2" /> Logout
           </Button>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col">
-        <header className="h-14 border-b bg-card px-4 flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium">{customer?.name}</div>
-            <div className="text-xs text-muted-foreground">{customer?.username}</div>
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="h-14 border-b bg-card px-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <div className="hidden sm:block">
+              <div className="text-xs text-muted-foreground">POP Code</div>
+              <div className="text-sm font-semibold">{customer?.code || "—"}</div>
+            </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="md:hidden">
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-sm font-medium">{customer?.name}</div>
+              <div className="text-xs text-muted-foreground">
+                {customer?.username}
+                {isSub ? " (Sub-user)" : ""}
+              </div>
+            </div>
+            <div className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
+              {customer?.name?.[0]?.toUpperCase() || "R"}
+            </div>
+          </div>
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </div>
