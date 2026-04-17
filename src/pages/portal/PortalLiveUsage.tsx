@@ -120,7 +120,7 @@ const PortalLiveUsage = () => {
     { icon: User, label: "Username", value: client?.username || "—" },
     { icon: Phone, label: "Mobile", value: client?.contact || (client as any)?.mobile || "—" },
     { icon: Gauge, label: "Package Speed", value: client?.speed || "—" },
-    { icon: Clock, label: "Uptime", value: isOnline ? fmtUptime(client?.last_online_at) : "Offline" },
+    { icon: Clock, label: "Connection Since", value: client?.joining_date ? new Date(client.joining_date).toLocaleDateString() : "—" },
     { icon: Download, label: "Downloaded Data", value: fmtBytes(Number(client?.total_download || 0)) },
     { icon: Upload, label: "Uploaded Data", value: fmtBytes(Number(client?.total_upload || 0)) },
   ];
