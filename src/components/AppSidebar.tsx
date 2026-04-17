@@ -339,14 +339,6 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "অ্যাফিলিয়েশন",
-    icon: Link2,
-    items: [
-      { title: "অ্যাফিলিয়েট পার্টনার", url: "/dashboard/affiliation/partners", icon: Users },
-      { title: "অ্যাফিলিয়েটর যোগ", url: "/dashboard/affiliation/add", icon: UserPlus },
-    ],
-  },
-  {
     label: "সিস্টেম",
     icon: Cog,
     items: [
