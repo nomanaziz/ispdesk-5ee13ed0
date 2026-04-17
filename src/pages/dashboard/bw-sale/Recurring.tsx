@@ -1,85 +1,57 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 
 export default function Recurring() {
+  const nav = useNavigate();
   const [items, setItems] = useState<any[]>([]);
-  const [pops, setPops] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [itemsByRec, setItemsByRec] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ pop_id: "", start_date: "", end_date: "", repeat_date: 30, status: "enabled", bill_amount: 0 });
 
+  const fetchData = async () => {
+    setLoading(true);
+    const [rRes, cRes, iRes] = await Promise.all([
+      supabase.from("bw_sale_recurring_invoices").select("*").order("created_at", { ascending: false }),
+      supabase.from("bw_sale_customers").select("id, customer_name, mobile"),
+      supabase.from("bw_sale_recurring_items").select("*"),
+    ]);
+    setItems(rRes.data || []);
+    setCustomers(cRes.data || []);
+    const map: Record<string, any[]> = {};
+    (iRes.data || []).forEach((it: any) => { (map[it.recurring_id] ||= []).push(it); });
+    setItemsByRec(map);
+    setLoading(false);
+  };
   useEffect(() => { fetchData(); }, []);
 
-  async function fetchData() {
-    setLoading(true);
-    const [rRes, pRes] = await Promise.all([
-      supabase.from("bw_sale_recurring").select("*").order("created_at", { ascending: false }),
-      supabase.from("bw_sale_pops").select("*").order("name"),
-    ]);
-    if (rRes.data) setItems(rRes.data);
-    if (pRes.data) setPops(pRes.data);
-    setLoading(false);
-  }
+  const totals = useMemo(() => {
+    let total = 0;
+    items.forEach(r => {
+      const rows = itemsByRec[r.id] || [];
+      total += rows.reduce((s, it) => s + (Number(it.quantity) * Number(it.rate) * (1 + Number(it.vat_pct || 0) / 100)), 0);
+    });
+    return total;
+  }, [items, itemsByRec]);
 
-  const totalBill = items.reduce((s, i) => s + (i.bill_amount || 0), 0);
-
-  function openAdd() {
-    setEditId(null);
-    setForm({ pop_id: "", start_date: "", end_date: "", repeat_date: 30, status: "enabled", bill_amount: 0 });
-    setDialogOpen(true);
-  }
-
-  function openEdit(item: any) {
-    setEditId(item.id);
-    setForm({ pop_id: item.pop_id || "", start_date: item.start_date || "", end_date: item.end_date || "", repeat_date: item.repeat_date || 30, status: item.status, bill_amount: item.bill_amount || 0 });
-    setDialogOpen(true);
-  }
-
-  async function handleSave() {
-    const payload: any = { ...form };
-    if (!payload.pop_id) payload.pop_id = null;
-    if (!payload.start_date) payload.start_date = null;
-    if (!payload.end_date) payload.end_date = null;
-
-    if (editId) {
-      const { error } = await supabase.from("bw_sale_recurring").update(payload).eq("id", editId);
-      if (error) { toast.error(error.message); return; }
-      toast.success("Updated");
-    } else {
-      const { error } = await supabase.from("bw_sale_recurring").insert(payload);
-      if (error) { toast.error(error.message); return; }
-      toast.success("Created");
-    }
-    setDialogOpen(false);
-    fetchData();
-  }
-
-  async function handleDelete(id: string) {
-    if (!confirm("Delete?")) return;
-    const { error } = await supabase.from("bw_sale_recurring").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Deleted"); fetchData(); }
-  }
-
-  const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this recurring template?")) return;
+    const { error } = await supabase.from("bw_sale_recurring_invoices").delete().eq("id", id);
+    if (error) toast.error(error.message); else { toast.success("Deleted"); fetchData(); }
+  };
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4">
           <CardTitle className="text-lg">Recurring Invoices</CardTitle>
-          <Button size="sm" onClick={openAdd}><Plus className="h-4 w-4 mr-1" /> Invoice</Button>
+          <Button size="sm" onClick={() => nav("/dashboard/bw-sale/recurring/new")}><Plus className="h-4 w-4 mr-1" /> New Recurring</Button>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded border">
@@ -87,10 +59,10 @@ export default function Recurring() {
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead className="w-10">SN</TableHead>
-                  <TableHead>POP Name</TableHead>
+                  <TableHead>POP / Customer</TableHead>
                   <TableHead>Start Date</TableHead>
                   <TableHead>End Date</TableHead>
-                  <TableHead>Repeat (Days)</TableHead>
+                  <TableHead className="text-right">Repeat Day</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Bill Amount</TableHead>
                   <TableHead className="w-24 text-center">Action</TableHead>
@@ -100,30 +72,35 @@ export default function Recurring() {
                 {loading ? (
                   <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
                 ) : items.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No recurring invoices</TableCell></TableRow>
-                ) : items.map((item, i) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{i + 1}</TableCell>
-                    <TableCell className="font-medium">{pops.find(p => p.id === item.pop_id)?.name || "—"}</TableCell>
-                    <TableCell>{item.start_date || "—"}</TableCell>
-                    <TableCell>{item.end_date || "—"}</TableCell>
-                    <TableCell>{item.repeat_date}</TableCell>
-                    <TableCell>
-                      <Badge variant={item.status === "enabled" ? "default" : "secondary"}>{item.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">৳{(item.bill_amount || 0).toLocaleString()}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No recurring templates</TableCell></TableRow>
+                ) : items.map((r, i) => {
+                  const c = customers.find(x => x.id === r.customer_id);
+                  const rows = itemsByRec[r.id] || [];
+                  const amount = rows.reduce((s, it) => s + (Number(it.quantity) * Number(it.rate) * (1 + Number(it.vat_pct || 0) / 100)), 0);
+                  return (
+                    <TableRow key={r.id}>
+                      <TableCell>{i + 1}</TableCell>
+                      <TableCell className="font-medium">
+                        <Link to={`/dashboard/bw-sale/pop/${r.customer_id}`} className="text-primary hover:underline">{c?.customer_name || "—"}</Link>
+                      </TableCell>
+                      <TableCell>{r.start_date || "—"}</TableCell>
+                      <TableCell>{r.end_date || "—"}</TableCell>
+                      <TableCell className="text-right">{r.repeat_day}</TableCell>
+                      <TableCell><Badge variant={r.status === "enabled" ? "default" : "secondary"}>{r.status}</Badge></TableCell>
+                      <TableCell className="text-right">৳{Math.round(amount).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button asChild variant="ghost" size="icon" className="h-7 w-7"><Link to={`/dashboard/bw-sale/recurring/${r.id}/edit`}><Pencil className="h-3.5 w-3.5" /></Link></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
                 {items.length > 0 && (
                   <TableRow className="bg-muted/30 font-semibold">
-                    <TableCell colSpan={6} className="text-right">Total:</TableCell>
-                    <TableCell className="text-right">৳{totalBill.toLocaleString()}</TableCell>
+                    <TableCell colSpan={6} className="text-right">Monthly Total:</TableCell>
+                    <TableCell className="text-right">৳{Math.round(totals).toLocaleString()}</TableCell>
                     <TableCell />
                   </TableRow>
                 )}
@@ -132,38 +109,6 @@ export default function Recurring() {
           </div>
         </CardContent>
       </Card>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{editId ? "Edit" : "Add"} Recurring Invoice</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <Label>POP</Label>
-              <Select value={form.pop_id} onValueChange={v => set("pop_id", v)}>
-                <SelectTrigger><SelectValue placeholder="Select POP" /></SelectTrigger>
-                <SelectContent>{pops.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Start Date</Label><Input type="date" value={form.start_date} onChange={e => set("start_date", e.target.value)} /></div>
-              <div><Label>End Date</Label><Input type="date" value={form.end_date} onChange={e => set("end_date", e.target.value)} /></div>
-            </div>
-            <div><Label>Repeat Date (Days)</Label><Input type="number" value={form.repeat_date} onChange={e => set("repeat_date", Number(e.target.value))} /></div>
-            <div><Label>Bill Amount</Label><Input type="number" value={form.bill_amount} onChange={e => set("bill_amount", Number(e.target.value))} /></div>
-            <div>
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={v => set("status", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="enabled">Enabled</SelectItem>
-                  <SelectItem value="disabled">Disabled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter><Button onClick={handleSave}>{editId ? "Update" : "Save"}</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -1,140 +1,58 @@
-// BW Sale pro-rate helpers — thin wrapper around the shared bandwidthBilling engine.
-// Kept for backward compatibility with existing imports.
+// BW Sale pro-rate helpers — simplified single-row engine.
+// Formula: amount = quantity × rate × (days_inclusive / total_days_in_billing_month)
 
-import { supabase } from "@/integrations/supabase/client";
-import {
-  buildSegments,
-  getMonthRange,
-  type BillingSegment,
-  type SubscriptionLike,
-} from "@/lib/bandwidthBilling";
-
-export interface InvoiceItemDraft {
-  subscription_id: string | null;
-  service_id: string | null;
-  service_name: string;
-  bandwidth_mbps: number;
-  rate: number;
+export function getMonthRange(month: string): {
   period_start: string;
   period_end: string;
-  days: number;
-  total_days_in_month: number;
-  amount: number;
-  remarks?: string;
-  sort_order: number;
+  total_days: number;
+} {
+  const [yStr, mStr] = month.split("-");
+  const y = Number(yStr);
+  const m = Number(mStr);
+  const start = new Date(Date.UTC(y, m - 1, 1));
+  const end = new Date(Date.UTC(y, m, 0));
+  const total = end.getUTCDate();
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  return { period_start: fmt(start), period_end: fmt(end), total_days: total };
 }
 
-export { getMonthRange };
-
-const fmt = (d: Date) => d.toISOString().slice(0, 10);
-const toDate = (s: string) => new Date(s + "T00:00:00");
-
-export async function buildInvoiceItems(
-  customerId: string,
-  month: string,
-): Promise<InvoiceItemDraft[]> {
-  const { period_start, period_end, total_days } = getMonthRange(month);
-
-  const [subsRes, svcRes] = await Promise.all([
-    supabase
-      .from("bw_customer_subscriptions")
-      .select("*")
-      .eq("customer_id", customerId)
-      .lte("start_date", period_end)
-      .or(`end_date.is.null,end_date.gte.${period_start}`),
-    supabase.from("bw_sale_services").select("id, name"),
-  ]);
-
-  const subs = (subsRes.data as any[]) || [];
-  const svcMap = new Map<string, string>();
-  (svcRes.data || []).forEach((s: any) => svcMap.set(s.id, s.name));
-
-  const enriched: SubscriptionLike[] = subs.map((s: any) => ({
-    id: s.id,
-    service_id: s.service_id,
-    service_name: svcMap.get(s.service_id) || "Service",
-    bandwidth_mbps: Number(s.bandwidth_mbps),
-    rate_per_mbps: Number(s.rate_per_mbps),
-    start_date: s.start_date,
-    end_date: s.end_date,
-    status: s.status,
-  }));
-
-  const segments: BillingSegment[] = buildSegments(
-    enriched,
-    period_start,
-    period_end,
-    total_days,
-  );
-
-  return segments.map((s) => ({ ...s }));
+export function daysBetweenInclusive(from: string, to: string): number {
+  const a = new Date(from + "T00:00:00Z").getTime();
+  const b = new Date(to + "T00:00:00Z").getTime();
+  if (b < a) return 0;
+  return Math.floor((b - a) / 86400000) + 1;
 }
 
-export async function applyServiceChange(params: {
-  customerId: string;
-  serviceId: string;
-  newMbps: number;
-  newRate: number;
-  effectiveDate: string;
-  reason?: string;
-  changedBy?: string;
-}) {
-  const { customerId, serviceId, newMbps, newRate, effectiveDate, reason, changedBy } = params;
+/** Pro-rated line amount.  If from/to span the full month, this equals qty × rate. */
+export function lineAmount(opts: {
+  quantity: number;
+  rate: number;
+  fromDate?: string | null;
+  toDate?: string | null;
+  billingMonth?: string;
+  vatPct?: number;
+}): { days: number; totalDays: number; subtotal: number; vat: number; total: number } {
+  const qty = Number(opts.quantity || 0);
+  const rate = Number(opts.rate || 0);
+  const vatPct = Number(opts.vatPct || 0);
 
-  const { data: actives } = await supabase
-    .from("bw_customer_subscriptions")
-    .select("*")
-    .eq("customer_id", customerId)
-    .eq("service_id", serviceId)
-    .eq("status", "active")
-    .is("end_date", null)
-    .limit(1);
+  let totalDays = 30;
+  if (opts.billingMonth) totalDays = getMonthRange(opts.billingMonth).total_days;
 
-  const current = actives?.[0];
-  const dayBefore = fmt(new Date(toDate(effectiveDate).getTime() - 86400000));
-
-  let oldSubId: string | null = null;
-  let oldMbps: number | null = null;
-  let oldRate: number | null = null;
-
-  if (current) {
-    oldSubId = current.id;
-    oldMbps = Number(current.bandwidth_mbps);
-    oldRate = Number(current.rate_per_mbps);
-    await supabase
-      .from("bw_customer_subscriptions")
-      .update({ end_date: dayBefore, status: "closed" })
-      .eq("id", current.id);
+  let days = totalDays;
+  if (opts.fromDate && opts.toDate) {
+    days = daysBetweenInclusive(opts.fromDate, opts.toDate);
+    if (!opts.billingMonth) totalDays = days;
   }
 
-  const { data: newSub, error } = await supabase
-    .from("bw_customer_subscriptions")
-    .insert({
-      customer_id: customerId,
-      service_id: serviceId,
-      bandwidth_mbps: newMbps,
-      rate_per_mbps: newRate,
-      start_date: effectiveDate,
-      status: "active",
-    })
-    .select()
-    .single();
-  if (error) throw error;
-
-  await supabase.from("bw_service_change_log").insert({
-    customer_id: customerId,
-    service_id: serviceId,
-    old_subscription_id: oldSubId,
-    new_subscription_id: newSub.id,
-    old_mbps: oldMbps,
-    new_mbps: newMbps,
-    old_rate: oldRate,
-    new_rate: newRate,
-    effective_date: effectiveDate,
-    change_type: oldMbps == null ? "new" : newMbps > (oldMbps || 0) ? "upgrade" : "downgrade",
-    reason,
-    changed_by: changedBy,
-  });
-
-  return newSub;
+  const subtotal = qty * rate * (days / Math.max(totalDays, 1));
+  const vat = subtotal * (vatPct / 100);
+  const total = subtotal + vat;
+  return {
+    days,
+    totalDays,
+    subtotal: Math.round(subtotal * 100) / 100,
+    vat: Math.round(vat * 100) / 100,
+    total: Math.round(total * 100) / 100,
+  };
 }
