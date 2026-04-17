@@ -535,7 +535,6 @@ export default function OnlineClientMonitoring() {
                 <TableCell>{s.profile || "—"}</TableCell>
                 <TableCell>{s.service || "—"}</TableCell>
                 <TableCell className="font-mono text-xs">{s.address || "—"}</TableCell>
-                <TableCell className="font-mono text-xs">{s.caller_id || "—"}</TableCell>
                 <TableCell>
                   {s.status === "offline" ? (
                     <div className="flex flex-col items-start gap-0.5">
