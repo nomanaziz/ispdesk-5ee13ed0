@@ -46,9 +46,14 @@ export default function Import() {
   });
 
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ["mikrotik_clients", selectedServer, protocolFilter, profileFilter, userTypeFilter],
+    queryKey: ["mikrotik_clients", selectedServer, protocolFilter, profileFilter, userTypeFilter, transferStatus],
     queryFn: async () => {
-      let q = supabase.from("mikrotik_clients").select("*, mikrotik_devices(name), branches(name)").eq("exported", false).order("created_at", { ascending: false });
+      let q = supabase
+        .from("mikrotik_clients")
+        .select("*, mikrotik_devices(name), branches(name), transferred_pop:branch_managers!mikrotik_clients_transferred_to_pop_id_fkey(name, pop_code), transferred_mt:mikrotik_devices!mikrotik_clients_transferred_to_mikrotik_id_fkey(name)")
+        .order("created_at", { ascending: false });
+      if (transferStatus === "pending") q = q.is("transferred_to_pop_id", null);
+      else q = q.not("transferred_to_pop_id", "is", null);
       if (selectedServer !== "all") q = q.eq("mikrotik_id", selectedServer);
       if (protocolFilter !== "all") q = q.eq("service", protocolFilter);
       if (profileFilter !== "all") q = q.eq("profile", profileFilter);
