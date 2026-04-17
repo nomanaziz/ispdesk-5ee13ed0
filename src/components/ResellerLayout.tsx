@@ -52,28 +52,28 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
   const popLabel = customer?.name?.toUpperCase() || "RESELLER PORTAL";
 
   return (
-    <div className="min-h-screen flex bg-muted/30">
+    <div className="min-h-screen flex bg-background">
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed md:static inset-y-0 left-0 z-40 w-64 flex-col bg-[hsl(217_45%_22%)] text-white transition-transform md:translate-x-0",
+          "fixed md:static inset-y-0 left-0 z-40 w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0",
           mobileOpen ? "translate-x-0 flex" : "-translate-x-full hidden md:flex",
         )}
       >
-        <div className="h-14 px-4 flex items-center gap-2 border-b border-white/10">
-          <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
-            <Activity className="h-4 w-4 text-primary-foreground" />
+        <div className="h-14 px-4 flex items-center gap-2 border-b border-sidebar-border">
+          <div className="h-8 w-8 rounded bg-sidebar-primary flex items-center justify-center">
+            <Activity className="h-4 w-4 text-sidebar-primary-foreground" />
           </div>
           <span className="font-semibold text-sm truncate">{popLabel}</span>
         </div>
-        <div className="p-3 border-b border-white/10">
+        <div className="p-3 border-b border-sidebar-border">
           <div className="relative">
-            <Search className="h-4 w-4 absolute left-2.5 top-2.5 text-white/60" />
+            <Search className="h-4 w-4 absolute left-2.5 top-2.5 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Menu Search..."
-              className="pl-8 h-9 bg-white/10 border-white/10 text-white placeholder:text-white/50"
+              className="pl-8 h-9"
             />
           </div>
         </div>
@@ -87,10 +87,10 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                 to={item.to}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors uppercase tracking-wide",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
                   active
-                    ? "bg-white/15 text-white"
-                    : "text-white/70 hover:bg-white/10 hover:text-white",
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -99,11 +99,11 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
             );
           })}
         </nav>
-        <div className="p-3 border-t border-white/10">
+        <div className="p-3 border-t border-sidebar-border">
           <Button
             variant="outline"
             size="sm"
-            className="w-full bg-transparent border-white/20 text-white hover:bg-white/10 hover:text-white"
+            className="w-full"
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4 mr-2" /> Logout
