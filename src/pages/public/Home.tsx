@@ -32,8 +32,12 @@ function useHeroContent() {
 
 /* ─── 1. Festival Marquee ─── */
 function FestivalBanner() {
-  const { data } = useHeroContent();
-  const text = data?.marquee?.text || "🎉 ঈদ মোবারক! সকল প্যাকেজে বিশেষ ছাড় চলছে — নতুন কানেকশনে ৫০% ইনস্টলেশন ফি মওকুফ!  |  🌟 ফাইবার অপটিক কানেকশনে ফ্রি রাউটার!  |  📞 হেল্পলাইন: ০৯৬৭৮-১২৩৪৫৬";
+  const { data, isLoading } = useHeroContent();
+  if (isLoading) return null;
+  const m = data?.marquee;
+  // Hide banner if marquee row missing, explicitly disabled, or has no text
+  if (!m || m.enabled === false || !m.text || !String(m.text).trim()) return null;
+  const text = String(m.text);
   return (
     <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white py-2 overflow-hidden">
       <div className="flex animate-marquee-fast whitespace-nowrap">
