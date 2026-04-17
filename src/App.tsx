@@ -152,9 +152,13 @@ import BwBuyBillView from "@/pages/dashboard/bw-buy/BillView";
 // BW Sale
 import BwSalePop from "@/pages/dashboard/bw-sale/Pop";
 import BwSaleInvoices from "@/pages/dashboard/bw-sale/Invoices";
+import BwSaleInvoiceForm from "@/pages/dashboard/bw-sale/InvoiceForm";
+import BwSaleInvoiceDetail from "@/pages/dashboard/bw-sale/InvoiceDetail";
 import BwSaleCollection from "@/pages/dashboard/bw-sale/Collection";
 import BwSaleRecurring from "@/pages/dashboard/bw-sale/Recurring";
 import BwSaleCustomerView from "@/pages/dashboard/bw-sale/CustomerView";
+import BwSaleServices from "@/pages/dashboard/bw-sale/Services";
+import BwSaleSubscriptions from "@/pages/dashboard/bw-sale/Subscriptions";
 
 // Purchase
 import PurchaseVendors from "@/pages/dashboard/purchases/Vendors";
@@ -436,7 +440,12 @@ const App = () => (
               {/* BW Sale */}
               <Route path="/dashboard/bw-sale/pop" element={<P><BwSalePop /></P>} />
               <Route path="/dashboard/bw-sale/pop/:id" element={<P><BwSaleCustomerView /></P>} />
+              <Route path="/dashboard/bw-sale/services" element={<P><BwSaleServices /></P>} />
+              <Route path="/dashboard/bw-sale/subscriptions" element={<P><BwSaleSubscriptions /></P>} />
               <Route path="/dashboard/bw-sale/invoices" element={<P><BwSaleInvoices /></P>} />
+              <Route path="/dashboard/bw-sale/invoices/new" element={<P><BwSaleInvoiceForm /></P>} />
+              <Route path="/dashboard/bw-sale/invoices/:id" element={<P><BwSaleInvoiceDetail /></P>} />
+              <Route path="/dashboard/bw-sale/invoices/:id/edit" element={<P><BwSaleInvoiceForm /></P>} />
               <Route path="/dashboard/bw-sale/collection" element={<P><BwSaleCollection /></P>} />
               <Route path="/dashboard/bw-sale/recurring" element={<P><BwSaleRecurring /></P>} />
 

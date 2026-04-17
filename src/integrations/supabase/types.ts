@@ -877,6 +877,139 @@ export type Database = {
           },
         ]
       }
+      bw_customer_subscriptions: {
+        Row: {
+          bandwidth_mbps: number
+          created_at: string
+          customer_id: string
+          end_date: string | null
+          id: string
+          rate_per_mbps: number
+          remarks: string | null
+          service_id: string
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bandwidth_mbps?: number
+          created_at?: string
+          customer_id: string
+          end_date?: string | null
+          id?: string
+          rate_per_mbps?: number
+          remarks?: string | null
+          service_id: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bandwidth_mbps?: number
+          created_at?: string
+          customer_id?: string
+          end_date?: string | null
+          id?: string
+          rate_per_mbps?: number
+          remarks?: string | null
+          service_id?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_customer_subscriptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_customer_subscriptions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bw_invoice_items: {
+        Row: {
+          amount: number
+          bandwidth_mbps: number
+          created_at: string
+          days: number
+          id: string
+          invoice_id: string
+          period_end: string
+          period_start: string
+          rate: number
+          remarks: string | null
+          service_id: string | null
+          service_name: string
+          sort_order: number
+          subscription_id: string | null
+          total_days_in_month: number
+        }
+        Insert: {
+          amount?: number
+          bandwidth_mbps?: number
+          created_at?: string
+          days?: number
+          id?: string
+          invoice_id: string
+          period_end: string
+          period_start: string
+          rate?: number
+          remarks?: string | null
+          service_id?: string | null
+          service_name: string
+          sort_order?: number
+          subscription_id?: string | null
+          total_days_in_month?: number
+        }
+        Update: {
+          amount?: number
+          bandwidth_mbps?: number
+          created_at?: string
+          days?: number
+          id?: string
+          invoice_id?: string
+          period_end?: string
+          period_start?: string
+          rate?: number
+          remarks?: string | null
+          service_id?: string | null
+          service_name?: string
+          sort_order?: number
+          subscription_id?: string | null
+          total_days_in_month?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sales_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_invoice_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_invoice_items_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "bw_customer_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bw_items: {
         Row: {
           bandwidth: string | null
@@ -1431,6 +1564,45 @@ export type Database = {
           },
         ]
       }
+      bw_sale_services: {
+        Row: {
+          code: string | null
+          created_at: string
+          default_rate: number
+          description: string | null
+          id: string
+          name: string
+          sort_order: number
+          status: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          default_rate?: number
+          description?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          status?: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          default_rate?: number
+          description?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          status?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bw_sales_invoices: {
         Row: {
           amount: number | null
@@ -1442,10 +1614,15 @@ export type Database = {
           due: number | null
           id: string
           invoice_no: string
+          issued_date: string | null
           month: string | null
+          notes: string | null
           paid_amount: number | null
+          period_end: string | null
+          period_start: string | null
           pop_id: string | null
           status: string
+          total_amount: number
         }
         Insert: {
           amount?: number | null
@@ -1457,10 +1634,15 @@ export type Database = {
           due?: number | null
           id?: string
           invoice_no: string
+          issued_date?: string | null
           month?: string | null
+          notes?: string | null
           paid_amount?: number | null
+          period_end?: string | null
+          period_start?: string | null
           pop_id?: string | null
           status?: string
+          total_amount?: number
         }
         Update: {
           amount?: number | null
@@ -1472,10 +1654,15 @@ export type Database = {
           due?: number | null
           id?: string
           invoice_no?: string
+          issued_date?: string | null
           month?: string | null
+          notes?: string | null
           paid_amount?: number | null
+          period_end?: string | null
+          period_start?: string | null
           pop_id?: string | null
           status?: string
+          total_amount?: number
         }
         Relationships: [
           {
@@ -1490,6 +1677,86 @@ export type Database = {
             columns: ["pop_id"]
             isOneToOne: false
             referencedRelation: "bw_sale_pops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bw_service_change_log: {
+        Row: {
+          change_type: string
+          changed_by: string | null
+          created_at: string
+          customer_id: string
+          effective_date: string
+          id: string
+          new_mbps: number | null
+          new_rate: number | null
+          new_subscription_id: string | null
+          old_mbps: number | null
+          old_rate: number | null
+          old_subscription_id: string | null
+          reason: string | null
+          service_id: string
+        }
+        Insert: {
+          change_type?: string
+          changed_by?: string | null
+          created_at?: string
+          customer_id: string
+          effective_date: string
+          id?: string
+          new_mbps?: number | null
+          new_rate?: number | null
+          new_subscription_id?: string | null
+          old_mbps?: number | null
+          old_rate?: number | null
+          old_subscription_id?: string | null
+          reason?: string | null
+          service_id: string
+        }
+        Update: {
+          change_type?: string
+          changed_by?: string | null
+          created_at?: string
+          customer_id?: string
+          effective_date?: string
+          id?: string
+          new_mbps?: number | null
+          new_rate?: number | null
+          new_subscription_id?: string | null
+          old_mbps?: number | null
+          old_rate?: number | null
+          old_subscription_id?: string | null
+          reason?: string | null
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_service_change_log_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_service_change_log_new_subscription_id_fkey"
+            columns: ["new_subscription_id"]
+            isOneToOne: false
+            referencedRelation: "bw_customer_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_service_change_log_old_subscription_id_fkey"
+            columns: ["old_subscription_id"]
+            isOneToOne: false
+            referencedRelation: "bw_customer_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_service_change_log_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_services"
             referencedColumns: ["id"]
           },
         ]

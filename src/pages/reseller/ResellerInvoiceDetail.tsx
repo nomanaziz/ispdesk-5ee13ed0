@@ -21,7 +21,7 @@ const ResellerInvoiceDetail = () => {
           .select("*, bw_sale_customers(customer_name, customer_code, address, mobile, email)")
           .eq("id", id)
           .maybeSingle(),
-        supabase.from("bw_bill_items").select("*").eq("bill_id", id),
+        supabase.from("bw_invoice_items").select("*").eq("invoice_id", id).order("sort_order"),
         supabase
           .from("bw_sale_collections")
           .select("*")
@@ -83,13 +83,13 @@ const ResellerInvoiceDetail = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Description</TableHead>
+                    <TableHead>Service</TableHead>
+                    <TableHead className="text-right">Mbps</TableHead>
+                    <TableHead className="text-right">Rate</TableHead>
                     <TableHead>From</TableHead>
                     <TableHead>To</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
-                    <TableHead className="text-right">Rate</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Days</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -102,13 +102,13 @@ const ResellerInvoiceDetail = () => {
                   )}
                   {data?.items.map((it: any) => (
                     <TableRow key={it.id}>
-                      <TableCell>{it.unit || "—"}</TableCell>
-                      <TableCell>{it.description || "—"}</TableCell>
-                      <TableCell>{it.from_date ? format(new Date(it.from_date), "dd MMM yyyy") : "—"}</TableCell>
-                      <TableCell>{it.to_date ? format(new Date(it.to_date), "dd MMM yyyy") : "—"}</TableCell>
-                      <TableCell className="text-right">{it.quantity}</TableCell>
+                      <TableCell className="font-medium">{it.service_name}</TableCell>
+                      <TableCell className="text-right">{Number(it.bandwidth_mbps)}</TableCell>
                       <TableCell className="text-right">৳ {Number(it.rate || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-right font-medium">৳ {Number(it.total || 0).toLocaleString()}</TableCell>
+                      <TableCell>{it.period_start ? format(new Date(it.period_start), "dd MMM yyyy") : "—"}</TableCell>
+                      <TableCell>{it.period_end ? format(new Date(it.period_end), "dd MMM yyyy") : "—"}</TableCell>
+                      <TableCell className="text-right">{it.days}/{it.total_days_in_month}</TableCell>
+                      <TableCell className="text-right font-medium">৳ {Number(it.amount || 0).toLocaleString()}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
