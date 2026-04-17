@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, Search } from "lucide-react";
+import { Eye, Search, Plus } from "lucide-react";
 import { formatBDT } from "@/lib/shopUtils";
 
 export default function ShopOrders() {
@@ -27,7 +27,10 @@ export default function ShopOrders() {
 
   return (
     <Card>
-      <CardHeader><CardTitle>অর্ডার তালিকা</CardTitle></CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>অর্ডার তালিকা</CardTitle>
+        <Link to="/dashboard/shop/orders/new"><Button size="sm"><Plus className="h-4 w-4 mr-1" />নতুন অর্ডার তৈরি</Button></Link>
+      </CardHeader>
       <CardContent>
         <div className="flex flex-wrap gap-2 mb-4">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
