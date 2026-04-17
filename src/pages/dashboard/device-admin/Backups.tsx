@@ -9,12 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { HardDrive, Download, Trash2, Play } from "lucide-react";
+import { HardDrive, Download, Trash2, Play, Loader2 } from "lucide-react";
 
 export default function BackupCenter() {
   const qc = useQueryClient();
   const [filterType, setFilterType] = useState("all");
   const [selectedDevs, setSelectedDevs] = useState<Set<string>>(new Set());
+  const [formats, setFormats] = useState({ rsc: true, backup: true });
 
   const { data: backups = [], isLoading } = useQuery({
     queryKey: ["device_admin_backups"],
@@ -23,6 +24,7 @@ export default function BackupCenter() {
       if (error) throw error;
       return data;
     },
+    refetchInterval: 8000,
   });
 
   const { data: devices = [] } = useQuery({
@@ -54,54 +56,68 @@ export default function BackupCenter() {
   const runBackup = useMutation({
     mutationFn: async () => {
       if (selectedDevs.size === 0) throw new Error("কমপক্ষে ১টা ডিভাইস সিলেক্ট করুন");
-      const targets = devices.filter((d: any) => selectedDevs.has(key(d))).map((d: any) => ({ type: d.type, id: d.id, name: d.name }));
-      const { data: u } = await supabase.auth.getUser();
-      const { data: job, error } = await supabase.from("device_admin_deploy_jobs").insert({
-        job_type: "backup",
-        target_devices: targets,
-        status: "pending",
-        created_by: u.user?.id,
-      }).select().single();
-      if (error) throw error;
+      const fmts = Object.entries(formats).filter(([, v]) => v).map(([k]) => k);
+      if (fmts.length === 0) throw new Error("কমপক্ষে ১টা format সিলেক্ট করুন");
 
-      // Create backup records (simulating immediate completion)
-      const records = targets.map((t: any) => ({
-        device_type: t.type,
-        device_id: t.id,
-        device_name: t.name,
-        file_name: `backup_${t.name}_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, "_")}.backup`,
-        triggered_by: "manual" as const,
-        job_id: job.id,
-        status: "completed",
-        created_by: u.user?.id,
-      }));
-      await supabase.from("device_admin_backups").insert(records);
-      await supabase.from("device_admin_audit_log").insert(
-        targets.map((t: any) => ({
-          action: "backup_taken",
-          device_type: t.type,
-          device_id: t.id,
-          device_name: t.name,
-          performed_by: u.user?.id,
-          details: { job_id: job.id },
-        }))
-      );
+      const targets = devices.filter((d: any) => selectedDevs.has(key(d)));
+      let ok = 0, fail = 0;
+
+      for (const t of targets) {
+        if (t.type === "mikrotik") {
+          const { data, error } = await supabase.functions.invoke("backup-mikrotik-device", {
+            body: { device_id: t.id, formats: fmts, triggered_by: "manual" },
+          });
+          if (error || !data?.success) fail++;
+          else {
+            const allOk = (data.results || []).every((r: any) => r.status === "completed");
+            allOk ? ok++ : fail++;
+          }
+        } else {
+          // OLT/Switch placeholder
+          await supabase.from("device_admin_backups").insert({
+            device_type: t.type, device_id: t.id, device_name: t.name,
+            file_name: `${t.name}_placeholder.txt`, backup_format: "rsc",
+            status: "failed", triggered_by: "manual",
+            error_message: `${t.type} adapter not yet implemented`,
+          });
+          fail++;
+        }
+      }
+      return { ok, fail };
     },
-    onSuccess: () => {
+    onSuccess: ({ ok, fail }) => {
       qc.invalidateQueries({ queryKey: ["device_admin_backups"] });
-      toast.success("ব্যাকআপ সম্পন্ন");
+      if (fail === 0) toast.success(`${ok} টি ডিভাইসের ব্যাকআপ সম্পন্ন`);
+      else toast.warning(`${ok} সফল, ${fail} ব্যর্থ`);
       setSelectedDevs(new Set());
     },
     onError: (e: any) => toast.error(e.message),
   });
 
+  const downloadBackup = async (b: any) => {
+    if (!b.file_path) return toast.error("ফাইল পাওয়া যায়নি");
+    const { data, error } = await supabase.storage.from("device-backups").createSignedUrl(b.file_path, 300);
+    if (error || !data) return toast.error(error?.message || "ডাউনলোড লিঙ্ক তৈরি ব্যর্থ");
+    window.open(data.signedUrl, "_blank");
+  };
+
   const del = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("device_admin_backups").delete().eq("id", id);
+    mutationFn: async (b: any) => {
+      if (b.file_path) {
+        await supabase.storage.from("device-backups").remove([b.file_path]);
+      }
+      const { error } = await supabase.from("device_admin_backups").delete().eq("id", b.id);
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["device_admin_backups"] }); toast.success("ডিলিট হয়েছে"); },
   });
+
+  const formatBytes = (b?: number) => {
+    if (!b) return "—";
+    if (b < 1024) return `${b} B`;
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+    return `${(b / 1024 / 1024).toFixed(2)} MB`;
+  };
 
   return (
     <div className="space-y-6">
@@ -137,9 +153,10 @@ export default function BackupCenter() {
                   <TableRow>
                     <TableHead className="w-12">#</TableHead>
                     <TableHead>সময়</TableHead>
-                    <TableHead>টাইপ</TableHead>
                     <TableHead>ডিভাইস</TableHead>
                     <TableHead>ফাইল</TableHead>
+                    <TableHead>Format</TableHead>
+                    <TableHead>সাইজ</TableHead>
                     <TableHead>উৎস</TableHead>
                     <TableHead>স্ট্যাটাস</TableHead>
                     <TableHead className="w-24">অ্যাকশন</TableHead>
@@ -147,22 +164,23 @@ export default function BackupCenter() {
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
-                    <TableRow><TableCell colSpan={8} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
                   ) : filteredBackups.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center py-8">কোনো ব্যাকআপ নেই</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="text-center py-8">কোনো ব্যাকআপ নেই</TableCell></TableRow>
                   ) : filteredBackups.map((b: any, i: number) => (
                     <TableRow key={b.id}>
                       <TableCell>{i + 1}</TableCell>
                       <TableCell className="text-xs">{new Date(b.created_at).toLocaleString("bn-BD")}</TableCell>
-                      <TableCell><Badge variant="outline">{b.device_type}</Badge></TableCell>
-                      <TableCell>{b.device_name}</TableCell>
+                      <TableCell>{b.device_name} <Badge variant="outline" className="text-xs ml-1">{b.device_type}</Badge></TableCell>
                       <TableCell className="font-mono text-xs">{b.file_name}</TableCell>
+                      <TableCell><Badge variant={b.backup_format === "rsc" ? "secondary" : "default"}>.{b.backup_format}</Badge></TableCell>
+                      <TableCell className="text-xs">{formatBytes(b.file_size)}</TableCell>
                       <TableCell><Badge variant="secondary">{b.triggered_by}</Badge></TableCell>
                       <TableCell><Badge variant={b.status === "completed" ? "default" : "destructive"}>{b.status}</Badge></TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" className="h-8 w-8" disabled={!b.file_path}><Download className="h-4 w-4" /></Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { if (confirm("ডিলিট?")) del.mutate(b.id); }}><Trash2 className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => downloadBackup(b)} disabled={!b.file_path}><Download className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { if (confirm("ডিলিট?")) del.mutate(b); }}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -177,6 +195,17 @@ export default function BackupCenter() {
           <Card>
             <CardHeader><CardTitle className="text-base">ডিভাইস সিলেক্ট করে ব্যাকআপ নিন</CardTitle></CardHeader>
             <CardContent className="space-y-3">
+              <div className="flex items-center gap-4 p-3 bg-muted/30 rounded">
+                <span className="text-sm font-medium">ব্যাকআপ format:</span>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={formats.rsc} onCheckedChange={(v) => setFormats({ ...formats, rsc: !!v })} />
+                  <code className="text-xs">.rsc</code> <span className="text-xs text-muted-foreground">(text export)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={formats.backup} onCheckedChange={(v) => setFormats({ ...formats, backup: !!v })} />
+                  <code className="text-xs">.backup</code> <span className="text-xs text-muted-foreground">(binary)</span>
+                </label>
+              </div>
               <div className="border border-border rounded max-h-96 overflow-auto">
                 {devices.map((d: any) => (
                   <label key={key(d)} className="flex items-center gap-3 p-2 border-b border-border hover:bg-muted/50 cursor-pointer">
@@ -189,7 +218,8 @@ export default function BackupCenter() {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">{selectedDevs.size} সিলেক্টেড</span>
                 <Button onClick={() => runBackup.mutate()} disabled={runBackup.isPending || selectedDevs.size === 0}>
-                  <Play className="h-4 w-4 mr-1" /> ব্যাকআপ শুরু
+                  {runBackup.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Play className="h-4 w-4 mr-1" />}
+                  ব্যাকআপ শুরু
                 </Button>
               </div>
             </CardContent>
