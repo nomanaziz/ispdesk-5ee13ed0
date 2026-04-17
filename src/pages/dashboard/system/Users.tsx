@@ -13,8 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
-import { Users as UsersIcon, Plus, Search, Eye, EyeOff, Trash2, Shield, Lock, Edit, User, Briefcase, ChevronRight } from "lucide-react";
+import { Users as UsersIcon, Plus, Search, Eye, EyeOff, Trash2, Shield, Lock, Edit, User, Briefcase, ChevronRight, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Module permissions structure matching Galaxy Net
 const MODULE_GROUPS = [
