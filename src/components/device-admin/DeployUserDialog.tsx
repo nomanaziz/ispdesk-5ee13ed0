@@ -65,6 +65,7 @@ export function DeployUserDialog({ open, onOpenChange, mode }: Props) {
   };
 
   const submit = useMutation({
+    meta: { loadingMessage: mode === "deploy" ? "ডিপ্লয় চলছে — অপেক্ষা করুন..." : "রিমুভ চলছে — অপেক্ষা করুন..." },
     mutationFn: async () => {
       if (!isAdmin) throw new Error("আপনার এই কাজের অনুমতি নেই");
       if (!username) throw new Error("Username দিন");
