@@ -98,6 +98,15 @@ export default function OnlineClientMonitoring() {
   const [offlineCount, setOfflineCount] = useState(0);
   const [statusFilter, setStatusFilter] = useState<"all" | "online" | "offline">("all");
 
+  // Sorting
+  const [sortBy, setSortBy] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const handleSort = (col: string) => {
+    if (sortBy !== col) { setSortBy(col); setSortDir("asc"); return; }
+    if (sortDir === "asc") { setSortDir("desc"); return; }
+    setSortBy(null); setSortDir("asc");
+  };
+
   // Filters
   const [filterServer, setFilterServer] = useState("all");
   const [filterZone, setFilterZone] = useState("all");
