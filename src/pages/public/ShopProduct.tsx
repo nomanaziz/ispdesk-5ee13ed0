@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatBDT } from "@/lib/shopUtils";
 import { useCart } from "@/stores/useCart";
 import { toast } from "sonner";
-import { ShieldCheck, Package as PackageIcon, ArrowLeft, Minus, Plus } from "lucide-react";
+import { ShieldCheck, Package as PackageIcon, ArrowLeft, Minus, Plus, Truck } from "lucide-react";
 
 export default function ShopProduct() {
   const { slug } = useParams();
@@ -33,7 +33,7 @@ export default function ShopProduct() {
   const specs: { key: string; value: string }[] = Array.isArray(p.specs) ? p.specs : [];
 
   const handleAdd = () => {
-    addItem({ productId: p.id, name: p.name, slug: p.slug, price: p.price, image: images[0], warrantyMonths: p.warranty_months, stock: p.stock }, qty);
+    addItem({ productId: p.id, name: p.name, slug: p.slug, price: p.price, image: images[0], warrantyMonths: p.warranty_months, stock: p.stock, freeShipping: !!p.free_shipping }, qty);
     toast.success("কার্টে যোগ হয়েছে");
   };
 
@@ -77,6 +77,9 @@ export default function ShopProduct() {
             </Badge>
             {p.warranty_months > 0 && (
               <Badge variant="secondary"><ShieldCheck className="h-3 w-3 mr-1" />{p.warranty_months} মাস ওয়ারেন্টি</Badge>
+            )}
+            {p.free_shipping && (
+              <Badge className="bg-emerald-600 hover:bg-emerald-700"><Truck className="h-3 w-3 mr-1" />ফ্রি শিপিং</Badge>
             )}
           </div>
           {p.short_desc && <p className="text-slate-600 mb-4">{p.short_desc}</p>}
