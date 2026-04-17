@@ -449,14 +449,8 @@ export default function OnlineClientMonitoring() {
             <TableHead>Service</TableHead>
             <TableHead>IP Address</TableHead>
             <TableHead>Mac Address</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Duration</TableHead>
-            <TableHead>
-              <ArrowUpFromLine className="h-3.5 w-3.5 inline mr-1" />Upload
-            </TableHead>
-            <TableHead>
-              <ArrowDownToLine className="h-3.5 w-3.5 inline mr-1" />Download
-            </TableHead>
+            <TableHead>Session Time</TableHead>
+            <TableHead>Traffic</TableHead>
             <TableHead>Action</TableHead>
           </TableRow>
         </TableHeader>
