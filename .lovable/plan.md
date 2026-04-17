@@ -1,76 +1,70 @@
 
 
-## Bandwidth Reseller Portal — Full Build
+## MikroTik PPPoE Live Traffic — Real Fix
 
-### বর্তমান অবস্থা
-- `ResellerLayout.tsx` আছে কিন্তু minimal (Dashboard, Balance, Clients menu)
-- `ResellerDashboard.tsx` exists, কিন্তু image-এর মতো rich dashboard নেই
-- `bw_sales_invoices` table আছে → `PortalInvoices` দেখায়
-- BW Reseller-এর জন্য Purchase Orders, Support Tickets, User Management, Company Settings — কোনোটাই full নেই
-- Admin-side `Tickets.tsx` আছে কিন্তু "Bandwidth Reseller" tab আলাদা না
+### সমস্যা (কেন এখনো কাজ করে না)
 
-### লক্ষ্য (image অনুসরণে)
+`collect-client-traffic` ব্যবহার করছে `/ppp/active/print` থেকে `bytes-in`/`bytes-out`। কিন্তু RouterOS-এ **`/ppp/active/print` সাধারণত byte counter return করে না** — এটা শুধু session metadata (name, address, uptime, caller-id) দেয়। ফলে delta সবসময় 0, `total_upload`/`total_download` update হয় না, graph flat থাকে।
 
-BW Reseller portal-এ ৬টা menu:
-1. **Dashboard** — Welcome card + POPCode/UserName + 6টা stat box (Balance Due, Last Invoice Info, Payment Due Date, This Month Paid, Purchase Order Status, Ticket) + Messages + Notices
-2. **Billing Invoices** — table (Sr/Bill No/Month/Amount/Paid/Discount/Due/Status/Action) → bill no click → invoice details page; Action PDF icon → printable invoice page (Download PDF); "Pay" button → bKash dialog
-3. **Purchase Orders** — list + "+ New Order" → form (Billing Month, line items: Item/Description/Unit/Qty/Rate/VAT/From/To/Total, Note, Save)
-4. **Support Tickets** — list + "Open New Ticket" → reuses existing ticket flow; backend insert with `source = 'bw_reseller'` so admin Tickets page shows them under "Bandwidth Reseller" tab
-5. **User Management** — sub-users CRUD; permission tree (cannot delete reseller itself); permissions limit which menus sub-user sees
-6. **Company Settings** — reseller's own company info edit (name, logo, address, contact, email)
+**সঠিক উপায় (যেভাবে existing portals করে):**
+PPPoE user যখন connect করে, MikroTik একটা dynamic interface বানায় — name pattern: `<pppoe-username>` বা `<service>-<username>`। সেই interface-এর byte counter (`rx-byte`, `tx-byte`) থেকে real traffic পাওয়া যায় `/interface/print stats`-এর মাধ্যমে। এটা সবসময় accurate এবং historic-cumulative।
 
-### Approach সংক্ষিপ্তে
+### Approach
 
-**Routing**: `/reseller/*` — protected by `usePortalAuth` with `customer.type === 'reseller'`. Reuse `ResellerLayout` but expand sidebar menu। 
+**Edge function `collect-client-traffic` রিরাইট:**
 
-**Admin tickets tab**: Existing `support_tickets` table-এ `source` column থাকলে সেটা ব্যবহার; না থাকলে migration-এ add করব (`source text default 'client'`, values: `client | pop | bw_reseller`)। Admin `Tickets.tsx`-এ tab filter add।
+1. প্রতি device-এ login → `/ppp/active/print` (session list + interface name)
+2. একই connection-এ `/interface/print stats` চালাই (এক shot এ সব interface byte counter)
+3. Active session-এর `name` (username) ↔ interface match (কারণ MikroTik-এ PPPoE interface name = `<service-name>-<username>`, যেমন `<pppoe-rashed>`)
+4. Each active user-এর জন্য:
+   - `rx-byte` → client-এর download (server থেকে user-এ যাওয়া = user-এর download)
+   - `tx-byte` → client-এর upload
+   - **Note:** Interface counter MikroTik-এর perspective থেকে: `rx` = MikroTik-এ ঢুকছে = user upload, `tx` = MikroTik থেকে বের হচ্ছে = user download। আমরা এটা সঠিকভাবে map করব।
+5. এই **cumulative bytes** সরাসরি `clients.total_upload` / `total_download`-এ লিখব (delta calc নয় — interface counter session start থেকে absolute, সেটা client row-এ overwrite হবে যাতে frontend delta calc করতে পারে)
+6. `client_traffic_logs`-এ snapshot insert (history-র জন্য)
 
-**Sub-user permissions**: নতুন table `bw_reseller_users (id, reseller_id, name, username, password, status, permissions jsonb, created_at)` — permissions জসন: `{ dashboard, invoices, purchases, tickets, users, settings }` boolean। `portal-auth` edge function-এ sub-user login support add (lookup in this table, return parent reseller_id + permissions in token)। Sidebar render conditionally।
+### Frontend (`PortalLiveUsage.tsx`) — already polls every 3s
 
-**PDF**: Invoice details page reuses existing print-friendly template (image-77 style) — add `window.print()` or html2pdf via existing pattern in admin invoice. Phase 1: print-to-PDF via browser; Phase 2: server-side PDF।
+Frontend ঠিক আছে — সে delta calculate করে। কিন্তু কাজ করছে না কারণ DB তে value change হচ্ছে না। Edge function fix করলে frontend আপনাআপনি কাজ করবে।
 
-**bKash payment**: `Pay` button opens dialog (image-76 style) → calls existing `rechargeserver-payment` edge function or new wrapper for bw invoices। Phase 1: dialog UI + mock flow; live bKash already wired in admin side, reuse that endpoint।
+**আরো নিশ্চিত করার জন্য:** frontend-এ poll interval edge function trigger করব (যাতে user portal খোলা থাকলে real-time fresh data আসে) — `supabase.functions.invoke('collect-client-traffic')` ছাড়াই, একটা new lighter function `live-traffic-snapshot` তৈরি করব যেটা শুধু একজন client-এর জন্য MikroTik query করে instantly response দেয় (no DB write, কম latency)।
 
 ### Files
 
-| File | Action |
+| File | Change |
 |------|--------|
-| migration | `support_tickets.source` column add (if missing); `bw_reseller_users` table + RLS; `bw_purchase_orders` already exists check |
-| `src/components/ResellerLayout.tsx` | Expand sidebar to 6 items, image-style dark navy theme, search box, user chip top-right |
-| `src/pages/reseller/ResellerDashboard.tsx` | Rebuild — welcome card, POP/UserName row, 6 stat cards, Messages, Notices |
-| `src/pages/reseller/ResellerInvoices.tsx` | NEW — table + Pay/Due badges + PDF action |
-| `src/pages/reseller/ResellerInvoiceDetail.tsx` | NEW — Invoice Items + Invoice Payments tables (image-75) |
-| `src/pages/reseller/ResellerInvoicePrint.tsx` | NEW — printable invoice (image-77) with Download PDF button |
-| `src/pages/reseller/ResellerPurchaseOrders.tsx` | NEW — list (image-79) |
-| `src/pages/reseller/ResellerPurchaseOrderForm.tsx` | NEW — create/edit (image-78) |
-| `src/pages/reseller/ResellerTickets.tsx` | NEW — list + Open New Ticket dialog (image-80); inserts with `source='bw_reseller'` |
-| `src/pages/reseller/ResellerUsers.tsx` | NEW — sub-user CRUD + permission checkbox tree (image-81) |
-| `src/pages/reseller/ResellerSettings.tsx` | NEW — company info edit |
-| `src/components/reseller/PayBillDialog.tsx` | NEW — bKash payment dialog |
-| `src/components/reseller/PermissionTree.tsx` | NEW — checkbox grid for 6 menus |
-| `src/contexts/PortalAuthContext.tsx` | Extend to include `permissions` from token (for sub-user) |
-| `src/components/ResellerProtectedRoute.tsx` | Check menu permission too |
-| `src/App.tsx` | Add all reseller routes |
-| `supabase/functions/portal-auth/index.ts` | Add sub-user lookup (`bw_reseller_users`); return permissions |
-| `src/pages/dashboard/support/Tickets.tsx` | Add "Bandwidth Reseller" tab (filter `source='bw_reseller'`) |
+| `supabase/functions/collect-client-traffic/index.ts` | Rewrite: use `/interface/print stats` + match active sessions by username → write cumulative bytes to `clients` |
+| `supabase/functions/live-traffic-snapshot/index.ts` | NEW — single-client lightweight endpoint: `{client_id}` → returns `{rx_bps, tx_bps, total_rx, total_tx}` instantly using `/interface/monitor-traffic` (1-sec sample) |
+| `supabase/config.toml` | Register new function (verify_jwt=false) |
+| `src/pages/portal/PortalLiveUsage.tsx` | Switch from DB-polling to `live-traffic-snapshot` invocation every 3s for instant Kbps; keep DB read for cumulative totals |
+| Migration | Set up pg_cron to run `collect-client-traffic` every 60s (if not already scheduled) — for background cumulative tracking |
 
-### Sidebar (BW Reseller)
+### How `live-traffic-snapshot` will work
 
-```text
-NARYANGANJ POP - GALAXY NET    ☰
-[Menu Search...]
-🚀 DASHBOARD
-🕓 BILLING INVOICES
-⚒ PURCHASE ORDERS
-💡 SUPPORT TICKETS
-👥 USER MANAGEMENT
-⚙ COMPANY SETTINGS
+```
+Input: { client_id }
+1. Look up client → get username + mikrotik_id
+2. Connect to MikroTik
+3. Run /ppp/active/print where name=<username> → get interface name (e.g. <pppoe-rashed>)
+4. Run /interface/monitor-traffic interface=<ifname> once=yes
+   → returns rx-bits-per-second, tx-bits-per-second instantly
+5. Run /interface/print stats where name=<ifname>
+   → returns rx-byte, tx-byte (cumulative for this session)
+6. Return JSON: { 
+     online: true,
+     interface,
+     rx_bps, tx_bps,        // live speed
+     session_rx, session_tx, // current session bytes
+     uptime
+   }
 ```
 
-Theme: dark navy (`#1f3a5f`) like image, white text, active item lighter shade।
+### কেন এটা কাজ করবে (existing portal-এর মতো)
+
+`monitor-traffic once=yes` MikroTik-এর native realtime API — এটাই MikroTik Winbox-এ Torch/Traffic graph চালায়। 1 second sample নিয়ে exact bps return করে। কোনো delta calc লাগে না, MikroTik নিজেই calculate করে দেয়।
 
 ### Phasing
 
-- **Phase 1 (এখন):** All 6 pages, layout redesign, sub-user table + permissions, admin Tickets tab, print-PDF via browser, bKash dialog UI
-- **Phase 2 (পরে):** Server-side PDF generation, live bKash backend wiring (if not already), email notifications on ticket/invoice events
+- **Phase 1 (এখন):** নতুন `live-traffic-snapshot` function + frontend switch + cumulative collector ফিক্স
+- **Phase 2 (পরে):** Admin-side same view (Online Client Monitoring → click row → detail page); per-second WebSocket streaming (যদি দরকার হয়)
 
