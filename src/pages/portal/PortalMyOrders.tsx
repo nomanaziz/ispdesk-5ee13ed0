@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,8 +74,8 @@ export default function PortalMyOrders() {
             </TableHeader>
             <TableBody>
               {orders.map((o) => (
-                <>
-                  <TableRow key={o.id} className="cursor-pointer" onClick={() => toggle(o.id)}>
+                <Fragment key={o.id}>
+                  <TableRow className="cursor-pointer" onClick={() => toggle(o.id)}>
                     <TableCell className="font-medium">{o.order_no}</TableCell>
                     <TableCell>{new Date(o.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{o.customer_name}</TableCell>
@@ -84,7 +84,7 @@ export default function PortalMyOrders() {
                     <TableCell><Badge className={statusColor[o.order_status] || ""}>{o.order_status}</Badge></TableCell>
                   </TableRow>
                   {expandedId === o.id && (
-                    <TableRow key={o.id + "-d"}>
+                    <TableRow>
                       <TableCell colSpan={6} className="bg-muted/30">
                         <div className="p-3">
                           <div className="text-xs text-muted-foreground mb-2">ঠিকানা: {o.address} {o.district && `· ${o.district}`}</div>
@@ -118,7 +118,7 @@ export default function PortalMyOrders() {
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               ))}
             </TableBody>
           </Table>
