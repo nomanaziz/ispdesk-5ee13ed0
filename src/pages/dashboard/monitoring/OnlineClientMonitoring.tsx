@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -114,6 +114,8 @@ export default function OnlineClientMonitoring() {
   const [bulkSmsDialog, setBulkSmsDialog] = useState(false);
   const [bulkSmsMessage, setBulkSmsMessage] = useState("");
   const [sendingSms, setSendingSms] = useState(false);
+  const livePollRef = useRef<number | null>(null);
+  const liveClientIdRef = useRef<string | null>(null);
 
   const loadFilterOptions = useCallback(async () => {
     const [devRes, zoneRes, connRes] = await Promise.all([
@@ -274,11 +276,60 @@ export default function OnlineClientMonitoring() {
         session: sessionWithTotals,
         trafficHistory: history,
       }));
+
+      // Start continuous polling (every 2s) for live snapshot only
+      liveClientIdRef.current = cli.id;
+      if (livePollRef.current) window.clearInterval(livePollRef.current);
+      livePollRef.current = window.setInterval(async () => {
+        const cid = liveClientIdRef.current;
+        if (!cid) return;
+        try {
+          const { data: snap2, error: e2 } = await supabase.functions.invoke(
+            "live-traffic-snapshot",
+            { body: { client_id: cid } }
+          );
+          if (e2 || !snap2) return;
+          setTrafficDialog((prev) => {
+            if (!prev.open) return prev;
+            return {
+              ...prev,
+              data: {
+                ...(prev.data || {}),
+                has_active_session: !!snap2.online,
+                current_id: snap2.address,
+                session: snap2.online
+                  ? {
+                      uptime: snap2.uptime,
+                      caller_id: snap2.address,
+                      upload_bytes: String(snap2.session_upload_bytes || 0),
+                      download_bytes: String(snap2.session_download_bytes || 0),
+                    }
+                  : null,
+                live_traffic: snap2.online
+                  ? { rx_bps: snap2.download_bps || 0, tx_bps: snap2.upload_bps || 0 }
+                  : null,
+              },
+            };
+          });
+        } catch (_) {
+          /* ignore */
+        }
+      }, 2000);
     } catch (err: any) {
       toast.error("Live traffic ব্যর্থ: " + err.message);
       setTrafficDialog((prev) => ({ ...prev, loading: false }));
     }
   };
+
+  const stopLivePolling = useCallback(() => {
+    if (livePollRef.current) {
+      window.clearInterval(livePollRef.current);
+      livePollRef.current = null;
+    }
+    liveClientIdRef.current = null;
+  }, []);
+
+  useEffect(() => () => stopLivePolling(), [stopLivePolling]);
 
   // Action: Ping
   const handlePing = async (session: ActiveSession) => {
@@ -449,21 +500,15 @@ export default function OnlineClientMonitoring() {
             <TableHead>Service</TableHead>
             <TableHead>IP Address</TableHead>
             <TableHead>Mac Address</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Duration</TableHead>
-            <TableHead>
-              <ArrowUpFromLine className="h-3.5 w-3.5 inline mr-1" />Upload
-            </TableHead>
-            <TableHead>
-              <ArrowDownToLine className="h-3.5 w-3.5 inline mr-1" />Download
-            </TableHead>
+            <TableHead>Session Time</TableHead>
+            <TableHead>Traffic</TableHead>
             <TableHead>Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={20} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={18} className="text-center py-8 text-muted-foreground">
                 কোনো ডেটা পাওয়া যায়নি
               </TableCell>
             </TableRow>
@@ -494,14 +539,35 @@ export default function OnlineClientMonitoring() {
                 <TableCell className="font-mono text-xs">{s.caller_id || "—"}</TableCell>
                 <TableCell>
                   {s.status === "offline" ? (
-                    <span title="Offline" className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] leading-none font-bold">×</span>
+                    <div className="flex flex-col items-start gap-0.5">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-destructive">
+                        <span className="inline-flex h-2.5 w-2.5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px] leading-none font-bold">×</span>
+                        Offline
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">—</span>
+                    </div>
                   ) : (
-                    <span title="Online" className="inline-block h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30" />
+                    <div className="flex flex-col items-start gap-0.5">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30" />
+                        Online
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">{s.uptime || "—"}</span>
+                    </div>
                   )}
                 </TableCell>
-                <TableCell className="font-mono text-xs">{s.uptime || "—"}</TableCell>
-                <TableCell className="font-mono text-xs">{formatBytes(s.total_upload || 0)}</TableCell>
-                <TableCell className="font-mono text-xs">{formatBytes(s.total_download || 0)}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-0.5 font-mono text-[10px]">
+                    <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                      <ArrowUpFromLine className="h-2.5 w-2.5" />
+                      {formatBytes(s.total_upload || 0)}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <ArrowDownToLine className="h-2.5 w-2.5" />
+                      {formatBytes(s.total_download || 0)}
+                    </span>
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div className="grid grid-cols-2 gap-0.5 w-fit">
                     <Button size="icon" variant="ghost" className="h-6 w-6" title="Live Traffic" onClick={() => handleLiveTraffic(s)}>
@@ -746,12 +812,19 @@ export default function OnlineClientMonitoring() {
       <p className="text-xs text-muted-foreground text-right">Auto-refresh: প্রতি ৬০ সেকেন্ডে | Traffic data: প্রতি ১৫ মিনিটে</p>
 
       {/* Enhanced Live Traffic Dialog */}
-      <Dialog open={trafficDialog.open} onOpenChange={(o) => !o && setTrafficDialog({ open: false, loading: false, data: null, username: "", session: null, trafficHistory: [] })}>
+      <Dialog open={trafficDialog.open} onOpenChange={(o) => { if (!o) { stopLivePolling(); setTrafficDialog({ open: false, loading: false, data: null, username: "", session: null, trafficHistory: [] }); } }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-emerald-500" />
               Traffic Monitor — {trafficDialog.username}
+              <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                </span>
+                LIVE • Updates every 2s
+              </span>
             </DialogTitle>
           </DialogHeader>
           {trafficDialog.loading ? (
