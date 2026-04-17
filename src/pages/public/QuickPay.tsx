@@ -23,16 +23,19 @@ export default function QuickPay() {
     setClient(null);
     setBills([]);
 
-    // Case-insensitive multi-field search: client_id, user_id, contact, name
-    const { data: clients } = await supabase
-      .from("clients")
-      .select("id, name, client_id, contact, monthly_bill, status, user_id, address")
-      .or(
-        `client_id.ilike.${q},user_id.ilike.${q},contact.ilike.%${q}%,name.ilike.%${q}%`
-      )
-      .limit(1);
-
-    const clientData = clients?.[0];
+    // Case-insensitive multi-field search across separate queries (avoids PostgREST .or() escaping issues with _ , % etc.)
+    const cols = "id, name, client_id, contact, monthly_bill, status, user_id, address";
+    const tryQueries = [
+      supabase.from("clients").select(cols).ilike("client_id", q).limit(1),
+      supabase.from("clients").select(cols).ilike("user_id", q).limit(1),
+      supabase.from("clients").select(cols).ilike("contact", `%${q}%`).limit(1),
+      supabase.from("clients").select(cols).ilike("name", `%${q}%`).limit(1),
+    ];
+    let clientData: any = null;
+    for (const p of tryQueries) {
+      const { data } = await p;
+      if (data && data.length > 0) { clientData = data[0]; break; }
+    }
     if (!clientData) {
       toast({
         title: "গ্রাহক পাওয়া যায়নি",
