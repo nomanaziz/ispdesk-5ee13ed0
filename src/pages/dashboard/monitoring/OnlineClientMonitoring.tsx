@@ -45,6 +45,8 @@ interface ActiveSession {
 }
 
 interface MismatchRecord {
+  client_id?: string;
+  mikrotik_id?: string;
   username: string;
   client_code: string;
   client_name: string;
