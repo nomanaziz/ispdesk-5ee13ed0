@@ -16,8 +16,13 @@ const ResellerProtectedRoute = ({ children, require }: Props) => {
     );
   }
   if (!customer) return <Navigate to="/login" replace />;
-  if (customer.type !== "reseller" && customer.type !== "reseller_sub") {
+  const allowed = ["reseller", "reseller_sub", "bw_customer"];
+  if (!allowed.includes(customer.type as string)) {
     return <Navigate to="/portal/dashboard" replace />;
+  }
+  // Hide users page for BW customers (no sub-user feature yet)
+  if (require === "users" && customer.type === "bw_customer") {
+    return <Navigate to="/reseller/dashboard" replace />;
   }
   // Sub-user permission gate
   if (require && customer.type === "reseller_sub" && customer.permissions) {
