@@ -656,6 +656,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
+    </LanguageProvider>
   </ThemeProvider>
 );
 
