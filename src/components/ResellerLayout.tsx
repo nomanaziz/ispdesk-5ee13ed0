@@ -47,8 +47,8 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
   const isBwCustomer = customer?.type === "bw_customer";
   const perms = customer?.permissions;
   const nav = allNav
-    .filter((item) => (isBwCustomer ? item.key !== "users" : true))
-    .filter((item) => (isSub && perms ? perms[item.key] : true))
+    .filter((item) => (isBwCustomer ? item.key !== "users" && item.key !== "mikrotik" : true))
+    .filter((item) => (isSub && perms && item.key !== "mikrotik" ? perms[item.key as keyof typeof perms] : true))
     .filter((item) => item.label.toLowerCase().includes(search.toLowerCase()));
 
   const popLabel = customer?.name?.toUpperCase() || "RESELLER PORTAL";
