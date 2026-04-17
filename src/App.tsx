@@ -230,10 +230,6 @@ import SmsGroups from "@/pages/dashboard/sms/Groups";
 import SmsSend from "@/pages/dashboard/sms/Send";
 import SmsGateway from "@/pages/dashboard/sms/Gateway";
 
-// Affiliation
-import AffiliationPartners from "@/pages/dashboard/affiliation/Partners";
-import AffiliationAdd from "@/pages/dashboard/affiliation/AddAffiliator";
-
 // System
 import SystemUsers from "@/pages/dashboard/system/Users";
 import UserReview from "@/pages/dashboard/system/UserReview";
@@ -526,10 +522,6 @@ const App = () => (
               <Route path="/dashboard/sms/groups" element={<P><SmsGroups /></P>} />
               <Route path="/dashboard/sms/send" element={<P><SmsSend /></P>} />
               <Route path="/dashboard/sms/gateway" element={<P><SmsGateway /></P>} />
-
-              {/* Affiliation */}
-              <Route path="/dashboard/affiliation/partners" element={<P><AffiliationPartners /></P>} />
-              <Route path="/dashboard/affiliation/add" element={<P><AffiliationAdd /></P>} />
 
               {/* System */}
               <Route path="/dashboard/system/users" element={<P><SystemUsers /></P>} />
