@@ -20,6 +20,22 @@ import Services from "@/pages/public/Services";
 import About from "@/pages/public/About";
 import Contact from "@/pages/public/Contact";
 import Offers from "@/pages/public/Offers";
+import Shop from "@/pages/public/Shop";
+import ShopProduct from "@/pages/public/ShopProduct";
+import Cart from "@/pages/public/Cart";
+import Checkout from "@/pages/public/Checkout";
+import OrderTrack from "@/pages/public/OrderTrack";
+
+// Shop Admin
+import ShopCategories from "@/pages/dashboard/shop/Categories";
+import ShopProducts from "@/pages/dashboard/shop/Products";
+import ShopProductForm from "@/pages/dashboard/shop/ProductForm";
+import ShopOrders from "@/pages/dashboard/shop/Orders";
+import ShopOrderDetail from "@/pages/dashboard/shop/OrderDetail";
+import ShopShippingZones from "@/pages/dashboard/shop/ShippingZones";
+import ShopCoupons from "@/pages/dashboard/shop/Coupons";
+import WarrantyClaims from "@/pages/dashboard/shop/WarrantyClaims";
+import ShopSalesReport from "@/pages/dashboard/shop/SalesReport";
 
 // Auth pages
 import Login from "./pages/Login";
@@ -311,6 +327,11 @@ const App = () => (
               <Route path="/about" element={<Pub><About /></Pub>} />
               <Route path="/contact" element={<Pub><Contact /></Pub>} />
               <Route path="/offers" element={<Pub><Offers /></Pub>} />
+              <Route path="/shop" element={<Pub><Shop /></Pub>} />
+              <Route path="/shop/:slug" element={<Pub><ShopProduct /></Pub>} />
+              <Route path="/cart" element={<Pub><Cart /></Pub>} />
+              <Route path="/checkout" element={<Pub><Checkout /></Pub>} />
+              <Route path="/order/:id/track" element={<Pub><OrderTrack /></Pub>} />
               {/* Auth */}
               <Route path="/login" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -546,6 +567,18 @@ const App = () => (
               <Route path="/dashboard/website/media" element={<P><WebsiteMedia /></P>} />
               <Route path="/dashboard/website/about" element={<P><WebsiteAbout /></P>} />
               <Route path="/dashboard/website/settings" element={<P><WebsiteSettings /></P>} />
+
+              {/* E-Commerce Shop */}
+              <Route path="/dashboard/shop/categories" element={<P><ShopCategories /></P>} />
+              <Route path="/dashboard/shop/products" element={<P><ShopProducts /></P>} />
+              <Route path="/dashboard/shop/products/new" element={<P><ShopProductForm /></P>} />
+              <Route path="/dashboard/shop/products/:id" element={<P><ShopProductForm /></P>} />
+              <Route path="/dashboard/shop/orders" element={<P><ShopOrders /></P>} />
+              <Route path="/dashboard/shop/orders/:id" element={<P><ShopOrderDetail /></P>} />
+              <Route path="/dashboard/shop/shipping" element={<P><ShopShippingZones /></P>} />
+              <Route path="/dashboard/shop/coupons" element={<P><ShopCoupons /></P>} />
+              <Route path="/dashboard/shop/warranty" element={<P><WarrantyClaims /></P>} />
+              <Route path="/dashboard/shop/reports" element={<P><ShopSalesReport /></P>} />
 
               {/* Portal */}
               <Route path="/portal/login" element={<PortalAuthProvider><PortalLogin /></PortalAuthProvider>} />

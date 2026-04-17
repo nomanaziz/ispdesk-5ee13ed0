@@ -4,11 +4,13 @@ import { Menu, X, Wifi, User, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { CartIcon } from "@/components/public/CartIcon";
 
 const navLinks = [
   { label: "হোম", to: "/" },
   { label: "প্যাকেজ", to: "/packages" },
   { label: "সেবা সমূহ", to: "/services" },
+  { label: "শপ", to: "/shop" },
   { label: "কভারেজ", to: "/coverage" },
   { label: "আমাদের সম্পর্কে", to: "/about" },
   { label: "অফার", to: "/offers" },
@@ -57,6 +59,7 @@ export function PublicNavbar() {
 
           {/* Right side buttons */}
           <div className="hidden lg:flex items-center gap-2">
+            <CartIcon />
             <NavLink to="/quick-pay">
               <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold shadow-lg shadow-orange-500/20">
                 বিল পরিশোধ
