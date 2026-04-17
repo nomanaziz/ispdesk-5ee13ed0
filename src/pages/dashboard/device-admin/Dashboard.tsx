@@ -41,7 +41,7 @@ export default function DeviceAdminDashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <ShieldCheck className="h-6 w-6 text-primary" /> ডিভাইস অ্যাডমিনিস্ট্রেশন ড্যাশবোর্ড
+          <ShieldCheck className="h-6 w-6 text-primary" /> ডিভাইস অ্যাডমিন
         </h1>
       </div>
 
