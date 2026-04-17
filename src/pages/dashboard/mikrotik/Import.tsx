@@ -270,7 +270,18 @@ export default function Import() {
                     <TableCell>{c.mikrotik_devices?.name || "—"}</TableCell>
                     <TableCell className="text-xs">{c.logout_time ? new Date(c.logout_time).toLocaleString("bn-BD") : "—"}</TableCell>
                     <TableCell><span className={`text-xs px-2 py-0.5 rounded ${statusColor[c.user_status] || "bg-muted"}`}>{c.user_status}</span></TableCell>
-                    <TableCell>{c.branches?.name || "—"}</TableCell>
+                    {transferStatus === "transferred" ? (
+                      <TableCell className="text-xs">
+                        {c.transferred_pop?.name ? (
+                          <div>
+                            <div className="font-medium">{c.transferred_pop.name}</div>
+                            <div className="text-muted-foreground">{c.transferred_mt?.name || "—"}</div>
+                          </div>
+                        ) : "—"}
+                      </TableCell>
+                    ) : (
+                      <TableCell>{c.branches?.name || "—"}</TableCell>
+                    )}
                     <TableCell>
                       <Button variant="ghost" size="icon" className="h-8 w-8" title="ক্লায়েন্ট লিস্টে এক্সপোর্ট" onClick={() => exportToClientList(c)}>
                         <ExternalLink className="h-4 w-4" />
@@ -284,6 +295,13 @@ export default function Import() {
           <div className="mt-3 text-sm text-muted-foreground">মোট: {filtered.length} জন ক্লায়েন্ট</div>
         </CardContent>
       </Card>
+
+      <TransferToPopDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        selectedIds={Array.from(selectedIds)}
+        onTransferred={() => setSelectedIds(new Set())}
+      />
     </div>
   );
 }
