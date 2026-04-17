@@ -29,10 +29,39 @@ Deno.serve(async (req) => {
     const targets: any[] = Array.isArray(job.target_devices) ? job.target_devices : [];
     const results: any[] = [];
 
+    // Backup job: invoke backup function per device
+    if (job.job_type === "backup") {
+      for (const t of targets) {
+        let ok = false, msg = "";
+        try {
+          if (t.type === "mikrotik") {
+            const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/backup-mikrotik-device`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ device_id: t.id, formats: job.payload?.formats || ["rsc", "backup"], triggered_by: "scheduled" }),
+            });
+            const json: any = await r.json();
+            ok = !!json.success;
+            msg = ok ? "backup ok" : (json.error || "backup failed");
+          } else {
+            ok = false; msg = `${t.type} backup adapter pending`;
+          }
+        } catch (e: any) { ok = false; msg = e.message; }
+        results.push({ device_type: t.type, device_id: t.id, device_name: t.name, ok, message: msg });
+      }
+      const allOk = results.every((r) => r.ok);
+      const someOk = results.some((r) => r.ok);
+      await supabase.from("device_admin_deploy_jobs").update({
+        status: allOk ? "completed" : someOk ? "partial" : "failed",
+        results, completed_at: new Date().toISOString(),
+      }).eq("id", job_id);
+      return new Response(JSON.stringify({ success: true, results }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Load all mikrotik devices needed
     const mkIds = targets.filter((t) => t.type === "mikrotik").map((t) => t.id);
     const { data: mkDevices } = mkIds.length
-      ? await supabase.from("mikrotik_devices").select("id,name,ip_address,api_port,username,password").in("id", mkIds)
+      ? await supabase.from("mikrotik_devices").select("id,name,ip_address,api_port,username,password_encrypted").in("id", mkIds)
       : { data: [] as any[] };
     const mkMap = new Map((mkDevices ?? []).map((d: any) => [d.id, d]));
 
@@ -43,7 +72,7 @@ Deno.serve(async (req) => {
         if (t.type === "mikrotik") {
           const d: any = mkMap.get(t.id);
           if (!d) throw new Error("Device not found");
-          const auth = btoa(`${d.username || "admin"}:${d.password || ""}`);
+          const auth = btoa(`${d.username || "admin"}:${d.password_encrypted || ""}`);
           const base = `http://${d.ip_address}:${d.api_port || 80}/rest/user`;
           if (job.job_type === "deploy_user") {
             const res = await fetch(base, {

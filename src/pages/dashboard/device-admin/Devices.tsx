@@ -7,35 +7,42 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Server, Cpu, Network, Users, Database, UserPlus, UserX } from "lucide-react";
+import { Server, Cpu, Network, Users, Database, UserPlus, UserX, Plus, Search } from "lucide-react";
 import { DeployUserDialog } from "@/components/device-admin/DeployUserDialog";
+import { AddDeviceDialog } from "@/components/device-admin/AddDeviceDialog";
+import { DeviceInspectorDialog } from "@/components/device-admin/DeviceInspectorDialog";
 
 const TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
   mikrotik: { label: "MikroTik", icon: Server, color: "bg-blue-500/10 text-blue-600" },
   olt: { label: "OLT", icon: Cpu, color: "bg-purple-500/10 text-purple-600" },
   switch: { label: "Switch / POP", icon: Network, color: "bg-emerald-500/10 text-emerald-600" },
   zkteco: { label: "ZKTeco", icon: Users, color: "bg-amber-500/10 text-amber-600" },
+  other: { label: "অন্যান্য", icon: Database, color: "bg-gray-500/10 text-gray-600" },
 };
 
 export default function DeviceInventory() {
   const [type, setType] = useState("all");
   const [search, setSearch] = useState("");
   const [dialog, setDialog] = useState<"deploy" | "remove" | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [inspectDevice, setInspectDevice] = useState<{ id: string; name: string; type: string } | null>(null);
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["device_admin_inventory"],
     queryFn: async () => {
-      const [mk, olt, sw, zk] = await Promise.all([
+      const [mk, olt, sw, zk, mg] = await Promise.all([
         supabase.from("mikrotik_devices").select("id,name,ip_address,status"),
         supabase.from("olt_devices").select("id,name,ip_address,status"),
         supabase.from("pop_devices").select("id,name,ip_address,status"),
         supabase.from("zkteco_devices").select("id,name,ip_address,status,location"),
+        supabase.from("device_admin_managed_devices").select("id,name,category,vendor,protocol,ip_address,status,location"),
       ]);
       return [
         ...(mk.data ?? []).map((d: any) => ({ ...d, type: "mikrotik" })),
         ...(olt.data ?? []).map((d: any) => ({ ...d, type: "olt" })),
         ...(sw.data ?? []).map((d: any) => ({ ...d, type: "switch" })),
         ...(zk.data ?? []).map((d: any) => ({ ...d, type: "zkteco" })),
+        ...(mg.data ?? []).map((d: any) => ({ ...d, type: d.category || "other", _vendor: d.vendor, _protocol: d.protocol, _managed: true })),
       ];
     },
   });
@@ -52,8 +59,9 @@ export default function DeviceInventory() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Database className="h-6 w-6 text-primary" /> ডিভাইস ইনভেন্টরি
         </h1>
-        <div className="flex gap-2">
-          <Button onClick={() => setDialog("deploy")}>
+        <div className="flex gap-2 flex-wrap">
+          <Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-2" /> ডিভাইস যোগ</Button>
+          <Button variant="secondary" onClick={() => setDialog("deploy")}>
             <UserPlus className="h-4 w-4 mr-2" /> ইউজার ডিপ্লয়
           </Button>
           <Button variant="destructive" onClick={() => setDialog("remove")}>
@@ -73,6 +81,7 @@ export default function DeviceInventory() {
                 <SelectItem value="olt">OLT</SelectItem>
                 <SelectItem value="switch">Switch / POP</SelectItem>
                 <SelectItem value="zkteco">ZKTeco</SelectItem>
+                <SelectItem value="other">অন্যান্য</SelectItem>
               </SelectContent>
             </Select>
             <Input placeholder="নাম বা IP দিয়ে সার্চ..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
@@ -86,18 +95,19 @@ export default function DeviceInventory() {
                 <TableHead className="w-12">#</TableHead>
                 <TableHead>টাইপ</TableHead>
                 <TableHead>নাম</TableHead>
-                <TableHead>IP অ্যাড্রেস</TableHead>
+                <TableHead>IP / Vendor</TableHead>
                 <TableHead>লোকেশন</TableHead>
                 <TableHead>স্ট্যাটাস</TableHead>
+                <TableHead className="w-20">অ্যাকশন</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8">কোনো ডিভাইস পাওয়া যায়নি</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8">কোনো ডিভাইস পাওয়া যায়নি</TableCell></TableRow>
               ) : filtered.map((d: any, i: number) => {
-                const meta = TYPE_META[d.type];
+                const meta = TYPE_META[d.type] || TYPE_META.other;
                 const Icon = meta.icon;
                 return (
                   <TableRow key={`${d.type}-${d.id}`}>
@@ -108,12 +118,20 @@ export default function DeviceInventory() {
                       </span>
                     </TableCell>
                     <TableCell className="font-medium">{d.name}</TableCell>
-                    <TableCell className="font-mono text-sm">{d.ip_address || "—"}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {d.ip_address || "—"}
+                      {d._vendor && <Badge variant="outline" className="ml-2 text-xs">{d._vendor}/{d._protocol}</Badge>}
+                    </TableCell>
                     <TableCell>{d.location || "—"}</TableCell>
                     <TableCell>
                       <Badge variant={d.status === "online" ? "default" : d.status === "offline" ? "destructive" : "secondary"}>
                         {d.status || "unknown"}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="ইন্সপেক্ট" onClick={() => setInspectDevice({ id: d.id, name: d.name, type: d.type })}>
+                        <Search className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );
@@ -124,6 +142,8 @@ export default function DeviceInventory() {
       </Card>
 
       {dialog && <DeployUserDialog open={!!dialog} onOpenChange={(v) => !v && setDialog(null)} mode={dialog} />}
+      <AddDeviceDialog open={addOpen} onOpenChange={setAddOpen} />
+      <DeviceInspectorDialog open={!!inspectDevice} onOpenChange={(v) => !v && setInspectDevice(null)} device={inspectDevice} />
     </div>
   );
 }

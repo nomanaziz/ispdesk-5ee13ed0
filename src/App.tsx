@@ -92,6 +92,7 @@ import DeviceAdminGroups from "@/pages/dashboard/device-admin/Groups";
 import DeviceAdminBackups from "@/pages/dashboard/device-admin/Backups";
 import DeviceAdminSchedules from "@/pages/dashboard/device-admin/Schedules";
 import DeviceAdminAuditLog from "@/pages/dashboard/device-admin/AuditLog";
+import DeviceAdminJobs from "@/pages/dashboard/device-admin/Jobs";
 
 // HR
 import HrDepartments from "@/pages/dashboard/hr/Departments";
@@ -391,6 +392,7 @@ const App = () => (
               <Route path="/dashboard/device-admin/groups" element={<P><DeviceAdminGroups /></P>} />
               <Route path="/dashboard/device-admin/backups" element={<P><DeviceAdminBackups /></P>} />
               <Route path="/dashboard/device-admin/schedules" element={<P><DeviceAdminSchedules /></P>} />
+              <Route path="/dashboard/device-admin/jobs" element={<P><DeviceAdminJobs /></P>} />
               <Route path="/dashboard/device-admin/audit-log" element={<P><DeviceAdminAuditLog /></P>} />
 
               {/* HR */}

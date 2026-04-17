@@ -123,6 +123,7 @@ const menuGroups: MenuGroup[] = [
       { title: "ড্যাশবোর্ড", url: "/dashboard/device-admin", icon: LayoutDashboard },
       { title: "ডিভাইস ইনভেন্টরি", url: "/dashboard/device-admin/devices", icon: Server },
       { title: "অল ডিভাইস ইউজার", url: "/dashboard/device-admin/users", icon: Users },
+      { title: "জব ম্যানেজমেন্ট", url: "/dashboard/device-admin/jobs", icon: Briefcase },
       { title: "ইউজার গ্রুপ", url: "/dashboard/device-admin/groups", icon: Users2 },
       { title: "ব্যাকআপ সেন্টার", url: "/dashboard/device-admin/backups", icon: HardDrive },
       { title: "শিডিউল ম্যানেজার", url: "/dashboard/device-admin/schedules", icon: Clock },
