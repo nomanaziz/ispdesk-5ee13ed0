@@ -1,4 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { withMikrotik, mikrotikCommand } from "../_shared/mikrotik-api.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,7 +30,7 @@ Deno.serve(async (req) => {
     const targets: any[] = Array.isArray(job.target_devices) ? job.target_devices : [];
     const results: any[] = [];
 
-    // Backup job: invoke backup function per device
+    // Backup job
     if (job.job_type === "backup") {
       for (const t of targets) {
         let ok = false, msg = "";
@@ -58,7 +59,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true, results }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Load all mikrotik devices needed
+    // Load mikrotik devices
     const mkIds = targets.filter((t) => t.type === "mikrotik").map((t) => t.id);
     const { data: mkDevices } = mkIds.length
       ? await supabase.from("mikrotik_devices").select("id,name,ip_address,api_port,username,password_encrypted").in("id", mkIds)
@@ -72,45 +73,37 @@ Deno.serve(async (req) => {
         if (t.type === "mikrotik") {
           const d: any = mkMap.get(t.id);
           if (!d) throw new Error("Device not found");
-          const auth = btoa(`${d.username || "admin"}:${d.password_encrypted || ""}`);
-          const base = `http://${d.ip_address}:${d.api_port || 80}/rest/user`;
+
           if (job.job_type === "deploy_user") {
-            const res = await fetch(base, {
-              method: "PUT",
-              headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
-              body: JSON.stringify({
-                name: job.username,
-                password: job.password_hash,
-                group: job.permission || "read",
-              }),
-              signal: AbortSignal.timeout(8000),
+            await withMikrotik(d, async (conn) => {
+              // Check if exists; if so, set password/group, else add
+              const existing = await mikrotikCommand(conn, "/user/print", { "?name": job.username });
+              if (existing.length > 0) {
+                const id = existing[0][".id"];
+                await mikrotikCommand(conn, "/user/set", {
+                  ".id": id,
+                  password: job.password_hash || "",
+                  group: job.permission || "read",
+                });
+              } else {
+                await mikrotikCommand(conn, "/user/add", {
+                  name: job.username,
+                  password: job.password_hash || "",
+                  group: job.permission || "read",
+                });
+              }
             });
-            ok = res.ok;
-            if (!ok) msg = `HTTP ${res.status}: ${await res.text()}`;
+            ok = true; msg = "user deployed";
           } else if (job.job_type === "delete_user") {
-            // find user id by name then delete
-            const listRes = await fetch(`${base}?name=${encodeURIComponent(job.username!)}`, {
-              headers: { Authorization: `Basic ${auth}` },
-              signal: AbortSignal.timeout(8000),
+            await withMikrotik(d, async (conn) => {
+              const existing = await mikrotikCommand(conn, "/user/print", { "?name": job.username });
+              if (existing.length === 0) return; // already gone
+              const id = existing[0][".id"];
+              await mikrotikCommand(conn, "/user/remove", { ".id": id });
             });
-            if (!listRes.ok) throw new Error(`list HTTP ${listRes.status}`);
-            const list = await listRes.json();
-            if (!Array.isArray(list) || list.length === 0) {
-              ok = true; // already gone
-              msg = "user not present";
-            } else {
-              const uid = list[0][".id"];
-              const delRes = await fetch(`${base}/${encodeURIComponent(uid)}`, {
-                method: "DELETE",
-                headers: { Authorization: `Basic ${auth}` },
-                signal: AbortSignal.timeout(8000),
-              });
-              ok = delRes.ok;
-              if (!ok) msg = `HTTP ${delRes.status}`;
-            }
+            ok = true; msg = "user removed";
           }
         } else {
-          // OLT/Switch/ZKTeco — placeholder: mark as success-simulated.
           ok = true;
           msg = `${t.type} adapter not implemented (simulated)`;
         }
@@ -121,7 +114,6 @@ Deno.serve(async (req) => {
 
       results.push({ device_type: t.type, device_id: t.id, device_name: t.name, ok, message: msg });
 
-      // Audit log
       await supabase.from("device_admin_audit_log").insert({
         action: job.job_type,
         device_type: t.type,
@@ -132,7 +124,6 @@ Deno.serve(async (req) => {
         status: ok ? "success" : "failed",
       });
 
-      // Update inventory cache
       if (job.job_type === "deploy_user" && ok) {
         await supabase.from("device_admin_user_inventory").upsert({
           username: job.username,

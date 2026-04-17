@@ -70,6 +70,10 @@ export default function DeviceInventory() {
         </div>
       </div>
 
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
+        💡 MikroTik device গুলো <strong>Mikrotik → Servers</strong> থেকে auto-sync হয়। অন্য vendor (OLT/Switch/Cisco/Juniper ইত্যাদি) এই page-এর "ডিভাইস যোগ" button দিয়ে যোগ করুন। Inspect/Deploy কাজ করতে device-এর API port reachable হতে হবে।
+      </div>
+
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-3 flex-wrap">
