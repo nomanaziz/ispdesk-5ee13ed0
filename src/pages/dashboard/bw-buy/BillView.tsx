@@ -23,15 +23,38 @@ export default function BillView() {
     enabled: !!id,
   });
 
-  const { data: lineItems } = useQuery({
-    queryKey: ["bw_bill_items", id],
+  // New pro-rated items first
+  const { data: proItems } = useQuery({
+    queryKey: ["bw_buy_bill_items", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("bw_bill_items").select("*, bw_items(name)").eq("bill_id", id!).order("created_at");
+      const { data, error } = await supabase
+        .from("bw_buy_bill_items")
+        .select("*")
+        .eq("bill_id", id!)
+        .order("sort_order");
       if (error) throw error;
       return data;
     },
     enabled: !!id,
   });
+
+  // Legacy items fallback
+  const { data: legacyItems } = useQuery({
+    queryKey: ["bw_bill_items_legacy", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bw_bill_items")
+        .select("*, bw_items(name)")
+        .eq("bill_id", id!)
+        .order("created_at");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  const useNewItems = (proItems || []).length > 0;
+  const lineItems = useNewItems ? proItems : legacyItems;
 
   if (isLoading) return <div className="space-y-4 p-6">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}</div>;
   if (!bill) return <div className="p-6 text-center text-muted-foreground">বিল পাওয়া যায়নি</div>;
