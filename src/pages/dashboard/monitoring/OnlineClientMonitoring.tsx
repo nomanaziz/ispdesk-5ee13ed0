@@ -451,7 +451,6 @@ export default function OnlineClientMonitoring() {
             <TableHead>Mac Address</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Duration</TableHead>
-            <TableHead>R.Days</TableHead>
             <TableHead>
               <ArrowUpFromLine className="h-3.5 w-3.5 inline mr-1" />Upload
             </TableHead>
@@ -464,7 +463,7 @@ export default function OnlineClientMonitoring() {
         <TableBody>
           {data.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={21} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={20} className="text-center py-8 text-muted-foreground">
                 কোনো ডেটা পাওয়া যায়নি
               </TableCell>
             </TableRow>
@@ -494,27 +493,28 @@ export default function OnlineClientMonitoring() {
                 <TableCell className="font-mono text-xs">{s.address || "—"}</TableCell>
                 <TableCell className="font-mono text-xs">{s.caller_id || "—"}</TableCell>
                 <TableCell>
-                <Badge className={s.status === "offline" ? "bg-destructive/20 text-destructive border-destructive/30" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"}>
-                  {s.status === "offline" ? "Offline" : "Online"}
-                </Badge>
+                  {s.status === "offline" ? (
+                    <span title="Offline" className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] leading-none font-bold">×</span>
+                  ) : (
+                    <span title="Online" className="inline-block h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30" />
+                  )}
                 </TableCell>
                 <TableCell className="font-mono text-xs">{s.uptime || "—"}</TableCell>
-                <TableCell className="font-mono text-xs">—</TableCell>
                 <TableCell className="font-mono text-xs">{formatBytes(s.total_upload || 0)}</TableCell>
                 <TableCell className="font-mono text-xs">{formatBytes(s.total_download || 0)}</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Live Traffic" onClick={() => handleLiveTraffic(s)}>
-                      <Activity className="h-3.5 w-3.5 text-emerald-500" />
+                  <div className="grid grid-cols-2 gap-0.5 w-fit">
+                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Live Traffic" onClick={() => handleLiveTraffic(s)}>
+                      <Activity className="h-3 w-3 text-emerald-500" />
                     </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Ping" onClick={() => handlePing(s)}>
-                      <Radio className="h-3.5 w-3.5 text-blue-500" />
+                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Ping" onClick={() => handlePing(s)}>
+                      <Radio className="h-3 w-3 text-blue-500" />
                     </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Re-check" onClick={() => handleRecheck(s)}>
-                      <RotateCcw className="h-3.5 w-3.5 text-orange-500" />
+                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Re-check" onClick={() => handleRecheck(s)}>
+                      <RotateCcw className="h-3 w-3 text-orange-500" />
                     </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" title="SMS" onClick={() => setSmsDialog({ open: true, contact: s.contact || "", username: s.name })}>
-                      <MessageSquare className="h-3.5 w-3.5 text-purple-500" />
+                    <Button size="icon" variant="ghost" className="h-6 w-6" title="SMS" onClick={() => setSmsDialog({ open: true, contact: s.contact || "", username: s.name })}>
+                      <MessageSquare className="h-3 w-3 text-purple-500" />
                     </Button>
                   </div>
                 </TableCell>
