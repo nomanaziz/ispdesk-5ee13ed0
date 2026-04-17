@@ -3,98 +3,140 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
-import { Save, Percent, DollarSign, ListChecks } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Save, Percent, Plus, Trash2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-interface ProcessingFeeConfig {
-  fee_type: string;
-  amount: number;
-  applicable_to: string[];
+type BorneBy = "company" | "client" | "split";
+interface ResellerRow { branch_id: string; fee_pct: number; borne_by: BorneBy; split_pct: number }
+interface FeeConfig {
+  default: { fee_pct: number; borne_by: BorneBy; split_pct: number };
+  resellers: ResellerRow[];
+  portal_clients: { fee_pct: number; borne_by: BorneBy; split_pct: number };
 }
 
-const defaults: ProcessingFeeConfig = { fee_type: "flat", amount: 0, applicable_to: ["billing", "new_connection"] };
-
-const SERVICES = [
-  { key: "billing", label: "মাসিক বিলিং" },
-  { key: "new_connection", label: "নতুন সংযোগ" },
-  { key: "package_change", label: "প্যাকেজ পরিবর্তন" },
-  { key: "reconnection", label: "পুনঃসংযোগ" },
-];
+const DEFAULTS: FeeConfig = {
+  default: { fee_pct: 1.5, borne_by: "company", split_pct: 50 },
+  resellers: [],
+  portal_clients: { fee_pct: 1.5, borne_by: "company", split_pct: 50 },
+};
 
 export default function SysProcessingFee() {
-  const { value, isLoading, save, isSaving } = useSystemSetting<ProcessingFeeConfig>("processing_fee_config", defaults);
-  const [form, setForm] = useState<ProcessingFeeConfig>(defaults);
+  const { value, isLoading, save, isSaving } = useSystemSetting<FeeConfig>("processing_fee_config", DEFAULTS);
+  const [form, setForm] = useState<FeeConfig>(DEFAULTS);
+
+  const { data: branches } = useQuery({
+    queryKey: ["branches-for-fee"],
+    queryFn: async () => (await supabase.from("branches").select("id,name")).data || [],
+  });
 
   useEffect(() => { setForm(value); }, [value]);
 
-  const toggleService = (key: string) => {
-    setForm(p => ({
-      ...p,
-      applicable_to: p.applicable_to.includes(key)
-        ? p.applicable_to.filter(s => s !== key)
-        : [...p.applicable_to, key],
-    }));
-  };
+  const updateBlock = (key: "default" | "portal_clients", patch: Partial<FeeConfig["default"]>) =>
+    setForm((p) => ({ ...p, [key]: { ...p[key], ...patch } }));
 
-  if (isLoading) return <div className="p-8 text-center text-muted-foreground">লোড হচ্ছে...</div>;
+  const addReseller = () => setForm((p) => ({ ...p, resellers: [...p.resellers, { branch_id: "", fee_pct: 1.5, borne_by: "company", split_pct: 50 }] }));
+  const removeReseller = (i: number) => setForm((p) => ({ ...p, resellers: p.resellers.filter((_, idx) => idx !== i) }));
+  const updateReseller = (i: number, patch: Partial<ResellerRow>) =>
+    setForm((p) => ({ ...p, resellers: p.resellers.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) }));
+
+  if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
+
+  const renderBlock = (label: string, block: FeeConfig["default"], onChange: (patch: any) => void) => (
+    <div className="border rounded-lg overflow-hidden">
+      <div className="bg-[#2c5f6e] text-white px-4 py-2 text-sm font-medium">{label}</div>
+      <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-card">
+        <div>
+          <Label className="text-xs mb-1 block">Fee % (e.g. 1.5)</Label>
+          <Input type="number" step="0.01" min={0} value={block.fee_pct} onChange={(e) => onChange({ fee_pct: parseFloat(e.target.value) || 0 })} />
+        </div>
+        <div>
+          <Label className="text-xs mb-1 block">Borne By</Label>
+          <Select value={block.borne_by} onValueChange={(v: BorneBy) => onChange({ borne_by: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="company">Company pays</SelectItem>
+              <SelectItem value="client">Client pays</SelectItem>
+              <SelectItem value="split">Split (Custom %)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {block.borne_by === "split" && (
+          <div>
+            <Label className="text-xs mb-1 block">Client Share %</Label>
+            <Input type="number" min={0} max={100} value={block.split_pct} onChange={(e) => onChange({ split_pct: parseFloat(e.target.value) || 0 })} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-primary/10">
-          <Percent className="h-6 w-6 text-primary" />
-        </div>
+        <div className="p-2 rounded-lg bg-primary/10"><Percent className="h-6 w-6 text-primary" /></div>
         <div>
-          <h1 className="text-xl font-bold text-foreground">প্রসেসিং ফি</h1>
-          <p className="text-xs text-muted-foreground">সিস্টেম &gt; প্রসেসিং ফি</p>
+          <h1 className="text-xl font-bold text-foreground">Payment Processing Fee</h1>
+          <p className="text-xs text-muted-foreground">System &gt; Processing Fee</p>
         </div>
       </div>
 
+      {renderBlock("Default (Admin / All Resellers fallback)", form.default, (p) => updateBlock("default", p))}
+      {renderBlock("Portal Clients (Reseller's clients paying via portal)", form.portal_clients, (p) => updateBlock("portal_clients", p))}
+
       <div className="border rounded-lg overflow-hidden">
-        <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
-          <Percent className="h-4 w-4" /> ফি কনফিগারেশন
+        <div className="bg-[#2c5f6e] text-white px-4 py-2 text-sm font-medium flex items-center justify-between">
+          <span>Per-Reseller Override</span>
+          <Button size="sm" variant="secondary" onClick={addReseller} className="h-7 gap-1"><Plus className="h-3 w-3" /> Add</Button>
         </div>
-        <div className="p-5 space-y-5 bg-card">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label className="text-xs mb-1 block">ফি টাইপ</Label>
-              <div className="relative">
-                <ListChecks className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10" />
-                <Select value={form.fee_type} onValueChange={v => setForm(p => ({ ...p, fee_type: v }))}>
-                  <SelectTrigger className="pl-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="flat">নির্দিষ্ট (Flat)</SelectItem>
-                    <SelectItem value="percentage">শতাংশ (%)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs mb-1 block">{form.fee_type === "percentage" ? "শতাংশ (%)" : "পরিমাণ (৳)"}</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input type="number" min={0} value={form.amount} onChange={e => setForm(p => ({ ...p, amount: parseFloat(e.target.value) || 0 }))} className="pl-9" />
-              </div>
-            </div>
-          </div>
-          <div>
-            <Label className="text-sm font-medium mb-3 block">প্রযোজ্য সেবাসমূহ</Label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {SERVICES.map(s => (
-                <div key={s.key} className="flex items-center gap-2 border rounded-md p-2.5">
-                  <Checkbox checked={form.applicable_to.includes(s.key)} onCheckedChange={() => toggleService(s.key)} id={s.key} />
-                  <Label htmlFor={s.key} className="font-normal text-xs cursor-pointer">{s.label}</Label>
-                </div>
+        <div className="p-4 bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reseller / Branch</TableHead>
+                <TableHead>Fee %</TableHead>
+                <TableHead>Borne By</TableHead>
+                <TableHead>Client Share %</TableHead>
+                <TableHead className="w-12"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {form.resellers.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No reseller-specific overrides</TableCell></TableRow>
+              ) : form.resellers.map((r, i) => (
+                <TableRow key={i}>
+                  <TableCell>
+                    <Select value={r.branch_id} onValueChange={(v) => updateReseller(i, { branch_id: v })}>
+                      <SelectTrigger className="h-8"><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>{(branches || []).map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell><Input type="number" step="0.01" value={r.fee_pct} onChange={(e) => updateReseller(i, { fee_pct: parseFloat(e.target.value) || 0 })} className="h-8 w-20" /></TableCell>
+                  <TableCell>
+                    <Select value={r.borne_by} onValueChange={(v: BorneBy) => updateReseller(i, { borne_by: v })}>
+                      <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="company">Company</SelectItem>
+                        <SelectItem value="client">Client</SelectItem>
+                        <SelectItem value="split">Split</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell><Input type="number" min={0} max={100} value={r.split_pct} disabled={r.borne_by !== "split"} onChange={(e) => updateReseller(i, { split_pct: parseFloat(e.target.value) || 0 })} className="h-8 w-20" /></TableCell>
+                  <TableCell><Button size="icon" variant="ghost" onClick={() => removeReseller(i)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                </TableRow>
               ))}
-            </div>
-          </div>
-          <div className="flex justify-end pt-2">
-            <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
-              <Save className="h-4 w-4" /> {isSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
-            </Button>
-          </div>
+            </TableBody>
+          </Table>
         </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
+          <Save className="h-4 w-4" /> {isSaving ? "Saving..." : "Save Settings"}
+        </Button>
       </div>
     </div>
   );
