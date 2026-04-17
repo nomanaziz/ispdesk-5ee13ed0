@@ -229,6 +229,7 @@ const menuGroups: MenuGroup[] = [
       { title: "আইটেম", url: "/dashboard/bw-buy/items", icon: Package },
       { title: "আইটেম ক্যাটাগরি", url: "/dashboard/bw-buy/categories", icon: FolderOpen },
       { title: "প্রোভাইডার", url: "/dashboard/bw-buy/providers", icon: Building2 },
+      { title: "সাবস্ক্রিপশন", url: "/dashboard/bw-buy/subscriptions", icon: Wifi },
       { title: "ক্রয় বিল", url: "/dashboard/bw-buy/bills", icon: Receipt },
     ],
   },

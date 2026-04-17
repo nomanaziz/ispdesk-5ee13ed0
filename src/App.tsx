@@ -433,6 +433,7 @@ const App = () => (
               <Route path="/dashboard/bw-buy/items" element={<P><BwBuyItems /></P>} />
               <Route path="/dashboard/bw-buy/categories" element={<P><BwBuyCategories /></P>} />
               <Route path="/dashboard/bw-buy/providers" element={<P><BwBuyProviders /></P>} />
+              <Route path="/dashboard/bw-buy/subscriptions" element={<P><BwBuySubscriptions /></P>} />
               <Route path="/dashboard/bw-buy/bills" element={<P><BwBuyBills /></P>} />
               <Route path="/dashboard/bw-buy/bills/new" element={<P><BwBuyBillForm /></P>} />
               <Route path="/dashboard/bw-buy/bills/:id" element={<P><BwBuyBillView /></P>} />
