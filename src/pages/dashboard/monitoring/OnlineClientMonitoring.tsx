@@ -276,11 +276,60 @@ export default function OnlineClientMonitoring() {
         session: sessionWithTotals,
         trafficHistory: history,
       }));
+
+      // Start continuous polling (every 2s) for live snapshot only
+      liveClientIdRef.current = cli.id;
+      if (livePollRef.current) window.clearInterval(livePollRef.current);
+      livePollRef.current = window.setInterval(async () => {
+        const cid = liveClientIdRef.current;
+        if (!cid) return;
+        try {
+          const { data: snap2, error: e2 } = await supabase.functions.invoke(
+            "live-traffic-snapshot",
+            { body: { client_id: cid } }
+          );
+          if (e2 || !snap2) return;
+          setTrafficDialog((prev) => {
+            if (!prev.open) return prev;
+            return {
+              ...prev,
+              data: {
+                ...(prev.data || {}),
+                has_active_session: !!snap2.online,
+                current_id: snap2.address,
+                session: snap2.online
+                  ? {
+                      uptime: snap2.uptime,
+                      caller_id: snap2.address,
+                      upload_bytes: String(snap2.session_upload_bytes || 0),
+                      download_bytes: String(snap2.session_download_bytes || 0),
+                    }
+                  : null,
+                live_traffic: snap2.online
+                  ? { rx_bps: snap2.download_bps || 0, tx_bps: snap2.upload_bps || 0 }
+                  : null,
+              },
+            };
+          });
+        } catch (_) {
+          /* ignore */
+        }
+      }, 2000);
     } catch (err: any) {
       toast.error("Live traffic ব্যর্থ: " + err.message);
       setTrafficDialog((prev) => ({ ...prev, loading: false }));
     }
   };
+
+  const stopLivePolling = useCallback(() => {
+    if (livePollRef.current) {
+      window.clearInterval(livePollRef.current);
+      livePollRef.current = null;
+    }
+    liveClientIdRef.current = null;
+  }, []);
+
+  useEffect(() => () => stopLivePolling(), [stopLivePolling]);
 
   // Action: Ping
   const handlePing = async (session: ActiveSession) => {
