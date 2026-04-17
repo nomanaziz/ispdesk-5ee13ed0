@@ -9,14 +9,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { HardDrive, Download, Trash2, Play, Loader2, Info } from "lucide-react";
+import { HardDrive, Download, Trash2, Play, Loader2, Info, Mail, Save } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { useSystemSetting } from "@/hooks/useSystemSetting";
 
 export default function BackupCenter() {
   const qc = useQueryClient();
   const [filterType, setFilterType] = useState("all");
   const [selectedDevs, setSelectedDevs] = useState<Set<string>>(new Set());
   const [formats, setFormats] = useState({ rsc: true, backup: true });
+
+  // Email backup settings
+  const { value: emailCfg, save: saveEmailCfg, isSaving } =
+    useSystemSetting<{ enabled: boolean; to: string }>("backup_email", { enabled: false, to: "" });
+  const [emailDraft, setEmailDraft] = useState<{ enabled: boolean; to: string } | null>(null);
+  const cfg = emailDraft ?? emailCfg;
 
   const { data: backups = [], isLoading } = useQuery({
     queryKey: ["device_admin_backups"],
@@ -131,6 +141,7 @@ export default function BackupCenter() {
         <TabsList>
           <TabsTrigger value="files">ব্যাকআপ ফাইল</TabsTrigger>
           <TabsTrigger value="manual">ম্যানুয়াল ব্যাকআপ</TabsTrigger>
+          <TabsTrigger value="email">ইমেইল সেটআপ</TabsTrigger>
         </TabsList>
 
         <TabsContent value="files">
@@ -238,6 +249,46 @@ export default function BackupCenter() {
                   ব্যাকআপ শুরু
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="email">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Mail className="h-4 w-4" /> ব্যাকআপ ইমেইল সেটিংস
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 max-w-xl">
+              <p className="text-sm text-muted-foreground">
+                ব্যাকআপ ফাইল storage-এ save হওয়ার সাথে সাথে নির্দিষ্ট ইমেইলে attachment হিসাবে পাঠানো হবে।
+                (RESEND_API_KEY secret সেট থাকতে হবে)
+              </p>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={!!cfg.enabled}
+                  onCheckedChange={(v) => setEmailDraft({ ...cfg, enabled: v })}
+                />
+                <Label>ইমেইল পাঠানো চালু করুন</Label>
+              </div>
+              <div className="space-y-2">
+                <Label>ইমেইল ঠিকানা</Label>
+                <Input
+                  type="email"
+                  placeholder="backup@example.com"
+                  value={cfg.to || ""}
+                  onChange={(e) => setEmailDraft({ ...cfg, to: e.target.value })}
+                  disabled={!cfg.enabled}
+                />
+              </div>
+              <Button
+                onClick={() => { saveEmailCfg(cfg); setEmailDraft(null); }}
+                disabled={isSaving || (cfg.enabled && !cfg.to)}
+              >
+                {isSaving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+                সংরক্ষণ করুন
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
