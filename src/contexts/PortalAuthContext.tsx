@@ -88,6 +88,16 @@ export const PortalAuthProvider = ({ children }: { children: React.ReactNode }) 
   };
 
   const logout = () => {
+    const sid = customer?.session_id;
+    if (sid) {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      // fire and forget
+      fetch(`https://${projectId}.supabase.co/functions/v1/portal-auth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "logout", session_id: sid }),
+      }).catch(() => {});
+    }
     localStorage.removeItem("portal_token");
     setToken(null);
     setCustomer(null);
