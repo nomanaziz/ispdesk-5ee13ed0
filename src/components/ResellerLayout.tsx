@@ -42,8 +42,10 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
 
   // Sub-user permission filtering
   const isSub = customer?.type === "reseller_sub";
+  const isBwCustomer = customer?.type === "bw_customer";
   const perms = customer?.permissions;
   const nav = allNav
+    .filter((item) => (isBwCustomer ? item.key !== "users" : true))
     .filter((item) => (isSub && perms ? perms[item.key] : true))
     .filter((item) => item.label.toLowerCase().includes(search.toLowerCase()));
 

@@ -39,10 +39,11 @@ const LoginInner = () => {
       }
       switch (result.type) {
         case "reseller":
+        case "reseller_sub":
+        case "bw_customer":
           navigate("/reseller/dashboard", { replace: true });
           break;
         case "client":
-        case "bw_customer":
         default:
           navigate("/portal/dashboard", { replace: true });
       }
