@@ -10,6 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { BD_DISTRICTS, formatBDT, isInsideDhaka } from "@/lib/shopUtils";
 import { toast } from "sonner";
 import { z } from "zod";
+import { usePortalAuth } from "@/contexts/PortalAuthContext";
+import { Truck, User, Pencil } from "lucide-react";
 
 const schema = z.object({
   customer_name: z.string().trim().min(2, "নাম দিন").max(100),
@@ -25,6 +27,8 @@ const schema = z.object({
 export default function Checkout() {
   const { items, subtotal, clear } = useCart();
   const nav = useNavigate();
+  const { customer } = usePortalAuth();
+  const isLoggedClient = customer?.type === "client";
   const [zones, setZones] = useState<any[]>([]);
   const [form, setForm] = useState({
     customer_name: "", mobile: "", email: "", district: "", thana: "",
@@ -32,16 +36,37 @@ export default function Checkout() {
   });
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [submitting, setSubmitting] = useState(false);
+  const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
     supabase.from("shop_shipping_zones").select("*").then(({ data }) => setZones((data as any) || []));
   }, []);
 
+  // Prefill from portal session if logged-in client
+  useEffect(() => {
+    if (isLoggedClient && customer) {
+      // Try to detect district from address (best-effort)
+      const addr = customer.address || "";
+      const matched = BD_DISTRICTS.find((d) => addr.toLowerCase().includes(d.toLowerCase()));
+      setForm((f) => ({
+        ...f,
+        customer_name: customer.name || f.customer_name,
+        mobile: customer.mobile || f.mobile,
+        email: customer.email || f.email,
+        address: addr || f.address,
+        district: matched || f.district || "Dhaka",
+      }));
+    }
+  }, [isLoggedClient, customer]);
+
+  // Free shipping if all items are flagged free_shipping
+  const allFree = items.length > 0 && items.every((it) => it.freeShipping);
   const inside = isInsideDhaka(form.district);
-  const shipping = useMemo(() => {
+  const baseShipping = useMemo(() => {
     const zone = zones.find((z) => z.name.toLowerCase().includes(inside ? "inside" : "outside"));
     return zone ? Number(zone.charge) : inside ? 80 : 150;
   }, [zones, inside]);
+  const shipping = allFree ? 0 : baseShipping;
 
   const sub = subtotal();
   const total = sub + (form.district ? shipping : 0);
@@ -80,11 +105,12 @@ export default function Checkout() {
           discount: 0,
           total,
           payment_method: paymentMethod,
-          payment_status: paymentMethod === "cod" ? "pending" : "pending",
+          payment_status: "pending",
           order_status: "pending",
           trx_id: parsed.data.trx_id || null,
           notes: parsed.data.notes || null,
-        })
+          client_id: isLoggedClient ? customer?.sub : null,
+        } as any)
         .select()
         .single();
       if (error) throw error;
@@ -99,7 +125,7 @@ export default function Checkout() {
 
       clear();
       toast.success("অর্ডার সফল হয়েছে!");
-      nav(`/order/${order.id}/track`);
+      nav(isLoggedClient ? `/portal/my-orders` : `/order/${order.id}/track`);
     } catch (err: any) {
       toast.error(err.message || "অর্ডার ব্যর্থ");
     } finally {
@@ -107,26 +133,53 @@ export default function Checkout() {
     }
   };
 
+  const showCompactCard = isLoggedClient && !editMode;
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-3xl font-bold text-slate-900 mb-6">চেকআউট</h1>
       <form onSubmit={onSubmit} className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5 space-y-4">
-          <h2 className="font-semibold text-slate-900">শিপিং তথ্য</h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div><Label>পূর্ণ নাম *</Label><Input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} /></div>
-            <div><Label>মোবাইল *</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} placeholder="01XXXXXXXXX" /></div>
-            <div><Label>ইমেইল</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-            <div>
-              <Label>জেলা *</Label>
-              <select value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                <option value="">নির্বাচন করুন</option>
-                {BD_DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
+          {showCompactCard ? (
+            <div className="rounded-lg bg-cyan-50 border border-cyan-200 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-full bg-cyan-600 text-white flex items-center justify-center">
+                    <User className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-slate-900">{form.customer_name}</div>
+                    <div className="text-sm text-slate-600">{form.mobile}</div>
+                    {form.email && <div className="text-sm text-slate-500">{form.email}</div>}
+                    <div className="text-sm text-slate-700 mt-1">{form.address}</div>
+                    <div className="text-xs text-slate-500">{form.thana ? form.thana + ", " : ""}{form.district}</div>
+                  </div>
+                </div>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setEditMode(true)}>
+                  <Pencil className="h-3.5 w-3.5 mr-1" />এডিট
+                </Button>
+              </div>
             </div>
-            <div><Label>থানা/উপজেলা</Label><Input value={form.thana} onChange={(e) => setForm({ ...form, thana: e.target.value })} /></div>
-          </div>
-          <div><Label>সম্পূর্ণ ঠিকানা *</Label><Textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} rows={2} /></div>
+          ) : (
+            <>
+              <h2 className="font-semibold text-slate-900">শিপিং তথ্য</h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div><Label>পূর্ণ নাম *</Label><Input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} /></div>
+                <div><Label>মোবাইল *</Label><Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} placeholder="01XXXXXXXXX" /></div>
+                <div><Label>ইমেইল</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+                <div>
+                  <Label>জেলা *</Label>
+                  <select value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <option value="">নির্বাচন করুন</option>
+                    {BD_DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div><Label>থানা/উপজেলা</Label><Input value={form.thana} onChange={(e) => setForm({ ...form, thana: e.target.value })} /></div>
+              </div>
+              <div><Label>সম্পূর্ণ ঠিকানা *</Label><Textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} rows={2} /></div>
+            </>
+          )}
+
           <div><Label>অর্ডার নোট</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
 
           <div className="pt-3 border-t">
@@ -134,6 +187,7 @@ export default function Checkout() {
             <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
               <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50">
                 <RadioGroupItem value="cod" /> <span className="font-medium">ক্যাশ অন ডেলিভারি (COD)</span>
+                {isLoggedClient && <span className="text-xs text-emerald-700 ml-auto">প্রস্তাবিত</span>}
               </label>
               <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50">
                 <RadioGroupItem value="bkash" /> <span className="font-medium">bKash</span> <span className="text-xs text-slate-500">(01XXXXXXXXX)</span>
@@ -153,14 +207,26 @@ export default function Checkout() {
           <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
             {items.map((it) => (
               <div key={it.productId} className="flex justify-between text-sm">
-                <span className="text-slate-700 line-clamp-1">{it.name} × {it.quantity}</span>
+                <span className="text-slate-700 line-clamp-1">
+                  {it.name} × {it.quantity}
+                  {it.freeShipping && <Truck className="inline h-3 w-3 ml-1 text-emerald-600" />}
+                </span>
                 <span className="font-medium">{formatBDT(it.price * it.quantity)}</span>
               </div>
             ))}
           </div>
           <div className="border-t pt-3 space-y-1 text-sm">
             <div className="flex justify-between"><span>সাবটোটাল</span><span>{formatBDT(sub)}</span></div>
-            <div className="flex justify-between"><span>শিপিং ({inside ? "ঢাকার ভেতর" : form.district ? "ঢাকার বাইরে" : "—"})</span><span>{form.district ? formatBDT(shipping) : "—"}</span></div>
+            <div className="flex justify-between">
+              <span>শিপিং ({inside ? "ঢাকার ভেতর" : form.district ? "ঢাকার বাইরে" : "—"})</span>
+              <span>
+                {allFree ? (
+                  <span className="text-emerald-700 font-medium">ফ্রি</span>
+                ) : form.district ? (
+                  formatBDT(shipping)
+                ) : "—"}
+              </span>
+            </div>
             <div className="flex justify-between font-bold text-lg pt-2 border-t mt-2"><span>মোট</span><span className="text-cyan-700">{formatBDT(total)}</span></div>
           </div>
           <Button type="submit" disabled={submitting} className="w-full mt-4 bg-orange-500 hover:bg-orange-600">
