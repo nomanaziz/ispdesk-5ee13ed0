@@ -117,7 +117,7 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "ডিভাইস অ্যাডমিন",
+    label: "ডিভাইস",
     icon: ShieldCheck,
     items: [
       { title: "ড্যাশবোর্ড", url: "/dashboard/device-admin", icon: LayoutDashboard },
