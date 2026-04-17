@@ -57,6 +57,7 @@ export default function Jobs() {
   };
 
   const retryJob = useMutation({
+    meta: { loadingMessage: "জব রিট্রাই করা হচ্ছে..." },
     mutationFn: async (id: string) => {
       await supabase.from("device_admin_deploy_jobs").update({ status: "pending", results: null, completed_at: null }).eq("id", id);
       const { error } = await supabase.functions.invoke("process-deploy-job", { body: { job_id: id } });
