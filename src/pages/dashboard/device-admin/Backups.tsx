@@ -9,14 +9,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { HardDrive, Download, Trash2, Play, Loader2, Info } from "lucide-react";
+import { HardDrive, Download, Trash2, Play, Loader2, Info, Mail, Save } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { useSystemSetting } from "@/hooks/useSystemSetting";
 
 export default function BackupCenter() {
   const qc = useQueryClient();
   const [filterType, setFilterType] = useState("all");
   const [selectedDevs, setSelectedDevs] = useState<Set<string>>(new Set());
   const [formats, setFormats] = useState({ rsc: true, backup: true });
+
+  // Email backup settings
+  const { value: emailCfg, save: saveEmailCfg, isSaving } =
+    useSystemSetting<{ enabled: boolean; to: string }>("backup_email", { enabled: false, to: "" });
+  const [emailDraft, setEmailDraft] = useState<{ enabled: boolean; to: string } | null>(null);
+  const cfg = emailDraft ?? emailCfg;
 
   const { data: backups = [], isLoading } = useQuery({
     queryKey: ["device_admin_backups"],
