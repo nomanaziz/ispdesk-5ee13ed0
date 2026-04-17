@@ -148,6 +148,7 @@ import BwBuyProviders from "@/pages/dashboard/bw-buy/Providers";
 import BwBuyBills from "@/pages/dashboard/bw-buy/Bills";
 import BwBuyBillForm from "@/pages/dashboard/bw-buy/BillForm";
 import BwBuyBillView from "@/pages/dashboard/bw-buy/BillView";
+import BwBuySubscriptions from "@/pages/dashboard/bw-buy/Subscriptions";
 
 // BW Sale
 import BwSalePop from "@/pages/dashboard/bw-sale/Pop";

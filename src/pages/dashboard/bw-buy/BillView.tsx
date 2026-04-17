@@ -60,7 +60,7 @@ export default function BillView() {
   if (!bill) return <div className="p-6 text-center text-muted-foreground">বিল পাওয়া যায়নি</div>;
 
   const provider = bill.bw_providers as any;
-  const grandTotal = (lineItems || []).reduce((s: number, li: any) => s + Number(li.total || 0), 0);
+  const grandTotal = (lineItems || []).reduce((s: number, li: any) => s + Number((useNewItems ? li.amount : li.total) || 0), 0);
   const due = Number(bill.amount || 0) - Number(bill.paid || 0) - Number(bill.discount || 0);
 
   return (
@@ -124,41 +124,87 @@ export default function BillView() {
 
           {/* Line Items Table */}
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">SN</TableHead>
-                  <TableHead>আইটেম</TableHead>
-                  <TableHead>বিবরণ</TableHead>
-                  <TableHead>ইউনিট</TableHead>
-                  <TableHead className="text-right">পরিমাণ</TableHead>
-                  <TableHead className="text-right">রেট</TableHead>
-                  <TableHead className="text-right">VAT%</TableHead>
-                  <TableHead>সময়কাল</TableHead>
-                  <TableHead className="text-right">মোট</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(lineItems || []).length === 0 && (
-                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">কোনো আইটেম নেই</TableCell></TableRow>
-                )}
-                {(lineItems || []).map((li: any, i: number) => (
-                  <TableRow key={li.id}>
-                    <TableCell>{i + 1}</TableCell>
-                    <TableCell className="font-medium">{li.bw_items?.name || "—"}</TableCell>
-                    <TableCell>{li.description || "—"}</TableCell>
-                    <TableCell>{li.unit || "—"}</TableCell>
-                    <TableCell className="text-right">{li.quantity}</TableCell>
-                    <TableCell className="text-right">৳{Number(li.rate || 0).toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{li.vat_percent || 0}%</TableCell>
-                    <TableCell className="text-xs">
-                      {li.from_date && li.to_date ? `${li.from_date} — ${li.to_date}` : "—"}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">৳{Number(li.total || 0).toLocaleString()}</TableCell>
+            {useNewItems ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">SN</TableHead>
+                    <TableHead>সার্ভিস</TableHead>
+                    <TableHead className="text-right">Mbps</TableHead>
+                    <TableHead className="text-right">রেট/Mbps</TableHead>
+                    <TableHead>সময়কাল</TableHead>
+                    <TableHead className="text-right">দিন</TableHead>
+                    <TableHead className="text-right">মাসের দিন</TableHead>
+                    <TableHead className="text-right">মোট</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {(lineItems || []).length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-6">
+                        কোনো আইটেম নেই
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {(lineItems || []).map((li: any, i: number) => (
+                    <TableRow key={li.id}>
+                      <TableCell>{i + 1}</TableCell>
+                      <TableCell className="font-medium">{li.service_name}</TableCell>
+                      <TableCell className="text-right">{Number(li.bandwidth_mbps)}</TableCell>
+                      <TableCell className="text-right">৳{Number(li.rate || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-xs">
+                        {li.period_start} — {li.period_end}
+                      </TableCell>
+                      <TableCell className="text-right">{li.days}</TableCell>
+                      <TableCell className="text-right">{li.total_days_in_month}</TableCell>
+                      <TableCell className="text-right font-medium">
+                        ৳{Number(li.amount || 0).toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">SN</TableHead>
+                    <TableHead>আইটেম</TableHead>
+                    <TableHead>বিবরণ</TableHead>
+                    <TableHead>ইউনিট</TableHead>
+                    <TableHead className="text-right">পরিমাণ</TableHead>
+                    <TableHead className="text-right">রেট</TableHead>
+                    <TableHead className="text-right">VAT%</TableHead>
+                    <TableHead>সময়কাল</TableHead>
+                    <TableHead className="text-right">মোট</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(lineItems || []).length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-6">
+                        কোনো আইটেম নেই
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {(lineItems || []).map((li: any, i: number) => (
+                    <TableRow key={li.id}>
+                      <TableCell>{i + 1}</TableCell>
+                      <TableCell className="font-medium">{li.bw_items?.name || "—"}</TableCell>
+                      <TableCell>{li.description || "—"}</TableCell>
+                      <TableCell>{li.unit || "—"}</TableCell>
+                      <TableCell className="text-right">{li.quantity}</TableCell>
+                      <TableCell className="text-right">৳{Number(li.rate || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{li.vat_percent || 0}%</TableCell>
+                      <TableCell className="text-xs">
+                        {li.from_date && li.to_date ? `${li.from_date} — ${li.to_date}` : "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">৳{Number(li.total || 0).toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </div>
 
           <Separator className="my-6" />
