@@ -230,10 +230,6 @@ import SmsGroups from "@/pages/dashboard/sms/Groups";
 import SmsSend from "@/pages/dashboard/sms/Send";
 import SmsGateway from "@/pages/dashboard/sms/Gateway";
 
-// Affiliation
-import AffiliationPartners from "@/pages/dashboard/affiliation/Partners";
-import AffiliationAdd from "@/pages/dashboard/affiliation/AddAffiliator";
-
 // System
 import SystemUsers from "@/pages/dashboard/system/Users";
 import UserReview from "@/pages/dashboard/system/UserReview";
