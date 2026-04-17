@@ -1,63 +1,62 @@
 
-User wants 3 connected things for the e-commerce flow:
 
-1. **Logged-in client checkout autofill** — if a portal user is logged in, prefill name/mobile/address from their client record. Default to COD. No need to fill big form.
-2. **Admin can create product invoice for any client** — from admin portal, pick client + product → generate order/invoice on their behalf. Use existing `ProductInvoice.tsx` page but tie it to `shop_orders` so warranty/order status flow works.
-3. **Portal-side shop** — let logged-in clients browse & order from inside their portal (no need to visit public site).
-4. **Order status workflow** — pending → processing → done → completed. On "completed/paid", warranty auto-activates (already exists via `activate_warranty_on_paid` trigger).
+## সমস্যা
 
-## Plan
+1. **Navbar** (`PublicNavbar.tsx`) hardcoded — `website_menu` table থেকে read করছে না, তাই DB-তে delete করলেও site-এ থেকে যায়।
+2. **Footer** (`PublicFooter.tsx`) সম্পূর্ণ hardcoded — admin থেকে edit করার কোনো option নেই।
+3. **HomepageEditor** `section='homepage'` filter করে — কিন্তু DB-তে actual sections হলো `hero`, `about`, `faq`, `settings`। তাই কিছুই দেখায় না।
+4. **Home page** (`Home.tsx`) সব text/image hardcoded।
 
-### Part A — Checkout autofill for logged-in portal users
-Edit `src/pages/public/Checkout.tsx`:
-- Read `usePortalAuth()` to detect logged-in client
-- If logged in → fetch client from `clients` table (name, mobile, email, address, district, thana)
-- Auto-prefill form, collapse it into a compact "আপনার তথ্য" card with "Edit" button
-- Force `payment_method = "cod"` by default (still allow change)
-- Store `client_id` on the order (need new column)
+## সমাধান
 
-### Part B — Link orders to clients
-**Migration:** Add `client_id uuid` column to `shop_orders` (nullable, references `clients.id`). Existing rows stay null (guest orders).
+### 1. Navbar — DB-driven menu
+- `PublicNavbar.tsx` → `website_menu` table থেকে `status='active'` items load করবে (sort_order order-এ)
+- Hardcoded `navLinks` array সরিয়ে fallback হিসেবে রাখবে (DB খালি হলে)
+- Delete/add immediately reflect হবে
 
-### Part C — Admin: create order for client
-Repurpose existing `src/pages/dashboard/sales/ProductInvoice.tsx` OR add a new "নতুন অর্ডার তৈরি করুন" button on `src/pages/dashboard/shop/Orders.tsx`:
-- Open a dialog: pick client → autofill address → pick products from `shop_products` (multi-line) → set qty/price/shipping → create row in `shop_orders` + `shop_order_items`
-- Default `order_status="processing"`, `payment_method="cod"`, `payment_status="pending"`
-- After save → opens order detail
-- Cleaner approach: **new file** `src/pages/dashboard/shop/AdminCreateOrder.tsx` linked from Orders page
+### 2. Footer — DB-driven groups
+- নতুন menu group system: `website_menu`-তে existing `parent_id` কাজে লাগিয়ে footer columns তৈরি করব
+- বা সহজ approach: `website_menu`-তে নতুন `location` column যোগ করি (`header` | `footer_quick` | `footer_resource`)
+- **Migration**: `ALTER TABLE website_menu ADD COLUMN location text DEFAULT 'header'`
+- Admin form-এ Location dropdown
+- `PublicFooter.tsx`-এ "দ্রুত লিংক" ও "রিসোর্স" sections DB থেকে load
+- Brand text, contact info (phone/email/address) — `landing_content` section `footer` থেকে load (editable)
 
-### Part D — Portal shop (logged-in clients order from portal)
-Add 2 portal pages:
-- `src/pages/portal/PortalShop.tsx` — same product grid as public `Shop.tsx` but inside `PortalLayout`
-- `src/pages/portal/PortalShopCheckout.tsx` — uses portal session (no name/mobile form needed)
-- `src/pages/portal/PortalMyOrders.tsx` — list of this client's orders + status + tracking
-- Add menu items to `PortalLayout` sidebar: "শপ", "আমার অর্ডার"
-- Routes added to `App.tsx` under portal section
+### 3. HomepageEditor — সব section show
+- `WHERE section='homepage'` filter সরাবো → সব sections দেখাবে
+- Section dropdown filter যোগ করবো (hero, about, faq, footer, settings, homepage, ইত্যাদি)
+- Form-এ section input/select থাকবে
+- "প্রিসেট কী যোগ করুন" — known section/key list থেকে দ্রুত pick
 
-### Part E — Order status workflow
-Already partially exists (`order_status` column with pending/processing/etc). Verify in `src/pages/dashboard/shop/OrderDetail.tsx`:
-- Status transitions: `pending → processing → shipped → delivered → completed`
-- "Completed" + `payment_status="paid"` → existing trigger `activate_warranty_on_paid` auto-fills `warranty_start`/`warranty_end` ✓
-- Add a clear "অর্ডার সম্পন্ন (Seal)" button that sets both `order_status="completed"` and `payment_status="paid"` together — triggers warranty activation
+### 4. Home page থেকে content read
+- `HeroSection` → `landing_content[section=hero, key=main]` থেকে title/subtitle/CTA/price load
+- `FestivalBanner` text → `landing_content[section=hero, key=marquee]`
+- Fallback values থাকবে DB খালি হলে
+- (FeaturesSection, GamingBanner, FiberBanner — পরবর্তী phase-এ; এখন hero + marquee দিয়ে শুরু)
 
-### Files
-- **Migration:** add `client_id` to `shop_orders`
-- **Edit:** `src/pages/public/Checkout.tsx` — autofill from portal session
-- **Edit:** `src/pages/dashboard/shop/Orders.tsx` — "নতুন অর্ডার তৈরি" button
-- **New:** `src/pages/dashboard/shop/AdminCreateOrder.tsx` — admin order creation form
-- **New:** `src/pages/portal/PortalShop.tsx`
-- **New:** `src/pages/portal/PortalShopCheckout.tsx`
-- **New:** `src/pages/portal/PortalMyOrders.tsx`
-- **Edit:** `src/components/PortalLayout.tsx` — add sidebar menu
-- **Edit:** `src/App.tsx` — register portal routes + admin route
-- **Edit:** `src/pages/dashboard/shop/OrderDetail.tsx` — "Seal/Complete" button + status flow
-- **Edit:** `src/pages/dashboard/shop/Products.tsx`/`ProductForm.tsx` — already has free_shipping (previous task)
+### 5. Footer content editable
+- Brand description, phone, email, address → `landing_content[section=footer]`
+- Admin HomepageEditor (renamed → "সাইট কন্টেন্ট এডিটর") থেকে edit
 
-### Result
-- Logged-in client checkout → minimal form, prefilled, COD default
-- Admin can create order for any client from dashboard
-- Portal users see Shop + My Orders inside portal
-- Order seal button → warranty auto-activates from existing trigger
+## Files
 
-### Open question
-Should the previous "Free Shipping" plan (per-product flag + admin override) be combined with this work in the same change? It touches overlapping files (Checkout, OrderDetail, ProductForm). I'll include both unless you say otherwise.
+**Migration:**
+- `ALTER TABLE website_menu ADD COLUMN location text NOT NULL DEFAULT 'header'`
+- Existing 4 rows → `location='header'`
+- Seed default footer menu rows + `landing_content` rows for hero/footer if missing
+
+**Edit:**
+- `src/components/public/PublicNavbar.tsx` — DB query
+- `src/components/public/PublicFooter.tsx` — DB query for menu + content
+- `src/pages/dashboard/website/WebsiteMenu.tsx` — Location dropdown (header/footer_quick/footer_resource)
+- `src/pages/dashboard/website/HomepageEditor.tsx` — সব section show, section selector, preset keys
+- `src/pages/public/Home.tsx` — hero ও marquee content DB থেকে
+
+## ফলাফল
+
+- মেনু এডিটর থেকে delete/add → সাথে সাথে website-এ reflect
+- Footer-এর "দ্রুত লিংক" ও "রিসোর্স" admin থেকে control
+- Footer-এর contact info (phone/email/address) editable
+- HomepageEditor-এ existing সব content (hero/about/faq/settings) দেখা যাবে এবং edit করা যাবে
+- Home page hero text DB থেকে control করা যাবে
+
