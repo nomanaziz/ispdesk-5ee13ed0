@@ -42,8 +42,7 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
           ip_address: form.ip_address,
           api_port: form.port ? parseInt(form.port) : 80,
           username: form.username || "admin",
-          password: form.password || "",
-          location: form.location || null,
+          password_encrypted: form.password || "",
           status: "unknown",
         });
         if (error) throw error;
