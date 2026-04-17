@@ -233,7 +233,62 @@ export default function OnlineClientMonitoring() {
     }
   };
 
-  // Action: Live Traffic — uses live-traffic-snapshot (proven working) + monthly history
+  const runBulkMismatchAction = async (
+    tab: "disabled-in-system" | "enabled-in-system" | "profile-mismatch",
+    records: MismatchRecord[],
+    mode: "sync-mk-to-db" | "use-db-profile" | "use-mk-profile",
+  ) => {
+    const selected = records.filter((r) => mismatchSelection[tab].has(`${r.username}::${r.mikrotik_id || ""}`));
+    if (selected.length === 0) {
+      toast.error("কোনো client সিলেক্ট করা হয়নি");
+      return;
+    }
+
+    setBulkMismatchRunning(true);
+    let success = 0;
+    let failed = 0;
+
+    for (const r of selected) {
+      if (!r.mikrotik_id) { failed++; continue; }
+      try {
+        if (tab === "disabled-in-system") {
+          // System=disabled, MK=enabled → disable in MK to match system
+          const { error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
+            body: { mikrotik_id: r.mikrotik_id, client_id: r.client_id, username: r.username, action: "disable" },
+          });
+          if (error) throw error;
+        } else if (tab === "enabled-in-system") {
+          // System=active, MK=disabled → enable in MK to match system
+          const { error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
+            body: { mikrotik_id: r.mikrotik_id, client_id: r.client_id, username: r.username, action: "enable" },
+          });
+          if (error) throw error;
+        } else if (mode === "use-db-profile") {
+          // Push DB profile → MikroTik (default/preferred)
+          const { error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
+            body: { mikrotik_id: r.mikrotik_id, client_id: r.client_id, username: r.username, action: "update", profile: r.db_profile },
+          });
+          if (error) throw error;
+        } else if (mode === "use-mk-profile") {
+          // Pull MK profile → DB
+          if (r.client_id) {
+            const { error } = await supabase.from("clients").update({ profile: r.mk_profile }).eq("id", r.client_id);
+            if (error) throw error;
+          }
+        }
+        success++;
+      } catch {
+        failed++;
+      }
+    }
+
+    setBulkMismatchRunning(false);
+    setMismatchSelection((prev) => ({ ...prev, [tab]: new Set() }));
+    toast.success(`সম্পন্ন: ${success} সফল${failed > 0 ? `, ${failed} ব্যর্থ` : ""}`);
+    loadActiveSessions();
+  };
+
+
   const handleLiveTraffic = async (session: ActiveSession) => {
     setTrafficDialog({ open: true, loading: true, data: null, username: session.name, session, trafficHistory: [] });
 
