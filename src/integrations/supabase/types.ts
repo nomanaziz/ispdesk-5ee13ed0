@@ -3040,6 +3040,283 @@ export type Database = {
           },
         ]
       }
+      device_admin_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          device_id: string | null
+          device_name: string | null
+          device_type: string | null
+          id: string
+          ip_address: string | null
+          performed_by: string | null
+          performed_by_name: string | null
+          status: string | null
+          target_username: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          device_id?: string | null
+          device_name?: string | null
+          device_type?: string | null
+          id?: string
+          ip_address?: string | null
+          performed_by?: string | null
+          performed_by_name?: string | null
+          status?: string | null
+          target_username?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          device_id?: string | null
+          device_name?: string | null
+          device_type?: string | null
+          id?: string
+          ip_address?: string | null
+          performed_by?: string | null
+          performed_by_name?: string | null
+          status?: string | null
+          target_username?: string | null
+        }
+        Relationships: []
+      }
+      device_admin_backups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          device_id: string
+          device_name: string | null
+          device_type: string
+          error_message: string | null
+          file_name: string
+          file_path: string | null
+          file_size: number | null
+          id: string
+          job_id: string | null
+          schedule_id: string | null
+          status: string
+          triggered_by: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          device_id: string
+          device_name?: string | null
+          device_type: string
+          error_message?: string | null
+          file_name: string
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          job_id?: string | null
+          schedule_id?: string | null
+          status?: string
+          triggered_by?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          device_id?: string
+          device_name?: string | null
+          device_type?: string
+          error_message?: string | null
+          file_name?: string
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          job_id?: string | null
+          schedule_id?: string | null
+          status?: string
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_admin_backups_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "device_admin_deploy_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_admin_backups_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "device_admin_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_admin_deploy_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          job_type: string
+          notes: string | null
+          password_hash: string | null
+          permission: string | null
+          results: Json
+          status: string
+          target_devices: Json
+          username: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_type: string
+          notes?: string | null
+          password_hash?: string | null
+          permission?: string | null
+          results?: Json
+          status?: string
+          target_devices?: Json
+          username?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_type?: string
+          notes?: string | null
+          password_hash?: string | null
+          permission?: string | null
+          results?: Json
+          status?: string
+          target_devices?: Json
+          username?: string | null
+        }
+        Relationships: []
+      }
+      device_admin_group_members: {
+        Row: {
+          created_at: string
+          device_id: string
+          device_name: string | null
+          device_type: string
+          group_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          device_name?: string | null
+          device_type: string
+          group_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          device_name?: string | null
+          device_type?: string
+          group_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_admin_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "device_admin_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_admin_groups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      device_admin_schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          cron_expression: string
+          device_id: string | null
+          device_type: string | null
+          enabled: boolean
+          frequency: string | null
+          group_id: string | null
+          id: string
+          last_run_at: string | null
+          name: string
+          next_run_at: string | null
+          schedule_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          cron_expression: string
+          device_id?: string | null
+          device_type?: string | null
+          enabled?: boolean
+          frequency?: string | null
+          group_id?: string | null
+          id?: string
+          last_run_at?: string | null
+          name: string
+          next_run_at?: string | null
+          schedule_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          cron_expression?: string
+          device_id?: string | null
+          device_type?: string | null
+          enabled?: boolean
+          frequency?: string | null
+          group_id?: string | null
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          next_run_at?: string | null
+          schedule_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_admin_schedules_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "device_admin_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       districts: {
         Row: {
           code: string | null
