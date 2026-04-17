@@ -1,6 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-export type PortalUserType = "client" | "bw_customer" | "reseller";
+export type PortalUserType = "client" | "bw_customer" | "reseller" | "reseller_sub";
+
+export interface ResellerPermissions {
+  dashboard: boolean;
+  invoices: boolean;
+  purchases: boolean;
+  tickets: boolean;
+  users: boolean;
+  settings: boolean;
+}
 
 interface PortalCustomer {
   sub: string;
@@ -20,6 +29,8 @@ interface PortalCustomer {
   monthly_bill?: number | null;
   balance?: number | null;
   tariff_id?: string | null;
+  parent_reseller_id?: string | null;
+  permissions?: ResellerPermissions | null;
   iat: number;
   exp: number;
 }
@@ -91,7 +102,6 @@ export const PortalAuthProvider = ({ children }: { children: React.ReactNode }) 
     const sid = customer?.session_id;
     if (sid) {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      // fire and forget
       fetch(`https://${projectId}.supabase.co/functions/v1/portal-auth`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

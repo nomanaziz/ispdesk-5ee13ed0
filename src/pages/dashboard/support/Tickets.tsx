@@ -236,11 +236,17 @@ export default function Tickets() {
     setClientSearch(client.name + " (" + client.client_id + ")");
   };
 
-  const filtered = tickets.filter((t: any) =>
-    t.ticket_no?.toLowerCase().includes(search.toLowerCase()) ||
-    t.subject?.toLowerCase().includes(search.toLowerCase()) ||
-    (t.clients as any)?.name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = tickets.filter((t: any) => {
+    if (tab === "bw" && t.source !== "bw_reseller") return false;
+    if (tab === "mac" && t.source !== "reseller") return false;
+    if (tab === "pending" && t.status !== "pending") return false;
+    if (tab === "accepted" && (t.source === "bw_reseller" || t.source === "reseller")) return false;
+    return (
+      t.ticket_no?.toLowerCase().includes(search.toLowerCase()) ||
+      t.subject?.toLowerCase().includes(search.toLowerCase()) ||
+      (t.clients as any)?.name?.toLowerCase().includes(search.toLowerCase())
+    );
+  });
 
   const priorityColor = (p: string) => {
     if (p === "high") return "destructive";
