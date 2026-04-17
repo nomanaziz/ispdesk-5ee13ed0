@@ -1,95 +1,95 @@
 
 
-## Bandwidth Billing — Unified Pro-rated Engine (Buy + Sell)
+## MikroTik → POP Transfer Flow + Global User Search
 
-### বর্তমান অবস্থা
+### সমস্যা
 
-**BW Sale** এ ইতোমধ্যে আছে `src/lib/bwSaleProrate.ts` যা মোটামুটি logic implement করে, কিন্তু:
-- Formula এ `total_days_in_month` hardcoded month length ব্যবহার করে — fine
-- কিন্তু **rate × days / total_days** = exact যা user চাইছে ✓
-- তবে `Math.round(amount * 100) / 100` করে — paisa-level rounding
+বর্তমানে `Import.tsx`-এ "MAC রিসেলারে এক্সপোর্ট" button click করলে `mikrotik_clients.exported = true` set হয়ে যাচ্ছে — কিন্তু কোথায় গেল, কোন POP-এ গেল কিছুই track হয় না, দেখা যায় না। User চান:
 
-**BW Buy** এ এই logic **নেই** — `src/pages/dashboard/bw-buy/BillForm.tsx` flat amount নেয়। Provider থেকে কেনা bandwidth ও এই same pro-rate logic দরকার (image-অনুযায়ী Internet/NIX/FB/Akamai আলাদা service, dates সহ)।
+1. Export না, **POP-এ Transfer** — কোন POP, কোন MikroTik-এ যাবে select করতে হবে
+2. Transfer-এর পর POP (reseller) তার own panel থেকে শুধু **তার assigned MikroTik দেখতে পারবে** (add করতে পারবে না)
+3. Global search — যে কোনো PPPoE username/ID দিলে কোন POP-এর under-এ আছে বের হবে
+
+### বর্তমান অবস্থা (Recon)
+
+- `mikrotik_clients` table-এ `exported`, `exported_to` আছে কিন্তু `pop_id`, `target_mikrotik_id` নেই
+- POP table আছে (`network_pops` বা `branches` — verify করব)
+- Reseller portal (`/reseller/*`) আছে — কিন্তু MikroTik view page নেই
+- Global search component (`GlobalClientSearch.tsx`) আছে — শুধু `clients` table search করে, `mikrotik_clients` cover করে না
 
 ### Plan
 
-#### 1. Shared utility `src/lib/bandwidthBilling.ts` (NEW)
+#### Phase A — Recon (এই plan-এ আগেই করব, approval দরকার নাই)
 
-একটাই source of truth যেটা buy + sell দুটোই use করবে:
+আমি check করব:
+- POP কোন table-এ (`network_pops`, `branches`, না অন্য কিছু)
+- POP-এ কয়টা MikroTik assign করা যায় (`mikrotik_devices.pop_id` / `branch_id` আছে কিনা)
+- Reseller user POP-এর সাথে কীভাবে link (`bw_reseller_users.pop_id` ?)
 
-```ts
-export function daysInMonth(year, month1to12)  // 28/29/30/31
-export function perDayCost(monthlyRate, totalDays)
-export function lineAmount(mbps, monthlyRate, days, totalDays)
-  // = mbps * monthlyRate * days / totalDays
-export function buildSegments(subscription[], changeLog[], periodStart, periodEnd)
-  // returns [{mbps, rate, segStart, segEnd, days, amount}]
-export function totalBill(segments[])
+#### Phase B — Database Migration
+
+```sql
+ALTER TABLE mikrotik_clients
+  ADD COLUMN transferred_to_pop_id uuid REFERENCES <pop_table>(id),
+  ADD COLUMN transferred_to_mikrotik_id uuid REFERENCES mikrotik_devices(id),
+  ADD COLUMN transferred_at timestamptz,
+  ADD COLUMN transferred_by uuid;
+
+-- Index for global search
+CREATE INDEX idx_mikrotik_clients_name ON mikrotik_clients(lower(name));
+CREATE INDEX idx_mikrotik_clients_caller ON mikrotik_clients(caller_id);
 ```
 
-**Example verification (user-এর scenario):**
-- 1 Mbps × 200 × 15 / 30 = 100... wait, user বললেন 200 হবে।
-- আসলে user-এর example: 1 Mbps for 15 days = 200 BDT (full month price for 1 Mbps, "যেহেতু পুরো MB-র দাম 200")
-- কিন্তু formula অনুযায়ী 1 × 200 × 15/30 = **100**, not 200।
+`exported_to` field-এ `"mac_reseller"` placeholder বাদ — actual POP id store হবে।
 
-এটা একটা **conflict**। User-এর শেষের formal spec এই formula-ই বলেছে (`bill = X × per_day_cost × N` এবং example-এ 2 Mbps × 15 days = 100 BDT)। প্রথম paragraph-এর "পনেরো দিনের জন্যও দুইশ" সম্ভবত verbal slip — কারণ পরের লাইনেই বলেছেন "দুই MB price, পনেরো দিনের price হবে অর্ধেক মানে একশ টাকা" এবং final example-এও 200 + 100 = 300।
+#### Phase C — Replace "MAC Reseller Export" with "Transfer to POP"
 
-→ **Pro-rate formula = `mbps × monthly_rate × days / total_days_in_month`** ✓ (এটাই implement থাকবে)। Confirm করব first question-এ।
+`src/pages/dashboard/mikrotik/Import.tsx`-এ:
+- "MAC রিসেলারে এক্সপোর্ট" button → **"POP-এ ট্রান্সফার"**
+- নতুন `TransferToPopDialog.tsx` component:
+  - Step 1: POP dropdown (multiple POP available)
+  - Step 2: Target MikroTik dropdown (filtered by selected POP-এর MikroTik devices)
+  - Confirm → bulk update `mikrotik_clients` rows: `transferred_to_pop_id`, `transferred_to_mikrotik_id`, `mikrotik_id` (move to new server), `transferred_at`, `transferred_by`
+- Filter chip: "Pending Transfer" / "Transferred to POP" toggle
+- Transferred row-এ POP name + MikroTik name show
 
-#### 2. Refactor `bwSaleProrate.ts` → use `bandwidthBilling.ts`
+#### Phase D — Reseller Portal: MikroTik Users View
 
-পুরোনো API-গুলো keep করব backward-compat-এর জন্য, ভেতরে শুধু shared util call করবে।
+নতুন page `src/pages/reseller/ResellerMikrotikUsers.tsx`:
+- Login করা reseller-এর POP-এ assigned MikroTik devices show
+- প্রতিটা MikroTik-এর নিচে transferred PPPoE users list (read-only sync থেকে)
+- Actions: Enable/Disable PPP, Reset password, Change profile (via existing `manage-mikrotik-ppp` edge function — already exists)
+- Reseller **MikroTik add করতে পারবে না** — শুধু admin assign করবে
+- Sidebar-এ link: `ResellerLayout.tsx`-এ "MikroTik Users" menu add
 
-#### 3. BW Buy migration + UI (parity with BW Sale)
+`ResellerProtectedRoute` already restricts — শুধু route + page add।
 
-নতুন tables:
-```
-bw_buy_provider_subscriptions  (provider_id, service_id, mbps, rate_per_mbps, start_date, end_date, status)
-bw_buy_service_change_log      (provider_id, service_id, old/new mbps & rate, effective_date)
-bw_buy_bill_items              (bill_id, subscription_id, service_id, service_name, mbps, rate, period_start, period_end, days, total_days_in_month, amount)
-```
+#### Phase E — Global User Search Enhancement
 
-Alter `bw_purchase_bills`: add `period_start`, `period_end`, `total_amount` (keep `amount` as alias for now).
+`GlobalClientSearch.tsx` extend:
+- `clients` table-এর সাথে `mikrotik_clients` table-ও search করবে
+- Result-এ show: `username | POP name | MikroTik server | source (admin/reseller)`
+- Click → relevant POP/MikroTik view-এ navigate
 
-UI:
-- `bw-buy/Subscriptions.tsx` (NEW) — provider × service active subscriptions + upgrade/downgrade dialog
-- `bw-buy/BillForm.tsx` rewrite — auto-pull provider's active subscriptions for selected month, preview line items
-- `bw-buy/BillView.tsx` — show line items breakdown (image-77 layout)
-
-#### 4. Self-test in code
-
-`bandwidthBilling.ts` এর top-এ comment-এ user-এর exact example calc করব verification-এর জন্য:
-```
-// Verify: 1Mbps@200 for 15d + 2Mbps@200 for 15d (30-day month)
-// = 1×200×15/30 + 2×200×15/30 = 100 + 200 = 300 ✓
-```
-
-Wait — recalc: 2 × 200 × 15 / 30 = 6000/30 = **200**, not 100। তাহলে total = 100 + 200 = **300** ✓ matches user!
-
-User-এর "একশ" সম্ভবত verbal slip আবার, কিন্তু **final total 300 ঠিক আছে** formula দিয়ে। ✓
+Search query parallel করব দুই table-এ, merged result।
 
 ### Files
 
 | File | Action |
 |------|--------|
-| `src/lib/bandwidthBilling.ts` | NEW — shared engine |
-| `src/lib/bwSaleProrate.ts` | Refactor to use shared engine |
-| `supabase/migrations/...` | NEW — BW Buy subscription/log/items tables |
-| `src/pages/dashboard/bw-buy/Subscriptions.tsx` | NEW |
-| `src/pages/dashboard/bw-buy/BillForm.tsx` | Rewrite — auto pro-rate from provider subscriptions |
-| `src/pages/dashboard/bw-buy/BillView.tsx` | Show line items |
-| `src/App.tsx` + `AppSidebar.tsx` | Route + menu for BW Buy → Subscriptions |
+| `supabase/migrations/...` | NEW — alter mikrotik_clients + indexes |
+| `src/components/mikrotik/TransferToPopDialog.tsx` | NEW |
+| `src/pages/dashboard/mikrotik/Import.tsx` | Edit — replace export button with Transfer dialog, show transferred POP/MT |
+| `src/pages/reseller/ResellerMikrotikUsers.tsx` | NEW |
+| `src/components/ResellerLayout.tsx` | Edit — add menu item |
+| `src/App.tsx` | Edit — add reseller route |
+| `src/components/GlobalClientSearch.tsx` | Edit — also search mikrotik_clients |
 
-### Phasing
+### Phasing Decision
 
-- **Phase A (এই loop):** `bandwidthBilling.ts` shared utility + refactor `bwSaleProrate.ts` + BW Buy DB migration + Subscriptions page + BillForm rewrite + BillView line items
-- **Phase B (পরে):** Bulk monthly bill generation for buy side + edge function cron + provider statement reports
+সবগুলো এক loop-এ করব — interconnected এবং user clearly একটা end-to-end flow চাইছেন (admin transfer → reseller সেটা দেখবে → search করে বের করতে পারবে)।
 
-### Question
+### Questions before execution
 
-আগে পরের প্রশ্নের উত্তর confirm দরকার:
-
-**Formula confirm**: `amount = mbps × monthly_rate × days / total_days_in_month` — এটাই use হবে কি? (User-এর example-এ 1 Mbps × 15 days = 100 BDT, 2 Mbps × 15 days = 200 BDT, total 300 BDT)। 
-
-প্রথম paragraph-এ "পনেরো দিনেও দুইশ" বলেছিলেন যা formula-র সাথে match করে না, কিন্তু পরের formal spec ও final example-এ formula-ই ঠিক আছে। যদি confirm হয়, সরাসরি execute করব।
+POP table পরিচয় confirm দরকার:
 
