@@ -19,12 +19,12 @@ Deno.serve(async (req) => {
 
     const { data: dev, error: derr } = await supabase
       .from("mikrotik_devices")
-      .select("id,name,ip_address,api_port,username,password")
+      .select("id,name,ip_address,api_port,username,password_encrypted")
       .eq("id", device_id)
       .single();
     if (derr || !dev) throw new Error("Device not found");
 
-    const auth = btoa(`${dev.username || "admin"}:${dev.password || ""}`);
+    const auth = btoa(`${dev.username || "admin"}:${dev.password_encrypted || ""}`);
     const base = `http://${dev.ip_address}:${dev.api_port || 80}/rest`;
     const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "_");
     const safeName = (dev.name || "device").replace(/[^a-z0-9_-]/gi, "_");
