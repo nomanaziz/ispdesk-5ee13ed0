@@ -197,7 +197,7 @@ export default function BwSaleInvoiceForm() {
         };
       });
       if (itemRows.length) {
-        const { error } = await supabase.from("bw_invoice_items").insert(itemRows);
+        const { error } = await supabase.from("bw_invoice_items").insert(itemRows as any);
         if (error) throw error;
       }
       toast.success(editing ? "Invoice updated" : "Invoice created");
