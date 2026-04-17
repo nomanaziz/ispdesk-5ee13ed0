@@ -11,11 +11,15 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Users as UsersIcon, Edit, Eye, Key, ArrowLeft, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+const SUPER_ADMIN_ROLE_ID = "11111111-1111-1111-1111-111111111111";
 
 export default function UserReview() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { hasRole } = useAuth();
+  const isSuperAdmin = hasRole("super_admin");
 
   const [editStep, setEditStep] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<any>({});
@@ -299,7 +303,7 @@ export default function UserReview() {
               <Select value={editForm.role_id || ""} onValueChange={v => setEditForm((p: any) => ({ ...p, role_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
                 <SelectContent>
-                  {appRoles.map((r: any) => (
+                  {appRoles.filter((r: any) => isSuperAdmin || r.id !== SUPER_ADMIN_ROLE_ID).map((r: any) => (
                     <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                   ))}
                 </SelectContent>

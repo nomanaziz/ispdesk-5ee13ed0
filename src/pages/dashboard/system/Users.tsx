@@ -13,8 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
-import { Users as UsersIcon, Plus, Search, Eye, EyeOff, Trash2, Shield, Lock, Edit, User, Briefcase, ChevronRight } from "lucide-react";
+import { Users as UsersIcon, Plus, Search, Eye, EyeOff, Trash2, Shield, Lock, Edit, User, Briefcase, ChevronRight, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Module permissions structure matching Galaxy Net
 const MODULE_GROUPS = [
@@ -62,6 +63,9 @@ interface RoleModuleState { role_id: string; modules: Record<string, Record<stri
 export default function Users() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { hasRole } = useAuth();
+  const isSuperAdmin = hasRole("super_admin");
+  const SUPER_ADMIN_ROLE_ID = "11111111-1111-1111-1111-111111111111";
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState("100");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -265,7 +269,7 @@ export default function Users() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><Label className="text-xs mb-1 block">USER STATUS</Label><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="all">সকল</SelectItem><SelectItem value="Active">Active</SelectItem><SelectItem value="InActive">InActive</SelectItem></SelectContent></Select></div>
                 <div><Label className="text-xs mb-1 block">EMPLOYEE</Label><Select value={employeeFilter} onValueChange={setEmployeeFilter}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="all">সকল</SelectItem><SelectItem value="none">Without Employee</SelectItem>{employees.map((e: any) => (<SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>))}</SelectContent></Select></div>
-                <div><Label className="text-xs mb-1 block">USER ROLE</Label><Select value={roleFilter} onValueChange={setRoleFilter}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="all">সকল</SelectItem>{appRoles.map((r: any) => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}</SelectContent></Select></div>
+                <div><Label className="text-xs mb-1 block">USER ROLE</Label><Select value={roleFilter} onValueChange={setRoleFilter}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="all">সকল</SelectItem>{appRoles.filter((r: any) => isSuperAdmin || r.id !== SUPER_ADMIN_ROLE_ID).map((r: any) => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}</SelectContent></Select></div>
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">SHOW</span><Select value={entriesPerPage} onValueChange={setEntriesPerPage}><SelectTrigger className="h-8 w-20 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="10">10</SelectItem><SelectItem value="25">25</SelectItem><SelectItem value="50">50</SelectItem><SelectItem value="100">100</SelectItem></SelectContent></Select><span className="text-xs text-muted-foreground">ENTRIES</span></div>
@@ -353,10 +357,17 @@ export default function Users() {
                     ) : appRoles.length === 0 ? (
                       <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">কোনো রোল নেই</TableCell></TableRow>
                     ) : (
-                      appRoles.map((r: any, i: number) => (
+                      appRoles.map((r: any, i: number) => {
+                        const locked = r.is_protected && !isSuperAdmin;
+                        return (
                         <TableRow key={r.id} className="hover:bg-muted/30">
                           <TableCell className="text-xs text-center">{i + 1}</TableCell>
-                          <TableCell className="text-xs text-center font-medium text-blue-600">{r.name}</TableCell>
+                          <TableCell className="text-xs text-center font-medium text-blue-600">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {r.name}
+                              {r.is_default && <Badge variant="outline" className="text-[9px] gap-0.5 border-amber-500 text-amber-600"><ShieldCheck className="h-2.5 w-2.5" /> System</Badge>}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-center">
                             <Badge className={`text-[10px] ${r.status === "Active" ? "bg-green-500 hover:bg-green-600" : r.status === "Not Assigned" ? "bg-orange-500 hover:bg-orange-600" : "bg-red-500 hover:bg-red-600"}`}>{r.status}</Badge>
                           </TableCell>
@@ -365,12 +376,19 @@ export default function Users() {
                           <TableCell className="text-xs text-center">{r.created_at ? new Date(r.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : ""}</TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center gap-1">
-                              <button onClick={() => setEditingRole({ ...r })} className="text-blue-500 hover:text-blue-700"><Edit className="h-4 w-4" /></button>
-                              <button onClick={() => deleteRole.mutate(r.id)} className="text-red-500 hover:text-red-700"><Trash2 className="h-4 w-4" /></button>
+                              {locked ? (
+                                <span title="System role — Super Admin only" className="text-muted-foreground"><Lock className="h-4 w-4" /></span>
+                              ) : (
+                                <>
+                                  <button onClick={() => setEditingRole({ ...r })} className="text-blue-500 hover:text-blue-700"><Edit className="h-4 w-4" /></button>
+                                  <button onClick={() => { if (r.is_protected && !confirm("এটি একটি system role। আপনি কি নিশ্চিত?")) return; deleteRole.mutate(r.id); }} className="text-red-500 hover:text-red-700"><Trash2 className="h-4 w-4" /></button>
+                                </>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
@@ -405,22 +423,37 @@ export default function Users() {
                     {getRoleModuleSummary().length === 0 ? (
                       <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">কোনো রোল মডিউল নেই</TableCell></TableRow>
                     ) : (
-                      getRoleModuleSummary().map((item, i) => (
+                      getRoleModuleSummary().map((item, i) => {
+                        const role = appRoles.find((r: any) => r.id === item.roleId);
+                        const locked = role?.is_protected && !isSuperAdmin;
+                        return (
                         <TableRow key={item.roleId} className="hover:bg-muted/30">
                           <TableCell className="text-xs text-center">{i + 1}</TableCell>
-                          <TableCell className="text-xs text-center font-medium">{item.roleName}</TableCell>
+                          <TableCell className="text-xs text-center font-medium">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {item.roleName}
+                              {role?.is_default && <Badge variant="outline" className="text-[9px] gap-0.5 border-amber-500 text-amber-600"><ShieldCheck className="h-2.5 w-2.5" /> System</Badge>}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-center"><Badge className={`text-[10px] ${item.status === "Active" ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}`}>{item.status}</Badge></TableCell>
                           <TableCell className="text-xs text-center max-w-xs truncate">{item.modules}</TableCell>
                           <TableCell className="text-xs text-center">{item.createdBy}</TableCell>
                           <TableCell className="text-xs text-center">{item.createdOn}</TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center gap-1">
-                              <button onClick={() => openPermissionDialog(item.roleId)} className="text-blue-500 hover:text-blue-700"><Edit className="h-4 w-4" /></button>
-                              <button onClick={() => { supabase.from("app_role_modules").delete().eq("role_id", item.roleId).then(() => { queryClient.invalidateQueries({ queryKey: ["app_role_modules"] }); toast.success("মুছে ফেলা হয়েছে"); }); }} className="text-red-500 hover:text-red-700"><Trash2 className="h-4 w-4" /></button>
+                              {locked ? (
+                                <span title="System role permissions — Super Admin only" className="text-muted-foreground"><Lock className="h-4 w-4" /></span>
+                              ) : (
+                                <>
+                                  <button onClick={() => openPermissionDialog(item.roleId)} className="text-blue-500 hover:text-blue-700"><Edit className="h-4 w-4" /></button>
+                                  <button onClick={() => { if (role?.is_protected && !confirm("System role permissions মুছবেন?")) return; supabase.from("app_role_modules").delete().eq("role_id", item.roleId).then(() => { queryClient.invalidateQueries({ queryKey: ["app_role_modules"] }); toast.success("মুছে ফেলা হয়েছে"); }); }} className="text-red-500 hover:text-red-700"><Trash2 className="h-4 w-4" /></button>
+                                </>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
@@ -455,7 +488,7 @@ export default function Users() {
               <div><Label className="text-xs">EMPLOYEE (Optional):</Label><Select value={newUser.employee_id || "none"} onValueChange={v => setNewUser(p => ({ ...p, employee_id: v === "none" ? "" : v }))}><SelectTrigger><SelectValue placeholder="Without Employee" /></SelectTrigger><SelectContent><SelectItem value="none">Without Employee</SelectItem>{employees.map((e: any) => (<SelectItem key={e.id} value={e.id}>{e.name} ({e.employee_id})</SelectItem>))}</SelectContent></Select><p className="text-xs text-muted-foreground mt-2">ইউজার কোনো কর্মচারীর সাথে যুক্ত না হলে "Without Employee" সিলেক্ট করুন।</p></div>
             )}
             {wizardStep === 3 && (
-              <div><Label className="text-xs">USER ROLE(GROUP):</Label><Select value={newUser.role_id} onValueChange={v => setNewUser(p => ({ ...p, role_id: v }))}><SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger><SelectContent>{appRoles.map((r: any) => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}</SelectContent></Select></div>
+              <div><Label className="text-xs">USER ROLE(GROUP):</Label><Select value={newUser.role_id} onValueChange={v => setNewUser(p => ({ ...p, role_id: v }))}><SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger><SelectContent>{appRoles.filter((r: any) => isSuperAdmin || r.id !== SUPER_ADMIN_ROLE_ID).map((r: any) => (<SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>))}</SelectContent></Select>{!isSuperAdmin && <p className="text-xs text-muted-foreground mt-1">Super Admin role শুধু super admin user assign করতে পারবে।</p>}</div>
             )}
             <div className="flex gap-3 pt-2">
               {wizardStep > 1 && <Button variant="outline" onClick={() => setWizardStep(s => s - 1)} className="flex-1">Previous</Button>}
