@@ -1,12 +1,22 @@
 import { useState } from "react";
-import { NavLink } from "react-router-dom";
-import { Menu, X, Wifi, User } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { Menu, X, Wifi, User, LogOut, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { CartIcon } from "@/components/public/CartIcon";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const fallbackLinks = [
   { title: "হোম", url: "/" },
@@ -19,9 +29,22 @@ const fallbackLinks = [
   { title: "যোগাযোগ", url: "/contact" },
 ];
 
+function shortName(full: string, max = 12) {
+  const first = (full || "").trim().split(/\s+/)[0] || "";
+  return first.length > max ? first.slice(0, max) + "…" : first;
+}
+
+function initials(full: string) {
+  const parts = (full || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "U";
+  return ((parts[0][0] || "") + (parts[1]?.[0] || "")).toUpperCase();
+}
+
 export function PublicNavbar() {
   const [open, setOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const { customer, logout: portalLogout } = usePortalAuth();
+  const navigate = useNavigate();
 
   const { data: menuRows } = useQuery({
     queryKey: ["website_menu", "header"],
@@ -42,6 +65,77 @@ export function PublicNavbar() {
     menuRows && menuRows.length > 0
       ? menuRows.map((m) => ({ title: m.title, url: m.url || "/" }))
       : fallbackLinks;
+
+  // Resolve a single "current user" view (admin > customer)
+  const adminFull =
+    (user?.user_metadata as any)?.full_name ||
+    user?.email?.split("@")[0] ||
+    "";
+  const customerFull = customer?.name || customer?.username || "";
+
+  const isAdmin = !!user;
+  const isCustomer = !!customer && !isAdmin;
+  const isLoggedIn = isAdmin || isCustomer;
+
+  const displayFull = isAdmin ? adminFull : customerFull;
+  const displayShort = shortName(displayFull);
+  const displayInitials = initials(displayFull);
+  const dashboardPath = isAdmin ? "/dashboard" : "/portal";
+  const dashboardLabel = isAdmin ? "ড্যাশবোর্ড" : "আমার পোর্টাল";
+
+  const handleLogout = async () => {
+    setOpen(false);
+    if (isAdmin) {
+      await signOut();
+    } else if (isCustomer) {
+      portalLogout();
+    }
+    navigate("/");
+  };
+
+  const UserMenu = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-2 px-2 text-slate-700 hover:text-cyan-700 hover:bg-slate-50"
+        >
+          <Avatar className="h-7 w-7">
+            <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-teal-600 text-white text-xs font-semibold">
+              {displayInitials}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-sm font-medium max-w-[100px] truncate">
+            {displayShort}
+          </span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52 bg-white">
+        <DropdownMenuLabel className="text-slate-500 text-xs font-normal">
+          {isAdmin ? "অ্যাডমিন" : "গ্রাহক"}
+          <div className="text-slate-900 text-sm font-semibold truncate">
+            {displayFull}
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => navigate(dashboardPath)}
+          className="cursor-pointer"
+        >
+          <LayoutDashboard className="h-4 w-4 mr-2" />
+          {dashboardLabel}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={handleLogout}
+          className="cursor-pointer text-red-600 focus:text-red-700"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          লগআউট
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
@@ -87,16 +181,12 @@ export function PublicNavbar() {
                 কানেকশন নিন
               </Button>
             </NavLink>
-            {user ? (
-              <NavLink to="/dashboard">
-                <Button size="sm" variant="ghost" className="text-slate-600 hover:text-cyan-700">
-                  <User className="h-4 w-4 mr-1" /> ড্যাশবোর্ড
-                </Button>
-              </NavLink>
+            {isLoggedIn ? (
+              <UserMenu />
             ) : (
               <NavLink to="/login">
-                <Button size="sm" variant="ghost" className="text-slate-600 hover:text-cyan-700">
-                  <User className="h-4 w-4" />
+                <Button size="sm" variant="ghost" className="text-slate-600 hover:text-cyan-700 gap-1">
+                  <User className="h-4 w-4" /> লগইন
                 </Button>
               </NavLink>
             )}
@@ -134,13 +224,37 @@ export function PublicNavbar() {
               <NavLink to="/new-connection" onClick={() => setOpen(false)}>
                 <Button variant="outline" className="w-full border-cyan-500 text-cyan-700">কানেকশন নিন</Button>
               </NavLink>
-              {user ? (
-                <NavLink to="/dashboard" onClick={() => setOpen(false)}>
-                  <Button variant="ghost" className="w-full text-slate-600">ড্যাশবোর্ড</Button>
-                </NavLink>
+              {isLoggedIn ? (
+                <>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-teal-600 text-white text-xs font-semibold">
+                        {displayInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-900 truncate">{displayFull}</div>
+                      <div className="text-[11px] text-slate-500">{isAdmin ? "অ্যাডমিন" : "গ্রাহক"}</div>
+                    </div>
+                  </div>
+                  <NavLink to={dashboardPath} onClick={() => setOpen(false)}>
+                    <Button variant="ghost" className="w-full text-slate-700 justify-start">
+                      <LayoutDashboard className="h-4 w-4 mr-2" /> {dashboardLabel}
+                    </Button>
+                  </NavLink>
+                  <Button
+                    variant="ghost"
+                    className="w-full text-red-600 hover:text-red-700 justify-start"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-4 w-4 mr-2" /> লগআউট
+                  </Button>
+                </>
               ) : (
                 <NavLink to="/login" onClick={() => setOpen(false)}>
-                  <Button variant="ghost" className="w-full text-slate-600">লগইন</Button>
+                  <Button variant="ghost" className="w-full text-slate-600">
+                    <User className="h-4 w-4 mr-2" /> লগইন
+                  </Button>
                 </NavLink>
               )}
             </div>
