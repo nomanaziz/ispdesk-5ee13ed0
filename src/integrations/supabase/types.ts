@@ -3087,6 +3087,7 @@ export type Database = {
       }
       device_admin_backups: {
         Row: {
+          backup_format: string
           created_at: string
           created_by: string | null
           device_id: string
@@ -3103,6 +3104,7 @@ export type Database = {
           triggered_by: string
         }
         Insert: {
+          backup_format?: string
           created_at?: string
           created_by?: string | null
           device_id: string
@@ -3119,6 +3121,7 @@ export type Database = {
           triggered_by?: string
         }
         Update: {
+          backup_format?: string
           created_at?: string
           created_by?: string | null
           device_id?: string
@@ -3255,6 +3258,66 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      device_admin_managed_devices: {
+        Row: {
+          backup_schedule: string
+          category: string
+          created_at: string
+          created_by: string | null
+          enable_password: string | null
+          group_id: string | null
+          id: string
+          ip_address: string | null
+          location: string | null
+          name: string
+          password_encrypted: string | null
+          port: number | null
+          protocol: string
+          status: string
+          updated_at: string
+          username: string | null
+          vendor: string
+        }
+        Insert: {
+          backup_schedule?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          enable_password?: string | null
+          group_id?: string | null
+          id?: string
+          ip_address?: string | null
+          location?: string | null
+          name: string
+          password_encrypted?: string | null
+          port?: number | null
+          protocol?: string
+          status?: string
+          updated_at?: string
+          username?: string | null
+          vendor?: string
+        }
+        Update: {
+          backup_schedule?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          enable_password?: string | null
+          group_id?: string | null
+          id?: string
+          ip_address?: string | null
+          location?: string | null
+          name?: string
+          password_encrypted?: string | null
+          port?: number | null
+          protocol?: string
+          status?: string
+          updated_at?: string
+          username?: string | null
+          vendor?: string
         }
         Relationships: []
       }
