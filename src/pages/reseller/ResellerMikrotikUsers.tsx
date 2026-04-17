@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
@@ -62,10 +62,9 @@ export default function ResellerMikrotikUsers() {
     enabled: !!popId,
   });
 
-  // Default-select first MT
-  if (mikrotiks.length > 0 && !activeMt) {
-    setActiveMt(mikrotiks[0].id);
-  }
+  useEffect(() => {
+    if (mikrotiks.length > 0 && !activeMt) setActiveMt(mikrotiks[0].id);
+  }, [mikrotiks, activeMt]);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["reseller_mt_users", popId, activeMt],
