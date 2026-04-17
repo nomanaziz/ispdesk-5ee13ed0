@@ -2,6 +2,7 @@ import { Wifi, Phone, Mail, MapPin, Facebook, Youtube, MessageCircle, ExternalLi
 import { NavLink } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface MenuRow { title: string; url: string | null; location: string }
 
@@ -19,6 +20,7 @@ const defaultResource = [
 ];
 
 export function PublicFooter() {
+  const { t } = useLanguage();
   const { data: menus } = useQuery({
     queryKey: ["website_menu", "footer"],
     queryFn: async () => {
@@ -85,7 +87,7 @@ export function PublicFooter() {
           </div>
 
           <div>
-            <h3 className="text-white font-semibold mb-5 text-sm uppercase tracking-wider">দ্রুত লিংক</h3>
+            <h3 className="text-white font-semibold mb-5 text-sm uppercase tracking-wider">{t("দ্রুত লিংক", "Quick Links")}</h3>
             <ul className="space-y-3 text-sm">
               {finalQuick.map((l, i) => (
                 <li key={i}>
@@ -98,7 +100,7 @@ export function PublicFooter() {
           </div>
 
           <div>
-            <h3 className="text-white font-semibold mb-5 text-sm uppercase tracking-wider">রিসোর্স</h3>
+            <h3 className="text-white font-semibold mb-5 text-sm uppercase tracking-wider">{t("রিসোর্স", "Resources")}</h3>
             <ul className="space-y-3 text-sm">
               {finalResource.map((l, i) => (
                 <li key={i}>
@@ -111,19 +113,19 @@ export function PublicFooter() {
           </div>
 
           <div>
-            <h3 className="text-white font-semibold mb-5 text-sm uppercase tracking-wider">যোগাযোগ</h3>
+            <h3 className="text-white font-semibold mb-5 text-sm uppercase tracking-wider">{t("যোগাযোগ", "Contact")}</h3>
             <ul className="space-y-4 text-sm">
               <li className="flex items-center gap-3">
                 <div className="h-8 w-8 rounded-lg bg-cyan-600/20 flex items-center justify-center flex-shrink-0"><Phone className="h-4 w-4 text-cyan-400" /></div>
-                <div><p className="text-slate-400 text-xs">হেল্পলাইন</p><p className="text-white">{phone}</p></div>
+                <div><p className="text-slate-400 text-xs">{t("হেল্পলাইন", "Helpline")}</p><p className="text-white">{phone}</p></div>
               </li>
               <li className="flex items-center gap-3">
                 <div className="h-8 w-8 rounded-lg bg-cyan-600/20 flex items-center justify-center flex-shrink-0"><Mail className="h-4 w-4 text-cyan-400" /></div>
-                <div><p className="text-slate-400 text-xs">ইমেইল</p><p className="text-white">{email}</p></div>
+                <div><p className="text-slate-400 text-xs">{t("ইমেইল", "Email")}</p><p className="text-white">{email}</p></div>
               </li>
               <li className="flex items-start gap-3">
                 <div className="h-8 w-8 rounded-lg bg-cyan-600/20 flex items-center justify-center flex-shrink-0 mt-0.5"><MapPin className="h-4 w-4 text-cyan-400" /></div>
-                <div><p className="text-slate-400 text-xs">অফিস</p><p className="text-white">{address}</p></div>
+                <div><p className="text-slate-400 text-xs">{t("অফিস", "Office")}</p><p className="text-white">{address}</p></div>
               </li>
             </ul>
           </div>
@@ -132,7 +134,7 @@ export function PublicFooter() {
 
       <div className="border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-3">
-          <p className="text-sm text-slate-500">© {new Date().getFullYear()} {brandName}। সর্বস্বত্ব সংরক্ষিত।</p>
+          <p className="text-sm text-slate-500">© {new Date().getFullYear()} {brandName}। {t("সর্বস্বত্ব সংরক্ষিত।", "All rights reserved.")}</p>
           <p className="text-sm text-slate-600">Powered by <span className="text-cyan-400 font-medium">ISP Desk ERP</span></p>
         </div>
       </div>

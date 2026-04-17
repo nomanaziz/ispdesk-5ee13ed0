@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard, FileText, HeadphonesIcon, LogOut, Menu, X,
   Activity, Bell, Building2, Clapperboard, BookOpen, ChevronDown, Rocket,
-  ShoppingBag, Package, Receipt,
+  ShoppingBag, Package, Receipt, Globe,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -142,6 +142,14 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
             <div className="font-semibold text-sm hidden sm:block">Customer Portal</div>
           </div>
 
+          <div className="flex items-center gap-2">
+            <Link to="/" target="_blank" title="ওয়েবসাইটে যান">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
+                <Globe className="h-4 w-4" />
+                <span className="hidden sm:inline text-xs">ওয়েবসাইট</span>
+              </Button>
+            </Link>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 hover:opacity-80 px-2 py-1.5 rounded-lg hover:bg-muted">
@@ -160,6 +168,7 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </header>
 
         <main className="flex-1 p-4 md:p-6 pb-24 lg:pb-6 overflow-auto">{children}</main>

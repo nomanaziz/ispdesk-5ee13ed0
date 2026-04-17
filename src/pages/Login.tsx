@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Activity, User, Lock, Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PublicLayout } from "@/components/PublicLayout";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const LoginInner = () => {
   const [identifier, setIdentifier] = useState("");
@@ -17,6 +19,7 @@ const LoginInner = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { signIn } = useAuth();
   const { login: portalLogin } = usePortalAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -25,16 +28,14 @@ const LoginInner = () => {
     setIsLoading(true);
     const id = identifier.trim();
     try {
-      // Email → Admin/Staff via Supabase auth
       if (id.includes("@")) {
         await signIn(id, password);
         navigate("/dashboard");
         return;
       }
-      // Otherwise → Portal auth (client / reseller / bw_customer)
       const result = await portalLogin(id, password);
       if (result.error) {
-        toast({ title: "লগইন ব্যর্থ", description: result.error, variant: "destructive" });
+        toast({ title: t("লগইন ব্যর্থ", "Login failed"), description: result.error, variant: "destructive" });
         return;
       }
       switch (result.type) {
@@ -48,14 +49,14 @@ const LoginInner = () => {
           navigate("/portal/dashboard", { replace: true });
       }
     } catch (err: any) {
-      toast({ title: "ত্রুটি", description: err.message || "লগইন ব্যর্থ", variant: "destructive" });
+      toast({ title: t("ত্রুটি", "Error"), description: err.message || t("লগইন ব্যর্থ", "Login failed"), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-muted/30 relative overflow-hidden">
+    <div className="flex items-center justify-center p-4 py-10 bg-muted/30 relative overflow-hidden min-h-[calc(100vh-200px)]">
       <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
       <div className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-primary/8 blur-3xl" />
 
@@ -68,16 +69,16 @@ const LoginInner = () => {
               </div>
               <span className="text-xl font-bold text-foreground">ISP Desk</span>
             </div>
-            <h2 className="text-lg font-semibold text-foreground">স্বাগতম! 👋</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("স্বাগতম! 👋", "Welcome! 👋")}</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              আপনার একাউন্টে সাইন ইন করুন
+              {t("আপনার একাউন্টে সাইন ইন করুন", "Sign in to your account")}
             </p>
           </CardHeader>
 
           <CardContent className="pt-4 pb-8 px-6 sm:px-8">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="identifier" className="text-sm">ইমেইল / ইউজারনেম / PPP ID</Label>
+                <Label htmlFor="identifier" className="text-sm">{t("ইমেইল / ইউজারনেম / PPP ID", "Email / Username / PPP ID")}</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -85,7 +86,7 @@ const LoginInner = () => {
                     type="text"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="admin@yourisp.com বা PPP ID"
+                    placeholder={t("admin@yourisp.com বা PPP ID", "admin@yourisp.com or PPP ID")}
                     className="pl-10 h-11"
                     required
                     autoComplete="username"
@@ -95,9 +96,9 @@ const LoginInner = () => {
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-sm">পাসওয়ার্ড</Label>
+                  <Label htmlFor="password" className="text-sm">{t("পাসওয়ার্ড", "Password")}</Label>
                   <Link to="/reset-password" className="text-xs text-primary hover:underline">
-                    পাসওয়ার্ড ভুলেছেন?
+                    {t("পাসওয়ার্ড ভুলেছেন?", "Forgot password?")}
                   </Link>
                 </div>
                 <div className="relative">
@@ -125,24 +126,23 @@ const LoginInner = () => {
               <div className="flex items-center gap-2">
                 <Checkbox id="remember" />
                 <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
-                  মনে রাখুন
+                  {t("মনে রাখুন", "Remember me")}
                 </label>
               </div>
 
               <Button type="submit" className="w-full h-11 font-medium" disabled={isLoading}>
-                {isLoading ? "লোড হচ্ছে..." : "সাইন ইন"}
+                {isLoading ? t("লোড হচ্ছে...", "Loading...") : t("সাইন ইন", "Sign In")}
               </Button>
 
               <p className="text-xs text-center text-muted-foreground pt-2">
-                Admin (ইমেইল), ক্লায়েন্ট (PPP ID), এবং রিসেলার সবাই এখানে লগইন করতে পারবেন
+                {t(
+                  "Admin (ইমেইল), ক্লায়েন্ট (PPP ID), এবং রিসেলার সবাই এখানে লগইন করতে পারবেন",
+                  "Admin (email), Client (PPP ID), and Reseller can all log in here"
+                )}
               </p>
             </form>
           </CardContent>
         </Card>
-
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          © 2026 ISP Desk. সর্বস্বত্ব সংরক্ষিত।
-        </p>
       </div>
     </div>
   );
@@ -150,7 +150,9 @@ const LoginInner = () => {
 
 const Login = () => (
   <PortalAuthProvider>
-    <LoginInner />
+    <PublicLayout>
+      <LoginInner />
+    </PublicLayout>
   </PortalAuthProvider>
 );
 
