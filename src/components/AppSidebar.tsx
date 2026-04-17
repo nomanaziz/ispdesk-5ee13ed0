@@ -15,6 +15,7 @@ import {
   CheckSquare, History, Wifi, Map, CircleDot,
   FolderOpen, Store, Tag, BarChart, FileBarChart,
   Bell, Users2, Building, Briefcase, ScrollText,
+  ShoppingBag, ShieldCheck,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Sidebar, SidebarContent, useSidebar } from "@/components/ui/sidebar";
@@ -322,6 +323,19 @@ const menuGroups: MenuGroup[] = [
       { title: "SMS গ্রুপ", url: "/dashboard/sms/groups", icon: Users2 },
       { title: "SMS পাঠান", url: "/dashboard/sms/send", icon: Send },
       { title: "SMS গেটওয়ে", url: "/dashboard/sms/gateway", icon: Cog },
+    ],
+  },
+  {
+    label: "ই-কমার্স",
+    icon: ShoppingCart,
+    items: [
+      { title: "ক্যাটেগরি", url: "/dashboard/shop/categories", icon: FolderOpen },
+      { title: "প্রোডাক্ট", url: "/dashboard/shop/products", icon: Package },
+      { title: "অর্ডার", url: "/dashboard/shop/orders", icon: ShoppingBag },
+      { title: "শিপিং চার্জ", url: "/dashboard/shop/shipping", icon: Truck },
+      { title: "কুপন", url: "/dashboard/shop/coupons", icon: Tag },
+      { title: "ওয়ারেন্টি ক্লেইম", url: "/dashboard/shop/warranty", icon: ShieldCheck },
+      { title: "সেলস রিপোর্ট", url: "/dashboard/shop/reports", icon: BarChart },
     ],
   },
   {
