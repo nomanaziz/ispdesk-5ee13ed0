@@ -63,6 +63,9 @@ interface RoleModuleState { role_id: string; modules: Record<string, Record<stri
 export default function Users() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { hasRole } = useAuth();
+  const isSuperAdmin = hasRole("super_admin");
+  const SUPER_ADMIN_ROLE_ID = "11111111-1111-1111-1111-111111111111";
   const [search, setSearch] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState("100");
   const [statusFilter, setStatusFilter] = useState("all");
