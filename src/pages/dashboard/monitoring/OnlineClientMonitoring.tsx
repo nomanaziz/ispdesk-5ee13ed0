@@ -507,7 +507,7 @@ export default function OnlineClientMonitoring() {
         <TableBody>
           {data.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={18} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={17} className="text-center py-8 text-muted-foreground">
                 কোনো ডেটা পাওয়া যায়নি
               </TableCell>
             </TableRow>
