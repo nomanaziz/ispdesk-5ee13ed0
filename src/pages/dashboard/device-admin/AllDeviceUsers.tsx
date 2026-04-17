@@ -85,6 +85,22 @@ export default function AllDeviceUsers() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const toggleMt = useMutation({
+    mutationFn: async ({ row, disable }: { row: any; disable: boolean }) => {
+      const { data, error } = await supabase.functions.invoke("toggle-mikrotik-user", {
+        body: { device_id: row.device_id, username: row.username, disable },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return { username: row.username, disable };
+    },
+    onSuccess: ({ username, disable }) => {
+      toast.success(`${username} ${disable ? "ডিএক্টিভেট" : "অ্যাক্টিভেট"} হয়েছে`);
+      qc.invalidateQueries({ queryKey: ["device_admin_user_inventory"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Toggle ব্যর্থ"),
+  });
+
   const grouped = useMemo(() => {
     const map = new Map<string, any[]>();
     data.forEach((r: any) => {
@@ -163,17 +179,31 @@ export default function AllDeviceUsers() {
                         <TableRow>
                           <TableCell colSpan={6} className="bg-muted/30 p-0">
                             <div className="p-3 space-y-1">
-                              {rows.map((r: any) => (
+                              {rows.map((r: any) => {
+                                const isMt = r.device_type === "mikrotik";
+                                const isDisabled = String(r.raw_data?.disabled ?? "false") === "true";
+                                return (
                                 <div key={r.id} className="flex items-center gap-3 p-2 bg-background rounded border text-sm">
                                   <Badge variant="outline">{r.device_type}</Badge>
                                   <span className="font-medium">{r.device_name || "—"}</span>
                                   <Badge variant="secondary" className="ml-2">{r.permission || "—"}</Badge>
+                                  {isMt ? (
+                                    <div className="ml-2 flex items-center gap-2">
+                                      <Switch
+                                        checked={!isDisabled}
+                                        disabled={toggleMt.isPending}
+                                        onCheckedChange={(checked) => toggleMt.mutate({ row: r, disable: !checked })}
+                                      />
+                                      <span className="text-xs text-muted-foreground">{isDisabled ? "ডিএক্টিভ" : "অ্যাক্টিভ"}</span>
+                                    </div>
+                                  ) : null}
                                   <span className="ml-auto text-xs text-muted-foreground">{new Date(r.last_synced_at).toLocaleString("bn-BD")}</span>
                                   <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => { if (confirm(`এই ডিভাইস থেকে ডিলিট?`)) deletePerDevice.mutate(r); }}>
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </TableCell>
                         </TableRow>
