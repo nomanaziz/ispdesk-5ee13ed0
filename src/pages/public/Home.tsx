@@ -12,19 +12,33 @@ import { LogoMarquee } from "@/components/public/LogoMarquee";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 
+/* ─── shared content hook ─── */
+function useHeroContent() {
+  return useQuery({
+    queryKey: ["landing_content", "hero"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("landing_content")
+        .select("content_key,content_value")
+        .eq("section", "hero")
+        .eq("is_active", true);
+      const map: Record<string, any> = {};
+      (data || []).forEach((r: any) => { map[r.content_key] = r.content_value; });
+      return map;
+    },
+    staleTime: 30_000,
+  });
+}
+
 /* ─── 1. Festival Marquee ─── */
 function FestivalBanner() {
+  const { data } = useHeroContent();
+  const text = data?.marquee?.text || "🎉 ঈদ মোবারক! সকল প্যাকেজে বিশেষ ছাড় চলছে — নতুন কানেকশনে ৫০% ইনস্টলেশন ফি মওকুফ!  |  🌟 ফাইবার অপটিক কানেকশনে ফ্রি রাউটার!  |  📞 হেল্পলাইন: ০৯৬৭৮-১২৩৪৫৬";
   return (
     <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white py-2 overflow-hidden">
       <div className="flex animate-marquee-fast whitespace-nowrap">
         {[1, 2].map((k) => (
-          <span key={k} className="mx-12 text-sm font-medium flex items-center gap-2">
-            🎉 ঈদ মোবারক! সকল প্যাকেজে বিশেষ ছাড় চলছে — নতুন কানেকশনে ৫০% ইনস্টলেশন ফি মওকুফ!
-            &nbsp;&nbsp;|&nbsp;&nbsp;
-            🌟 ফাইবার অপটিক কানেকশনে ফ্রি রাউটার!
-            &nbsp;&nbsp;|&nbsp;&nbsp;
-            📞 হেল্পলাইন: ০৯৬৭৮-১২৩৪৫৬
-          </span>
+          <span key={k} className="mx-12 text-sm font-medium flex items-center gap-2">{text}</span>
         ))}
       </div>
     </div>
@@ -33,6 +47,16 @@ function FestivalBanner() {
 
 /* ─── 2. Hero Section ─── */
 function HeroSection() {
+  const { data } = useHeroContent();
+  const m = data?.main || {};
+  const badge = m.badge || "৯৯.৯% আপটাইম গ্যারান্টি";
+  const title1 = m.title_1 || "দ্রুতগতির";
+  const titleHighlight = m.title_highlight || "ফাইবার অপটিক";
+  const title2 = m.title_2 || "ইন্টারনেট";
+  const subtitle = m.subtitle || "সাশ্রয়ী মূল্যে BDIX, FTP ও ক্যাশ সার্ভার সুবিধাসহ উচ্চ গতির ইন্টারনেট সেবা। বাফারিং ছাড়া YouTube, Facebook, Netflix উপভোগ করুন।";
+  const priceLabel = m.price_label || "মাত্র";
+  const price = m.price || "৳৫০০";
+  const priceSuffix = m.price_suffix || "/মাস থেকে শুরু";
   return (
     <section className="relative bg-gradient-to-br from-slate-900 via-cyan-900 to-teal-900 text-white overflow-hidden">
       <div className="absolute inset-0 opacity-20 pointer-events-none">
