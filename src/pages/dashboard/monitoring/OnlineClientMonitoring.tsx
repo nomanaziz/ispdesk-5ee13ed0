@@ -544,7 +544,7 @@ export default function OnlineClientMonitoring() {
 
   const combinedSessions = statusFilter === "online" ? sessions : statusFilter === "offline" ? offlineClients : [...sessions, ...offlineClients];
 
-  const filteredSessions = combinedSessions.filter((s) => {
+  const filteredSessionsBase = combinedSessions.filter((s) => {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       if (
@@ -559,6 +559,80 @@ export default function OnlineClientMonitoring() {
     if (filterConnectionType !== "all" && s.connection_type !== filterConnectionType) return false;
     return true;
   });
+
+  const parseUptime = (u?: string): number => {
+    if (!u || u === "—") return 0;
+    let total = 0;
+    const re = /(\d+)\s*([wdhms])/gi;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(u))) {
+      const n = parseInt(m[1], 10);
+      const unit = m[2].toLowerCase();
+      total += n * (unit === "w" ? 604800 : unit === "d" ? 86400 : unit === "h" ? 3600 : unit === "m" ? 60 : 1);
+    }
+    return total;
+  };
+  const parseIp = (ip?: string): number => {
+    if (!ip) return 0;
+    const parts = ip.split(".").map((p) => parseInt(p, 10));
+    if (parts.length !== 4 || parts.some(isNaN)) return 0;
+    return ((parts[0] * 256 + parts[1]) * 256 + parts[2]) * 256 + parts[3];
+  };
+  const getSortValue = (s: ActiveSession, col: string): string | number => {
+    switch (col) {
+      case "client_code": return s.client_code || "";
+      case "name": return s.name || "";
+      case "client_name": return s.client_name || "";
+      case "contact": return s.contact || "";
+      case "zone_name": return s.zone_name || "";
+      case "sub_zone_name": return s.sub_zone_name || "";
+      case "box_name": return s.box_name || "";
+      case "connection_type": return s.connection_type || "";
+      case "server_name": return s.server_name || "";
+      case "profile": return s.profile || "";
+      case "service": return s.service || "";
+      case "address": return parseIp(s.address);
+      case "status": return s.status === "offline" ? 1 : 0;
+      case "uptime": return parseUptime(s.uptime);
+      case "upload": return s.session_upload_bytes || 0;
+      case "download": return s.session_download_bytes || 0;
+      default: return "";
+    }
+  };
+  const filteredSessions = useMemo(() => {
+    if (!sortBy) return filteredSessionsBase;
+    const arr = [...filteredSessionsBase];
+    arr.sort((a, b) => {
+      const av = getSortValue(a, sortBy);
+      const bv = getSortValue(b, sortBy);
+      const aEmpty = av === "" || av === 0 || av === null || av === undefined;
+      const bEmpty = bv === "" || bv === 0 || bv === null || bv === undefined;
+      if (aEmpty && !bEmpty) return 1;
+      if (!aEmpty && bEmpty) return -1;
+      let cmp = 0;
+      if (typeof av === "number" && typeof bv === "number") cmp = av - bv;
+      else cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" });
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return arr;
+  }, [filteredSessionsBase, sortBy, sortDir]);
+
+  const SortableHead = ({ col, children, className }: { col: string; children: React.ReactNode; className?: string }) => {
+    const active = sortBy === col;
+    const Icon = !active ? ArrowUpDown : sortDir === "asc" ? ArrowUp : ArrowDown;
+    return (
+      <TableHead className={className}>
+        <button
+          type="button"
+          onClick={() => handleSort(col)}
+          className={`inline-flex items-center gap-1 select-none hover:text-foreground transition-colors ${active ? "text-primary font-semibold" : ""}`}
+        >
+          {children}
+          <Icon className={`h-3 w-3 ${active ? "opacity-100" : "opacity-50"}`} />
+        </button>
+      </TableHead>
+    );
+  };
 
   const renderSessionTable = (data: ActiveSession[]) => (
     <div className="rounded-md border overflow-auto">
