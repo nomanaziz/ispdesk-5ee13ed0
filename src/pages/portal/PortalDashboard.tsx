@@ -17,14 +17,17 @@ const PortalDashboard = () => {
   const { data: invoices } = useQuery({
     queryKey: ["portal-bills-dash", customer?.sub, customer?.type],
     queryFn: async () => {
-      // Clients use the monthly `billing` table; B2B (bw_customer) uses bw_sales_invoices
       if (customer?.type === "client") {
         const { data } = await supabase
           .from("billing")
-          .select("id, bill_id as invoice_no, month, amount, paid, due, status, created_at, discount")
+          .select("id, bill_id, month, amount, paid, due, status, created_at, discount")
           .eq("client_id", customer!.sub)
           .order("month", { ascending: false });
-        return (data || []).map((b: any) => ({ ...b, paid_amount: b.paid }));
+        return (data || []).map((b: any) => ({
+          ...b,
+          invoice_no: b.bill_id,
+          paid_amount: b.paid,
+        }));
       }
       const { data } = await supabase
         .from("bw_sales_invoices")

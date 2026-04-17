@@ -296,6 +296,8 @@ import PortalSpeedTest from "@/pages/portal/PortalSpeedTest";
 import PortalShop from "@/pages/portal/PortalShop";
 import PortalShopCheckout from "@/pages/portal/PortalShopCheckout";
 import PortalMyOrders from "@/pages/portal/PortalMyOrders";
+import PortalBills from "@/pages/portal/PortalBills";
+import PortalBillInvoice from "@/pages/portal/PortalBillInvoice";
 
 // Reseller
 import ResellerProtectedRoute from "@/components/ResellerProtectedRoute";
