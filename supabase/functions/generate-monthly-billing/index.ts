@@ -32,11 +32,11 @@ Deno.serve(async (req) => {
 
     const monthKey = targetMonth.slice(0, 7); // "YYYY-MM"
 
-    // Fetch all active clients
+    // Fetch all active clients (case-insensitive status)
     const { data: clients, error: cErr } = await supabase
       .from("clients")
       .select("id, client_id, monthly_bill, branch_id, billing_status")
-      .in("status", ["active"]);
+      .or("status.eq.active,status.eq.Active,status.eq.ACTIVE");
 
     if (cErr) throw cErr;
     if (!clients || clients.length === 0) {

@@ -15,8 +15,17 @@ const PortalDashboard = () => {
   const { customer } = usePortalAuth();
 
   const { data: invoices } = useQuery({
-    queryKey: ["portal-invoices", customer?.sub],
+    queryKey: ["portal-bills-dash", customer?.sub, customer?.type],
     queryFn: async () => {
+      // Clients use the monthly `billing` table; B2B (bw_customer) uses bw_sales_invoices
+      if (customer?.type === "client") {
+        const { data } = await supabase
+          .from("billing")
+          .select("id, bill_id as invoice_no, month, amount, paid, due, status, created_at, discount")
+          .eq("client_id", customer!.sub)
+          .order("month", { ascending: false });
+        return (data || []).map((b: any) => ({ ...b, paid_amount: b.paid }));
+      }
       const { data } = await supabase
         .from("bw_sales_invoices")
         .select("*")
@@ -134,13 +143,13 @@ const PortalDashboard = () => {
 
             <div className="lg:ml-auto flex flex-wrap gap-2">
               <Button asChild size="sm" variant="secondary" className="bg-white text-violet-700 hover:bg-white/90 shadow">
-                <Link to="/portal/invoices"><FileText className="h-4 w-4" /> Invoices</Link>
+                <Link to={customer?.type === "client" ? "/portal/bills" : "/portal/invoices"}><FileText className="h-4 w-4" /> {customer?.type === "client" ? "মাসিক বিল" : "Invoices"}</Link>
               </Button>
               <Button asChild size="sm" variant="secondary" className="bg-white/15 text-white hover:bg-white/25 backdrop-blur border-0">
                 <Link to="/portal/support"><HeadphonesIcon className="h-4 w-4" /> Support</Link>
               </Button>
               <Button asChild size="sm" className="bg-emerald-400 hover:bg-emerald-500 text-emerald-950 font-semibold shadow">
-                <Link to="/portal/invoices"><CreditCard className="h-4 w-4" /> Pay Now</Link>
+                <Link to={customer?.type === "client" ? "/portal/bills" : "/portal/invoices"}><CreditCard className="h-4 w-4" /> Pay Now</Link>
               </Button>
             </div>
           </div>
