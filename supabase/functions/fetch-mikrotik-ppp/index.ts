@@ -323,6 +323,8 @@ Deno.serve(async (req) => {
           if (!mkSecret) continue;
 
           const clientInfo = {
+            client_id: client.id,
+            mikrotik_id: client.mikrotik_id,
             username: client.username,
             client_code: client.client_id,
             client_name: client.name,
