@@ -250,6 +250,8 @@ Deno.serve(async (req) => {
               encoding: ac.encoding || "",
               server_name: device.name,
               device_id: device.id,
+              session_upload_bytes: parseInt(ac["bytes-in"] || "0", 10),
+              session_download_bytes: parseInt(ac["bytes-out"] || "0", 10),
             });
           }
 
