@@ -1,70 +1,87 @@
 
 
-## MikroTik PPPoE Live Traffic — Real Fix
+## BW Sale Customer Portal — সঠিক Routing & Data Wiring
 
-### সমস্যা (কেন এখনো কাজ করে না)
+### সমস্যা
 
-`collect-client-traffic` ব্যবহার করছে `/ppp/active/print` থেকে `bytes-in`/`bytes-out`। কিন্তু RouterOS-এ **`/ppp/active/print` সাধারণত byte counter return করে না** — এটা শুধু session metadata (name, address, uptime, caller-id) দেয়। ফলে delta সবসময় 0, `total_upload`/`total_download` update হয় না, graph flat থাকে।
+`bw_sale_customers` table-এ থাকা demo account login করলে `portal-auth` `type: "bw_customer"` return করছে → Login.tsx switch-এ default case → `/portal/dashboard` (client UI) এ চলে যাচ্ছে। কিন্তু image-73→81 অনুযায়ী এদের `/reseller/*` layout-এই যাওয়ার কথা (যেখানে Dashboard, Billing Invoices, Purchase Orders, Tickets, Users, Settings আছে)।
 
-**সঠিক উপায় (যেভাবে existing portals করে):**
-PPPoE user যখন connect করে, MikroTik একটা dynamic interface বানায় — name pattern: `<pppoe-username>` বা `<service>-<username>`। সেই interface-এর byte counter (`rx-byte`, `tx-byte`) থেকে real traffic পাওয়া যায় `/interface/print stats`-এর মাধ্যমে। এটা সবসময় accurate এবং historic-cumulative।
+পাশাপাশি `ResellerLayout`/`ResellerProtectedRoute` শুধু `type === "reseller" || "reseller_sub"` allow করে — BW customer block হচ্ছে।
 
-### Approach
+আর Dashboard/Invoices/Purchases page গুলো `customer.sub` (id) দিয়ে query করছে — কিন্তু `bw_sales_invoices.customer_id` BW customer-এর id, এটা ঠিক কিন্তু `bw_purchase_orders.reseller_id` field actually BW customer-এর id ও হতে পারে (দুই type একই table share করছে — verify করব)।
 
-**Edge function `collect-client-traffic` রিরাইট:**
+### Fix Plan
 
-1. প্রতি device-এ login → `/ppp/active/print` (session list + interface name)
-2. একই connection-এ `/interface/print stats` চালাই (এক shot এ সব interface byte counter)
-3. Active session-এর `name` (username) ↔ interface match (কারণ MikroTik-এ PPPoE interface name = `<service-name>-<username>`, যেমন `<pppoe-rashed>`)
-4. Each active user-এর জন্য:
-   - `rx-byte` → client-এর download (server থেকে user-এ যাওয়া = user-এর download)
-   - `tx-byte` → client-এর upload
-   - **Note:** Interface counter MikroTik-এর perspective থেকে: `rx` = MikroTik-এ ঢুকছে = user upload, `tx` = MikroTik থেকে বের হচ্ছে = user download। আমরা এটা সঠিকভাবে map করব।
-5. এই **cumulative bytes** সরাসরি `clients.total_upload` / `total_download`-এ লিখব (delta calc নয় — interface counter session start থেকে absolute, সেটা client row-এ overwrite হবে যাতে frontend delta calc করতে পারে)
-6. `client_traffic_logs`-এ snapshot insert (history-র জন্য)
+**1. `Login.tsx` — `bw_customer` কে reseller dashboard-এ পাঠাও**
 
-### Frontend (`PortalLiveUsage.tsx`) — already polls every 3s
+```ts
+case "reseller":
+case "reseller_sub":
+case "bw_customer":      // ← add
+  navigate("/reseller/dashboard", { replace: true });
+  break;
+case "client":
+default:
+  navigate("/portal/dashboard", { replace: true });
+```
 
-Frontend ঠিক আছে — সে delta calculate করে। কিন্তু কাজ করছে না কারণ DB তে value change হচ্ছে না। Edge function fix করলে frontend আপনাআপনি কাজ করবে।
+**2. `ResellerProtectedRoute.tsx` — `bw_customer` allow করো**
 
-**আরো নিশ্চিত করার জন্য:** frontend-এ poll interval edge function trigger করব (যাতে user portal খোলা থাকলে real-time fresh data আসে) — `supabase.functions.invoke('collect-client-traffic')` ছাড়াই, একটা new lighter function `live-traffic-snapshot` তৈরি করব যেটা শুধু একজন client-এর জন্য MikroTik query করে instantly response দেয় (no DB write, কম latency)।
+```ts
+const allowed = ["reseller", "reseller_sub", "bw_customer"];
+if (!allowed.includes(customer.type)) return <Navigate to="/portal/dashboard" replace />;
+```
 
-### Files
+**3. `ResellerLayout.tsx` — BW customer-এর জন্য Users menu hide**
+
+BW Sale Customer-এর sub-user feature এখন নেই (only branch_managers এর আছে)। তাই sidebar-এ `users` menu শুধু `reseller`/`reseller_sub`-এর জন্য দেখাও।
+
+**4. `portal-auth` edge function — sub-user login support BW customer-এর জন্যেও** (পরে — Phase 2)
+
+এখন শুধু parent account ঠিক করব।
+
+**5. Reseller pages-এ data source fix**
+
+বর্তমানে সব page `customer.parent_reseller_id || customer.sub` use করছে যেটা reseller-এর জন্য correct। BW customer-এর জন্যও `customer.sub` = `bw_sale_customers.id`, এবং invoices ইতোমধ্যে `customer_id` দিয়ে filter হচ্ছে — verify করে যেখানে দরকার ঠিক করব:
+
+| Page | Query column | Status |
+|------|------|--------|
+| `ResellerInvoices` | `bw_sales_invoices.customer_id = sub` | ✓ |
+| `ResellerInvoiceDetail/Print` | join already correct | ✓ |
+| `ResellerDashboard` | invoices: `customer_id`; orders: `reseller_id` | orders ক্ষেত্রে BW customer-এর id হওয়া উচিত — verify |
+| `ResellerPurchaseOrders/Form` | `bw_purchase_orders.reseller_id` | একই — BW customer-এর id ব্যবহার হবে |
+| `ResellerTickets` | `support_tickets.source = 'bw_reseller'` + `created_by_id = sub` filter add | filter add |
+| `ResellerSettings` | `bw_sale_customers` row update | `branch_managers` থেকে switch করব BW customer হলে |
+| `ResellerUsers` | hide for `bw_customer` (Phase 2-এ enable) | hide |
+
+**6. `ResellerSettings.tsx` — type-aware update**
+
+```ts
+const table = customer.type === "bw_customer" ? "bw_sale_customers" : "branch_managers";
+const nameField = customer.type === "bw_customer" ? "customer_name" : "name";
+```
+
+### Files to change
 
 | File | Change |
 |------|--------|
-| `supabase/functions/collect-client-traffic/index.ts` | Rewrite: use `/interface/print stats` + match active sessions by username → write cumulative bytes to `clients` |
-| `supabase/functions/live-traffic-snapshot/index.ts` | NEW — single-client lightweight endpoint: `{client_id}` → returns `{rx_bps, tx_bps, total_rx, total_tx}` instantly using `/interface/monitor-traffic` (1-sec sample) |
-| `supabase/config.toml` | Register new function (verify_jwt=false) |
-| `src/pages/portal/PortalLiveUsage.tsx` | Switch from DB-polling to `live-traffic-snapshot` invocation every 3s for instant Kbps; keep DB read for cumulative totals |
-| Migration | Set up pg_cron to run `collect-client-traffic` every 60s (if not already scheduled) — for background cumulative tracking |
+| `src/pages/Login.tsx` | Add `bw_customer` → `/reseller/dashboard` |
+| `src/components/ResellerProtectedRoute.tsx` | Allow `bw_customer` type |
+| `src/components/ResellerLayout.tsx` | Hide Users menu for `bw_customer` |
+| `src/pages/reseller/ResellerDashboard.tsx` | Use `customer.sub` for both invoices.customer_id and orders.reseller_id (already does) — just verify |
+| `src/pages/reseller/ResellerTickets.tsx` | Add `created_by_id = customer.sub` filter so each customer sees only their own tickets |
+| `src/pages/reseller/ResellerSettings.tsx` | Branch on `customer.type` to read/write correct table |
+| `src/pages/portal/PortalDashboard.tsx` (and other `/portal/*`) | **No change** — user বললেন client portal এখন touch করতে হবে না |
 
-### How `live-traffic-snapshot` will work
+### কী ঘটবে login-এর পর
 
-```
-Input: { client_id }
-1. Look up client → get username + mikrotik_id
-2. Connect to MikroTik
-3. Run /ppp/active/print where name=<username> → get interface name (e.g. <pppoe-rashed>)
-4. Run /interface/monitor-traffic interface=<ifname> once=yes
-   → returns rx-bits-per-second, tx-bits-per-second instantly
-5. Run /interface/print stats where name=<ifname>
-   → returns rx-byte, tx-byte (cumulative for this session)
-6. Return JSON: { 
-     online: true,
-     interface,
-     rx_bps, tx_bps,        // live speed
-     session_rx, session_tx, // current session bytes
-     uptime
-   }
-```
+- BW Sale Customer (যেমন আপনার demo) → `/reseller/dashboard` → image-73 layout (dark navy sidebar, 6 stat cards, Welcome card)
+- Branch Manager (POP reseller) → একই `/reseller/dashboard` (আগের মতই)
+- Client (PPP user) → `/portal/dashboard` (untouched)
+- Admin (email) → `/dashboard` (untouched)
 
-### কেন এটা কাজ করবে (existing portal-এর মতো)
+### Phase 2 (এখন না)
 
-`monitor-traffic once=yes` MikroTik-এর native realtime API — এটাই MikroTik Winbox-এ Torch/Traffic graph চালায়। 1 second sample নিয়ে exact bps return করে। কোনো delta calc লাগে না, MikroTik নিজেই calculate করে দেয়।
-
-### Phasing
-
-- **Phase 1 (এখন):** নতুন `live-traffic-snapshot` function + frontend switch + cumulative collector ফিক্স
-- **Phase 2 (পরে):** Admin-side same view (Online Client Monitoring → click row → detail page); per-second WebSocket streaming (যদি দরকার হয়)
+- BW Sale Customer-এর sub-user টেবিল (`bw_reseller_users` analogue) + permission tree
+- Image-77 অনুযায়ী invoice line-items-এ Internet/PNI/GCC service breakdown (এখন `bw_sales_invoices` এ items table আছে কিনা check করতে হবে — না থাকলে migration)
 
