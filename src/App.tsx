@@ -84,6 +84,16 @@ import MikrotikBackup from "@/pages/dashboard/mikrotik/Backup";
 import MikrotikImport from "@/pages/dashboard/mikrotik/Import";
 import MikrotikBulkImport from "@/pages/dashboard/mikrotik/BulkImport";
 
+// Device Administration
+import DeviceAdminDashboard from "@/pages/dashboard/device-admin/Dashboard";
+import DeviceAdminDevices from "@/pages/dashboard/device-admin/Devices";
+import DeviceAdminGroups from "@/pages/dashboard/device-admin/Groups";
+import DeviceAdminDeployUser from "@/pages/dashboard/device-admin/DeployUser";
+import DeviceAdminDeleteUser from "@/pages/dashboard/device-admin/DeleteUser";
+import DeviceAdminBackups from "@/pages/dashboard/device-admin/Backups";
+import DeviceAdminSchedules from "@/pages/dashboard/device-admin/Schedules";
+import DeviceAdminAuditLog from "@/pages/dashboard/device-admin/AuditLog";
+
 // HR
 import HrDepartments from "@/pages/dashboard/hr/Departments";
 import HrPayheads from "@/pages/dashboard/hr/Payheads";
