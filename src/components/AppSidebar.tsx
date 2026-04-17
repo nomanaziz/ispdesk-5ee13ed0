@@ -236,7 +236,9 @@ const menuGroups: MenuGroup[] = [
     label: "ব্যান্ডউইথ বিক্রয়",
     icon: BarChart,
     items: [
-      { title: "POP", url: "/dashboard/bw-sale/pop", icon: Radio },
+      { title: "POP / কাস্টমার", url: "/dashboard/bw-sale/pop", icon: Radio },
+      { title: "সার্ভিস ক্যাটালগ", url: "/dashboard/bw-sale/services", icon: Layers },
+      { title: "সাবস্ক্রিপশন", url: "/dashboard/bw-sale/subscriptions", icon: Cable },
       { title: "বিক্রয় ইনভয়েস", url: "/dashboard/bw-sale/invoices", icon: FileText },
       { title: "বিল কালেকশন", url: "/dashboard/bw-sale/collection", icon: Wallet },
       { title: "রিকারিং ইনভয়েস", url: "/dashboard/bw-sale/recurring", icon: RefreshCw },
