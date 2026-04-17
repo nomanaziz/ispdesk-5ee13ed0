@@ -45,6 +45,8 @@ interface ActiveSession {
 }
 
 interface MismatchRecord {
+  client_id?: string;
+  mikrotik_id?: string;
   username: string;
   client_code: string;
   client_name: string;
@@ -118,6 +120,32 @@ export default function OnlineClientMonitoring() {
   const [sendingSms, setSendingSms] = useState(false);
   const livePollRef = useRef<number | null>(null);
   const liveClientIdRef = useRef<string | null>(null);
+
+  // Bulk mismatch action state
+  const [mismatchSelection, setMismatchSelection] = useState<Record<string, Set<string>>>({
+    "disabled-in-system": new Set(),
+    "enabled-in-system": new Set(),
+    "profile-mismatch": new Set(),
+  });
+  const [bulkMismatchRunning, setBulkMismatchRunning] = useState(false);
+
+  const toggleMismatchRow = (tab: string, key: string) => {
+    setMismatchSelection((prev) => {
+      const next = new Set(prev[tab]);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return { ...prev, [tab]: next };
+    });
+  };
+
+  const toggleMismatchAll = (tab: string, records: MismatchRecord[]) => {
+    setMismatchSelection((prev) => {
+      const allKeys = records.map((r) => `${r.username}::${r.mikrotik_id || ""}`);
+      const current = prev[tab];
+      const allSelected = allKeys.length > 0 && allKeys.every((k) => current.has(k));
+      return { ...prev, [tab]: new Set(allSelected ? [] : allKeys) };
+    });
+  };
 
   const loadFilterOptions = useCallback(async () => {
     const [devRes, zoneRes, connRes] = await Promise.all([
@@ -205,7 +233,62 @@ export default function OnlineClientMonitoring() {
     }
   };
 
-  // Action: Live Traffic — uses live-traffic-snapshot (proven working) + monthly history
+  const runBulkMismatchAction = async (
+    tab: "disabled-in-system" | "enabled-in-system" | "profile-mismatch",
+    records: MismatchRecord[],
+    mode: "sync-mk-to-db" | "use-db-profile" | "use-mk-profile",
+  ) => {
+    const selected = records.filter((r) => mismatchSelection[tab].has(`${r.username}::${r.mikrotik_id || ""}`));
+    if (selected.length === 0) {
+      toast.error("কোনো client সিলেক্ট করা হয়নি");
+      return;
+    }
+
+    setBulkMismatchRunning(true);
+    let success = 0;
+    let failed = 0;
+
+    for (const r of selected) {
+      if (!r.mikrotik_id) { failed++; continue; }
+      try {
+        if (tab === "disabled-in-system") {
+          // System=disabled, MK=enabled → disable in MK to match system
+          const { error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
+            body: { mikrotik_id: r.mikrotik_id, client_id: r.client_id, username: r.username, action: "disable" },
+          });
+          if (error) throw error;
+        } else if (tab === "enabled-in-system") {
+          // System=active, MK=disabled → enable in MK to match system
+          const { error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
+            body: { mikrotik_id: r.mikrotik_id, client_id: r.client_id, username: r.username, action: "enable" },
+          });
+          if (error) throw error;
+        } else if (mode === "use-db-profile") {
+          // Push DB profile → MikroTik (default/preferred)
+          const { error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
+            body: { mikrotik_id: r.mikrotik_id, client_id: r.client_id, username: r.username, action: "update", profile: r.db_profile },
+          });
+          if (error) throw error;
+        } else if (mode === "use-mk-profile") {
+          // Pull MK profile → DB
+          if (r.client_id) {
+            const { error } = await supabase.from("clients").update({ profile: r.mk_profile }).eq("id", r.client_id);
+            if (error) throw error;
+          }
+        }
+        success++;
+      } catch {
+        failed++;
+      }
+    }
+
+    setBulkMismatchRunning(false);
+    setMismatchSelection((prev) => ({ ...prev, [tab]: new Set() }));
+    toast.success(`সম্পন্ন: ${success} সফল${failed > 0 ? `, ${failed} ব্যর্থ` : ""}`);
+    loadActiveSessions();
+  };
+
+
   const handleLiveTraffic = async (session: ActiveSession) => {
     setTrafficDialog({ open: true, loading: true, data: null, username: session.name, session, trafficHistory: [] });
 
@@ -592,70 +675,149 @@ export default function OnlineClientMonitoring() {
     </div>
   );
 
-  const renderMismatchTable = (data: MismatchRecord[], type: "disabled-in-system" | "enabled-in-system" | "profile-mismatch") => (
-    <div className="rounded-md border overflow-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-10">#</TableHead>
-            <TableHead>C.Code</TableHead>
-            <TableHead>Username</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Mobile</TableHead>
-            <TableHead>Zone</TableHead>
-            <TableHead>Subzone</TableHead>
-            <TableHead>Server</TableHead>
-            {type === "profile-mismatch" ? (
+  const renderMismatchTable = (data: MismatchRecord[], type: "disabled-in-system" | "enabled-in-system" | "profile-mismatch") => {
+    const selection = mismatchSelection[type];
+    const selectedCount = selection.size;
+    const allKeys = data.map((r) => `${r.username}::${r.mikrotik_id || ""}`);
+    const allSelected = allKeys.length > 0 && allKeys.every((k) => selection.has(k));
+    const someSelected = selectedCount > 0 && !allSelected;
+
+    return (
+      <div className="space-y-2">
+        {/* Bulk action bar */}
+        {data.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 px-2 py-2 rounded-md border bg-muted/30">
+            <span className="text-xs text-muted-foreground mr-auto">
+              {selectedCount > 0 ? `${selectedCount} সিলেক্টেড` : `${data.length} টি mismatch`}
+            </span>
+            {type === "disabled-in-system" && (
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={selectedCount === 0 || bulkMismatchRunning}
+                onClick={() => runBulkMismatchAction(type, data, "sync-mk-to-db")}
+              >
+                <ShieldAlert className="h-3.5 w-3.5 mr-1" />
+                Bulk Disable in MikroTik
+              </Button>
+            )}
+            {type === "enabled-in-system" && (
+              <Button
+                size="sm"
+                disabled={selectedCount === 0 || bulkMismatchRunning}
+                onClick={() => runBulkMismatchAction(type, data, "sync-mk-to-db")}
+              >
+                <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                Bulk Enable in MikroTik
+              </Button>
+            )}
+            {type === "profile-mismatch" && (
               <>
-                <TableHead>DB Profile</TableHead>
-                <TableHead>MK Profile</TableHead>
-              </>
-            ) : (
-              <>
-                <TableHead>DB Status</TableHead>
-                <TableHead>MK Status</TableHead>
+                <Button
+                  size="sm"
+                  disabled={selectedCount === 0 || bulkMismatchRunning}
+                  onClick={() => runBulkMismatchAction(type, data, "use-db-profile")}
+                  title="Software-এর Profile MikroTik-এ apply করো (default/preferred)"
+                >
+                  <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                  Apply DB Profile → MikroTik
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={selectedCount === 0 || bulkMismatchRunning}
+                  onClick={() => runBulkMismatchAction(type, data, "use-mk-profile")}
+                  title="MikroTik-এর Profile DB-তে save করো"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                  Use MK Profile → DB
+                </Button>
               </>
             )}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                কোনো mismatch পাওয়া যায়নি
-              </TableCell>
-            </TableRow>
-          ) : (
-            data.map((r, i) => (
-              <TableRow key={`${r.username}-${i}`}>
-                <TableCell>{i + 1}</TableCell>
-                <TableCell className="font-mono text-xs">{r.client_code || "—"}</TableCell>
-                <TableCell className="font-medium">{r.username}</TableCell>
-                <TableCell>{r.client_name || "—"}</TableCell>
-                <TableCell>{r.contact || "—"}</TableCell>
-                <TableCell>{r.zone_name || "—"}</TableCell>
-                <TableCell>{r.sub_zone_name || "—"}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="text-xs">{r.server_name}</Badge>
-                </TableCell>
+          </div>
+        )}
+
+        <div className="rounded-md border overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-8">
+                  <Checkbox
+                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                    onCheckedChange={() => toggleMismatchAll(type, data)}
+                    disabled={data.length === 0}
+                  />
+                </TableHead>
+                <TableHead className="w-10">#</TableHead>
+                <TableHead>C.Code</TableHead>
+                <TableHead>Username</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Mobile</TableHead>
+                <TableHead>Zone</TableHead>
+                <TableHead>Subzone</TableHead>
+                <TableHead>Server</TableHead>
                 {type === "profile-mismatch" ? (
                   <>
-                    <TableCell><Badge variant="secondary">{r.db_profile || "—"}</Badge></TableCell>
-                    <TableCell><Badge variant="destructive">{r.mk_profile || "—"}</Badge></TableCell>
+                    <TableHead>DB Profile</TableHead>
+                    <TableHead>MK Profile</TableHead>
                   </>
                 ) : (
                   <>
-                    <TableCell><Badge variant={r.db_status === "active" ? "default" : "secondary"}>{r.db_status}</Badge></TableCell>
-                    <TableCell><Badge variant={r.mk_disabled ? "destructive" : "default"}>{r.mk_disabled ? "Disabled" : "Enabled"}</Badge></TableCell>
+                    <TableHead>DB Status</TableHead>
+                    <TableHead>MK Status</TableHead>
                   </>
                 )}
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
-  );
+            </TableHeader>
+            <TableBody>
+              {data.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                    কোনো mismatch পাওয়া যায়নি
+                  </TableCell>
+                </TableRow>
+              ) : (
+                data.map((r, i) => {
+                  const key = `${r.username}::${r.mikrotik_id || ""}`;
+                  return (
+                    <TableRow key={`${r.username}-${i}`} data-state={selection.has(key) ? "selected" : undefined}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selection.has(key)}
+                          onCheckedChange={() => toggleMismatchRow(type, key)}
+                        />
+                      </TableCell>
+                      <TableCell>{i + 1}</TableCell>
+                      <TableCell className="font-mono text-xs">{r.client_code || "—"}</TableCell>
+                      <TableCell className="font-medium">{r.username}</TableCell>
+                      <TableCell>{r.client_name || "—"}</TableCell>
+                      <TableCell>{r.contact || "—"}</TableCell>
+                      <TableCell>{r.zone_name || "—"}</TableCell>
+                      <TableCell>{r.sub_zone_name || "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">{r.server_name}</Badge>
+                      </TableCell>
+                      {type === "profile-mismatch" ? (
+                        <>
+                          <TableCell><Badge variant="secondary">{r.db_profile || "—"}</Badge></TableCell>
+                          <TableCell><Badge variant="destructive">{r.mk_profile || "—"}</Badge></TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell><Badge variant={r.db_status === "active" ? "default" : "secondary"}>{r.db_status}</Badge></TableCell>
+                          <TableCell><Badge variant={r.mk_disabled ? "destructive" : "default"}>{r.mk_disabled ? "Disabled" : "Enabled"}</Badge></TableCell>
+                        </>
+                      )}
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
