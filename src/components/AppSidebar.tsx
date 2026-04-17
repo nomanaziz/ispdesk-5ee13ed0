@@ -117,6 +117,20 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    label: "ডিভাইস অ্যাডমিনিস্ট্রেশন",
+    icon: ShieldCheck,
+    items: [
+      { title: "ড্যাশবোর্ড", url: "/dashboard/device-admin", icon: LayoutDashboard },
+      { title: "ডিভাইস ইনভেন্টরি", url: "/dashboard/device-admin/devices", icon: Server },
+      { title: "ইউজার গ্রুপ", url: "/dashboard/device-admin/groups", icon: Users2 },
+      { title: "বাল্ক ইউজার ডিপ্লয়", url: "/dashboard/device-admin/deploy-user", icon: UserPlus },
+      { title: "বাল্ক ইউজার ডিলিট", url: "/dashboard/device-admin/delete-user", icon: UserX },
+      { title: "ব্যাকআপ সেন্টার", url: "/dashboard/device-admin/backups", icon: HardDrive },
+      { title: "শিডিউল ম্যানেজার", url: "/dashboard/device-admin/schedules", icon: Clock },
+      { title: "অডিট লগ", url: "/dashboard/device-admin/audit-log", icon: ScrollText },
+    ],
+  },
+  {
     label: "HR ও পেরোল",
     icon: UserCog,
     items: [

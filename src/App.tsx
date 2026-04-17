@@ -375,6 +375,16 @@ const App = () => (
               <Route path="/dashboard/mikrotik/import" element={<P><MikrotikImport /></P>} />
               <Route path="/dashboard/mikrotik/bulk-import" element={<P><MikrotikBulkImport /></P>} />
 
+              {/* Device Administration */}
+              <Route path="/dashboard/device-admin" element={<P><DeviceAdminDashboard /></P>} />
+              <Route path="/dashboard/device-admin/devices" element={<P><DeviceAdminDevices /></P>} />
+              <Route path="/dashboard/device-admin/groups" element={<P><DeviceAdminGroups /></P>} />
+              <Route path="/dashboard/device-admin/deploy-user" element={<P><DeviceAdminDeployUser /></P>} />
+              <Route path="/dashboard/device-admin/delete-user" element={<P><DeviceAdminDeleteUser /></P>} />
+              <Route path="/dashboard/device-admin/backups" element={<P><DeviceAdminBackups /></P>} />
+              <Route path="/dashboard/device-admin/schedules" element={<P><DeviceAdminSchedules /></P>} />
+              <Route path="/dashboard/device-admin/audit-log" element={<P><DeviceAdminAuditLog /></P>} />
+
               {/* HR */}
               <Route path="/dashboard/hr/departments" element={<P><HrDepartments /></P>} />
               <Route path="/dashboard/hr/payheads" element={<P><HrPayheads /></P>} />
