@@ -1,4 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { GlobalLoadingOverlay } from "@/components/GlobalLoadingOverlay";
+import { useGlobalLoading } from "@/stores/useGlobalLoading";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -305,7 +307,19 @@ import ResellerUsers from "@/pages/reseller/ResellerUsers";
 import ResellerSettings from "@/pages/reseller/ResellerSettings";
 import ResellerMikrotikUsers from "@/pages/reseller/ResellerMikrotikUsers";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onMutate: (_vars, mutation) => {
+      if ((mutation.options.meta as any)?.silent) return;
+      const msg = (mutation.options.meta as any)?.loadingMessage as string | undefined;
+      useGlobalLoading.getState().start(msg);
+    },
+    onSettled: (_d, _e, _v, _c, mutation) => {
+      if ((mutation.options.meta as any)?.silent) return;
+      useGlobalLoading.getState().stop();
+    },
+  }),
+});
 
 const P = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute><DashboardLayout>{children}</DashboardLayout></ProtectedRoute>
@@ -319,6 +333,7 @@ const App = () => (
   <ThemeProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <GlobalLoadingOverlay />
         <Toaster />
         <Sonner />
         <BrowserRouter>

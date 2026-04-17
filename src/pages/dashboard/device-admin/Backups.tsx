@@ -54,6 +54,7 @@ export default function BackupCenter() {
   };
 
   const runBackup = useMutation({
+    meta: { loadingMessage: "ব্যাকআপ চলছে — অপেক্ষা করুন..." },
     mutationFn: async () => {
       if (selectedDevs.size === 0) throw new Error("কমপক্ষে ১টা ডিভাইস সিলেক্ট করুন");
       const fmts = Object.entries(formats).filter(([, v]) => v).map(([k]) => k);
