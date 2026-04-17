@@ -812,12 +812,19 @@ export default function OnlineClientMonitoring() {
       <p className="text-xs text-muted-foreground text-right">Auto-refresh: প্রতি ৬০ সেকেন্ডে | Traffic data: প্রতি ১৫ মিনিটে</p>
 
       {/* Enhanced Live Traffic Dialog */}
-      <Dialog open={trafficDialog.open} onOpenChange={(o) => !o && setTrafficDialog({ open: false, loading: false, data: null, username: "", session: null, trafficHistory: [] })}>
+      <Dialog open={trafficDialog.open} onOpenChange={(o) => { if (!o) { stopLivePolling(); setTrafficDialog({ open: false, loading: false, data: null, username: "", session: null, trafficHistory: [] }); } }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-emerald-500" />
               Traffic Monitor — {trafficDialog.username}
+              <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                </span>
+                LIVE • Updates every 2s
+              </span>
             </DialogTitle>
           </DialogHeader>
           {trafficDialog.loading ? (
