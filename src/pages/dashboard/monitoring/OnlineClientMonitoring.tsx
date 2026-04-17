@@ -911,6 +911,39 @@ export default function OnlineClientMonitoring() {
             <p className="text-center text-muted-foreground py-4">ডেটা পাওয়া যায়নি</p>
           )}
         </DialogContent>
+              {/* Monthly History */}
+              {Array.isArray(trafficDialog.data?.monthly) && trafficDialog.data.monthly.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1">
+                    <History className="h-3.5 w-3.5" /> Monthly Traffic History
+                  </p>
+                  <div className="rounded-md border max-h-40 overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs py-1.5">Month</TableHead>
+                          <TableHead className="text-xs py-1.5 text-right">Upload</TableHead>
+                          <TableHead className="text-xs py-1.5 text-right">Download</TableHead>
+                          <TableHead className="text-xs py-1.5 text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {trafficDialog.data.monthly.map((m: any) => (
+                          <TableRow key={m.month}>
+                            <TableCell className="text-xs py-1.5 font-mono">
+                              {new Date(m.month).toLocaleDateString("en-US", { year: "numeric", month: "short" })}
+                            </TableCell>
+                            <TableCell className="text-xs py-1.5 text-right text-blue-500">{formatBytes(Number(m.total_upload || 0))}</TableCell>
+                            <TableCell className="text-xs py-1.5 text-right text-emerald-500">{formatBytes(Number(m.total_download || 0))}</TableCell>
+                            <TableCell className="text-xs py-1.5 text-right font-semibold">{formatBytes(Number(m.total_upload || 0) + Number(m.total_download || 0))}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
       </Dialog>
 
       {/* Ping Dialog */}
