@@ -32,7 +32,23 @@ function ResourceTable({ deviceId, deviceType, resource, columns }: {
   });
 
   if (isLoading) return <div className="flex items-center justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2" /> ফেচ করা হচ্ছে...</div>;
-  if (error) return <div className="flex items-start gap-2 p-4 bg-destructive/10 text-destructive rounded"><AlertCircle className="h-4 w-4 mt-0.5" /><div className="text-sm"><div className="font-medium">ফেচ ব্যর্থ</div><div className="text-xs opacity-80">{(error as any).message}</div></div></div>;
+  if (error) {
+    const msg = (error as any).message || "Unknown";
+    let hint = "";
+    if (/timeout/i.test(msg)) hint = "ডিভাইস unreachable — IP/port চেক করুন";
+    else if (/auth|login/i.test(msg)) hint = "Username/password ভুল";
+    else if (/closed|refused/i.test(msg)) hint = "API port বন্ধ — RouterOS এ API service enable করুন";
+    return (
+      <div className="flex items-start gap-2 p-4 bg-destructive/10 text-destructive rounded">
+        <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+        <div className="text-sm">
+          <div className="font-medium">ফেচ ব্যর্থ</div>
+          <div className="text-xs opacity-80 mt-1">{msg}</div>
+          {hint && <div className="text-xs mt-1 opacity-70">💡 {hint}</div>}
+        </div>
+      </div>
+    );
+  }
   if (!data || data.length === 0) return <div className="text-center py-8 text-muted-foreground text-sm">কোনো ডেটা পাওয়া যায়নি</div>;
 
   return (

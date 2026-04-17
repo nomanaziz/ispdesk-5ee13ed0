@@ -1,4 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { withMikrotik, mikrotikCommand } from "../_shared/mikrotik-api.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,7 +21,7 @@ Deno.serve(async (req) => {
     if (device_type !== "mikrotik") {
       return new Response(JSON.stringify({
         success: false,
-        error: `Vendor adapter for ${device_type} not yet implemented. Only MikroTik supported currently.`,
+        error: `${device_type} ভেন্ডরের জন্য adapter এখনো implement হয়নি — শুধু MikroTik supported।`,
         data: [],
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
     }
@@ -32,29 +33,19 @@ Deno.serve(async (req) => {
       .single();
     if (derr || !dev) throw new Error("Device not found");
 
-    const auth = btoa(`${dev.username || "admin"}:${dev.password_encrypted || ""}`);
-    const base = `http://${dev.ip_address}:${dev.api_port || 80}/rest`;
-
-    const endpoints: Record<string, string> = {
-      users: "/user",
-      interfaces: "/interface",
-      vlans: "/interface/vlan",
-      vlan_ips: "/ip/address",
-      monitor: "/interface",
+    const commandMap: Record<string, string> = {
+      users: "/user/print",
+      interfaces: "/interface/print",
+      vlans: "/interface/vlan/print",
+      vlan_ips: "/ip/address/print",
     };
-    const path = endpoints[resource];
-    if (!path) throw new Error("Invalid resource");
+    const cmd = commandMap[resource];
+    if (!cmd) throw new Error("Invalid resource");
 
-    const res = await fetch(`${base}${path}`, {
-      headers: { Authorization: `Basic ${auth}` },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-    let data = await res.json();
+    let data = await withMikrotik(dev, async (conn) => mikrotikCommand(conn, cmd));
 
-    // Filter VLAN IPs only (interfaces that look like vlan)
-    if (resource === "vlan_ips" && Array.isArray(data)) {
-      data = data.filter((ip: any) => /vlan/i.test(ip.interface || ""));
+    if (resource === "vlan_ips") {
+      data = data.filter((ip) => /vlan/i.test(ip.interface || ""));
     }
 
     return new Response(JSON.stringify({ success: true, device: dev.name, resource, data }), {
@@ -62,7 +53,7 @@ Deno.serve(async (req) => {
     });
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e.message, data: [] }), {
-      status: 500,
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
