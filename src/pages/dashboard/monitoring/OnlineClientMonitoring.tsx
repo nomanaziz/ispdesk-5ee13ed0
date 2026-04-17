@@ -500,7 +500,6 @@ export default function OnlineClientMonitoring() {
             <TableHead>Service</TableHead>
             <TableHead>IP Address</TableHead>
             <TableHead>Session Time</TableHead>
-            <TableHead>Session Time</TableHead>
             <TableHead>Traffic</TableHead>
             <TableHead>Action</TableHead>
           </TableRow>
