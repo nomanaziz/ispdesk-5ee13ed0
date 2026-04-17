@@ -656,20 +656,20 @@ export default function OnlineClientMonitoring() {
               />
             </TableHead>
             <TableHead className="w-10">#</TableHead>
-            <TableHead>C.Code</TableHead>
-            <TableHead>ID / Username</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Mobile</TableHead>
-            <TableHead>Zone</TableHead>
-            <TableHead>Subzone</TableHead>
-            <TableHead>Box</TableHead>
-            <TableHead>Conn. Type</TableHead>
-            <TableHead>Server</TableHead>
-            <TableHead>Profile</TableHead>
-            <TableHead>Service</TableHead>
-            <TableHead>IP Address</TableHead>
-            <TableHead>Session Time</TableHead>
-            <TableHead>Traffic</TableHead>
+            <SortableHead col="client_code">C.Code</SortableHead>
+            <SortableHead col="name">ID / Username</SortableHead>
+            <SortableHead col="client_name">Name</SortableHead>
+            <SortableHead col="contact">Mobile</SortableHead>
+            <SortableHead col="zone_name">Zone</SortableHead>
+            <SortableHead col="sub_zone_name">Subzone</SortableHead>
+            <SortableHead col="box_name">Box</SortableHead>
+            <SortableHead col="connection_type">Conn. Type</SortableHead>
+            <SortableHead col="server_name">Server</SortableHead>
+            <SortableHead col="profile">Profile</SortableHead>
+            <SortableHead col="service">Service</SortableHead>
+            <SortableHead col="address">IP Address</SortableHead>
+            <SortableHead col="uptime">Session Time</SortableHead>
+            <SortableHead col="upload">Traffic</SortableHead>
             <TableHead>Action</TableHead>
           </TableRow>
         </TableHeader>
