@@ -39,38 +39,48 @@ export default function AllDeviceUsers() {
     onError: (e: any) => toast.error(e.message ?? "রিফ্রেশ ব্যর্থ"),
   });
 
+  const runDelete = async (username: string, targets: any[]) => {
+    const { data: u } = await supabase.auth.getUser();
+    const { data: job, error } = await supabase.from("device_admin_deploy_jobs").insert({
+      job_type: "delete_user",
+      username,
+      target_devices: targets,
+      status: "pending",
+      created_by: u.user?.id,
+    }).select("id").single();
+    if (error) throw error;
+    const { data: result, error: fnErr } = await supabase.functions.invoke("process-deploy-job", {
+      body: { job_id: job.id },
+    });
+    if (fnErr) throw fnErr;
+    return result;
+  };
+
+  const reportResult = (result: any, username: string) => {
+    const okCount = (result?.results ?? []).filter((r: any) => r.ok).length;
+    const total = (result?.results ?? []).length;
+    if (result?.status === "completed") toast.success(`${username}: ${okCount}/${total} ডিভাইস থেকে ডিলিট সম্পন্ন`);
+    else if (result?.status === "partial") toast.warning(`${username}: ${okCount}/${total} সফল`);
+    else toast.error(`${username}: ডিলিট ব্যর্থ`);
+    qc.invalidateQueries({ queryKey: ["device_admin_user_inventory"] });
+  };
+
   const deleteFromAll = useMutation({
     mutationFn: async (username: string) => {
       const targets = data.filter((r: any) => r.username === username).map((r: any) => ({
         type: r.device_type, id: r.device_id, name: r.device_name,
       }));
-      const { data: u } = await supabase.auth.getUser();
-      const { error } = await supabase.from("device_admin_deploy_jobs").insert({
-        job_type: "delete_user",
-        username,
-        target_devices: targets,
-        status: "pending",
-        created_by: u.user?.id,
-      });
-      if (error) throw error;
+      return { result: await runDelete(username, targets), username };
     },
-    onSuccess: () => toast.success("সব ডিভাইস থেকে ডিলিট জব তৈরি হয়েছে"),
+    onSuccess: ({ result, username }) => reportResult(result, username),
     onError: (e: any) => toast.error(e.message),
   });
 
   const deletePerDevice = useMutation({
     mutationFn: async (row: any) => {
-      const { data: u } = await supabase.auth.getUser();
-      const { error } = await supabase.from("device_admin_deploy_jobs").insert({
-        job_type: "delete_user",
-        username: row.username,
-        target_devices: [{ type: row.device_type, id: row.device_id, name: row.device_name }],
-        status: "pending",
-        created_by: u.user?.id,
-      });
-      if (error) throw error;
+      return { result: await runDelete(row.username, [{ type: row.device_type, id: row.device_id, name: row.device_name }]), username: row.username };
     },
-    onSuccess: () => toast.success("ডিলিট জব তৈরি হয়েছে"),
+    onSuccess: ({ result, username }) => reportResult(result, username),
     onError: (e: any) => toast.error(e.message),
   });
 
