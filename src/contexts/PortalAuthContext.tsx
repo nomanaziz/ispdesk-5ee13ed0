@@ -8,6 +8,7 @@ interface PortalCustomer {
   code: string;
   username: string;
   type: PortalUserType;
+  session_id?: string;
   pop_id?: string | null;
   email?: string | null;
   mobile?: string | null;
