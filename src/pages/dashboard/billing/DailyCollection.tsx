@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import {
-  Banknote, FileSpreadsheet, FileText, Plus, Trash2, CheckCircle2, Search
+  Banknote, FileSpreadsheet, FileText, Plus, Trash2, CheckCircle2, Search, Clock, X
 } from "lucide-react";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -144,6 +144,7 @@ export default function DailyCollection() {
       <Tabs defaultValue="collected">
         <TabsList>
           <TabsTrigger value="collected">কালেক্টেড বিল</TabsTrigger>
+          <TabsTrigger value="online">অপেক্ষমাণ অনলাইন পেমেন্ট</TabsTrigger>
           <TabsTrigger value="webhook">Webhook</TabsTrigger>
           <TabsTrigger value="paybill">Paybill</TabsTrigger>
         </TabsList>
@@ -241,6 +242,10 @@ export default function DailyCollection() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="online" className="mt-4">
+          <PendingOnlinePayments />
         </TabsContent>
 
         <TabsContent value="webhook" className="mt-4">
