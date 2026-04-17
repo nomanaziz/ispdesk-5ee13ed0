@@ -303,7 +303,7 @@ export default function UserReview() {
               <Select value={editForm.role_id || ""} onValueChange={v => setEditForm((p: any) => ({ ...p, role_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
                 <SelectContent>
-                  {appRoles.map((r: any) => (
+                  {appRoles.filter((r: any) => isSuperAdmin || r.id !== SUPER_ADMIN_ROLE_ID).map((r: any) => (
                     <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                   ))}
                 </SelectContent>
