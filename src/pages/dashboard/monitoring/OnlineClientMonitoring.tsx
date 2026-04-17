@@ -488,14 +488,35 @@ export default function OnlineClientMonitoring() {
                 <TableCell className="font-mono text-xs">{s.caller_id || "—"}</TableCell>
                 <TableCell>
                   {s.status === "offline" ? (
-                    <span title="Offline" className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] leading-none font-bold">×</span>
+                    <div className="flex flex-col items-start gap-0.5">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-destructive">
+                        <span className="inline-flex h-2.5 w-2.5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px] leading-none font-bold">×</span>
+                        Offline
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">—</span>
+                    </div>
                   ) : (
-                    <span title="Online" className="inline-block h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30" />
+                    <div className="flex flex-col items-start gap-0.5">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30" />
+                        Online
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">{s.uptime || "—"}</span>
+                    </div>
                   )}
                 </TableCell>
-                <TableCell className="font-mono text-xs">{s.uptime || "—"}</TableCell>
-                <TableCell className="font-mono text-xs">{formatBytes(s.total_upload || 0)}</TableCell>
-                <TableCell className="font-mono text-xs">{formatBytes(s.total_download || 0)}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-0.5 font-mono text-[10px]">
+                    <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                      <ArrowUpFromLine className="h-2.5 w-2.5" />
+                      {formatBytes(s.total_upload || 0)}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <ArrowDownToLine className="h-2.5 w-2.5" />
+                      {formatBytes(s.total_download || 0)}
+                    </span>
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div className="grid grid-cols-2 gap-0.5 w-fit">
                     <Button size="icon" variant="ghost" className="h-6 w-6" title="Live Traffic" onClick={() => handleLiveTraffic(s)}>
