@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Search, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { CreditCard, Search, AlertTriangle, CheckCircle2, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BreadcrumbBanner } from "@/components/public/BreadcrumbBanner";
+import QuickPayDialog from "@/components/public/QuickPayDialog";
 
 export default function QuickPay() {
   const { toast } = useToast();
@@ -15,6 +16,7 @@ export default function QuickPay() {
   const [loading, setLoading] = useState(false);
   const [client, setClient] = useState<any>(null);
   const [bills, setBills] = useState<any[]>([]);
+  const [payOpen, setPayOpen] = useState(false);
 
   const handleSearch = async () => {
     const q = query.trim();
@@ -137,8 +139,25 @@ export default function QuickPay() {
                     <div className="text-xl font-bold text-emerald-700">৳{totalPaid.toLocaleString()}</div>
                   </div>
                 </div>
+
+                <Button
+                  onClick={() => setPayOpen(true)}
+                  className="w-full mt-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold h-12 text-base shadow-md"
+                >
+                  <Wallet className="h-5 w-5 mr-2" />
+                  Pay Now — ৳{(totalDue || Number(client.monthly_bill) || 0).toLocaleString()} পরিশোধ করুন
+                </Button>
               </CardContent>
             </Card>
+          )}
+
+          {client && (
+            <QuickPayDialog
+              open={payOpen}
+              onOpenChange={setPayOpen}
+              client={client}
+              defaultAmount={totalDue || Number(client.monthly_bill) || 0}
+            />
           )}
 
           {bills.length > 0 && (
