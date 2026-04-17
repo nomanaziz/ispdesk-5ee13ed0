@@ -1,71 +1,64 @@
 
 ## লক্ষ্য
 
-QuickPay page-এ গ্রাহক খুঁজে পাওয়ার পর একটা **"Pay Now"** button থাকবে। সেটা click করলে payment method choice আসবে — Bank, bKash/Nagad (Personal/Merchant), অথবা RechargeServer gateway। Submit হলে admin-এর Daily Collection page-এ "অপেক্ষমাণ" status-এ আসবে; admin approve করলে billing auto-update হবে।
+**NAIM** নামে একটা demo client তৈরি করব যার সব তথ্য পূর্ণ থাকবে — যাতে portal-এর প্রতিটি page-এ data দেখা যায়। সাথে সব portal-wide content (notice, news, media servers ইত্যাদি) seed করব।
 
-## Flow
+## সমস্যাগুলো (চিহ্নিত)
 
-```
-[বিল পরিশোধ page]
-   ↓ "Pay Now" click
-[Method picker dialog]
-   ├─ Bank Transfer → Account info show + Trx ID + Sender info → Submit
-   ├─ bKash/Nagad Personal → Number show + Trx ID + Sender number → Submit
-   ├─ bKash/Nagad Merchant → External redirect (Phase 2 — placeholder এখন)
-   └─ RechargeServer Gateway → Existing edge function call (Phase 2)
-   ↓
-[public_payment_requests insert; status=pending]
-   ↓
-Admin Daily Collection-এ "অপেক্ষমাণ অনলাইন পেমেন্ট" section-এ দেখাবে
-   ↓
-Admin "Approve" click → oldest unpaid bill-এ paid amount add, due কমে, status update; payment request approved marked
-```
+Portal pages (Dashboard, Live Usage) ঠিকই data field show করছে কিন্তু DB-তে content নেই:
+- **clients table**: NAIM user নেই → তাই service overview-তে speed/connection/protocol/zone/NID খালি
+- `client_notices`: 0 rows → notice show হবে না
+- `client_news_events`: 0 rows
+- `media_servers`: 0 rows
+- `support_tickets`: 0 rows
+- `billing` (NAIM): row নেই → মাসিক বিল/invoice খালি
+- `system_settings`: company info খালি
+- `shop_orders`: NAIM-এর জন্য কিছু নেই (এটা চাইলে রাখব, না-হয় skip)
 
-## এই Phase 1-এ যা করব
+## পরিকল্পনা — Demo data seed
 
-- **Bank Transfer (manual Trx ID)**
-- **bKash Personal (manual Trx ID)**
-- **Nagad Personal (manual Trx ID)**
+### 1. NAIM client তৈরি (insert into `clients`)
+সকল field পূর্ণ:
+- `client_id: NAIM001`, `name: Naim N.A.M`, `username: naim`, `password: naim123`
+- `contact: 01711-000001`, `email: naim@example.com`
+- `address: ঢাকা, মিরপুর-১০`, `permanent_address`, `road_number`, `house_number`
+- `nid_number: 1234567890123`, `father_name`, `mother_name`, `gender`, `date_of_birth`, `occupation`
+- `package_id`: পপুলার package, `monthly_bill: 800`
+- `connection_type: PPPoE`, `protocol_type: PPPoE`, `speed: 20 Mbps`, `profile: 20M`
+- `zone_id`: কেন্দ্রীয় জোন
+- `status: Active`, `billing_status: Active`, `mikrotik_status: enabled`
+- `is_online: true`, `total_download: 45 GB`, `total_upload: 12 GB`
+- `joining_date: 2024-01-15`, `billing_date: 5`
+- `is_vip: true`, `remote_address: 10.10.10.50`, `mac_address`
 
-Merchant redirect ও RechargeServer integration **Phase 2**-এ আলাদা step-এ করব (ঐগুলো API-heavy)।
+### 2. Current month-এর billing row তৈরি (insert into `billing`)
+- 2026-04 মাস, `amount: 800`, `paid: 0`, `due: 800`, `status: unpaid`, `bill_id: BILL-NAIM-202604`
+- সাথে previous month-এর একটা **paid** invoice (March) যাতে history থাকে
 
-## Config source
+### 3. Portal-wide content seed
+- **client_notices**: ২টা active notice (১টা pinned: "ঈদ অফার", আরেকটা: "Service maintenance")
+- **client_news_events**: ২টা news (একটা event, একটা news)
+- **media_servers**: ৪টা active server (FTP, Live TV, Movie server, YouTube proxy)
+- **support_tickets**: NAIM-এর ১টা open ticket (subject: "ইন্টারনেট স্লো হচ্ছে")
+- **system_settings**: company info — `company_name`, `company_address`, `hotline`, `email`, `website`, `tagline`, `payment_instructions`
 
-এই step-এ bank account number, bKash number, Nagad number হিসেবে **placeholder values** (component-level constants) ব্যবহার করব। পরের step-এ admin-এর জন্য `Payment Methods Settings` page বানাব যেখান থেকে edit করা যাবে।
-
-## Approve হলে কী হবে
-
-Admin approve click করলে:
-1. `public_payment_requests.status = 'approved'`
-2. Client-এর সবচেয়ে পুরনো unpaid/partial `billing` row-এ `paid` amount add হবে, `due` কমবে, status update (paid/partial)
-3. একটা note `billing.notes`-এ যোগ হবে (Trx ID + method)
-
-এটা client-side transaction দিয়ে হবে (admin RLS access আছে)।
-
-## Files
-
-**New:**
-- `src/components/public/QuickPayDialog.tsx` — Method picker + form (amount, Trx ID, sender number)
-
-**Edit:**
-- `src/pages/public/QuickPay.tsx` — "Pay Now" button + dialog open
-- `src/pages/dashboard/billing/DailyCollection.tsx` — নতুন "অপেক্ষমাণ অনলাইন পেমেন্ট" section + Approve/Reject button
-
-**DB migration (new table):**
-```
-public_payment_requests
-  id, client_id (fk clients), amount, method,
-  trx_id, sender_number, note,
-  status (pending/approved/rejected),
-  admin_note, approved_by, approved_at,
-  created_at
-```
-RLS:
-- `anon` role: INSERT allowed (so non-logged-in submission works)
-- `authenticated` admin: full SELECT/UPDATE/DELETE
+### 4. Portal login info
+NAIM portal-এ login করতে: **username: `naim`** / **password: `naim123`** (অথবা client_id `NAIM001`)
 
 ## ফলাফল
 
-- Public QuickPay page-এ গ্রাহক খুঁজে পাওয়ার পর "Pay Now" → method choose → Trx ID submit → confirmation message
-- Admin Daily Collection page-এ pending online payments দেখা যাবে; এক click-এ approve হলে billing auto-update
-- Phase 2-এ Merchant API + RechargeServer + admin settings page যোগ হবে
+Portal-এ NAIM হিসেবে login করলে:
+- ✅ Dashboard: package "পপুলার", speed "20 Mbps", connection PPPoE, NID, zone, mobile, email — সব show হবে
+- ✅ Live Usage: ক্লায়েন্ট তথ্য header-এ পূর্ণ; (live traffic real MikroTik-এ depend, demo user-এর জন্য offline graph হবে)
+- ✅ Notices: ২টা notice দেখা যাবে
+- ✅ News & Events: ২টা item
+- ✅ Company Info: ISP-র সব তথ্য
+- ✅ Movie/FTP Servers: ৪টা server list
+- ✅ মাসিক বিল: এপ্রিল ২০২৬-এর ৳৮০০ unpaid + মার্চের paid history
+- ✅ Invoices: একই
+- ✅ My Orders: empty থাকবে (shop থেকে order করলে আসবে — আলাদা step)
+- ✅ Support: ১টা existing ticket দেখা যাবে; নতুন create করলেও আসবে
+
+## Files
+
+কোনো code change লাগবে না — শুধু **DB inserts** (data seed)। সব pages আগে থেকেই DB থেকে data টানছে; data থাকলেই দেখাবে।
