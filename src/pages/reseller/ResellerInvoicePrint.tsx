@@ -19,7 +19,7 @@ const ResellerInvoicePrint = () => {
           .select("*, bw_sale_customers(customer_name, customer_code, address, mobile, email)")
           .eq("id", id)
           .maybeSingle(),
-        supabase.from("bw_bill_items").select("*").eq("bill_id", id),
+        supabase.from("bw_invoice_items").select("*").eq("invoice_id", id).order("sort_order"),
       ]);
       return { inv: inv.data, items: items.data || [] };
     },
@@ -32,8 +32,8 @@ const ResellerInvoicePrint = () => {
   const inv = data?.inv;
   const cust = (inv?.bw_sale_customers as any) || {};
 
-  const subtotal = (data?.items || []).reduce((s: number, it: any) => s + Number(it.total || 0), 0);
-  const due = Number(inv?.due ?? Math.max(0, Number(inv?.amount || 0) - Number(inv?.paid_amount || 0) - Number(inv?.discount || 0)));
+  const subtotal = (data?.items || []).reduce((s: number, it: any) => s + Number(it.amount || 0), 0);
+  const due = Number(inv?.due ?? Math.max(0, Number(inv?.total_amount || inv?.amount || 0) - Number(inv?.paid_amount || 0) - Number(inv?.discount || 0)));
 
   return (
     <div className="space-y-4">
@@ -77,42 +77,44 @@ const ResellerInvoicePrint = () => {
         <table className="w-full mt-6 text-sm">
           <thead>
             <tr className="bg-gray-100 text-left">
-              <th className="p-2">Description</th>
+              <th className="p-2">Service</th>
               <th className="p-2">Period</th>
-              <th className="p-2 text-right">Qty</th>
+              <th className="p-2 text-right">Mbps</th>
               <th className="p-2 text-right">Rate</th>
-              <th className="p-2 text-right">Total</th>
+              <th className="p-2 text-right">Days</th>
+              <th className="p-2 text-right">Amount</th>
             </tr>
           </thead>
           <tbody>
             {(data?.items || []).map((it: any) => (
               <tr key={it.id} className="border-b">
-                <td className="p-2">{it.description || it.unit || "Service"}</td>
+                <td className="p-2 font-medium">{it.service_name}</td>
                 <td className="p-2 text-xs">
-                  {it.from_date ? format(new Date(it.from_date), "dd MMM") : "—"} —{" "}
-                  {it.to_date ? format(new Date(it.to_date), "dd MMM yyyy") : "—"}
+                  {it.period_start ? format(new Date(it.period_start), "dd MMM") : "—"} —{" "}
+                  {it.period_end ? format(new Date(it.period_end), "dd MMM yyyy") : "—"}
                 </td>
-                <td className="p-2 text-right">{it.quantity}</td>
+                <td className="p-2 text-right">{Number(it.bandwidth_mbps)}</td>
                 <td className="p-2 text-right">৳ {Number(it.rate || 0).toLocaleString()}</td>
-                <td className="p-2 text-right">৳ {Number(it.total || 0).toLocaleString()}</td>
+                <td className="p-2 text-right">{it.days}/{it.total_days_in_month}</td>
+                <td className="p-2 text-right">৳ {Number(it.amount || 0).toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={4} className="p-2 text-right">Subtotal</td>
+              <td colSpan={5} className="p-2 text-right">Subtotal</td>
               <td className="p-2 text-right">৳ {subtotal.toLocaleString()}</td>
             </tr>
             <tr>
-              <td colSpan={4} className="p-2 text-right">Discount</td>
+              <td colSpan={5} className="p-2 text-right">Discount</td>
               <td className="p-2 text-right">৳ {Number(inv?.discount || 0).toLocaleString()}</td>
             </tr>
             <tr>
-              <td colSpan={4} className="p-2 text-right">Paid</td>
+              <td colSpan={5} className="p-2 text-right">Paid</td>
               <td className="p-2 text-right">৳ {Number(inv?.paid_amount || 0).toLocaleString()}</td>
             </tr>
             <tr className="font-bold border-t">
-              <td colSpan={4} className="p-2 text-right">Total Due</td>
+              <td colSpan={5} className="p-2 text-right">Total Due</td>
               <td className="p-2 text-right">৳ {due.toLocaleString()}</td>
             </tr>
           </tfoot>
