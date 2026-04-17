@@ -1435,6 +1435,45 @@ export type Database = {
           },
         ]
       }
+      client_news_events: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          details: string | null
+          event_date: string | null
+          id: string
+          photo_url: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          details?: string | null
+          event_date?: string | null
+          id?: string
+          photo_url?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          details?: string | null
+          event_date?: string | null
+          id?: string
+          photo_url?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_notices: {
         Row: {
           active: boolean
@@ -4347,6 +4386,56 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      portal_login_log: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          login_at: string
+          logout_at: string | null
+          session_id: string | null
+          status: string
+          user_agent: string | null
+          user_type: string
+          username: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          login_at?: string
+          logout_at?: string | null
+          session_id?: string | null
+          status?: string
+          user_agent?: string | null
+          user_type?: string
+          username: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          login_at?: string
+          logout_at?: string | null
+          session_id?: string | null
+          status?: string
+          user_agent?: string | null
+          user_type?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_login_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       portal_servers: {
         Row: {
