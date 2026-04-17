@@ -54,7 +54,7 @@ const PortalLiveUsage = () => {
       const { data } = await supabase
         .from("clients")
         .select(
-          "id, name, client_id, username, contact, speed, is_online, total_upload, total_download, last_seen, uptime"
+          "id, name, client_id, username, contact, speed, is_online, total_upload, total_download, joining_date"
         )
         .eq("id", clientId)
         .maybeSingle();
