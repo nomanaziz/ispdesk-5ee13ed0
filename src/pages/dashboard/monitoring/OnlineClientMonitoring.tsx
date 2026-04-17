@@ -114,6 +114,8 @@ export default function OnlineClientMonitoring() {
   const [bulkSmsDialog, setBulkSmsDialog] = useState(false);
   const [bulkSmsMessage, setBulkSmsMessage] = useState("");
   const [sendingSms, setSendingSms] = useState(false);
+  const livePollRef = useRef<number | null>(null);
+  const liveClientIdRef = useRef<string | null>(null);
 
   const loadFilterOptions = useCallback(async () => {
     const [devRes, zoneRes, connRes] = await Promise.all([
