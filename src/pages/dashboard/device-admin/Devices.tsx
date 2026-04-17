@@ -3,10 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Server, Cpu, Network, Users, Database } from "lucide-react";
+import { Server, Cpu, Network, Users, Database, UserPlus, UserX } from "lucide-react";
+import { DeployUserDialog } from "@/components/device-admin/DeployUserDialog";
 
 const TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
   mikrotik: { label: "MikroTik", icon: Server, color: "bg-blue-500/10 text-blue-600" },
@@ -18,6 +20,7 @@ const TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
 export default function DeviceInventory() {
   const [type, setType] = useState("all");
   const [search, setSearch] = useState("");
+  const [dialog, setDialog] = useState<"deploy" | "remove" | null>(null);
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["device_admin_inventory"],
@@ -45,9 +48,19 @@ export default function DeviceInventory() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold flex items-center gap-2">
-        <Database className="h-6 w-6 text-primary" /> ডিভাইস ইনভেন্টরি
-      </h1>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Database className="h-6 w-6 text-primary" /> ডিভাইস ইনভেন্টরি
+        </h1>
+        <div className="flex gap-2">
+          <Button onClick={() => setDialog("deploy")}>
+            <UserPlus className="h-4 w-4 mr-2" /> ইউজার ডিপ্লয়
+          </Button>
+          <Button variant="destructive" onClick={() => setDialog("remove")}>
+            <UserX className="h-4 w-4 mr-2" /> ইউজার রিমুভ
+          </Button>
+        </div>
+      </div>
 
       <Card>
         <CardHeader className="pb-3">
@@ -109,6 +122,8 @@ export default function DeviceInventory() {
           </Table>
         </CardContent>
       </Card>
+
+      {dialog && <DeployUserDialog open={!!dialog} onOpenChange={(v) => !v && setDialog(null)} mode={dialog} />}
     </div>
   );
 }

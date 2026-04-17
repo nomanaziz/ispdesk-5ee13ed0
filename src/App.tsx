@@ -87,9 +87,8 @@ import MikrotikBulkImport from "@/pages/dashboard/mikrotik/BulkImport";
 // Device Administration
 import DeviceAdminDashboard from "@/pages/dashboard/device-admin/Dashboard";
 import DeviceAdminDevices from "@/pages/dashboard/device-admin/Devices";
+import DeviceAdminAllUsers from "@/pages/dashboard/device-admin/AllDeviceUsers";
 import DeviceAdminGroups from "@/pages/dashboard/device-admin/Groups";
-import DeviceAdminDeployUser from "@/pages/dashboard/device-admin/DeployUser";
-import DeviceAdminDeleteUser from "@/pages/dashboard/device-admin/DeleteUser";
 import DeviceAdminBackups from "@/pages/dashboard/device-admin/Backups";
 import DeviceAdminSchedules from "@/pages/dashboard/device-admin/Schedules";
 import DeviceAdminAuditLog from "@/pages/dashboard/device-admin/AuditLog";
@@ -388,9 +387,8 @@ const App = () => (
               {/* Device Administration */}
               <Route path="/dashboard/device-admin" element={<P><DeviceAdminDashboard /></P>} />
               <Route path="/dashboard/device-admin/devices" element={<P><DeviceAdminDevices /></P>} />
+              <Route path="/dashboard/device-admin/users" element={<P><DeviceAdminAllUsers /></P>} />
               <Route path="/dashboard/device-admin/groups" element={<P><DeviceAdminGroups /></P>} />
-              <Route path="/dashboard/device-admin/deploy-user" element={<P><DeviceAdminDeployUser /></P>} />
-              <Route path="/dashboard/device-admin/delete-user" element={<P><DeviceAdminDeleteUser /></P>} />
               <Route path="/dashboard/device-admin/backups" element={<P><DeviceAdminBackups /></P>} />
               <Route path="/dashboard/device-admin/schedules" element={<P><DeviceAdminSchedules /></P>} />
               <Route path="/dashboard/device-admin/audit-log" element={<P><DeviceAdminAuditLog /></P>} />
