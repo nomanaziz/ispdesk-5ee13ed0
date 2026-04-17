@@ -72,7 +72,7 @@ const ResellerDashboard = () => {
   return (
     <div className="space-y-5">
       {/* Welcome card */}
-      <Card className="bg-gradient-to-r from-[hsl(217_45%_22%)] to-[hsl(217_45%_32%)] text-white border-0">
+      <Card className="bg-gradient-to-r from-primary to-primary/70 text-primary-foreground border-0">
         <CardContent className="p-6 flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold">Welcome, {customer?.name}</h1>
