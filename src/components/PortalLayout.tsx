@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard, FileText, HeadphonesIcon, LogOut, Menu, X,
-  Activity, Bell, Building2, Clapperboard, BookOpen, ChevronDown,
+  Activity, Bell, Building2, Clapperboard, BookOpen, ChevronDown, Rocket,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -19,6 +19,7 @@ const menuItems = [
   { label: "Notices", icon: Bell, path: "/portal/notices" },
   { label: "Company Info", icon: Building2, path: "/portal/company" },
   { label: "Movie/FTP Servers", icon: Clapperboard, path: "/portal/media" },
+  { label: "Speed Test", icon: Rocket, path: "/portal/speed-test" },
   { label: "My Ledger", icon: BookOpen, path: "/portal/ledger" },
   { label: "Invoices", icon: FileText, path: "/portal/invoices" },
   { label: "Support Tickets", icon: HeadphonesIcon, path: "/portal/support" },

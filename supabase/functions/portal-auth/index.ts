@@ -15,26 +15,47 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { username, password } = await req.json();
-    if (!username || !password) {
-      return json({ error: "Username and password are required" }, 400);
-    }
+    const body = await req.json();
+    const { username, password, action, session_id } = body || {};
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Logout action
+    if (action === "logout" && session_id) {
+      await supabase
+        .from("portal_login_log")
+        .update({ logout_at: new Date().toISOString(), status: "ended" })
+        .eq("session_id", session_id)
+        .eq("status", "active");
+      return json({ ok: true });
+    }
+
+    if (!username || !password) {
+      return json({ error: "Username and password are required" }, 400);
+    }
+
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("cf-connecting-ip") ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+    const ua = req.headers.get("user-agent") || "unknown";
+
     const issueToken = (payload: Record<string, unknown>) => {
+      const sid = crypto.randomUUID();
       const tokenPayload = {
         ...payload,
+        session_id: sid,
         iat: Date.now(),
         exp: Date.now() + 24 * 60 * 60 * 1000,
       };
-      return { token: btoa(JSON.stringify(tokenPayload)), customer: tokenPayload };
+      return { token: btoa(JSON.stringify(tokenPayload)), customer: tokenPayload, sid };
     };
 
-    // 1. CLIENT (PPP user / client_id)
+    // 1. CLIENT
     const { data: clients } = await supabase
       .from("clients")
       .select("id, name, client_id, username, password, billing_status, contact, email, address, branch_id, zone_id, sub_zone_id, package_id, monthly_bill")
@@ -44,11 +65,11 @@ Deno.serve(async (req) => {
     const client = clients?.[0];
     if (client) {
       if (client.password !== password) return json({ error: "Invalid username or password" }, 401);
-      const { token, customer } = issueToken({
+      const { token, customer, sid } = issueToken({
         sub: client.id,
         name: client.name,
         code: client.client_id,
-        username: client.username,
+        username: client.username || client.client_id,
         type: "client",
         email: client.email,
         mobile: client.contact,
@@ -58,10 +79,19 @@ Deno.serve(async (req) => {
         package_id: client.package_id,
         monthly_bill: client.monthly_bill,
       });
+      await supabase.from("portal_login_log").insert({
+        client_id: client.id,
+        username: client.username || client.client_id,
+        user_type: "client",
+        ip_address: ip,
+        user_agent: ua,
+        session_id: sid,
+        status: "active",
+      });
       return json({ token, customer });
     }
 
-    // 2. RESELLER (branch_managers)
+    // 2. RESELLER
     const { data: resellers } = await supabase
       .from("branch_managers")
       .select("id, name, username, password, client_code, contact, email, branch_id, balance, tariff_id, status, portal_enabled")
@@ -75,7 +105,7 @@ Deno.serve(async (req) => {
       if (reseller.status && reseller.status !== "Active") {
         return json({ error: "Account is inactive. Please contact support." }, 403);
       }
-      const { token, customer } = issueToken({
+      const { token, customer, sid } = issueToken({
         sub: reseller.id,
         name: reseller.name,
         code: reseller.client_code,
@@ -86,6 +116,14 @@ Deno.serve(async (req) => {
         branch_id: reseller.branch_id,
         balance: reseller.balance,
         tariff_id: reseller.tariff_id,
+      });
+      await supabase.from("portal_login_log").insert({
+        username: reseller.username || reseller.client_code,
+        user_type: "reseller",
+        ip_address: ip,
+        user_agent: ua,
+        session_id: sid,
+        status: "active",
       });
       return json({ token, customer });
     }
@@ -102,7 +140,7 @@ Deno.serve(async (req) => {
       if (bwCustomer.activity_status !== "Active") {
         return json({ error: "Account is inactive. Please contact support." }, 403);
       }
-      const { token, customer } = issueToken({
+      const { token, customer, sid } = issueToken({
         sub: bwCustomer.id,
         name: bwCustomer.customer_name,
         code: bwCustomer.customer_code,
@@ -113,6 +151,14 @@ Deno.serve(async (req) => {
         mobile: bwCustomer.mobile,
         contact_person: bwCustomer.contact_person,
         address: bwCustomer.address,
+      });
+      await supabase.from("portal_login_log").insert({
+        username: bwCustomer.username,
+        user_type: "bw_customer",
+        ip_address: ip,
+        user_agent: ua,
+        session_id: sid,
+        status: "active",
       });
       return json({ token, customer });
     }

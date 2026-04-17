@@ -261,6 +261,7 @@ import PortalCompanyInfo from "@/pages/portal/PortalCompanyInfo";
 import PortalMediaServers from "@/pages/portal/PortalMediaServers";
 import PortalLedger from "@/pages/portal/PortalLedger";
 import PortalLiveUsage from "@/pages/portal/PortalLiveUsage";
+import PortalSpeedTest from "@/pages/portal/PortalSpeedTest";
 
 // Reseller
 import ResellerProtectedRoute from "@/components/ResellerProtectedRoute";
@@ -536,6 +537,7 @@ const App = () => (
               <Route path="/portal/media" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalMediaServers /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/ledger" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalLedger /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/live-usage" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalLiveUsage /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/speed-test" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalSpeedTest /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
 
               {/* Reseller Portal */}
               <Route path="/reseller" element={<Navigate to="/reseller/dashboard" replace />} />
