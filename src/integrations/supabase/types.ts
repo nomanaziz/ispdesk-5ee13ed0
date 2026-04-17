@@ -4195,6 +4195,210 @@ export type Database = {
           },
         ]
       }
+      network_edges: {
+        Row: {
+          color_code: string | null
+          connection_type: string
+          created_at: string
+          created_by: string | null
+          edge_code: string | null
+          id: string
+          length_m: number | null
+          remarks: string | null
+          source_node_id: string
+          status: string
+          target_node_id: string
+        }
+        Insert: {
+          color_code?: string | null
+          connection_type?: string
+          created_at?: string
+          created_by?: string | null
+          edge_code?: string | null
+          id?: string
+          length_m?: number | null
+          remarks?: string | null
+          source_node_id: string
+          status?: string
+          target_node_id: string
+        }
+        Update: {
+          color_code?: string | null
+          connection_type?: string
+          created_at?: string
+          created_by?: string | null
+          edge_code?: string | null
+          id?: string
+          length_m?: number | null
+          remarks?: string | null
+          source_node_id?: string
+          status?: string
+          target_node_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_edges_source_node_id_fkey"
+            columns: ["source_node_id"]
+            isOneToOne: false
+            referencedRelation: "network_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_edges_target_node_id_fkey"
+            columns: ["target_node_id"]
+            isOneToOne: false
+            referencedRelation: "network_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_node_clients: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          node_id: string
+          port_no: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          node_id: string
+          port_no?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          node_id?: string
+          port_no?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_node_clients_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "network_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_node_items: {
+        Row: {
+          distributed_at: string
+          distributed_by: string | null
+          id: string
+          inventory_item_id: string
+          node_id: string
+          quantity: number
+          remarks: string | null
+        }
+        Insert: {
+          distributed_at?: string
+          distributed_by?: string | null
+          id?: string
+          inventory_item_id: string
+          node_id: string
+          quantity?: number
+          remarks?: string | null
+        }
+        Update: {
+          distributed_at?: string
+          distributed_by?: string | null
+          id?: string
+          inventory_item_id?: string
+          node_id?: string
+          quantity?: number
+          remarks?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_node_items_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "network_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_nodes: {
+        Row: {
+          address: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          inventory_item_id: string | null
+          latitude: number | null
+          longitude: number | null
+          mac: string | null
+          name: string
+          node_type: string
+          olt_device_id: string | null
+          parent_id: string | null
+          port_info: string | null
+          position_x: number | null
+          position_y: number | null
+          remarks: string | null
+          serial_number: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inventory_item_id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          mac?: string | null
+          name: string
+          node_type?: string
+          olt_device_id?: string | null
+          parent_id?: string | null
+          port_info?: string | null
+          position_x?: number | null
+          position_y?: number | null
+          remarks?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inventory_item_id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          mac?: string | null
+          name?: string
+          node_type?: string
+          olt_device_id?: string | null
+          parent_id?: string | null
+          port_info?: string | null
+          position_x?: number | null
+          position_y?: number | null
+          remarks?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "network_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_settings: {
         Row: {
           branch_id: string | null
