@@ -280,6 +280,7 @@ import ResellerPurchaseOrderForm from "@/pages/reseller/ResellerPurchaseOrderFor
 import ResellerTickets from "@/pages/reseller/ResellerTickets";
 import ResellerUsers from "@/pages/reseller/ResellerUsers";
 import ResellerSettings from "@/pages/reseller/ResellerSettings";
+import ResellerMikrotikUsers from "@/pages/reseller/ResellerMikrotikUsers";
 
 const queryClient = new QueryClient();
 
@@ -570,6 +571,7 @@ const App = () => (
               <Route path="/reseller/tickets" element={<PortalAuthProvider><ResellerProtectedRoute require="tickets"><ResellerLayout><ResellerTickets /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/reseller/users" element={<PortalAuthProvider><ResellerProtectedRoute require="users"><ResellerLayout><ResellerUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/reseller/settings" element={<PortalAuthProvider><ResellerProtectedRoute require="settings"><ResellerLayout><ResellerSettings /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/reseller/mikrotik-users" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><ResellerMikrotikUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

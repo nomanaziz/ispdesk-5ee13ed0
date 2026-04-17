@@ -14,13 +14,15 @@ import {
   Search,
   Menu,
   Activity,
+  Server,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Key = "dashboard" | "invoices" | "purchases" | "tickets" | "users" | "settings";
+type Key = "dashboard" | "invoices" | "purchases" | "tickets" | "users" | "settings" | "mikrotik";
 
 const allNav: { key: Key; to: string; label: string; icon: any }[] = [
   { key: "dashboard", to: "/reseller/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "mikrotik", to: "/reseller/mikrotik-users", label: "MikroTik Users", icon: Server },
   { key: "invoices", to: "/reseller/invoices", label: "Billing Invoices", icon: Receipt },
   { key: "purchases", to: "/reseller/purchases", label: "Purchase Orders", icon: ShoppingCart },
   { key: "tickets", to: "/reseller/tickets", label: "Support Tickets", icon: LifeBuoy },
