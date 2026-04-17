@@ -101,23 +101,7 @@ export default function Import() {
     });
   };
 
-  const exportToMacReseller = useMutation({
-    mutationFn: async () => {
-      if (selectedIds.size === 0) {
-        toast.error("ক্লায়েন্ট সিলেক্ট করুন");
-        return;
-      }
-      const ids = Array.from(selectedIds);
-      const { error } = await supabase.from("mikrotik_clients").update({ exported: true, exported_to: "mac_reseller" }).in("id", ids);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["mikrotik_clients"] });
-      setSelectedIds(new Set());
-      toast.success("MAC রিসেলারে এক্সপোর্ট হয়েছে");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+  // Transfer handled by TransferToPopDialog
 
   const generateExcel = () => {
     const ws = XLSX.utils.json_to_sheet(
