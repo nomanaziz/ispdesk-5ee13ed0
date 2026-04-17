@@ -343,3 +343,200 @@ function SummaryCard({ icon: Icon, label, value, color, bg }: { icon: any; label
     </Card>
   );
 }
+
+function PendingOnlinePayments() {
+  const queryClient = useQueryClient();
+  const [statusTab, setStatusTab] = useState<"pending" | "approved" | "rejected">("pending");
+  const [rejectFor, setRejectFor] = useState<any>(null);
+  const [rejectNote, setRejectNote] = useState("");
+
+  const { data: requests = [], isLoading } = useQuery({
+    queryKey: ["public-payment-requests", statusTab],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("public_payment_requests")
+        .select("*, client:clients(id, client_id, name, contact, monthly_bill)")
+        .eq("status", statusTab)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (req: any) => {
+      const amt = Number(req.amount || 0);
+
+      const { data: billRows } = await supabase
+        .from("billing")
+        .select("id, amount, paid, due, status")
+        .eq("client_id", req.client_id)
+        .in("status", ["unpaid", "partial", "due"])
+        .order("month", { ascending: true })
+        .limit(1);
+
+      const noteText = `অনলাইন পেমেন্ট • ${req.method} • Trx: ${req.trx_id || "-"}${req.sender_number ? ` • From: ${req.sender_number}` : ""}`;
+
+      await supabase.from("bill_collections").insert({
+        billing_id: billRows?.[0]?.id || null,
+        client_id: req.client_id,
+        amount: amt,
+        discount: 0,
+        payment_method: req.method,
+        note: noteText,
+        status: "approved",
+        transaction_id: req.trx_id || null,
+      });
+
+      if (billRows?.[0]) {
+        const b = billRows[0];
+        const newPaid = Number(b.paid || 0) + amt;
+        const newDue = Math.max(0, Number(b.amount || 0) - newPaid);
+        const newStatus = newDue <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
+        await supabase.from("billing").update({
+          paid: newPaid,
+          due: newDue,
+          status: newStatus,
+          pay_date: today(),
+        }).eq("id", b.id);
+      }
+
+      const { error } = await supabase
+        .from("public_payment_requests")
+        .update({ status: "approved", approved_at: new Date().toISOString() })
+        .eq("id", req.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "অনুমোদিত", description: "পেমেন্ট approve হয়েছে এবং billing update হয়েছে" });
+      queryClient.invalidateQueries({ queryKey: ["public-payment-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["bill-collections"] });
+    },
+    onError: (e: any) => toast({ title: "ত্রুটি", description: e.message, variant: "destructive" }),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async () => {
+      if (!rejectFor) return;
+      const { error } = await supabase
+        .from("public_payment_requests")
+        .update({ status: "rejected", admin_note: rejectNote || null, approved_at: new Date().toISOString() })
+        .eq("id", rejectFor.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Rejected", description: "পেমেন্ট request reject হয়েছে" });
+      queryClient.invalidateQueries({ queryKey: ["public-payment-requests"] });
+      setRejectFor(null);
+      setRejectNote("");
+    },
+    onError: (e: any) => toast({ title: "ত্রুটি", description: e.message, variant: "destructive" }),
+  });
+
+  const methodLabel = (m: string) => ({
+    bank: "ব্যাংক",
+    bkash_personal: "bKash (P)",
+    nagad_personal: "Nagad (P)",
+    bkash_merchant: "bKash (M)",
+    nagad_merchant: "Nagad (M)",
+    rechargeserver: "RS Gateway",
+  } as any)[m] || m;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        {(["pending", "approved", "rejected"] as const).map(s => (
+          <Button
+            key={s}
+            size="sm"
+            variant={statusTab === s ? "default" : "outline"}
+            onClick={() => setStatusTab(s)}
+          >
+            {s === "pending" && <Clock className="h-3.5 w-3.5 mr-1" />}
+            {s === "approved" && <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
+            {s === "rejected" && <X className="h-3.5 w-3.5 mr-1" />}
+            {s === "pending" ? "অপেক্ষমাণ" : s === "approved" ? "অনুমোদিত" : "প্রত্যাখ্যাত"}
+          </Button>
+        ))}
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>তারিখ</TableHead>
+                  <TableHead>C.Code</TableHead>
+                  <TableHead>কাস্টমার</TableHead>
+                  <TableHead>মোবাইল</TableHead>
+                  <TableHead>মেথড</TableHead>
+                  <TableHead>Trx ID</TableHead>
+                  <TableHead>প্রেরক</TableHead>
+                  <TableHead className="text-right">পরিমাণ</TableHead>
+                  <TableHead>অ্যাকশন</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">লোড হচ্ছে...</TableCell></TableRow>
+                ) : requests.length === 0 ? (
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">কোনো {statusTab === "pending" ? "অপেক্ষমাণ" : statusTab} পেমেন্ট নেই</TableCell></TableRow>
+                ) : requests.map((r: any) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="text-xs">{new Date(r.created_at).toLocaleString("bn-BD")}</TableCell>
+                    <TableCell className="font-mono text-xs">{r.client?.client_id || "-"}</TableCell>
+                    <TableCell className="font-medium">{r.client?.name || "-"}</TableCell>
+                    <TableCell className="text-xs">{r.client?.contact || "-"}</TableCell>
+                    <TableCell><Badge variant="outline" className="text-xs">{methodLabel(r.method)}</Badge></TableCell>
+                    <TableCell className="font-mono text-xs">{r.trx_id || "-"}</TableCell>
+                    <TableCell className="text-xs">{r.sender_number || "-"}</TableCell>
+                    <TableCell className="text-right font-bold">৳{Number(r.amount || 0).toLocaleString()}</TableCell>
+                    <TableCell>
+                      {statusTab === "pending" ? (
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="default" className="h-7" onClick={() => approveMutation.mutate(r)} disabled={approveMutation.isPending}>
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Approve
+                          </Button>
+                          <Button size="sm" variant="destructive" className="h-7" onClick={() => setRejectFor(r)}>
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{r.admin_note || "-"}</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={!!rejectFor} onOpenChange={(v) => !v && setRejectFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>পেমেন্ট Reject করুন</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {rejectFor?.client?.name} — ৳{rejectFor?.amount} — Trx: {rejectFor?.trx_id}
+            </p>
+            <div>
+              <Label>কারণ (ঐচ্ছিক)</Label>
+              <Textarea value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} rows={3} placeholder="যেমন: Trx ID মেলে নাই" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectFor(null)}>বাতিল</Button>
+            <Button variant="destructive" onClick={() => rejectMutation.mutate()} disabled={rejectMutation.isPending}>
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
