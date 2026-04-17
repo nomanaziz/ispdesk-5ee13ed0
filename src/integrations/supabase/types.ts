@@ -845,6 +845,208 @@ export type Database = {
           },
         ]
       }
+      bw_buy_bill_items: {
+        Row: {
+          amount: number
+          bandwidth_mbps: number
+          bill_id: string
+          created_at: string
+          days: number
+          id: string
+          period_end: string
+          period_start: string
+          rate: number
+          remarks: string | null
+          service_id: string | null
+          service_name: string
+          sort_order: number
+          subscription_id: string | null
+          total_days_in_month: number
+        }
+        Insert: {
+          amount?: number
+          bandwidth_mbps?: number
+          bill_id: string
+          created_at?: string
+          days?: number
+          id?: string
+          period_end: string
+          period_start: string
+          rate?: number
+          remarks?: string | null
+          service_id?: string | null
+          service_name: string
+          sort_order?: number
+          subscription_id?: string | null
+          total_days_in_month?: number
+        }
+        Update: {
+          amount?: number
+          bandwidth_mbps?: number
+          bill_id?: string
+          created_at?: string
+          days?: number
+          id?: string
+          period_end?: string
+          period_start?: string
+          rate?: number
+          remarks?: string | null
+          service_id?: string | null
+          service_name?: string
+          sort_order?: number
+          subscription_id?: string | null
+          total_days_in_month?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_buy_bill_items_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bw_purchase_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_buy_bill_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_buy_bill_items_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "bw_buy_provider_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bw_buy_provider_subscriptions: {
+        Row: {
+          bandwidth_mbps: number
+          created_at: string
+          end_date: string | null
+          id: string
+          provider_id: string
+          rate_per_mbps: number
+          remarks: string | null
+          service_id: string | null
+          service_name: string
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bandwidth_mbps?: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          provider_id: string
+          rate_per_mbps?: number
+          remarks?: string | null
+          service_id?: string | null
+          service_name: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bandwidth_mbps?: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          provider_id?: string
+          rate_per_mbps?: number
+          remarks?: string | null
+          service_id?: string | null
+          service_name?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_buy_provider_subscriptions_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "bw_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_buy_provider_subscriptions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bw_buy_service_change_log: {
+        Row: {
+          change_type: string | null
+          changed_by: string | null
+          created_at: string
+          effective_date: string
+          id: string
+          new_mbps: number | null
+          new_rate: number | null
+          new_subscription_id: string | null
+          old_mbps: number | null
+          old_rate: number | null
+          old_subscription_id: string | null
+          provider_id: string
+          reason: string | null
+          service_id: string | null
+        }
+        Insert: {
+          change_type?: string | null
+          changed_by?: string | null
+          created_at?: string
+          effective_date: string
+          id?: string
+          new_mbps?: number | null
+          new_rate?: number | null
+          new_subscription_id?: string | null
+          old_mbps?: number | null
+          old_rate?: number | null
+          old_subscription_id?: string | null
+          provider_id: string
+          reason?: string | null
+          service_id?: string | null
+        }
+        Update: {
+          change_type?: string | null
+          changed_by?: string | null
+          created_at?: string
+          effective_date?: string
+          id?: string
+          new_mbps?: number | null
+          new_rate?: number | null
+          new_subscription_id?: string | null
+          old_mbps?: number | null
+          old_rate?: number | null
+          old_subscription_id?: string | null
+          provider_id?: string
+          reason?: string | null
+          service_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_buy_service_change_log_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "bw_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_buy_service_change_log_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bw_categories: {
         Row: {
           created_at: string
@@ -1110,9 +1312,12 @@ export type Database = {
           month: string | null
           paid: number | null
           payment_due: string | null
+          period_end: string | null
+          period_start: string | null
           provider_id: string | null
           remarks: string | null
           status: string
+          total_amount: number
         }
         Insert: {
           amount?: number | null
@@ -1126,9 +1331,12 @@ export type Database = {
           month?: string | null
           paid?: number | null
           payment_due?: string | null
+          period_end?: string | null
+          period_start?: string | null
           provider_id?: string | null
           remarks?: string | null
           status?: string
+          total_amount?: number
         }
         Update: {
           amount?: number | null
@@ -1142,9 +1350,12 @@ export type Database = {
           month?: string | null
           paid?: number | null
           payment_due?: string | null
+          period_end?: string | null
+          period_start?: string | null
           provider_id?: string | null
           remarks?: string | null
           status?: string
+          total_amount?: number
         }
         Relationships: [
           {
