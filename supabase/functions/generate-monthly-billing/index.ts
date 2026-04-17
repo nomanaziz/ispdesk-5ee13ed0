@@ -17,12 +17,12 @@ Deno.serve(async (req) => {
     );
 
     // Determine target month (default: current month)
-    let targetMonth: string;
+    let targetMonth: string | null = null;
     try {
       const body = await req.json();
-      targetMonth = body.month || null;
+      targetMonth = body?.month || null;
     } catch {
-      targetMonth = null as any;
+      targetMonth = null;
     }
 
     if (!targetMonth) {
@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     // Fetch all active clients (case-insensitive status)
     const { data: clients, error: cErr } = await supabase
       .from("clients")
-      .select("id, client_id, monthly_bill, branch_id, billing_status")
+      .select("id, client_id, monthly_bill, branch_id, billing_status, status")
       .or("status.eq.active,status.eq.Active,status.eq.ACTIVE");
 
     if (cErr) throw cErr;
@@ -47,32 +47,72 @@ Deno.serve(async (req) => {
     }
 
     // Find which clients already have billing for this month
-    const clientIds = clients.map(c => c.id);
+    const clientIds = clients.map((c: any) => c.id);
     const { data: existingBills } = await supabase
       .from("billing")
       .select("client_id")
       .eq("month", targetMonth)
       .in("client_id", clientIds);
 
-    const existingSet = new Set((existingBills || []).map(b => b.client_id));
+    const existingSet = new Set((existingBills || []).map((b: any) => b.client_id));
 
-    // Generate billing for clients without existing bills
-    const newBills = clients
-      .filter(c => !existingSet.has(c.id) && c.billing_status !== "Left")
-      .map(c => ({
+    // Categorize and build new bills with rules
+    let skippedPersonal = 0;
+    let skippedLeft = 0;
+    let skippedExisting = 0;
+    let freeBills = 0;
+    let normalBills = 0;
+
+    const newBills: any[] = [];
+
+    for (const c of clients as any[]) {
+      const bs = String(c.billing_status || "").toLowerCase();
+
+      if (existingSet.has(c.id)) {
+        skippedExisting++;
+        continue;
+      }
+      if (bs === "left" || bs === "inactive") {
+        skippedLeft++;
+        continue;
+      }
+      if (bs === "personal") {
+        skippedPersonal++;
+        continue;
+      }
+
+      const isFree = bs === "free";
+      const amount = isFree ? 500 : Number(c.monthly_bill || 0);
+      const paid = isFree ? 500 : 0;
+      const due = isFree ? 0 : amount;
+      const status = isFree ? "paid" : "unpaid";
+
+      newBills.push({
         bill_id: `BILL-${c.client_id}-${monthKey}`,
         client_id: c.id,
         month: targetMonth,
-        amount: c.monthly_bill || 0,
-        due: c.monthly_bill || 0,
-        status: "unpaid",
+        amount,
+        paid,
+        due,
+        status,
         generated: true,
         branch_id: c.branch_id || null,
-      }));
+        pay_date: isFree ? new Date().toISOString().slice(0, 10) : null,
+      });
+
+      if (isFree) freeBills++;
+      else normalBills++;
+    }
 
     if (newBills.length === 0) {
       return new Response(
-        JSON.stringify({ message: "All clients already have billing for this month", generated: 0 }),
+        JSON.stringify({
+          message: "No new bills to generate",
+          generated: 0,
+          skippedPersonal,
+          skippedLeft,
+          skippedExisting,
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -90,10 +130,18 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ message: `Generated ${inserted} billing records for ${monthKey}`, generated: inserted }),
+      JSON.stringify({
+        message: `Generated ${inserted} bills for ${monthKey}`,
+        generated: inserted,
+        normalBills,
+        freeBills,
+        skippedPersonal,
+        skippedLeft,
+        skippedExisting,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err) {
+  } catch (err: any) {
     console.error("generate-monthly-billing error:", err);
     return new Response(
       JSON.stringify({ error: err.message }),
