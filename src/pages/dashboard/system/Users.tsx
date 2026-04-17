@@ -357,10 +357,17 @@ export default function Users() {
                     ) : appRoles.length === 0 ? (
                       <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">কোনো রোল নেই</TableCell></TableRow>
                     ) : (
-                      appRoles.map((r: any, i: number) => (
+                      appRoles.map((r: any, i: number) => {
+                        const locked = r.is_protected && !isSuperAdmin;
+                        return (
                         <TableRow key={r.id} className="hover:bg-muted/30">
                           <TableCell className="text-xs text-center">{i + 1}</TableCell>
-                          <TableCell className="text-xs text-center font-medium text-blue-600">{r.name}</TableCell>
+                          <TableCell className="text-xs text-center font-medium text-blue-600">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {r.name}
+                              {r.is_default && <Badge variant="outline" className="text-[9px] gap-0.5 border-amber-500 text-amber-600"><ShieldCheck className="h-2.5 w-2.5" /> System</Badge>}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-center">
                             <Badge className={`text-[10px] ${r.status === "Active" ? "bg-green-500 hover:bg-green-600" : r.status === "Not Assigned" ? "bg-orange-500 hover:bg-orange-600" : "bg-red-500 hover:bg-red-600"}`}>{r.status}</Badge>
                           </TableCell>
@@ -369,12 +376,19 @@ export default function Users() {
                           <TableCell className="text-xs text-center">{r.created_at ? new Date(r.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : ""}</TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center gap-1">
-                              <button onClick={() => setEditingRole({ ...r })} className="text-blue-500 hover:text-blue-700"><Edit className="h-4 w-4" /></button>
-                              <button onClick={() => deleteRole.mutate(r.id)} className="text-red-500 hover:text-red-700"><Trash2 className="h-4 w-4" /></button>
+                              {locked ? (
+                                <span title="System role — Super Admin only" className="text-muted-foreground"><Lock className="h-4 w-4" /></span>
+                              ) : (
+                                <>
+                                  <button onClick={() => setEditingRole({ ...r })} className="text-blue-500 hover:text-blue-700"><Edit className="h-4 w-4" /></button>
+                                  <button onClick={() => { if (r.is_protected && !confirm("এটি একটি system role। আপনি কি নিশ্চিত?")) return; deleteRole.mutate(r.id); }} className="text-red-500 hover:text-red-700"><Trash2 className="h-4 w-4" /></button>
+                                </>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
