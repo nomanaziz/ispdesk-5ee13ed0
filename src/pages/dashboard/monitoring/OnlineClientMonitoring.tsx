@@ -201,37 +201,77 @@ export default function OnlineClientMonitoring() {
     }
   };
 
-  // Action: Live Traffic — now includes cumulative data for offline users
+  // Action: Live Traffic — uses live-traffic-snapshot (proven working) + monthly history
   const handleLiveTraffic = async (session: ActiveSession) => {
     setTrafficDialog({ open: true, loading: true, data: null, username: session.name, session, trafficHistory: [] });
-    
-    // Load traffic history from DB in parallel with MikroTik status
-    const historyPromise = supabase
-      .from("client_traffic_logs")
-      .select("id, upload_bytes, download_bytes, recorded_at")
-      .eq("username", session.name)
-      .order("recorded_at", { ascending: false })
-      .limit(20);
 
     try {
-      const [mkResult, historyResult] = await Promise.all([
-        supabase.functions.invoke("manage-mikrotik-ppp", {
-          body: {
-            mikrotik_id: session.device_id || session.mikrotik_id,
-            username: session.name,
-            action: "status",
-          },
-        }),
-        historyPromise,
+      // Resolve client_id from username (the snapshot fn requires client_id)
+      const { data: cli } = await supabase
+        .from("clients")
+        .select("id, total_upload, total_download")
+        .ilike("username", session.name)
+        .maybeSingle();
+
+      if (!cli) {
+        toast.error(`Client "${session.name}" DB-তে নেই`);
+        setTrafficDialog((p) => ({ ...p, loading: false, data: { has_active_session: false } }));
+        return;
+      }
+
+      // Parallel: live snapshot + monthly history
+      const [snapRes, monthlyRes, recentRes] = await Promise.all([
+        supabase.functions.invoke("live-traffic-snapshot", { body: { client_id: cli.id } }),
+        supabase
+          .from("client_traffic_monthly")
+          .select("month, total_upload, total_download")
+          .eq("client_id", cli.id)
+          .order("month", { ascending: false })
+          .limit(12),
+        supabase
+          .from("client_traffic_logs")
+          .select("id, upload_bytes, download_bytes, recorded_at")
+          .eq("client_id", cli.id)
+          .order("recorded_at", { ascending: false })
+          .limit(20),
       ]);
 
-      const mkData = mkResult.error ? null : mkResult.data;
-      const history = (historyResult.data || []) as TrafficLog[];
+      const snap = snapRes.error ? null : snapRes.data;
+      const monthly = (monthlyRes.data || []) as Array<{ month: string; total_upload: number; total_download: number }>;
+      const history = (recentRes.data || []) as TrafficLog[];
+
+      // Adapt snapshot → expected dialog data shape
+      const adapted = snap
+        ? {
+            has_active_session: !!snap.online,
+            current_id: snap.address,
+            session: snap.online
+              ? {
+                  uptime: snap.uptime,
+                  caller_id: snap.address,
+                  upload_bytes: String(snap.session_upload_bytes || 0),
+                  download_bytes: String(snap.session_download_bytes || 0),
+                }
+              : null,
+            live_traffic: snap.online
+              ? { rx_bps: snap.download_bps || 0, tx_bps: snap.upload_bps || 0 }
+              : null,
+            monthly,
+          }
+        : { has_active_session: false, monthly };
+
+      // Override session row with the freshest cumulative totals from DB
+      const sessionWithTotals = {
+        ...session,
+        total_upload: cli.total_upload || session.total_upload || 0,
+        total_download: cli.total_download || session.total_download || 0,
+      };
 
       setTrafficDialog((prev) => ({
         ...prev,
         loading: false,
-        data: mkData || { has_active_session: false },
+        data: adapted,
+        session: sessionWithTotals,
         trafficHistory: history,
       }));
     } catch (err: any) {
@@ -859,6 +899,39 @@ export default function OnlineClientMonitoring() {
                             </TableCell>
                             <TableCell className="text-xs py-1.5 text-right text-blue-500">{formatBytes(log.upload_bytes)}</TableCell>
                             <TableCell className="text-xs py-1.5 text-right text-emerald-500">{formatBytes(log.download_bytes)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {/* Monthly History */}
+              {Array.isArray(trafficDialog.data?.monthly) && trafficDialog.data.monthly.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1">
+                    <History className="h-3.5 w-3.5" /> Monthly Traffic History
+                  </p>
+                  <div className="rounded-md border max-h-40 overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs py-1.5">Month</TableHead>
+                          <TableHead className="text-xs py-1.5 text-right">Upload</TableHead>
+                          <TableHead className="text-xs py-1.5 text-right">Download</TableHead>
+                          <TableHead className="text-xs py-1.5 text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {trafficDialog.data.monthly.map((m: any) => (
+                          <TableRow key={m.month}>
+                            <TableCell className="text-xs py-1.5 font-mono">
+                              {new Date(m.month).toLocaleDateString("en-US", { year: "numeric", month: "short" })}
+                            </TableCell>
+                            <TableCell className="text-xs py-1.5 text-right text-blue-500">{formatBytes(Number(m.total_upload || 0))}</TableCell>
+                            <TableCell className="text-xs py-1.5 text-right text-emerald-500">{formatBytes(Number(m.total_download || 0))}</TableCell>
+                            <TableCell className="text-xs py-1.5 text-right font-semibold">{formatBytes(Number(m.total_upload || 0) + Number(m.total_download || 0))}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
