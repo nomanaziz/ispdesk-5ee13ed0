@@ -57,11 +57,23 @@ export default function ShopOrderDetail() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <Link to="/dashboard/shop/orders" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />ফিরুন
         </Link>
-        <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />প্রিন্ট</Button>
+        <div className="flex gap-2 print:hidden">
+          {order.shipping > 0 && (
+            <Button variant="outline" size="sm" onClick={makeFreeShipping}>
+              <Truck className="h-4 w-4 mr-1" />ফ্রি শিপিং করুন
+            </Button>
+          )}
+          {order.order_status !== "completed" && (
+            <Button size="sm" onClick={sealOrder} className="bg-emerald-600 hover:bg-emerald-700">
+              <CheckCircle2 className="h-4 w-4 mr-1" />অর্ডার সম্পন্ন (Seal)
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />প্রিন্ট</Button>
+        </div>
       </div>
 
       <Card>

@@ -38,6 +38,7 @@ import ShopShippingZones from "@/pages/dashboard/shop/ShippingZones";
 import ShopCoupons from "@/pages/dashboard/shop/Coupons";
 import WarrantyClaims from "@/pages/dashboard/shop/WarrantyClaims";
 import ShopSalesReport from "@/pages/dashboard/shop/SalesReport";
+import AdminCreateOrder from "@/pages/dashboard/shop/AdminCreateOrder";
 
 // Auth pages
 import Login from "./pages/Login";
@@ -292,6 +293,9 @@ import PortalMediaServers from "@/pages/portal/PortalMediaServers";
 import PortalLedger from "@/pages/portal/PortalLedger";
 import PortalLiveUsage from "@/pages/portal/PortalLiveUsage";
 import PortalSpeedTest from "@/pages/portal/PortalSpeedTest";
+import PortalShop from "@/pages/portal/PortalShop";
+import PortalShopCheckout from "@/pages/portal/PortalShopCheckout";
+import PortalMyOrders from "@/pages/portal/PortalMyOrders";
 
 // Reseller
 import ResellerProtectedRoute from "@/components/ResellerProtectedRoute";
@@ -352,7 +356,7 @@ const App = () => (
               <Route path="/shop" element={<Pub><Shop /></Pub>} />
               <Route path="/shop/:slug" element={<Pub><ShopProduct /></Pub>} />
               <Route path="/cart" element={<Pub><Cart /></Pub>} />
-              <Route path="/checkout" element={<Pub><Checkout /></Pub>} />
+              <Route path="/checkout" element={<PortalAuthProvider><Pub><Checkout /></Pub></PortalAuthProvider>} />
               <Route path="/order/:id/track" element={<Pub><OrderTrack /></Pub>} />
               {/* Auth */}
               <Route path="/login" element={<Login />} />
@@ -603,6 +607,7 @@ const App = () => (
               <Route path="/dashboard/shop/products/new" element={<P><ShopProductForm /></P>} />
               <Route path="/dashboard/shop/products/:id" element={<P><ShopProductForm /></P>} />
               <Route path="/dashboard/shop/orders" element={<P><ShopOrders /></P>} />
+              <Route path="/dashboard/shop/orders/new" element={<P><AdminCreateOrder /></P>} />
               <Route path="/dashboard/shop/orders/:id" element={<P><ShopOrderDetail /></P>} />
               <Route path="/dashboard/shop/shipping" element={<P><ShopShippingZones /></P>} />
               <Route path="/dashboard/shop/coupons" element={<P><ShopCoupons /></P>} />
@@ -621,6 +626,9 @@ const App = () => (
               <Route path="/portal/ledger" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalLedger /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/live-usage" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalLiveUsage /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/speed-test" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalSpeedTest /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/shop" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalShop /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/checkout" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalShopCheckout /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/my-orders" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalMyOrders /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
 
               {/* Reseller Portal */}
               <Route path="/reseller" element={<Navigate to="/reseller/dashboard" replace />} />
