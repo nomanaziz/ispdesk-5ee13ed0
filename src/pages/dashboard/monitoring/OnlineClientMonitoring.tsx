@@ -499,7 +499,7 @@ export default function OnlineClientMonitoring() {
             <TableHead>Profile</TableHead>
             <TableHead>Service</TableHead>
             <TableHead>IP Address</TableHead>
-            <TableHead>Mac Address</TableHead>
+            <TableHead>Session Time</TableHead>
             <TableHead>Session Time</TableHead>
             <TableHead>Traffic</TableHead>
             <TableHead>Action</TableHead>
