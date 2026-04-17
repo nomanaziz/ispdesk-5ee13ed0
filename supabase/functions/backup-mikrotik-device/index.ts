@@ -1,10 +1,44 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { withMikrotik, mikrotikCommand } from "../_shared/mikrotik-api.ts";
+import { ftpDownload } from "../_shared/mikrotik-ftp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+async function sendBackupEmail(
+  toEmail: string,
+  deviceName: string,
+  fileName: string,
+  fileBytes: Uint8Array,
+) {
+  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+  if (!RESEND_API_KEY) return { ok: false, msg: "RESEND_API_KEY not configured" };
+  // base64 encode
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < fileBytes.length; i += chunk) {
+    bin += String.fromCharCode(...fileBytes.subarray(i, i + chunk));
+  }
+  const b64 = btoa(bin);
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "Backup <onboarding@resend.dev>",
+      to: [toEmail],
+      subject: `MikroTik backup — ${deviceName} — ${fileName}`,
+      html: `<p>Device: <b>${deviceName}</b></p><p>File: <code>${fileName}</code></p><p>Size: ${fileBytes.byteLength} bytes</p>`,
+      attachments: [{ filename: fileName, content: b64 }],
+    }),
+  });
+  if (!r.ok) return { ok: false, msg: `Email failed: ${r.status} ${await r.text()}` };
+  return { ok: true, msg: "" };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -25,6 +59,16 @@ Deno.serve(async (req) => {
       .single();
     if (derr || !dev) throw new Error("Device not found");
 
+    // Load backup email settings
+    const { data: settingRow } = await supabase
+      .from("system_settings")
+      .select("setting_value")
+      .eq("setting_key", "backup_email")
+      .maybeSingle();
+    const settings = (settingRow?.setting_value as any) || {};
+    const emailEnabled = !!settings.enabled && !!settings.to;
+    const emailTo: string | null = emailEnabled ? settings.to : null;
+
     const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "_");
     const safeName = (dev.name || "device").replace(/[^a-z0-9_-]/gi, "_");
     const created: any[] = [];
@@ -40,64 +84,54 @@ Deno.serve(async (req) => {
       let fileSize: number | null = null;
 
       try {
+        // 1. Trigger backup creation on device via API
         await withMikrotik(dev as any, async (conn) => {
           if (isRsc) {
-            // 1. Trigger export to file on device
             await mikrotikCommand(conn, "/export", { file: baseFile });
-            // 2. Wait for file generation
-            await new Promise((r) => setTimeout(r, 2500));
-            // 3. Verify file exists
-            const files = await mikrotikCommand(conn, "/file/print", { "?name": fullName });
-            if (files.length === 0) {
-              throw new Error("Device-এ .rsc ফাইল তৈরি হয়নি");
-            }
-            const sizeStr = files[0]?.size || "0";
-            fileSize = parseInt(sizeStr, 10) || null;
-            // 4. Fetch file contents (text)
-            const contentRows = await mikrotikCommand(conn, "/file/print", {
-              "?name": fullName,
-              ".proplist": "contents",
-            });
-            const contents = contentRows[0]?.contents || "";
-            if (!contents) {
-              throw new Error("ফাইলের contents পড়া যায়নি (size: " + sizeStr + ")");
-            }
-            fileBytes = new TextEncoder().encode(contents);
-            fileSize = fileBytes.byteLength;
           } else {
-            // Binary backup
             await mikrotikCommand(conn, "/system/backup/save", { name: baseFile });
-            await new Promise((r) => setTimeout(r, 3000));
-            const files = await mikrotikCommand(conn, "/file/print", { "?name": fullName });
-            if (files.length === 0) {
-              throw new Error("Device-এ .backup ফাইল তৈরি হয়নি");
-            }
-            fileSize = parseInt(files[0]?.size || "0", 10) || null;
-            // Binary content can NOT be retrieved via API — only via FTP/Winbox
-            // Mark as completed-on-device
           }
+          // wait for file to materialize
+          await new Promise((r) => setTimeout(r, isRsc ? 2500 : 4000));
+          // verify exists & get size
+          const files = await mikrotikCommand(conn, "/file/print", { "?name": fullName });
+          if (files.length === 0) throw new Error(`Device-এ ${fullName} তৈরি হয়নি`);
+          fileSize = parseInt(files[0]?.size || "0", 10) || null;
         });
 
-        if (isRsc && fileBytes) {
-          // Upload .rsc to storage
-          filePath = `mikrotik/${dev.id}/${fullName}`;
-          const { error: upErr } = await supabase.storage
-            .from("device-backups")
-            .upload(filePath, fileBytes, {
-              contentType: "text/plain",
-              upsert: true,
-            });
-          if (upErr) {
-            status = "failed";
-            errMsg = `Storage upload failed: ${upErr.message}`;
-            filePath = null;
-          } else {
-            status = "completed";
-          }
-        } else if (!isRsc) {
-          // .backup created on device, not downloadable via API
+        // 2. Download via FTP (works for both .rsc text and .backup binary)
+        try {
+          fileBytes = await ftpDownload(
+            dev.ip_address,
+            dev.username || "admin",
+            dev.password_encrypted || "",
+            fullName,
+          );
+          fileSize = fileBytes.byteLength;
+        } catch (ftpErr: any) {
+          throw new Error(`FTP download ব্যর্থ: ${ftpErr.message}. Device-এ FTP service (port 21) enabled আছে কিনা চেক করুন।`);
+        }
+
+        // 3. Upload to storage
+        filePath = `mikrotik/${dev.id}/${fullName}`;
+        const { error: upErr } = await supabase.storage
+          .from("device-backups")
+          .upload(filePath, fileBytes, {
+            contentType: isRsc ? "text/plain" : "application/octet-stream",
+            upsert: true,
+          });
+        if (upErr) {
+          errMsg = `Storage upload failed: ${upErr.message}`;
+          status = "failed";
+          filePath = null;
+        } else {
           status = "completed";
-          errMsg = `📁 Device path: /${fullName} — Winbox/FTP দিয়ে download করুন`;
+        }
+
+        // 4. Email (best-effort)
+        if (status === "completed" && emailEnabled && emailTo && fileBytes) {
+          const er = await sendBackupEmail(emailTo, dev.name || "device", fullName, fileBytes);
+          if (!er.ok) errMsg = `(saved, email skip: ${er.msg})`;
         }
       } catch (e: any) {
         errMsg = e?.message || String(e);
