@@ -252,6 +252,46 @@ export default function BackupCenter() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="email">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Mail className="h-4 w-4" /> ব্যাকআপ ইমেইল সেটিংস
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 max-w-xl">
+              <p className="text-sm text-muted-foreground">
+                ব্যাকআপ ফাইল storage-এ save হওয়ার সাথে সাথে নির্দিষ্ট ইমেইলে attachment হিসাবে পাঠানো হবে।
+                (RESEND_API_KEY secret সেট থাকতে হবে)
+              </p>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={!!cfg.enabled}
+                  onCheckedChange={(v) => setEmailDraft({ ...cfg, enabled: v })}
+                />
+                <Label>ইমেইল পাঠানো চালু করুন</Label>
+              </div>
+              <div className="space-y-2">
+                <Label>ইমেইল ঠিকানা</Label>
+                <Input
+                  type="email"
+                  placeholder="backup@example.com"
+                  value={cfg.to || ""}
+                  onChange={(e) => setEmailDraft({ ...cfg, to: e.target.value })}
+                  disabled={!cfg.enabled}
+                />
+              </div>
+              <Button
+                onClick={() => { saveEmailCfg(cfg); setEmailDraft(null); }}
+                disabled={isSaving || (cfg.enabled && !cfg.to)}
+              >
+                {isSaving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+                সংরক্ষণ করুন
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
