@@ -1,60 +1,49 @@
 
 
-User চান ৩টা global UI উন্নতি যা পুরো software-জুড়ে apply হবে:
+User চান ৩টা specific change Online Client Monitoring table-এ:
 
-### ১. Global Table Improvements (সব page)
-**Approach:** `src/components/ui/table.tsx`-এ একবার change করলেই সব 128+ table page-এ প্রভাব পড়বে (zero-touch global change)।
+### ১. Duration column → "Session Time" (combined cell, 2 lines)
+এখন: শুধু `Duration` column যেখানে online হলে uptime দেখায়, offline হলে `—`।
 
-- **Zebra striping (alternating colors):** `TableBody`-তে `[&_tr:nth-child(even)]:bg-muted/30` যোগ করব → odd/even row alternate background।
-- **Full borders:** `TableRow`-তে `[&_td]:border-r [&_th]:border-r last:[&_td]:border-r-0 last:[&_th]:border-r-0` + `Table`-এ `border-collapse` → প্রতিটা cell-এ border।
-- **Compact padding:** `TableCell` `p-4` → `p-2`, `TableHead` `h-12 px-4` → `h-9 px-2` → information density বাড়বে।
-- **Header background:** `TableHeader`-এ `bg-muted/50` → header আলাদা দেখাবে।
+নতুন:
+- **Column heading rename**: `Duration` → `Session Time`
+- **Cell content** (উপর-নিচ stack):
+  - **Online**: উপরে badge `🟢 Online`, নিচে monospace `2h 14m` (uptime)
+  - **Offline**: উপরে badge `⚫ Offline`, নিচে monospace `2h ago` বা `12 Apr 14:32` (last logout time)
+- **Status column পুরোপুরি remove** (information এই cell-এ merge হয়ে গেল) → colSpan 20 → 19
 
-### ২. OnlineClientMonitoring page-specific fixes (`src/pages/dashboard/monitoring/OnlineClientMonitoring.tsx`)
+### ২. Upload + Download → এক column "Traffic" (2-line stack)
+এখন: 2টা আলাদা column (Upload, Download)।
 
-- **"R.Days" column remove** (line 454 + corresponding TableCell line 502) — এটাই "8 days" দেখাচ্ছিল।
-- **Status column**: full text Badge → শুধু একটা ছোট icon (green dot ✓ অথবা red ✗)। 
-  ```
-  Online  → 🟢 small green dot
-  Offline → ❌ small red cross
-  ```
-- **Action buttons (4টা)** → 2x2 grid (উপরে 2, নিচে 2):
-  ```
-  [Activity] [Radio]
-  [Rotate]   [SMS]
-  ```
-  `flex-row gap-1` → `grid grid-cols-2 gap-0.5 w-fit`, button size `h-7 w-7` → `h-6 w-6`।
-- **colSpan update**: 21 → 20 (R.Days removed)।
-
-### ৩. Dark mode color softening (`src/index.css`)
-
-বর্তমান:
+নতুন: একটা column `Traffic`, প্রতিটা cell-এ:
 ```
---background: 229 30% 11%;   /* প্রায় কালো */
---card:       229 30% 14%;
---foreground: 220 20% 92%;   /* প্রায় সাদা */
+↑ 12.3 MB     (blue, ArrowUpFromLine icon)
+↓ 145.7 MB   (green, ArrowDownToLine icon)
 ```
+এক session-এর data দেখাবে (current `total_upload`/`total_download` যা DB-তে আছে)।
+**colSpan**: 19 → 18।
 
-নতুন (চোখের জন্য আরাম):
-```
---background: 224 22% 16%;   /* হালকা slate-grey, কালো না */
---card:       224 20% 19%;
---popover:    224 20% 19%;
---secondary/muted/accent: 224 18% 23%;
---border/input:           224 18% 26%;
---sidebar-background:     224 22% 17%;
---sidebar-accent:         224 18% 22%;
---foreground: 220 14% 86%;   /* off-white, pure white না */
---sidebar-foreground: 220 12% 78%;
-```
+### ৩. Live traffic dialog → continuous update (every 2s)
+এখন: dialog open করলে একবারই data fetch হয়, তারপর static।
 
-ফলাফল: dark mode আর "pitch black" না, একটু muted slate tone — চোখে আরাম, কিন্তু dark theme এর feel থাকবে। Text-ও pure white না, slightly off-white → contrast কমবে কিন্তু readable থাকবে।
+নতুন: 
+- `handleLiveTraffic` খোলার পর `setInterval(2000)` দিয়ে প্রতি 2s এ `live-traffic-snapshot` re-invoke করব।
+- শুধু `live_traffic` (rx_bps/tx_bps) এবং `session.upload_bytes/download_bytes` field re-update হবে — monthly history fetch repeat হবে না (efficient)।
+- Dialog close হলে interval clear।
+- Dialog header-এ একটা ছোট pulsing indicator: "🔴 Live • Updates every 2s"।
+- "Live Speed" cards-এ smooth animation/transition যাতে number change visible হয়।
 
 ### Files to edit
-1. `src/components/ui/table.tsx` — zebra + borders + compact padding (global)
-2. `src/index.css` — dark mode HSL values softer
-3. `src/pages/dashboard/monitoring/OnlineClientMonitoring.tsx` — R.Days remove, status icon, action 2x2
+1. `src/pages/dashboard/monitoring/OnlineClientMonitoring.tsx`:
+   - Table header: remove `Status`, `Duration`, `Upload`, `Download` (4 columns) → add `Session Time`, `Traffic` (2 columns)
+   - Table cell rendering update accordingly
+   - colSpan 20 → 18
+   - `handleLiveTraffic`: add polling interval ref; new helper `pollLiveSnapshot(client_id)` যা শুধু live data refresh করে
+   - `useEffect` cleanup: dialog close-এ clear interval
+   - Dialog header-এ live indicator add
 
-### Note
-Table-এর global change-এ প্রায় সব ERP page (BillingList, ClientList, Invoices, HR ইত্যাদি 128+ pages) automatic alternating color + borders + compact spacing পাবে। কোনো individual page edit লাগবে না।
+### Notes
+- "Last logout time" এর জন্য DB-তে কোনো `last_seen`/`last_logout_at` column নেই। **আপাতত** offline row-এ শুধু `Offline` badge দেখাব (relative time না দিয়ে)। 
+- যদি future-এ accurate "last logout time" চান, তাহলে `clients.last_seen_at timestamptz` column add করতে হবে এবং `collect-client-traffic` cron job এর মধ্যে প্রতি sync-এ online clients-এর জন্য update করতে হবে। এটা চাইলে এই plan-এ যোগ করতে পারি।
+- বর্তমান plan zero-database-change — শুধু UI restructure + polling।
 
