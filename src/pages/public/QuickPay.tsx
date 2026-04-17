@@ -4,29 +4,41 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { CreditCard, Search, ArrowRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { CreditCard, Search, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BreadcrumbBanner } from "@/components/public/BreadcrumbBanner";
 
 export default function QuickPay() {
   const { toast } = useToast();
-  const [clientId, setClientId] = useState("");
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [client, setClient] = useState<any>(null);
   const [bills, setBills] = useState<any[]>([]);
 
   const handleSearch = async () => {
-    if (!clientId.trim()) return;
+    const q = query.trim();
+    if (!q) return;
     setLoading(true);
     setClient(null);
     setBills([]);
-    const { data: clientData } = await supabase
+
+    // Case-insensitive multi-field search: client_id, user_id, contact, name
+    const { data: clients } = await supabase
       .from("clients")
-      .select("id, name, client_id, contact, monthly_bill, status")
-      .eq("client_id", clientId.trim())
-      .maybeSingle();
+      .select("id, name, client_id, contact, monthly_bill, status, user_id, address")
+      .or(
+        `client_id.ilike.${q},user_id.ilike.${q},contact.ilike.%${q}%,name.ilike.%${q}%`
+      )
+      .limit(1);
+
+    const clientData = clients?.[0];
     if (!clientData) {
-      toast({ title: "গ্রাহক পাওয়া যায়নি", description: "সঠিক কাস্টমার আইডি দিন।", variant: "destructive" });
+      toast({
+        title: "গ্রাহক পাওয়া যায়নি",
+        description: "সঠিক কাস্টমার আইডি, ইউজার নেম, নাম অথবা মোবাইল নম্বর দিন।",
+        variant: "destructive",
+      });
       setLoading(false);
       return;
     }
@@ -36,10 +48,14 @@ export default function QuickPay() {
       .select("*")
       .eq("client_id", clientData.id)
       .order("month", { ascending: false })
-      .limit(6);
+      .limit(12);
     setBills(billData || []);
     setLoading(false);
   };
+
+  const totalDue = bills.reduce((s, b) => s + Number(b.due || 0), 0);
+  const totalPaid = bills.reduce((s, b) => s + Number(b.paid || 0), 0);
+  const hasDue = totalDue > 0;
 
   return (
     <>
@@ -59,20 +75,20 @@ export default function QuickPay() {
                 </div>
                 <div>
                   <h2 className="font-bold text-slate-900">বিল অনুসন্ধান</h2>
-                  <p className="text-xs text-slate-500">কাস্টমার আইডি দিয়ে খুঁজুন</p>
+                  <p className="text-xs text-slate-500">কাস্টমার আইডি, ইউজার নেম, নাম বা মোবাইল</p>
                 </div>
               </div>
-              <Label className="text-slate-700 font-medium">কাস্টমার আইডি</Label>
+              <Label className="text-slate-700 font-medium">কাস্টমার তথ্য</Label>
               <div className="flex gap-2 mt-1">
                 <Input
-                  value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
-                  placeholder="যেমন: C-001"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="যেমন: naeem, CL001, 0170... বা নাম"
                   className="bg-slate-50 border-slate-200 text-slate-900"
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 />
                 <Button onClick={handleSearch} disabled={loading} className="bg-cyan-600 hover:bg-cyan-700 text-white px-6">
-                  <Search className="h-4 w-4 mr-1" /> খুঁজুন
+                  <Search className="h-4 w-4 mr-1" /> {loading ? "..." : "খুঁজুন"}
                 </Button>
               </div>
             </CardContent>
@@ -81,7 +97,18 @@ export default function QuickPay() {
           {client && (
             <Card className="border-slate-200 bg-white shadow-sm mb-6">
               <CardContent className="p-6">
-                <h3 className="font-bold text-lg text-slate-900 mb-3">গ্রাহকের তথ্য</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-lg text-slate-900">গ্রাহকের তথ্য</h3>
+                  {hasDue ? (
+                    <Badge className="bg-red-100 text-red-700 border-0 gap-1">
+                      <AlertTriangle className="h-3 w-3" /> বকেয়া আছে
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-green-100 text-green-700 border-0 gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> পরিশোধিত
+                    </Badge>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-y-2 text-sm">
                   <span className="text-slate-500">নাম:</span>
                   <span className="text-slate-900 font-medium">{client.name}</span>
@@ -92,9 +119,20 @@ export default function QuickPay() {
                   <span className="text-slate-500">মাসিক বিল:</span>
                   <span className="text-slate-900 font-bold text-cyan-600">৳{client.monthly_bill || 0}</span>
                   <span className="text-slate-500">স্ট্যাটাস:</span>
-                  <span className={client.status === "active" ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
-                    {client.status === "active" ? "সক্রিয়" : client.status}
+                  <span className={String(client.status).toLowerCase() === "active" ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
+                    {String(client.status).toLowerCase() === "active" ? "সক্রিয়" : client.status}
                   </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-5 pt-4 border-t">
+                  <div className="rounded-lg bg-red-50 border border-red-100 p-3">
+                    <div className="text-[11px] text-red-600 font-medium">মোট বকেয়া</div>
+                    <div className="text-xl font-bold text-red-700">৳{totalDue.toLocaleString()}</div>
+                  </div>
+                  <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3">
+                    <div className="text-[11px] text-emerald-600 font-medium">মোট পরিশোধিত</div>
+                    <div className="text-xl font-bold text-emerald-700">৳{totalPaid.toLocaleString()}</div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -109,7 +147,7 @@ export default function QuickPay() {
                     <div key={b.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
                       <div>
                         <div className="text-sm font-medium text-slate-900">{b.month}</div>
-                        <div className="text-xs text-slate-500">৳{b.amount} | পরিশোধিত: ৳{b.paid || 0}</div>
+                        <div className="text-xs text-slate-500">৳{b.amount} | পরিশোধিত: ৳{b.paid || 0} | বকেয়া: ৳{b.due || 0}</div>
                       </div>
                       <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
                         b.status === "paid" ? "bg-green-100 text-green-700" :
@@ -121,6 +159,14 @@ export default function QuickPay() {
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {client && bills.length === 0 && (
+            <Card className="border-slate-200 bg-white shadow-sm">
+              <CardContent className="p-6 text-center text-sm text-slate-500">
+                কোনো বিলিং রেকর্ড পাওয়া যায়নি।
               </CardContent>
             </Card>
           )}

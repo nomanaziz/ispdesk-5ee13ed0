@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard, FileText, HeadphonesIcon, LogOut, Menu, X,
   Activity, Bell, Building2, Clapperboard, BookOpen, ChevronDown, Rocket,
-  ShoppingBag, Package,
+  ShoppingBag, Package, Receipt,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -22,6 +22,7 @@ const menuItems = [
   { label: "Movie/FTP Servers", icon: Clapperboard, path: "/portal/media" },
   { label: "Speed Test", icon: Rocket, path: "/portal/speed-test" },
   { label: "My Ledger", icon: BookOpen, path: "/portal/ledger" },
+  { label: "মাসিক বিল", icon: Receipt, path: "/portal/bills" },
   { label: "Invoices", icon: FileText, path: "/portal/invoices" },
   { label: "Shop", icon: ShoppingBag, path: "/portal/shop" },
   { label: "My Orders", icon: Package, path: "/portal/my-orders" },
@@ -30,10 +31,10 @@ const menuItems = [
 
 const bottomNav = [
   { label: "Home", icon: LayoutDashboard, path: "/portal/dashboard" },
-  { label: "Notices", icon: Bell, path: "/portal/notices" },
+  { label: "Bills", icon: Receipt, path: "/portal/bills" },
   { label: "Tickets", icon: HeadphonesIcon, path: "/portal/support" },
   { label: "Ledger", icon: BookOpen, path: "/portal/ledger" },
-  { label: "Invoices", icon: FileText, path: "/portal/invoices" },
+  { label: "Notices", icon: Bell, path: "/portal/notices" },
 ];
 
 export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
