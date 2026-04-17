@@ -1,86 +1,75 @@
 
 
-## Device Administration — Centralized Multi-Device Management Module
+## Device Administration — Simplification Plan
 
-### Goal
-এমন একটা central module যেখান থেকে admin **একসাথে অনেক device-এ** (MikroTik, OLT, Switch, ZKTeco) user deploy/delete, backup নেওয়া, এবং কে কোথায় কী change করেছে সেটা log দেখতে পারবে। এক জায়গায় বসে সব device manage।
+আপনার পুরাতন project-এর মত simple রাখব। ৩টা মূল পরিবর্তন:
 
-### Sidebar Group Name
-**"ডিভাইস অ্যাডমিনিস্ট্রেশন" (Device Administration)** — icon: `ShieldCheck`
-AppSidebar-এ "MikroTik সার্ভার" group-এর নিচে নতুন group হিসেবে add।
+### ১. Bulk User Deploy → Popup-এ রূপান্তর
+- আলাদা wizard page বাদ। **Devices ইনভেন্টরি page**-এ উপরে "Deploy User" এবং "Remove User" বাটন।
+- Click → একটাই dialog খুলবে যেখানে:
+  - Username, Password, Permission (Read/Write/Full)
+  - "All Select" checkbox + device list (filter by type)
+  - Submit → সব device-এ একসাথে job তৈরি
+- পুরাতন stepper page দুইটা (`/deploy-user`, `/delete-user`) sidebar থেকে remove।
 
-### Sub-menu items (8 pages)
-| # | Menu | Route | Purpose |
-|---|---|---|---|
-| 1 | ড্যাশবোর্ড | `/dashboard/device-admin` | Total devices, active users, last backup, recent activity stats |
-| 2 | ডিভাইস ইনভেন্টরি | `/dashboard/device-admin/devices` | All devices (MikroTik+OLT+Switch+ZKTeco) এক table-এ, type filter |
-| 3 | ইউজার গ্রুপ | `/dashboard/device-admin/groups` | Device group তৈরি (e.g. "All Dhaka POPs", "Core Routers") |
-| 4 | বাল্ক ইউজার ডিপ্লয় | `/dashboard/device-admin/deploy-user` | একটা form → username/password/permission (read/write/full) → multiple device select → একসাথে push |
-| 5 | বাল্ক ইউজার ডিলিট | `/dashboard/device-admin/delete-user` | Username search across devices → checkbox select → bulk delete |
-| 6 | ব্যাকআপ সেন্টার | `/dashboard/device-admin/backups` | Manual + Scheduled backup, all backup files এক জায়গায় (download/restore) |
-| 7 | শিডিউল ম্যানেজার | `/dashboard/device-admin/schedules` | Cron-style: daily/weekly backup schedule per device/group |
-| 8 | অডিট লগ | `/dashboard/device-admin/audit-log` | Who did what, when, on which device — filterable timeline |
+### ২. নতুন "All Device Users" page (`/dashboard/device-admin/users`)
+**মূল feature:** সব device থেকে user list pull করে এক table-এ দেখাবে।
 
-### Database changes (new migration)
-
-**4 new tables:**
-
-```
-device_admin_groups
-  id, name, description, created_by, created_at
-
-device_admin_group_members
-  id, group_id, device_type ('mikrotik'|'olt'|'switch'|'zkteco'), device_id
-
-device_admin_deploy_jobs
-  id, job_type ('deploy_user'|'delete_user'|'backup'),
-  username, password_hash, permission ('read'|'write'|'full'),
-  target_devices jsonb,           -- [{type, id, name}]
-  status ('pending'|'running'|'completed'|'partial'|'failed'),
-  results jsonb,                  -- per-device success/error
-  created_by, created_at, completed_at
-
-device_admin_audit_log
-  id, action ('user_added'|'user_deleted'|'backup_taken'|'restored'|'permission_changed'),
-  device_type, device_id, device_name,
-  target_username, performed_by, ip_address,
-  details jsonb, created_at
-
-device_admin_schedules
-  id, schedule_type ('backup'),
-  group_id, device_type, device_id,    -- either group OR specific device
-  cron_expression, last_run_at, next_run_at,
-  enabled, created_by, created_at
+```text
+| Username | Devices (count) | Permission | Last seen | Actions |
+| noman    | 5 devices       | full/write | ...       | View / Delete-all |
 ```
 
-**Reuse existing**: `mikrotik_backups` (extend with `triggered_by` enum: manual/scheduled/admin), `mikrotik_devices`, `olt_devices`, `pop_devices`, `zkteco_devices`.
+- **Username search** → "noman" লিখলে সব device থেকে যেখানে এই user আছে দেখাবে
+- Row click → expand করে দেখাবে কোন কোন device-এ আছে + কী permission
+- Per-device delete OR "Delete from all" button
+- Data source: edge function `fetch-device-users` যা MikroTik API + OLT + Switch + ZKTeco থেকে user list pull করে cache করবে `device_admin_user_inventory` table-এ
 
-**RLS**: All tables — only `is_admin_or_super(auth.uid())` can SELECT/INSERT/UPDATE/DELETE.
+**নতুন table:**
+```sql
+device_admin_user_inventory (
+  id, username, device_type, device_id, device_name,
+  permission, last_synced_at, raw_data jsonb
+)
+```
++ "Refresh" button যা edge function কল করে সব device থেকে fresh data আনে।
 
-### Edge functions (new)
-- `device-admin-deploy-user` — Loops through `target_devices`, calls per-type adapters (MikroTik API, OLT CLI, etc.), updates `deploy_jobs.results`, writes `audit_log` per device
-- `device-admin-bulk-backup` — Triggers backup on selected devices, stores files in `device-backups` storage bucket
-- `device-admin-scheduler` — pg_cron triggered every 5 min, finds due schedules, invokes `bulk-backup`
+### ৩. Schedule page-এ User Add/Remove যোগ
+বর্তমানে শুধু backup schedule আছে। যোগ হবে:
+- **Schedule type:** Backup / Add User / Remove User
+- Add User: username, password, permission, devices, run_at (একবার বা recurring)
+- Remove User: username, devices, run_at (যেমন: ৩০ তারিখে noman remove from all routers)
 
-### Storage
-New public-read bucket `device-backups` (admin-only RLS) — central store for all backup files (.backup, .rsc, .cfg).
+`device_admin_schedules` table-এ already `schedule_type` আছে — শুধু `'add_user'`, `'remove_user'` value support করতে হবে + `payload jsonb` (username, password, permission, target_devices, run_at)। UI-এ tabs: ব্যাকআপ / ইউজার অ্যাড / ইউজার রিমুভ।
 
-### UI patterns
-- Reuse existing `ConfigCrudPage`, `ReportLayout`, table/dialog components
-- Bulk Deploy form: Stepper — (1) Select Devices/Groups → (2) User Details + Permission → (3) Review → (4) Run with progress bar
-- Audit Log: Timeline view with filters (device type, action, date, performer) + CSV export
-- Backup Center: Tabbed (Manual / Scheduled / Files) with download + restore actions
+### ৪. App User তৈরির সময় MikroTik Access (bonus)
+`src/pages/dashboard/system/Users.tsx` — নতুন user wizard-এর শেষে optional step:
+- "এই user-কে MikroTik device-এ access দিন?" toggle
+- On → online MikroTik device list checkbox + permission select
+- Submit হলে background-এ deploy job তৈরি
 
-### Files to create
-- Migration: tables + RLS + bucket
-- 8 page files under `src/pages/dashboard/device-admin/`
-- 3 edge functions under `supabase/functions/`
-- Update `src/App.tsx` (8 routes) + `src/components/AppSidebar.tsx` (1 group)
+### Files to change
+- **New:** `src/pages/dashboard/device-admin/AllDeviceUsers.tsx`
+- **New:** `src/components/device-admin/DeployUserDialog.tsx`, `RemoveUserDialog.tsx`
+- **New:** `supabase/functions/fetch-device-users/index.ts` (MikroTik API থেকে user pull)
+- **Edit:** `Devices.tsx` — উপরে Deploy/Remove buttons
+- **Edit:** `Schedules.tsx` — type tabs (backup/add_user/remove_user)
+- **Edit:** `AppSidebar.tsx` — `/deploy-user` ও `/delete-user` remove, `/users` add
+- **Edit:** `App.tsx` — routes update
+- **Edit:** `system/Users.tsx` — optional MikroTik access step in new user wizard
+- **Migration:** add `device_admin_user_inventory` table + extend `device_admin_schedules` with `payload jsonb`, allow `schedule_type` values `'add_user'`, `'remove_user'`
 
-### Notes
-- Live URL-এ login করে actual UI দেখা যাবে না (separate workspace), so design existing screenshots + ISP industry standards অনুযায়ী
-- Phase 1: Group + Inventory + Audit Log + Manual Backup Center (4 pages) — fastest value
-- Phase 2: Bulk Deploy + Delete + Scheduler + Dashboard (advanced, needs edge function adapters)
+### Sidebar (final)
+```text
+ডিভাইস অ্যাডমিনিস্ট্রেশন
+  ├─ ড্যাশবোর্ড
+  ├─ ডিভাইস ইনভেন্টরি  (Deploy/Remove buttons এখানে)
+  ├─ অল ডিভাইস ইউজার   ← নতুন
+  ├─ গ্রুপ
+  ├─ ব্যাকআপ সেন্টার
+  ├─ শিডিউল ম্যানেজার  (backup + user add/remove)
+  └─ অডিট লগ
+```
 
-Confirm: Phase 1 first, or all 8 pages একসাথে?
+**Note:** MikroTik থেকে actual user pull করার জন্য existing `fetch-mikrotik-ppp` pattern follow করব। OLT/Switch/ZKTeco-এর জন্য placeholder adapter (পরে real API integrate করা যাবে)।
 
