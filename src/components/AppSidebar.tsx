@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   LayoutDashboard, Settings, Users, CreditCard,
   ChevronDown, ChevronRight, Activity,
+  Search, X, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw,
   type LucideIcon, Network, Radio, Server,
   Wallet, UserCog, CalendarDays, Package, BarChart3,
   BookOpen, FileText, Send, Boxes, Truck, Building2,
@@ -358,7 +359,7 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-function CollapsibleGroup({ group }: { group: MenuGroup }) {
+function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: boolean }) {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -368,6 +369,7 @@ function CollapsibleGroup({ group }: { group: MenuGroup }) {
     item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url)
   );
   const [open, setOpen] = useState(group.defaultOpen || isActiveGroup);
+  const effectiveOpen = forceOpen ?? open;
 
   if (collapsed) {
     return (
@@ -399,9 +401,9 @@ function CollapsibleGroup({ group }: { group: MenuGroup }) {
         )} style={{ width: "calc(100% - 16px)" }}>
         <group.icon className="h-4 w-4 shrink-0" />
         <span className="flex-1 text-left truncate">{group.label}</span>
-        {open ? <ChevronDown className="h-3 w-3 opacity-50" /> : <ChevronRight className="h-3 w-3 opacity-50" />}
+        {effectiveOpen ? <ChevronDown className="h-3 w-3 opacity-50" /> : <ChevronRight className="h-3 w-3 opacity-50" />}
       </button>
-      {open && (
+      {effectiveOpen && (
         <div className="mx-2 mt-0.5 space-y-0.5">
           {group.items.map((item) => {
             const isActive = item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url);
@@ -425,11 +427,159 @@ function CollapsibleGroup({ group }: { group: MenuGroup }) {
   );
 }
 
+const ORDER_STORAGE_KEY = "sidebar-menu-order";
+
+function loadSavedOrder(): string[] {
+  try {
+    const raw = localStorage.getItem(ORDER_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function ReorderDialog({
+  open,
+  onOpenChange,
+  currentOrder,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  currentOrder: string[];
+  onSave: (order: string[]) => void;
+}) {
+  const [draft, setDraft] = useState<string[]>(currentOrder);
+
+  useEffect(() => {
+    if (open) setDraft(currentOrder);
+  }, [open, currentOrder]);
+
+  const move = (idx: number, dir: -1 | 1) => {
+    const next = [...draft];
+    const target = idx + dir;
+    if (target < 0 || target >= next.length) return;
+    [next[idx], next[target]] = [next[target], next[idx]];
+    setDraft(next);
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => onOpenChange(false)}>
+      <div
+        className="bg-background border border-border rounded-lg shadow-xl w-full max-w-md max-h-[80vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h2 className="font-semibold text-base">মেনু সাজান</h2>
+          <button onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <ScrollArea className="flex-1">
+          <div className="p-3 space-y-1">
+            {draft.map((label, idx) => {
+              const group = menuGroups.find((g) => g.label === label);
+              if (!group) return null;
+              const Icon = group.icon;
+              return (
+                <div key={label} className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/40 hover:bg-muted">
+                  <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="flex-1 text-sm truncate">{label}</span>
+                  <button
+                    onClick={() => move(idx, -1)}
+                    disabled={idx === 0}
+                    className="p-1 rounded hover:bg-background disabled:opacity-30"
+                    title="উপরে"
+                  >
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => move(idx, 1)}
+                    disabled={idx === draft.length - 1}
+                    className="p-1 rounded hover:bg-background disabled:opacity-30"
+                    title="নিচে"
+                  >
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-border">
+          <button
+            onClick={() => setDraft(menuGroups.map((g) => g.label))}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> ডিফল্ট
+          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onOpenChange(false)}
+              className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-muted"
+            >
+              বাতিল
+            </button>
+            <button
+              onClick={() => {
+                onSave(draft);
+                onOpenChange(false);
+              }}
+              className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90"
+            >
+              সংরক্ষণ
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { resolvedMode } = useTheme();
   const isLight = resolvedMode === "light";
+  const [search, setSearch] = useState("");
+  const [reorderOpen, setReorderOpen] = useState(false);
+  const [savedOrder, setSavedOrder] = useState<string[]>(() => loadSavedOrder());
+
+  const orderedGroups = useMemo(() => {
+    const allLabels = menuGroups.map((g) => g.label);
+    const validSaved = savedOrder.filter((l) => allLabels.includes(l));
+    const missing = allLabels.filter((l) => !validSaved.includes(l));
+    const finalOrder = [...validSaved, ...missing];
+    return finalOrder
+      .map((l) => menuGroups.find((g) => g.label === l)!)
+      .filter(Boolean);
+  }, [savedOrder]);
+
+  const filteredGroups = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return orderedGroups.map((g) => ({ group: g, matched: false }));
+    return orderedGroups
+      .map((g) => {
+        const groupMatches = g.label.toLowerCase().includes(q);
+        const items = groupMatches ? g.items : g.items.filter((i) => i.title.toLowerCase().includes(q));
+        if (items.length === 0) return null;
+        return { group: { ...g, items }, matched: true };
+      })
+      .filter(Boolean) as { group: MenuGroup; matched: boolean }[];
+  }, [orderedGroups, search]);
+
+  const handleSaveOrder = (order: string[]) => {
+    setSavedOrder(order);
+    try {
+      localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(order));
+    } catch {
+      /* ignore */
+    }
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -452,14 +602,72 @@ export function AppSidebar() {
             </div>
           )}
         </div>
+
+        {!collapsed && (
+          <div className={cn("px-3 py-2 shrink-0", isLight ? "border-b border-sidebar-border" : "border-b border-white/10")}>
+            <div className="relative">
+              <Search className={cn("absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5", isLight ? "text-muted-foreground" : "text-slate-400")} />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="মেনু খুঁজুন..."
+                className={cn(
+                  "w-full h-8 pl-8 pr-7 text-[12px] rounded-md outline-none transition-colors",
+                  isLight
+                    ? "bg-muted/50 border border-border focus:border-primary text-foreground placeholder:text-muted-foreground"
+                    : "bg-white/5 border border-white/10 focus:border-primary text-white placeholder:text-slate-500"
+                )}
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className={cn("absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted", isLight ? "text-muted-foreground" : "text-slate-400")}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <ScrollArea className="flex-1">
           <SidebarContent className="bg-transparent py-2">
-            {menuGroups.map((group) => (
-              <CollapsibleGroup key={group.label} group={group} />
+            {filteredGroups.map(({ group, matched }) => (
+              <CollapsibleGroup key={group.label} group={group} forceOpen={matched ? true : undefined} />
             ))}
+            {filteredGroups.length === 0 && (
+              <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                কোনো মেনু পাওয়া যায়নি
+              </div>
+            )}
           </SidebarContent>
         </ScrollArea>
+
+        {!collapsed && (
+          <div className={cn("px-3 py-2 shrink-0", isLight ? "border-t border-sidebar-border" : "border-t border-white/10")}>
+            <button
+              onClick={() => setReorderOpen(true)}
+              className={cn(
+                "w-full flex items-center justify-center gap-2 h-8 text-[12px] rounded-md transition-colors",
+                isLight
+                  ? "bg-muted/50 hover:bg-muted text-foreground"
+                  : "bg-white/5 hover:bg-white/10 text-slate-300"
+              )}
+            >
+              <ArrowUpDown className="h-3.5 w-3.5" />
+              মেনু সাজান
+            </button>
+          </div>
+        )}
       </div>
+
+      <ReorderDialog
+        open={reorderOpen}
+        onOpenChange={setReorderOpen}
+        currentOrder={orderedGroups.map((g) => g.label)}
+        onSave={handleSaveOrder}
+      />
     </Sidebar>
   );
 }
