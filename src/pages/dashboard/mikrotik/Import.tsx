@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, CheckSquare, XCircle, Filter, RefreshCw } from "lucide-react";
+import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, XCircle, RefreshCw, ArrowRightLeft } from "lucide-react";
 import * as XLSX from "xlsx";
+import { TransferToPopDialog } from "@/components/mikrotik/TransferToPopDialog";
 
 export default function Import() {
   const navigate = useNavigate();
@@ -20,10 +21,12 @@ export default function Import() {
   const [protocolFilter, setProtocolFilter] = useState<string>("all");
   const [profileFilter, setProfileFilter] = useState<string>("all");
   const [userTypeFilter, setUserTypeFilter] = useState<string>("all");
+  const [transferStatus, setTransferStatus] = useState<"pending" | "transferred">("pending");
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [isSyncing, setIsSyncing] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
 
   const { data: servers = [] } = useQuery({
     queryKey: ["mikrotik_devices_active"],
