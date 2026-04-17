@@ -423,22 +423,37 @@ export default function Users() {
                     {getRoleModuleSummary().length === 0 ? (
                       <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">কোনো রোল মডিউল নেই</TableCell></TableRow>
                     ) : (
-                      getRoleModuleSummary().map((item, i) => (
+                      getRoleModuleSummary().map((item, i) => {
+                        const role = appRoles.find((r: any) => r.id === item.roleId);
+                        const locked = role?.is_protected && !isSuperAdmin;
+                        return (
                         <TableRow key={item.roleId} className="hover:bg-muted/30">
                           <TableCell className="text-xs text-center">{i + 1}</TableCell>
-                          <TableCell className="text-xs text-center font-medium">{item.roleName}</TableCell>
+                          <TableCell className="text-xs text-center font-medium">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {item.roleName}
+                              {role?.is_default && <Badge variant="outline" className="text-[9px] gap-0.5 border-amber-500 text-amber-600"><ShieldCheck className="h-2.5 w-2.5" /> System</Badge>}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-center"><Badge className={`text-[10px] ${item.status === "Active" ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}`}>{item.status}</Badge></TableCell>
                           <TableCell className="text-xs text-center max-w-xs truncate">{item.modules}</TableCell>
                           <TableCell className="text-xs text-center">{item.createdBy}</TableCell>
                           <TableCell className="text-xs text-center">{item.createdOn}</TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center gap-1">
-                              <button onClick={() => openPermissionDialog(item.roleId)} className="text-blue-500 hover:text-blue-700"><Edit className="h-4 w-4" /></button>
-                              <button onClick={() => { supabase.from("app_role_modules").delete().eq("role_id", item.roleId).then(() => { queryClient.invalidateQueries({ queryKey: ["app_role_modules"] }); toast.success("মুছে ফেলা হয়েছে"); }); }} className="text-red-500 hover:text-red-700"><Trash2 className="h-4 w-4" /></button>
+                              {locked ? (
+                                <span title="System role permissions — Super Admin only" className="text-muted-foreground"><Lock className="h-4 w-4" /></span>
+                              ) : (
+                                <>
+                                  <button onClick={() => openPermissionDialog(item.roleId)} className="text-blue-500 hover:text-blue-700"><Edit className="h-4 w-4" /></button>
+                                  <button onClick={() => { if (role?.is_protected && !confirm("System role permissions মুছবেন?")) return; supabase.from("app_role_modules").delete().eq("role_id", item.roleId).then(() => { queryClient.invalidateQueries({ queryKey: ["app_role_modules"] }); toast.success("মুছে ফেলা হয়েছে"); }); }} className="text-red-500 hover:text-red-700"><Trash2 className="h-4 w-4" /></button>
+                                </>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
