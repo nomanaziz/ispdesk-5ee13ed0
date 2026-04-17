@@ -121,6 +121,32 @@ export default function OnlineClientMonitoring() {
   const livePollRef = useRef<number | null>(null);
   const liveClientIdRef = useRef<string | null>(null);
 
+  // Bulk mismatch action state
+  const [mismatchSelection, setMismatchSelection] = useState<Record<string, Set<string>>>({
+    "disabled-in-system": new Set(),
+    "enabled-in-system": new Set(),
+    "profile-mismatch": new Set(),
+  });
+  const [bulkMismatchRunning, setBulkMismatchRunning] = useState(false);
+
+  const toggleMismatchRow = (tab: string, key: string) => {
+    setMismatchSelection((prev) => {
+      const next = new Set(prev[tab]);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return { ...prev, [tab]: next };
+    });
+  };
+
+  const toggleMismatchAll = (tab: string, records: MismatchRecord[]) => {
+    setMismatchSelection((prev) => {
+      const allKeys = records.map((r) => `${r.username}::${r.mikrotik_id || ""}`);
+      const current = prev[tab];
+      const allSelected = allKeys.length > 0 && allKeys.every((k) => current.has(k));
+      return { ...prev, [tab]: new Set(allSelected ? [] : allKeys) };
+    });
+  };
+
   const loadFilterOptions = useCallback(async () => {
     const [devRes, zoneRes, connRes] = await Promise.all([
       supabase.from("mikrotik_devices").select("id, name").eq("enabled", true),
