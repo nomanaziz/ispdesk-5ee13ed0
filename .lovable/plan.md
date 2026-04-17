@@ -1,75 +1,146 @@
 
 
-## Device Administration — Simplification Plan
+## Device Administration — Round 3 Improvements
 
-আপনার পুরাতন project-এর মত simple রাখব। ৩টা মূল পরিবর্তন:
+পাঁচটা মূল কাজ: (১) Backup দুই format, (২) Add Device dialog vendor + protocol সহ, (৩) Job management (delete/edit/status change), (৪) Per-device "Fetch" action, (৫) সব এক জায়গায় organize।
 
-### ১. Bulk User Deploy → Popup-এ রূপান্তর
-- আলাদা wizard page বাদ। **Devices ইনভেন্টরি page**-এ উপরে "Deploy User" এবং "Remove User" বাটন।
-- Click → একটাই dialog খুলবে যেখানে:
-  - Username, Password, Permission (Read/Write/Full)
-  - "All Select" checkbox + device list (filter by type)
-  - Submit → সব device-এ একসাথে job তৈরি
-- পুরাতন stepper page দুইটা (`/deploy-user`, `/delete-user`) sidebar থেকে remove।
+---
 
-### ২. নতুন "All Device Users" page (`/dashboard/device-admin/users`)
-**মূল feature:** সব device থেকে user list pull করে এক table-এ দেখাবে।
+### ১. Backup: `.rsc` + `.backup` দুইটা format
+
+**বর্তমান সমস্যা:** Backup শুধু row insert করে — actual file pull হয় না, status সিমুলেট।
+
+**ফিক্স:**
+- নতুন edge function `backup-mikrotik-device` → SSH/API দিয়ে দুইটা command চালাবে:
+  - `/export file=<name>` → `.rsc` (text, human-readable config)
+  - `/system/backup/save name=<name>` → `.backup` (binary, full restore)
+  - তারপর `/file/print` + `/file/print` content fetch করে `device-backups` storage bucket-এ upload করবে
+- `device_admin_backups` row-এ `file_path` + `backup_format` (`rsc` | `backup`) save
+- Backup Center-এ "Take Backup" করলে dialog: ☑ `.rsc` ☑ `.backup` (default দুইটাই)
+- Download button working হবে (signed URL)
+- অন্য device (OLT/Switch): SSH দিয়ে `show running-config` capture → `.txt` (পরে real adapter)
+
+**Migration:** `device_admin_backups`-এ `backup_format text` + `file_size bigint` add।
+
+---
+
+### ২. Add Device Dialog (Universal)
+
+আপনার screenshot অনুযায়ী **`/dashboard/device-admin/devices`** page-এ "+ Add Device" button + dialog যোগ:
 
 ```text
-| Username | Devices (count) | Permission | Last seen | Actions |
-| noman    | 5 devices       | full/write | ...       | View / Delete-all |
+Name | Type
+IP   | Port
+[Type ≠ mikrotik হলে দেখাবে:]
+Connection Protocol: ⚪ SSH  ⚪ Telnet
+Vendor sub-type: Juniper / Huawei / BDCOM OLT / C-Data OLT / Cisco / MikroTik-RouterOS / Generic
+Enable Password (Cisco/Huawei privileged mode)
+Username | Password
+Location | Group
+Backup Schedule: Manual / Daily / Weekly
+[Add Device]
 ```
 
-- **Username search** → "noman" লিখলে সব device থেকে যেখানে এই user আছে দেখাবে
-- Row click → expand করে দেখাবে কোন কোন device-এ আছে + কী permission
-- Per-device delete OR "Delete from all" button
-- Data source: edge function `fetch-device-users` যা MikroTik API + OLT + Switch + ZKTeco থেকে user list pull করে cache করবে `device_admin_user_inventory` table-এ
+- Type select থেকে category pick: **MikroTik** / **OLT** / **Switch** / **ZKTeco** / **Generic**
+- MikroTik হলে existing `mikrotik_devices` table-এ insert
+- বাকি সব নতুন unified table **`device_admin_managed_devices`**-এ যাবে (vendor, protocol, enable_password সহ) — যাতে আগের OLT/POP table-এর সাথে সংঘর্ষ না হয় কিন্তু এখান থেকেও inventory-তে দেখায়
+- Inventory query-তে এই table merge হবে
 
-**নতুন table:**
+**Migration:**
 ```sql
-device_admin_user_inventory (
-  id, username, device_type, device_id, device_name,
-  permission, last_synced_at, raw_data jsonb
+device_admin_managed_devices (
+  id uuid pk, name text, category text, -- mikrotik|olt|switch|other
+  vendor text, -- juniper|huawei|bdcom|cdata|cisco|mikrotik|generic
+  protocol text, -- ssh|telnet|api
+  ip_address inet, port int,
+  username text, password_encrypted text, enable_password text,
+  location text, group_id uuid, backup_schedule text default 'manual',
+  status text default 'unknown', created_at, updated_at
 )
 ```
-+ "Refresh" button যা edge function কল করে সব device থেকে fresh data আনে।
 
-### ৩. Schedule page-এ User Add/Remove যোগ
-বর্তমানে শুধু backup schedule আছে। যোগ হবে:
-- **Schedule type:** Backup / Add User / Remove User
-- Add User: username, password, permission, devices, run_at (একবার বা recurring)
-- Remove User: username, devices, run_at (যেমন: ৩০ তারিখে noman remove from all routers)
+---
 
-`device_admin_schedules` table-এ already `schedule_type` আছে — শুধু `'add_user'`, `'remove_user'` value support করতে হবে + `payload jsonb` (username, password, permission, target_devices, run_at)। UI-এ tabs: ব্যাকআপ / ইউজার অ্যাড / ইউজার রিমুভ।
+### ৩. Job Management (পেন্ডিং জব ঠিক করার ব্যবস্থা)
 
-### ৪. App User তৈরির সময় MikroTik Access (bonus)
-`src/pages/dashboard/system/Users.tsx` — নতুন user wizard-এর শেষে optional step:
-- "এই user-কে MikroTik device-এ access দিন?" toggle
-- On → online MikroTik device list checkbox + permission select
-- Submit হলে background-এ deploy job তৈরি
+**নতুন page:** `/dashboard/device-admin/jobs` → "জব ম্যানেজমেন্ট" sidebar item
 
-### Files to change
-- **New:** `src/pages/dashboard/device-admin/AllDeviceUsers.tsx`
-- **New:** `src/components/device-admin/DeployUserDialog.tsx`, `RemoveUserDialog.tsx`
-- **New:** `supabase/functions/fetch-device-users/index.ts` (MikroTik API থেকে user pull)
-- **Edit:** `Devices.tsx` — উপরে Deploy/Remove buttons
-- **Edit:** `Schedules.tsx` — type tabs (backup/add_user/remove_user)
-- **Edit:** `AppSidebar.tsx` — `/deploy-user` ও `/delete-user` remove, `/users` add
-- **Edit:** `App.tsx` — routes update
-- **Edit:** `system/Users.tsx` — optional MikroTik access step in new user wizard
-- **Migration:** add `device_admin_user_inventory` table + extend `device_admin_schedules` with `payload jsonb`, allow `schedule_type` values `'add_user'`, `'remove_user'`
+**Table:** Job ID | Type | Username | Devices | Status | Created | Actions
 
-### Sidebar (final)
+**Per-row actions:**
+- 🔄 **Retry** (re-invoke `process-deploy-job`)
+- ✏️ **Status change** (manual: pending → completed / failed / cancelled)
+- 🗑️ **Delete** (single বা bulk)
+- 👁️ **Details** (results JSON, per-device success/fail)
+
+**Bulk:** checkbox + "Delete Selected" / "Cancel Pending" / "Retry Failed"
+
+**Auto-update:** existing executor already updates status on completion — job page realtime refresh (every 5s) করে দেখাবে।
+
+**Filter:** Status (pending/running/completed/failed/partial) + Type (deploy_user/delete_user/backup) + Date range
+
+---
+
+### ৪. Per-Device "Fetch" Action
+
+**Inventory table-এর প্রতিটা row-এ নতুন action icon**: 🔍 "Inspect Device"
+
+Click → **DeviceInspectorDialog** opens (tabs):
+- **Users** — all system users + permissions (MikroTik: `/user/print`)
+- **Interfaces** — all `/interface/print` (name, type, MAC, status, MTU)
+- **Live Bandwidth** — selected interface-এ `/interface/monitor-traffic` (rx/tx bps, real-time chart)
+- **VLANs** — `/interface/vlan/print` (vlan-id, interface, name)
+- **VLAN IPs** — `/ip/address/print` filtered by vlan interfaces
+
+**নতুন edge function:** `inspect-device` → `{device_id, resource: "users"|"interfaces"|"vlans"|"vlan_ips"|"monitor"}` → MikroTik API call → JSON return
+
+OLT/Switch (SSH): later phase, button দেখাবে কিন্তু "vendor adapter pending"।
+
+---
+
+### ৫. Reorganized Sidebar
+
 ```text
 ডিভাইস অ্যাডমিনিস্ট্রেশন
   ├─ ড্যাশবোর্ড
-  ├─ ডিভাইস ইনভেন্টরি  (Deploy/Remove buttons এখানে)
-  ├─ অল ডিভাইস ইউজার   ← নতুন
+  ├─ ডিভাইস ইনভেন্টরি   (Add/Inspect/Deploy/Remove)
+  ├─ অল ডিভাইস ইউজার
+  ├─ জব ম্যানেজমেন্ট    ← নতুন
+  ├─ ব্যাকআপ সেন্টার    (.rsc + .backup)
+  ├─ শিডিউল ম্যানেজার
   ├─ গ্রুপ
-  ├─ ব্যাকআপ সেন্টার
-  ├─ শিডিউল ম্যানেজার  (backup + user add/remove)
   └─ অডিট লগ
 ```
 
-**Note:** MikroTik থেকে actual user pull করার জন্য existing `fetch-mikrotik-ppp` pattern follow করব। OLT/Switch/ZKTeco-এর জন্য placeholder adapter (পরে real API integrate করা যাবে)।
+---
+
+### Files (summary)
+
+**New:**
+- `src/components/device-admin/AddDeviceDialog.tsx`
+- `src/components/device-admin/DeviceInspectorDialog.tsx`
+- `src/pages/dashboard/device-admin/Jobs.tsx`
+- `supabase/functions/backup-mikrotik-device/index.ts`
+- `supabase/functions/inspect-device/index.ts`
+
+**Edit:**
+- `Devices.tsx` — Add Device button + Inspect action per row + merge `device_admin_managed_devices`
+- `Backups.tsx` — format checkboxes, real download via signed URL, call new backup function
+- `AppSidebar.tsx` + `App.tsx` — Jobs route
+- `process-deploy-job/index.ts` — handle `backup` job_type by invoking new backup function
+
+**Migration:**
+- Create `device_admin_managed_devices` + RLS (admin only)
+- Add `backup_format`, `file_size` to `device_admin_backups`
+- Add `cancelled` to allowed `device_admin_deploy_jobs.status`
+
+---
+
+### Priority order
+1. Job Management page (highest — pending jobs আটকে আছে)
+2. Add Device dialog with vendor/protocol
+3. Real backup with `.rsc` + `.backup`
+4. Device Inspector (fetch users/interfaces/VLANs)
+
+সব একই session-এ implement হবে।
 
