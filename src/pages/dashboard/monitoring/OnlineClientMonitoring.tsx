@@ -40,6 +40,8 @@ interface ActiveSession {
   mikrotik_id?: string;
   total_upload?: number;
   total_download?: number;
+  session_upload_bytes?: number;
+  session_download_bytes?: number;
 }
 
 interface MismatchRecord {
@@ -558,11 +560,11 @@ export default function OnlineClientMonitoring() {
                   <div className="flex flex-col gap-0.5 font-mono text-[10px]">
                     <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
                       <ArrowUpFromLine className="h-2.5 w-2.5" />
-                      {formatBytes(s.total_upload || 0)}
+                      {formatBytes(s.session_upload_bytes || 0)}
                     </span>
                     <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                       <ArrowDownToLine className="h-2.5 w-2.5" />
-                      {formatBytes(s.total_download || 0)}
+                      {formatBytes(s.session_download_bytes || 0)}
                     </span>
                   </div>
                 </TableCell>
