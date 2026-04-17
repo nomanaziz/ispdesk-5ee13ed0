@@ -1,90 +1,76 @@
 
 
-## Live Traffic Monitoring — Real-time Graph Fix
+## Bandwidth Reseller Portal — Full Build
 
 ### বর্তমান অবস্থা
-- `PortalLiveUsage.tsx` শুধু `total_upload`/`total_download` cumulative দেখায়, কোনো real-time graph নেই
-- "Real-time graph coming soon" placeholder বসানো আছে
-- `clients` table এ `total_upload`/`total_download` cumulative bytes আছে, কিন্তু **per-second speed** track হচ্ছে না
-- `collect-client-traffic` edge function exist করে কিন্তু সম্ভবত শুধু cumulative update করে
+- `ResellerLayout.tsx` আছে কিন্তু minimal (Dashboard, Balance, Clients menu)
+- `ResellerDashboard.tsx` exists, কিন্তু image-এর মতো rich dashboard নেই
+- `bw_sales_invoices` table আছে → `PortalInvoices` দেখায়
+- BW Reseller-এর জন্য Purchase Orders, Support Tickets, User Management, Company Settings — কোনোটাই full নেই
+- Admin-side `Tickets.tsx` আছে কিন্তু "Bandwidth Reseller" tab আলাদা না
 
-### লক্ষ্য (image-অনুসরণে)
-1. **Connectivity Info card**: Client Name, Client Code, Username, Mobile, Uptime, Downloaded Data, Uploaded Data
-2. **Live Traffic Real-Time Graph**: Download Speed (Kbps) ও Upload Speed (Kbps), প্রতি 2-3 second update, last ~60 points scrolling
-3. একই page admin-side এও থাকবে (Online Client Monitoring → individual client view)
+### লক্ষ্য (image অনুসরণে)
 
-### Approach
+BW Reseller portal-এ ৬টা menu:
+1. **Dashboard** — Welcome card + POPCode/UserName + 6টা stat box (Balance Due, Last Invoice Info, Payment Due Date, This Month Paid, Purchase Order Status, Ticket) + Messages + Notices
+2. **Billing Invoices** — table (Sr/Bill No/Month/Amount/Paid/Discount/Due/Status/Action) → bill no click → invoice details page; Action PDF icon → printable invoice page (Download PDF); "Pay" button → bKash dialog
+3. **Purchase Orders** — list + "+ New Order" → form (Billing Month, line items: Item/Description/Unit/Qty/Rate/VAT/From/To/Total, Note, Save)
+4. **Support Tickets** — list + "Open New Ticket" → reuses existing ticket flow; backend insert with `source = 'bw_reseller'` so admin Tickets page shows them under "Bandwidth Reseller" tab
+5. **User Management** — sub-users CRUD; permission tree (cannot delete reseller itself); permissions limit which menus sub-user sees
+6. **Company Settings** — reseller's own company info edit (name, logo, address, contact, email)
 
-**Speed calculation strategy**: MikroTik থেকে real-time speed pull করা সবচেয়ে সঠিক, কিন্তু সেটা delay করে। আপাতত **client-side delta calculation** ব্যবহার করব:
-- প্রতি 3 second এ DB থেকে cumulative `total_upload`/`total_download` fetch
-- পূর্বের sample-এর সাথে diff করে → bytes/sec → Kbps
-- Recharts দিয়ে scrolling line graph, last 20 points
+### Approach সংক্ষিপ্তে
 
-পরে Phase 2-এ proper `client_traffic_samples` table + edge function polling MikroTik queue stats।
+**Routing**: `/reseller/*` — protected by `usePortalAuth` with `customer.type === 'reseller'`. Reuse `ResellerLayout` but expand sidebar menu। 
+
+**Admin tickets tab**: Existing `support_tickets` table-এ `source` column থাকলে সেটা ব্যবহার; না থাকলে migration-এ add করব (`source text default 'client'`, values: `client | pop | bw_reseller`)। Admin `Tickets.tsx`-এ tab filter add।
+
+**Sub-user permissions**: নতুন table `bw_reseller_users (id, reseller_id, name, username, password, status, permissions jsonb, created_at)` — permissions জসন: `{ dashboard, invoices, purchases, tickets, users, settings }` boolean। `portal-auth` edge function-এ sub-user login support add (lookup in this table, return parent reseller_id + permissions in token)। Sidebar render conditionally।
+
+**PDF**: Invoice details page reuses existing print-friendly template (image-77 style) — add `window.print()` or html2pdf via existing pattern in admin invoice. Phase 1: print-to-PDF via browser; Phase 2: server-side PDF।
+
+**bKash payment**: `Pay` button opens dialog (image-76 style) → calls existing `rechargeserver-payment` edge function or new wrapper for bw invoices। Phase 1: dialog UI + mock flow; live bKash already wired in admin side, reuse that endpoint।
 
 ### Files
 
 | File | Action |
 |------|--------|
-| `src/pages/portal/PortalLiveUsage.tsx` | Full rebuild — Connectivity Info card + Recharts real-time graph + 3s polling |
-| `src/pages/dashboard/monitoring/OnlineClientMonitoring.tsx` | Check & add "View Live" action linking to detail page (if missing) |
-| `src/pages/dashboard/monitoring/ClientTrafficView.tsx` | নতুন — admin-side same component, accepts `:clientId` param |
-| `src/App.tsx` | Add route `/dashboard/monitoring/client-traffic/:id` |
+| migration | `support_tickets.source` column add (if missing); `bw_reseller_users` table + RLS; `bw_purchase_orders` already exists check |
+| `src/components/ResellerLayout.tsx` | Expand sidebar to 6 items, image-style dark navy theme, search box, user chip top-right |
+| `src/pages/reseller/ResellerDashboard.tsx` | Rebuild — welcome card, POP/UserName row, 6 stat cards, Messages, Notices |
+| `src/pages/reseller/ResellerInvoices.tsx` | NEW — table + Pay/Due badges + PDF action |
+| `src/pages/reseller/ResellerInvoiceDetail.tsx` | NEW — Invoice Items + Invoice Payments tables (image-75) |
+| `src/pages/reseller/ResellerInvoicePrint.tsx` | NEW — printable invoice (image-77) with Download PDF button |
+| `src/pages/reseller/ResellerPurchaseOrders.tsx` | NEW — list (image-79) |
+| `src/pages/reseller/ResellerPurchaseOrderForm.tsx` | NEW — create/edit (image-78) |
+| `src/pages/reseller/ResellerTickets.tsx` | NEW — list + Open New Ticket dialog (image-80); inserts with `source='bw_reseller'` |
+| `src/pages/reseller/ResellerUsers.tsx` | NEW — sub-user CRUD + permission checkbox tree (image-81) |
+| `src/pages/reseller/ResellerSettings.tsx` | NEW — company info edit |
+| `src/components/reseller/PayBillDialog.tsx` | NEW — bKash payment dialog |
+| `src/components/reseller/PermissionTree.tsx` | NEW — checkbox grid for 6 menus |
+| `src/contexts/PortalAuthContext.tsx` | Extend to include `permissions` from token (for sub-user) |
+| `src/components/ResellerProtectedRoute.tsx` | Check menu permission too |
+| `src/App.tsx` | Add all reseller routes |
+| `supabase/functions/portal-auth/index.ts` | Add sub-user lookup (`bw_reseller_users`); return permissions |
+| `src/pages/dashboard/support/Tickets.tsx` | Add "Bandwidth Reseller" tab (filter `source='bw_reseller'`) |
 
-### Component design
+### Sidebar (BW Reseller)
 
 ```text
-[← Back to List]
-
-┌─ Connectivity Information ──────────────────────────┐
-│ Client Name | Client Code | Username | Mobile      │
-│ Uptime      | Downloaded  | Uploaded                │
-└─────────────────────────────────────────────────────┘
-
-┌─ Live Traffic Monitoring (RealTime Graph) ──────────┐
-│  ▬ Download Speed (Kbps)   ▬ Upload Speed (Kbps)   │
-│                                                     │
-│  [Recharts LineChart, animated, 20 rolling points] │
-│                                                     │
-└─────────────────────────────────────────────────────┘
+NARYANGANJ POP - GALAXY NET    ☰
+[Menu Search...]
+🚀 DASHBOARD
+🕓 BILLING INVOICES
+⚒ PURCHASE ORDERS
+💡 SUPPORT TICKETS
+👥 USER MANAGEMENT
+⚙ COMPANY SETTINGS
 ```
 
-### Technical detail
+Theme: dark navy (`#1f3a5f`) like image, white text, active item lighter shade।
 
-```typescript
-// Inside component
-const [samples, setSamples] = useState<{time:string; down:number; up:number}[]>([]);
-const lastRef = useRef<{up:number; down:number; t:number} | null>(null);
+### Phasing
 
-useEffect(() => {
-  const tick = async () => {
-    const { data } = await supabase.from('clients')
-      .select('total_upload,total_download').eq('id', id).maybeSingle();
-    if (!data) return;
-    const now = Date.now();
-    const up = Number(data.total_upload || 0);
-    const down = Number(data.total_download || 0);
-    if (lastRef.current) {
-      const dt = (now - lastRef.current.t) / 1000;
-      const upKbps = Math.max(0, ((up - lastRef.current.up) * 8) / 1000 / dt);
-      const downKbps = Math.max(0, ((down - lastRef.current.down) * 8) / 1000 / dt);
-      setSamples(s => [...s.slice(-19), {
-        time: new Date().toLocaleTimeString(),
-        down: Math.round(downKbps),
-        up: Math.round(upKbps)
-      }]);
-    }
-    lastRef.current = { up, down, t: now };
-  };
-  tick();
-  const id = setInterval(tick, 3000);
-  return () => clearInterval(id);
-}, [clientId]);
-```
-
-### Note about data freshness
-
-Graph তখনই up/down দেখাবে যখন `clients.total_upload/total_download` value DB-তে পরিবর্তন হয় (MikroTik sync edge function থেকে)। যদি sync function না চলে, line flat থাকবে।
-
-**Phase 2 (পরে):** Supabase realtime subscription on `clients` row (instead of polling) + dedicated `client_traffic_samples` time-series table + cron-driven MikroTik polling।
+- **Phase 1 (এখন):** All 6 pages, layout redesign, sub-user table + permissions, admin Tickets tab, print-PDF via browser, bKash dialog UI
+- **Phase 2 (পরে):** Server-side PDF generation, live bKash backend wiring (if not already), email notifications on ticket/invoice events
 
