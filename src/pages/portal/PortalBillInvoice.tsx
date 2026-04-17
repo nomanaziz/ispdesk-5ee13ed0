@@ -26,10 +26,15 @@ const PortalBillInvoice = () => {
   });
 
   const { data: company } = useQuery({
-    queryKey: ["portal-company"],
+    queryKey: ["portal-company-info"],
     queryFn: async () => {
-      const { data } = await supabase.from("system_company").select("*").maybeSingle();
-      return data;
+      const { data } = await supabase
+        .from("landing_content")
+        .select("key, value")
+        .eq("section", "footer");
+      const map: Record<string, any> = {};
+      (data || []).forEach((r: any) => { map[r.key] = r.value; });
+      return map;
     },
   });
 
@@ -59,7 +64,7 @@ const PortalBillInvoice = () => {
                   <Receipt className="h-6 w-6" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold">{(company as any)?.name || "ISP Desk"}</h1>
+                  <h1 className="text-2xl font-bold">{(company as any)?.brand?.name || (company as any)?.brand || "ISP Desk"}</h1>
                   <p className="text-xs text-muted-foreground">{(company as any)?.address || ""}</p>
                   <p className="text-xs text-muted-foreground">{(company as any)?.phone || ""} {(company as any)?.email ? "• " + (company as any).email : ""}</p>
                 </div>
