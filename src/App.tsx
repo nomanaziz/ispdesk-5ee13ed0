@@ -523,10 +523,6 @@ const App = () => (
               <Route path="/dashboard/sms/send" element={<P><SmsSend /></P>} />
               <Route path="/dashboard/sms/gateway" element={<P><SmsGateway /></P>} />
 
-              {/* Affiliation */}
-              <Route path="/dashboard/affiliation/partners" element={<P><AffiliationPartners /></P>} />
-              <Route path="/dashboard/affiliation/add" element={<P><AffiliationAdd /></P>} />
-
               {/* System */}
               <Route path="/dashboard/system/users" element={<P><SystemUsers /></P>} />
               <Route path="/dashboard/system/users/:id" element={<P><UserReview /></P>} />
