@@ -906,11 +906,7 @@ export default function OnlineClientMonitoring() {
                   </div>
                 </div>
               )}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-4">ডেটা পাওয়া যায়নি</p>
-          )}
-        </DialogContent>
+
               {/* Monthly History */}
               {Array.isArray(trafficDialog.data?.monthly) && trafficDialog.data.monthly.length > 0 && (
                 <div>
@@ -943,7 +939,11 @@ export default function OnlineClientMonitoring() {
                   </div>
                 </div>
               )}
-
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-4">ডেটা পাওয়া যায়নি</p>
+          )}
+        </DialogContent>
       </Dialog>
 
       {/* Ping Dialog */}
