@@ -49,7 +49,7 @@ export function TopBar() {
           </Button>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <Link to="/" target="_blank">
+          <Link to="/" target="_blank" title="ওয়েবসাইটে যান">
             <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
               <Globe className="h-4 w-4" />
             </Button>

@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Menu, X, Wifi, User, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, X, Wifi, User, LogOut, LayoutDashboard, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { CartIcon } from "@/components/public/CartIcon";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-const fallbackLinks = [
+const fallbackLinksBn = [
   { title: "হোম", url: "/" },
   { title: "প্যাকেজ", url: "/packages" },
   { title: "সেবা সমূহ", url: "/services" },
@@ -27,6 +28,16 @@ const fallbackLinks = [
   { title: "আমাদের সম্পর্কে", url: "/about" },
   { title: "অফার", url: "/offers" },
   { title: "যোগাযোগ", url: "/contact" },
+];
+const fallbackLinksEn = [
+  { title: "Home", url: "/" },
+  { title: "Packages", url: "/packages" },
+  { title: "Services", url: "/services" },
+  { title: "Shop", url: "/shop" },
+  { title: "Coverage", url: "/coverage" },
+  { title: "About", url: "/about" },
+  { title: "Offers", url: "/offers" },
+  { title: "Contact", url: "/contact" },
 ];
 
 function shortName(full: string, max = 12) {
@@ -44,6 +55,7 @@ export function PublicNavbar() {
   const [open, setOpen] = useState(false);
   const { user, signOut } = useAuth();
   const { customer, logout: portalLogout } = usePortalAuth();
+  const { lang, setLang, t } = useLanguage();
   const navigate = useNavigate();
 
   const { data: menuRows } = useQuery({
@@ -61,12 +73,12 @@ export function PublicNavbar() {
     staleTime: 30_000,
   });
 
+  const fallbackLinks = lang === "bn" ? fallbackLinksBn : fallbackLinksEn;
   const navLinks =
     menuRows && menuRows.length > 0
       ? menuRows.map((m) => ({ title: m.title, url: m.url || "/" }))
       : fallbackLinks;
 
-  // Resolve a single "current user" view (admin > customer)
   const adminFull =
     (user?.user_metadata as any)?.full_name ||
     user?.email?.split("@")[0] ||
@@ -80,8 +92,10 @@ export function PublicNavbar() {
   const displayFull = isAdmin ? adminFull : customerFull;
   const displayShort = shortName(displayFull);
   const displayInitials = initials(displayFull);
-  const dashboardPath = isAdmin ? "/dashboard" : "/portal";
-  const dashboardLabel = isAdmin ? "ড্যাশবোর্ড" : "আমার পোর্টাল";
+  const dashboardPath = isAdmin ? "/dashboard" : "/portal/dashboard";
+  const dashboardLabel = isAdmin
+    ? t("ড্যাশবোর্ড", "Dashboard")
+    : t("আমার পোর্টাল", "My Portal");
 
   const handleLogout = async () => {
     setOpen(false);
@@ -92,6 +106,33 @@ export function PublicNavbar() {
     }
     navigate("/");
   };
+
+  const LangToggle = ({ className = "" }: { className?: string }) => (
+    <div className={cn("inline-flex items-center rounded-md border border-slate-200 overflow-hidden text-xs", className)}>
+      <button
+        type="button"
+        onClick={() => setLang("bn")}
+        className={cn(
+          "px-2 py-1 font-semibold transition-colors",
+          lang === "bn" ? "bg-cyan-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+        )}
+        aria-pressed={lang === "bn"}
+      >
+        বাং
+      </button>
+      <button
+        type="button"
+        onClick={() => setLang("en")}
+        className={cn(
+          "px-2 py-1 font-semibold transition-colors",
+          lang === "en" ? "bg-cyan-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+        )}
+        aria-pressed={lang === "en"}
+      >
+        EN
+      </button>
+    </div>
+  );
 
   const UserMenu = () => (
     <DropdownMenu>
@@ -113,7 +154,7 @@ export function PublicNavbar() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52 bg-white">
         <DropdownMenuLabel className="text-slate-500 text-xs font-normal">
-          {isAdmin ? "অ্যাডমিন" : "গ্রাহক"}
+          {isAdmin ? t("অ্যাডমিন", "Admin") : t("গ্রাহক", "Customer")}
           <div className="text-slate-900 text-sm font-semibold truncate">
             {displayFull}
           </div>
@@ -131,7 +172,7 @@ export function PublicNavbar() {
           className="cursor-pointer text-red-600 focus:text-red-700"
         >
           <LogOut className="h-4 w-4 mr-2" />
-          লগআউট
+          {t("লগআউট", "Logout")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -147,7 +188,7 @@ export function PublicNavbar() {
             </div>
             <div>
               <span className="text-lg font-bold text-slate-900 leading-tight block">ISP Desk</span>
-              <span className="text-[10px] text-slate-400 leading-none -mt-0.5 block">ইন্টারনেট সেবা</span>
+              <span className="text-[10px] text-slate-400 leading-none -mt-0.5 block">{t("ইন্টারনেট সেবা", "Internet Service")}</span>
             </div>
           </NavLink>
 
@@ -170,15 +211,16 @@ export function PublicNavbar() {
           </nav>
 
           <div className="hidden lg:flex items-center gap-2">
+            <LangToggle />
             <CartIcon />
             <NavLink to="/quick-pay">
               <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white font-semibold shadow-lg shadow-orange-500/20">
-                বিল পরিশোধ
+                {t("বিল পরিশোধ", "Pay Bill")}
               </Button>
             </NavLink>
             <NavLink to="/new-connection">
               <Button size="sm" variant="outline" className="border-cyan-500 text-cyan-700 hover:bg-cyan-50 font-medium">
-                কানেকশন নিন
+                {t("কানেকশন নিন", "Get Connection")}
               </Button>
             </NavLink>
             {isLoggedIn ? (
@@ -186,15 +228,18 @@ export function PublicNavbar() {
             ) : (
               <NavLink to="/login">
                 <Button size="sm" variant="ghost" className="text-slate-600 hover:text-cyan-700 gap-1">
-                  <User className="h-4 w-4" /> লগইন
+                  <User className="h-4 w-4" /> {t("লগইন", "Login")}
                 </Button>
               </NavLink>
             )}
           </div>
 
-          <button className="lg:hidden p-2 rounded-lg hover:bg-slate-100" onClick={() => setOpen(!open)}>
-            {open ? <X className="h-6 w-6 text-slate-700" /> : <Menu className="h-6 w-6 text-slate-700" />}
-          </button>
+          <div className="lg:hidden flex items-center gap-2">
+            <LangToggle />
+            <button className="p-2 rounded-lg hover:bg-slate-100" onClick={() => setOpen(!open)}>
+              {open ? <X className="h-6 w-6 text-slate-700" /> : <Menu className="h-6 w-6 text-slate-700" />}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -219,10 +264,10 @@ export function PublicNavbar() {
             ))}
             <div className="pt-3 flex flex-col gap-2">
               <NavLink to="/quick-pay" onClick={() => setOpen(false)}>
-                <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold">বিল পরিশোধ</Button>
+                <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold">{t("বিল পরিশোধ", "Pay Bill")}</Button>
               </NavLink>
               <NavLink to="/new-connection" onClick={() => setOpen(false)}>
-                <Button variant="outline" className="w-full border-cyan-500 text-cyan-700">কানেকশন নিন</Button>
+                <Button variant="outline" className="w-full border-cyan-500 text-cyan-700">{t("কানেকশন নিন", "Get Connection")}</Button>
               </NavLink>
               {isLoggedIn ? (
                 <>
@@ -234,7 +279,7 @@ export function PublicNavbar() {
                     </Avatar>
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-slate-900 truncate">{displayFull}</div>
-                      <div className="text-[11px] text-slate-500">{isAdmin ? "অ্যাডমিন" : "গ্রাহক"}</div>
+                      <div className="text-[11px] text-slate-500">{isAdmin ? t("অ্যাডমিন", "Admin") : t("গ্রাহক", "Customer")}</div>
                     </div>
                   </div>
                   <NavLink to={dashboardPath} onClick={() => setOpen(false)}>
@@ -247,13 +292,13 @@ export function PublicNavbar() {
                     className="w-full text-red-600 hover:text-red-700 justify-start"
                     onClick={handleLogout}
                   >
-                    <LogOut className="h-4 w-4 mr-2" /> লগআউট
+                    <LogOut className="h-4 w-4 mr-2" /> {t("লগআউট", "Logout")}
                   </Button>
                 </>
               ) : (
                 <NavLink to="/login" onClick={() => setOpen(false)}>
                   <Button variant="ghost" className="w-full text-slate-600">
-                    <User className="h-4 w-4 mr-2" /> লগইন
+                    <User className="h-4 w-4 mr-2" /> {t("লগইন", "Login")}
                   </Button>
                 </NavLink>
               )}
