@@ -5938,6 +5938,59 @@ export type Database = {
         }
         Relationships: []
       }
+      public_payment_requests: {
+        Row: {
+          admin_note: string | null
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          client_id: string
+          created_at: string
+          id: string
+          method: string
+          note: string | null
+          sender_number: string | null
+          status: string
+          trx_id: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id: string
+          created_at?: string
+          id?: string
+          method: string
+          note?: string | null
+          sender_number?: string | null
+          status?: string
+          trx_id?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          method?: string
+          note?: string | null
+          sender_number?: string | null
+          status?: string
+          trx_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_payment_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_bills: {
         Row: {
           amount: number | null
