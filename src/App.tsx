@@ -261,6 +261,7 @@ import PortalCompanyInfo from "@/pages/portal/PortalCompanyInfo";
 import PortalMediaServers from "@/pages/portal/PortalMediaServers";
 import PortalLedger from "@/pages/portal/PortalLedger";
 import PortalLiveUsage from "@/pages/portal/PortalLiveUsage";
+import PortalSpeedTest from "@/pages/portal/PortalSpeedTest";
 
 // Reseller
 import ResellerProtectedRoute from "@/components/ResellerProtectedRoute";
