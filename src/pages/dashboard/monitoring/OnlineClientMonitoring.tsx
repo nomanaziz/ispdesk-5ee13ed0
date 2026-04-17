@@ -499,7 +499,6 @@ export default function OnlineClientMonitoring() {
             <TableHead>Profile</TableHead>
             <TableHead>Service</TableHead>
             <TableHead>IP Address</TableHead>
-            <TableHead>Mac Address</TableHead>
             <TableHead>Session Time</TableHead>
             <TableHead>Traffic</TableHead>
             <TableHead>Action</TableHead>
@@ -508,7 +507,7 @@ export default function OnlineClientMonitoring() {
         <TableBody>
           {data.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={18} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={17} className="text-center py-8 text-muted-foreground">
                 কোনো ডেটা পাওয়া যায়নি
               </TableCell>
             </TableRow>
@@ -536,7 +535,6 @@ export default function OnlineClientMonitoring() {
                 <TableCell>{s.profile || "—"}</TableCell>
                 <TableCell>{s.service || "—"}</TableCell>
                 <TableCell className="font-mono text-xs">{s.address || "—"}</TableCell>
-                <TableCell className="font-mono text-xs">{s.caller_id || "—"}</TableCell>
                 <TableCell>
                   {s.status === "offline" ? (
                     <div className="flex flex-col items-start gap-0.5">
