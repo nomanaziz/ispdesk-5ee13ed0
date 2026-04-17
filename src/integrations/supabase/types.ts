@@ -6744,6 +6744,7 @@ export type Database = {
         Row: {
           address: string
           area: string | null
+          client_id: string | null
           created_at: string
           customer_name: string
           discount: number
@@ -6768,6 +6769,7 @@ export type Database = {
         Insert: {
           address: string
           area?: string | null
+          client_id?: string | null
           created_at?: string
           customer_name: string
           discount?: number
@@ -6792,6 +6794,7 @@ export type Database = {
         Update: {
           address?: string
           area?: string | null
+          client_id?: string | null
           created_at?: string
           customer_name?: string
           discount?: number
@@ -6813,7 +6816,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "shop_orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shop_products: {
         Row: {
@@ -6822,6 +6833,7 @@ export type Database = {
           compare_price: number | null
           created_at: string
           featured: boolean
+          free_shipping: boolean
           id: string
           images: Json
           long_desc: string | null
@@ -6845,6 +6857,7 @@ export type Database = {
           compare_price?: number | null
           created_at?: string
           featured?: boolean
+          free_shipping?: boolean
           id?: string
           images?: Json
           long_desc?: string | null
@@ -6868,6 +6881,7 @@ export type Database = {
           compare_price?: number | null
           created_at?: string
           featured?: boolean
+          free_shipping?: boolean
           id?: string
           images?: Json
           long_desc?: string | null
