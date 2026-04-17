@@ -199,10 +199,19 @@ export default function Import() {
           </div>
           <div className="flex items-center gap-3 mt-3 flex-wrap">
             <Input placeholder="সার্চ করুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
+            <Select value={transferStatus} onValueChange={(v: any) => { setTransferStatus(v); setSelectedIds(new Set()); }}>
+              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending Transfer</SelectItem>
+                <SelectItem value="transferred">Transferred to POP</SelectItem>
+              </SelectContent>
+            </Select>
             <Button variant="outline" size="sm" onClick={generateExcel}><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel জেনারেট</Button>
-            <Button variant="default" size="sm" onClick={() => exportToMacReseller.mutate()} disabled={selectedIds.size === 0}>
-              <ExternalLink className="h-4 w-4 mr-1" /> MAC রিসেলারে এক্সপোর্ট ({selectedIds.size})
-            </Button>
+            {transferStatus === "pending" && (
+              <Button variant="default" size="sm" onClick={() => setTransferOpen(true)} disabled={selectedIds.size === 0}>
+                <ArrowRightLeft className="h-4 w-4 mr-1" /> POP-এ ট্রান্সফার ({selectedIds.size})
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
