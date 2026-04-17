@@ -131,6 +131,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          is_default: boolean
+          is_protected: boolean
           name: string
           redirect_url: string | null
           status: string
@@ -140,6 +142,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_default?: boolean
+          is_protected?: boolean
           name: string
           redirect_url?: string | null
           status?: string
@@ -149,6 +153,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_default?: boolean
+          is_protected?: boolean
           name?: string
           redirect_url?: string | null
           status?: string
