@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Users as UsersIcon, Edit, Eye, Key, ArrowLeft, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+const SUPER_ADMIN_ROLE_ID = "11111111-1111-1111-1111-111111111111";
 
 export default function UserReview() {
   const { id } = useParams();
