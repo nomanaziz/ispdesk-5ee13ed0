@@ -20,7 +20,7 @@ const KNOWN_SECTIONS = ["hero", "about", "faq", "footer", "homepage", "settings"
 
 const PRESETS: { section: string; content_key: string; sample: any; label: string }[] = [
   { section: "hero", content_key: "main", label: "হিরো — মূল টেক্সট", sample: { badge: "৯৯.৯% আপটাইম গ্যারান্টি", title_1: "দ্রুতগতির", title_highlight: "ফাইবার অপটিক", title_2: "ইন্টারনেট", subtitle: "সাশ্রয়ী মূল্যে BDIX, FTP ও ক্যাশ সার্ভার সুবিধাসহ উচ্চ গতির ইন্টারনেট সেবা।", price_label: "মাত্র", price: "৳৫০০", price_suffix: "/মাস থেকে শুরু" } },
-  { section: "hero", content_key: "marquee", label: "হিরো — মার্কি টেক্সট", sample: { text: "🎉 ঈদ মোবারক! সকল প্যাকেজে বিশেষ ছাড়! | 🌟 ফাইবার কানেকশনে ফ্রি রাউটার! | 📞 হেল্পলাইন: ০৯৬৭৮-১২৩৪৫৬" } },
+  { section: "hero", content_key: "marquee", label: "হিরো — মার্কি টেক্সট (enabled=false করলে বন্ধ হবে)", sample: { enabled: true, text: "🎉 ঈদ মোবারক! সকল প্যাকেজে বিশেষ ছাড়! | 🌟 ফাইবার কানেকশনে ফ্রি রাউটার! | 📞 হেল্পলাইন: ০৯৬৭৮-১২৩৪৫৬" } },
   { section: "footer", content_key: "brand", label: "ফুটার — ব্র্যান্ড", sample: { name: "ISP Desk", tagline: "ইন্টারনেট সেবা প্রদানকারী", description: "আপনার বিশ্বস্ত ইন্টারনেট সেবা প্রদানকারী।" } },
   { section: "footer", content_key: "contact", label: "ফুটার — যোগাযোগ", sample: { phone: "০৯৬৭৮-১২৩৪৫৬", email: "info@ispdesk.com", address: "আপনার ঠিকানা, বাংলাদেশ" } },
 ];
