@@ -267,6 +267,14 @@ import PortalSpeedTest from "@/pages/portal/PortalSpeedTest";
 import ResellerProtectedRoute from "@/components/ResellerProtectedRoute";
 import { ResellerLayout } from "@/components/ResellerLayout";
 import ResellerDashboard from "@/pages/reseller/ResellerDashboard";
+import ResellerInvoices from "@/pages/reseller/ResellerInvoices";
+import ResellerInvoiceDetail from "@/pages/reseller/ResellerInvoiceDetail";
+import ResellerInvoicePrint from "@/pages/reseller/ResellerInvoicePrint";
+import ResellerPurchaseOrders from "@/pages/reseller/ResellerPurchaseOrders";
+import ResellerPurchaseOrderForm from "@/pages/reseller/ResellerPurchaseOrderForm";
+import ResellerTickets from "@/pages/reseller/ResellerTickets";
+import ResellerUsers from "@/pages/reseller/ResellerUsers";
+import ResellerSettings from "@/pages/reseller/ResellerSettings";
 
 const queryClient = new QueryClient();
 
@@ -542,7 +550,15 @@ const App = () => (
               {/* Reseller Portal */}
               <Route path="/reseller" element={<Navigate to="/reseller/dashboard" replace />} />
               <Route path="/reseller/login" element={<Navigate to="/login" replace />} />
-              <Route path="/reseller/dashboard" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ResellerDashboard /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/reseller/dashboard" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><ResellerDashboard /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/reseller/invoices" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerLayout><ResellerInvoices /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/reseller/invoices/:id" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerLayout><ResellerInvoiceDetail /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/reseller/invoices/:id/print" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerInvoicePrint /></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/reseller/purchases" element={<PortalAuthProvider><ResellerProtectedRoute require="purchases"><ResellerLayout><ResellerPurchaseOrders /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/reseller/purchases/new" element={<PortalAuthProvider><ResellerProtectedRoute require="purchases"><ResellerLayout><ResellerPurchaseOrderForm /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/reseller/tickets" element={<PortalAuthProvider><ResellerProtectedRoute require="tickets"><ResellerLayout><ResellerTickets /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/reseller/users" element={<PortalAuthProvider><ResellerProtectedRoute require="users"><ResellerLayout><ResellerUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/reseller/settings" element={<PortalAuthProvider><ResellerProtectedRoute require="settings"><ResellerLayout><ResellerSettings /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
