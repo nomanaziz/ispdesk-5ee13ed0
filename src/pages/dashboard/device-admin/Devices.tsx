@@ -23,10 +23,10 @@ export default function DeviceInventory() {
     queryKey: ["device_admin_inventory"],
     queryFn: async () => {
       const [mk, olt, sw, zk] = await Promise.all([
-        supabase.from("mikrotik_devices").select("id,name,host,status,model,location"),
-        supabase.from("olt_devices").select("id,name,host,status,model,location"),
-        supabase.from("pop_devices").select("id,name,host,status,model,location"),
-        supabase.from("zkteco_devices").select("id,name,host,status,model,location"),
+        supabase.from("mikrotik_devices").select("id,name,ip_address,status"),
+        supabase.from("olt_devices").select("id,name,ip_address,status"),
+        supabase.from("pop_devices").select("id,name,ip_address,status"),
+        supabase.from("zkteco_devices").select("id,name,ip_address,status,location"),
       ]);
       return [
         ...(mk.data ?? []).map((d: any) => ({ ...d, type: "mikrotik" })),
@@ -39,7 +39,7 @@ export default function DeviceInventory() {
 
   const filtered = data.filter((d: any) => {
     if (type !== "all" && d.type !== type) return false;
-    if (search && !`${d.name} ${d.host}`.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !`${d.name} ${d.ip_address || ""}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
@@ -73,17 +73,16 @@ export default function DeviceInventory() {
                 <TableHead className="w-12">#</TableHead>
                 <TableHead>টাইপ</TableHead>
                 <TableHead>নাম</TableHead>
-                <TableHead>হোস্ট / IP</TableHead>
-                <TableHead>মডেল</TableHead>
+                <TableHead>IP অ্যাড্রেস</TableHead>
                 <TableHead>লোকেশন</TableHead>
                 <TableHead>স্ট্যাটাস</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8">কোনো ডিভাইস পাওয়া যায়নি</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-8">কোনো ডিভাইস পাওয়া যায়নি</TableCell></TableRow>
               ) : filtered.map((d: any, i: number) => {
                 const meta = TYPE_META[d.type];
                 const Icon = meta.icon;
@@ -96,8 +95,7 @@ export default function DeviceInventory() {
                       </span>
                     </TableCell>
                     <TableCell className="font-medium">{d.name}</TableCell>
-                    <TableCell className="font-mono text-sm">{d.host || "—"}</TableCell>
-                    <TableCell>{d.model || "—"}</TableCell>
+                    <TableCell className="font-mono text-sm">{d.ip_address || "—"}</TableCell>
                     <TableCell>{d.location || "—"}</TableCell>
                     <TableCell>
                       <Badge variant={d.status === "online" ? "default" : d.status === "offline" ? "destructive" : "secondary"}>

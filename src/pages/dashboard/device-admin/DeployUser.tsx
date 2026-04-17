@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { UserPlus, Shield, Eye, Edit, Crown } from "lucide-react";
 
-type Device = { id: string; name: string; type: string; host?: string };
+type Device = { id: string; name: string; type: string; ip_address?: string };
 
 export default function DeployUser() {
   const qc = useQueryClient();
@@ -24,10 +24,10 @@ export default function DeployUser() {
     queryKey: ["device_admin_inventory_simple"],
     queryFn: async () => {
       const [mk, olt, sw, zk] = await Promise.all([
-        supabase.from("mikrotik_devices").select("id,name,host"),
-        supabase.from("olt_devices").select("id,name,host"),
-        supabase.from("pop_devices").select("id,name,host"),
-        supabase.from("zkteco_devices").select("id,name,host"),
+        supabase.from("mikrotik_devices").select("id,name,ip_address"),
+        supabase.from("olt_devices").select("id,name,ip_address"),
+        supabase.from("pop_devices").select("id,name,ip_address"),
+        supabase.from("zkteco_devices").select("id,name,ip_address"),
       ]);
       const all: Device[] = [
         ...(mk.data ?? []).map((d: any) => ({ ...d, type: "mikrotik" })),
@@ -121,7 +121,7 @@ export default function DeployUser() {
                   <Checkbox checked={selected.has(key(d))} onCheckedChange={() => toggle(d)} />
                   <Badge variant="outline" className="text-xs">{d.type}</Badge>
                   <span className="font-medium">{d.name}</span>
-                  <span className="text-xs text-muted-foreground font-mono ml-auto">{d.host}</span>
+                  <span className="text-xs text-muted-foreground font-mono ml-auto">{d.ip_address}</span>
                 </label>
               ))}
               {filtered.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">কোনো ডিভাইস নেই</div>}
