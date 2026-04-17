@@ -214,7 +214,25 @@ export default function BillingList() {
 
   return (
     <div className="space-y-3 p-4">
-      <h1 className="text-xl font-bold text-foreground">বিলিং তালিকা (Billing List)</h1>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-xl font-bold text-foreground">বিলিং তালিকা (Billing List)</h1>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={async () => {
+            try {
+              const { data, error } = await supabase.functions.invoke("generate-monthly-billing", { body: {} });
+              if (error) throw error;
+              toast.success(data?.message || "বিল তৈরি সম্পন্ন");
+              queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+            } catch (e: any) {
+              toast.error(e.message || "বিল তৈরি ব্যর্থ");
+            }
+          }}
+        >
+          <Receipt className="h-4 w-4 mr-1" /> এই মাসের বিল তৈরি করুন
+        </Button>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
