@@ -8096,6 +8096,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          location: string
           parent_id: string | null
           sort_order: number | null
           status: string
@@ -8105,6 +8106,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          location?: string
           parent_id?: string | null
           sort_order?: number | null
           status?: string
@@ -8114,6 +8116,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          location?: string
           parent_id?: string | null
           sort_order?: number | null
           status?: string
