@@ -14,13 +14,15 @@ import {
   Search,
   Menu,
   Activity,
+  Server,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Key = "dashboard" | "invoices" | "purchases" | "tickets" | "users" | "settings";
+type Key = "dashboard" | "invoices" | "purchases" | "tickets" | "users" | "settings" | "mikrotik";
 
 const allNav: { key: Key; to: string; label: string; icon: any }[] = [
   { key: "dashboard", to: "/reseller/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "mikrotik", to: "/reseller/mikrotik-users", label: "MikroTik Users", icon: Server },
   { key: "invoices", to: "/reseller/invoices", label: "Billing Invoices", icon: Receipt },
   { key: "purchases", to: "/reseller/purchases", label: "Purchase Orders", icon: ShoppingCart },
   { key: "tickets", to: "/reseller/tickets", label: "Support Tickets", icon: LifeBuoy },
@@ -45,8 +47,8 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
   const isBwCustomer = customer?.type === "bw_customer";
   const perms = customer?.permissions;
   const nav = allNav
-    .filter((item) => (isBwCustomer ? item.key !== "users" : true))
-    .filter((item) => (isSub && perms ? perms[item.key] : true))
+    .filter((item) => (isBwCustomer ? item.key !== "users" && item.key !== "mikrotik" : true))
+    .filter((item) => (isSub && perms && item.key !== "mikrotik" ? perms[item.key as keyof typeof perms] : true))
     .filter((item) => item.label.toLowerCase().includes(search.toLowerCase()));
 
   const popLabel = customer?.name?.toUpperCase() || "RESELLER PORTAL";

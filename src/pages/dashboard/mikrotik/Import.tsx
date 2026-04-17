@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, CheckSquare, XCircle, Filter, RefreshCw } from "lucide-react";
+import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, XCircle, RefreshCw, ArrowRightLeft } from "lucide-react";
 import * as XLSX from "xlsx";
+import { TransferToPopDialog } from "@/components/mikrotik/TransferToPopDialog";
 
 export default function Import() {
   const navigate = useNavigate();
@@ -20,10 +21,12 @@ export default function Import() {
   const [protocolFilter, setProtocolFilter] = useState<string>("all");
   const [profileFilter, setProfileFilter] = useState<string>("all");
   const [userTypeFilter, setUserTypeFilter] = useState<string>("all");
+  const [transferStatus, setTransferStatus] = useState<"pending" | "transferred">("pending");
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [isSyncing, setIsSyncing] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
 
   const { data: servers = [] } = useQuery({
     queryKey: ["mikrotik_devices_active"],
@@ -43,9 +46,14 @@ export default function Import() {
   });
 
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ["mikrotik_clients", selectedServer, protocolFilter, profileFilter, userTypeFilter],
+    queryKey: ["mikrotik_clients", selectedServer, protocolFilter, profileFilter, userTypeFilter, transferStatus],
     queryFn: async () => {
-      let q = supabase.from("mikrotik_clients").select("*, mikrotik_devices(name), branches(name)").eq("exported", false).order("created_at", { ascending: false });
+      let q = supabase
+        .from("mikrotik_clients")
+        .select("*, mikrotik_devices(name), branches(name), transferred_pop:branch_managers!mikrotik_clients_transferred_to_pop_id_fkey(name, pop_code), transferred_mt:mikrotik_devices!mikrotik_clients_transferred_to_mikrotik_id_fkey(name)")
+        .order("created_at", { ascending: false });
+      if (transferStatus === "pending") q = q.is("transferred_to_pop_id", null);
+      else q = q.not("transferred_to_pop_id", "is", null);
       if (selectedServer !== "all") q = q.eq("mikrotik_id", selectedServer);
       if (protocolFilter !== "all") q = q.eq("service", protocolFilter);
       if (profileFilter !== "all") q = q.eq("profile", profileFilter);
@@ -93,23 +101,7 @@ export default function Import() {
     });
   };
 
-  const exportToMacReseller = useMutation({
-    mutationFn: async () => {
-      if (selectedIds.size === 0) {
-        toast.error("ক্লায়েন্ট সিলেক্ট করুন");
-        return;
-      }
-      const ids = Array.from(selectedIds);
-      const { error } = await supabase.from("mikrotik_clients").update({ exported: true, exported_to: "mac_reseller" }).in("id", ids);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["mikrotik_clients"] });
-      setSelectedIds(new Set());
-      toast.success("MAC রিসেলারে এক্সপোর্ট হয়েছে");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+  // Transfer handled by TransferToPopDialog
 
   const generateExcel = () => {
     const ws = XLSX.utils.json_to_sheet(
@@ -207,10 +199,19 @@ export default function Import() {
           </div>
           <div className="flex items-center gap-3 mt-3 flex-wrap">
             <Input placeholder="সার্চ করুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
+            <Select value={transferStatus} onValueChange={(v: any) => { setTransferStatus(v); setSelectedIds(new Set()); }}>
+              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending Transfer</SelectItem>
+                <SelectItem value="transferred">Transferred to POP</SelectItem>
+              </SelectContent>
+            </Select>
             <Button variant="outline" size="sm" onClick={generateExcel}><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel জেনারেট</Button>
-            <Button variant="default" size="sm" onClick={() => exportToMacReseller.mutate()} disabled={selectedIds.size === 0}>
-              <ExternalLink className="h-4 w-4 mr-1" /> MAC রিসেলারে এক্সপোর্ট ({selectedIds.size})
-            </Button>
+            {transferStatus === "pending" && (
+              <Button variant="default" size="sm" onClick={() => setTransferOpen(true)} disabled={selectedIds.size === 0}>
+                <ArrowRightLeft className="h-4 w-4 mr-1" /> POP-এ ট্রান্সফার ({selectedIds.size})
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -229,7 +230,11 @@ export default function Import() {
                   <TableHead>সার্ভার</TableHead>
                   <TableHead>Logout Time</TableHead>
                   <TableHead>স্ট্যাটাস</TableHead>
-                  <TableHead>ব্রাঞ্চ</TableHead>
+                  {transferStatus === "transferred" ? (
+                    <TableHead>ট্রান্সফার গন্তব্য</TableHead>
+                  ) : (
+                    <TableHead>ব্রাঞ্চ</TableHead>
+                  )}
                   <TableHead>অ্যাকশন</TableHead>
                 </TableRow>
               </TableHeader>
@@ -265,7 +270,18 @@ export default function Import() {
                     <TableCell>{c.mikrotik_devices?.name || "—"}</TableCell>
                     <TableCell className="text-xs">{c.logout_time ? new Date(c.logout_time).toLocaleString("bn-BD") : "—"}</TableCell>
                     <TableCell><span className={`text-xs px-2 py-0.5 rounded ${statusColor[c.user_status] || "bg-muted"}`}>{c.user_status}</span></TableCell>
-                    <TableCell>{c.branches?.name || "—"}</TableCell>
+                    {transferStatus === "transferred" ? (
+                      <TableCell className="text-xs">
+                        {c.transferred_pop?.name ? (
+                          <div>
+                            <div className="font-medium">{c.transferred_pop.name}</div>
+                            <div className="text-muted-foreground">{c.transferred_mt?.name || "—"}</div>
+                          </div>
+                        ) : "—"}
+                      </TableCell>
+                    ) : (
+                      <TableCell>{c.branches?.name || "—"}</TableCell>
+                    )}
                     <TableCell>
                       <Button variant="ghost" size="icon" className="h-8 w-8" title="ক্লায়েন্ট লিস্টে এক্সপোর্ট" onClick={() => exportToClientList(c)}>
                         <ExternalLink className="h-4 w-4" />
@@ -279,6 +295,13 @@ export default function Import() {
           <div className="mt-3 text-sm text-muted-foreground">মোট: {filtered.length} জন ক্লায়েন্ট</div>
         </CardContent>
       </Card>
+
+      <TransferToPopDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        selectedIds={Array.from(selectedIds)}
+        onTransferred={() => setSelectedIds(new Set())}
+      />
     </div>
   );
 }

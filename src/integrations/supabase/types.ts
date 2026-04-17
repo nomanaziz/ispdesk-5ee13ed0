@@ -3974,6 +3974,10 @@ export type Database = {
           server_name: string | null
           service: string | null
           status: string
+          transferred_at: string | null
+          transferred_by: string | null
+          transferred_to_mikrotik_id: string | null
+          transferred_to_pop_id: string | null
           user_status: string | null
         }
         Insert: {
@@ -3992,6 +3996,10 @@ export type Database = {
           server_name?: string | null
           service?: string | null
           status?: string
+          transferred_at?: string | null
+          transferred_by?: string | null
+          transferred_to_mikrotik_id?: string | null
+          transferred_to_pop_id?: string | null
           user_status?: string | null
         }
         Update: {
@@ -4010,6 +4018,10 @@ export type Database = {
           server_name?: string | null
           service?: string | null
           status?: string
+          transferred_at?: string | null
+          transferred_by?: string | null
+          transferred_to_mikrotik_id?: string | null
+          transferred_to_pop_id?: string | null
           user_status?: string | null
         }
         Relationships: [
@@ -4025,6 +4037,20 @@ export type Database = {
             columns: ["mikrotik_id"]
             isOneToOne: false
             referencedRelation: "mikrotik_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mikrotik_clients_transferred_to_mikrotik_id_fkey"
+            columns: ["transferred_to_mikrotik_id"]
+            isOneToOne: false
+            referencedRelation: "mikrotik_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mikrotik_clients_transferred_to_pop_id_fkey"
+            columns: ["transferred_to_pop_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
             referencedColumns: ["id"]
           },
         ]
