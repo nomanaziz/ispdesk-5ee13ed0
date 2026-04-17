@@ -154,6 +154,7 @@ const menuGroups: MenuGroup[] = [
     icon: Activity,
     items: [
       { title: "অনলাইন মনিটরিং", url: "/dashboard/monitoring/online", icon: Wifi },
+      { title: "Live Traffic", url: "/dashboard/monitoring/live-traffic", icon: Activity },
       { title: "সুইচ তালিকা", url: "/dashboard/monitoring/switches", icon: Network },
       { title: "সুইচ যোগ করুন", url: "/dashboard/monitoring/add-switch", icon: UserPlus },
       { title: "POP DASS", url: "/dashboard/monitoring/pop-dass", icon: Monitor },

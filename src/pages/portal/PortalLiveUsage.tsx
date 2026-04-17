@@ -66,6 +66,8 @@ const PortalLiveUsage = () => {
 
   const [samples, setSamples] = useState<Sample[]>([]);
   const [snapshotOnline, setSnapshotOnline] = useState<boolean | null>(null);
+  const [snapUptime, setSnapUptime] = useState<string | null>(null);
+  const [snapAddress, setSnapAddress] = useState<string | null>(null);
 
   useEffect(() => {
     if (!clientId) return;
@@ -79,6 +81,8 @@ const PortalLiveUsage = () => {
         if (cancelled) return;
         if (error || !data) return;
         setSnapshotOnline(!!data.online);
+        setSnapUptime(data.uptime || null);
+        setSnapAddress(data.address || null);
         if (!data.online) {
           setSamples((s) =>
             [...s, { time: new Date().toLocaleTimeString([], { hour12: false }), down: 0, up: 0 }].slice(-MAX_POINTS)
