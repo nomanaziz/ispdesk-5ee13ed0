@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { HardDrive, Download, Trash2, Play, Loader2 } from "lucide-react";
+import { HardDrive, Download, Trash2, Play, Loader2, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function BackupCenter() {
   const qc = useQueryClient();
@@ -177,10 +178,24 @@ export default function BackupCenter() {
                       <TableCell><Badge variant={b.backup_format === "rsc" ? "secondary" : "default"}>.{b.backup_format}</Badge></TableCell>
                       <TableCell className="text-xs">{formatBytes(b.file_size)}</TableCell>
                       <TableCell><Badge variant="secondary">{b.triggered_by}</Badge></TableCell>
-                      <TableCell><Badge variant={b.status === "completed" ? "default" : "destructive"}>{b.status}</Badge></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Badge variant={b.status === "completed" ? "default" : "destructive"}>{b.status}</Badge>
+                          {b.error_message && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs"><p className="text-xs">{b.error_message}</p></TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => downloadBackup(b)} disabled={!b.file_path}><Download className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => downloadBackup(b)} disabled={!b.file_path} title={!b.file_path && b.status === "completed" ? "Device-এ আছে — Winbox/FTP দিয়ে নিন" : "ডাউনলোড"}><Download className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { if (confirm("ডিলিট?")) del.mutate(b); }}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </TableCell>
