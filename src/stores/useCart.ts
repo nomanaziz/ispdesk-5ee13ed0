@@ -10,6 +10,7 @@ export interface CartItem {
   quantity: number;
   warrantyMonths: number;
   stock: number;
+  freeShipping?: boolean;
 }
 
 interface CartState {
