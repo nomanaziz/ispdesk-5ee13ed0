@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
@@ -65,42 +65,38 @@ const PortalLiveUsage = () => {
   });
 
   const [samples, setSamples] = useState<Sample[]>([]);
-  const lastRef = useRef<{ up: number; down: number; t: number } | null>(null);
+  const [snapshotOnline, setSnapshotOnline] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!clientId) return;
     let cancelled = false;
 
     const tick = async () => {
-      const { data } = await supabase
-        .from("clients")
-        .select("total_upload, total_download")
-        .eq("id", clientId)
-        .maybeSingle();
-      if (cancelled || !data) return;
-      const now = Date.now();
-      const up = Number(data.total_upload || 0);
-      const down = Number(data.total_download || 0);
-      if (lastRef.current) {
-        const dt = Math.max(1, (now - lastRef.current.t) / 1000);
-        const upKbps = Math.max(0, ((up - lastRef.current.up) * 8) / 1000 / dt);
-        const downKbps = Math.max(0, ((down - lastRef.current.down) * 8) / 1000 / dt);
-        setSamples((s) => {
-          const next = [
-            ...s,
-            {
-              time: new Date().toLocaleTimeString([], { hour12: false }),
-              down: Math.round(downKbps),
-              up: Math.round(upKbps),
-            },
-          ];
-          return next.slice(-MAX_POINTS);
+      try {
+        const { data, error } = await supabase.functions.invoke("live-traffic-snapshot", {
+          body: { client_id: clientId },
         });
-      } else {
-        // seed an initial 0 point so chart appears immediately
-        setSamples([{ time: new Date().toLocaleTimeString([], { hour12: false }), down: 0, up: 0 }]);
+        if (cancelled) return;
+        if (error || !data) return;
+        setSnapshotOnline(!!data.online);
+        if (!data.online) {
+          setSamples((s) =>
+            [...s, { time: new Date().toLocaleTimeString([], { hour12: false }), down: 0, up: 0 }].slice(-MAX_POINTS)
+          );
+          return;
+        }
+        // bps → Kbps
+        const downKbps = Math.round(Number(data.download_bps || 0) / 1000);
+        const upKbps = Math.round(Number(data.upload_bps || 0) / 1000);
+        setSamples((s) =>
+          [
+            ...s,
+            { time: new Date().toLocaleTimeString([], { hour12: false }), down: downKbps, up: upKbps },
+          ].slice(-MAX_POINTS)
+        );
+      } catch (_) {
+        /* swallow */
       }
-      lastRef.current = { up, down, t: now };
     };
 
     tick();
@@ -112,7 +108,7 @@ const PortalLiveUsage = () => {
   }, [clientId]);
 
   const latest = samples[samples.length - 1];
-  const isOnline = !!client?.is_online;
+  const isOnline = snapshotOnline ?? !!client?.is_online;
 
   const infoRows = [
     { icon: User, label: "Client Name", value: client?.name || "—" },

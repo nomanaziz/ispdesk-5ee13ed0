@@ -12,335 +12,191 @@ function encodeLength(len: number): Uint8Array {
   if (len < 0x10000000) return new Uint8Array([((len >> 24) & 0x0f) | 0xe0, (len >> 16) & 0xff, (len >> 8) & 0xff, len & 0xff]);
   return new Uint8Array([0xf0, (len >> 24) & 0xff, (len >> 16) & 0xff, (len >> 8) & 0xff, len & 0xff]);
 }
-
 function encodeWord(word: string): Uint8Array {
-  const encoded = new TextEncoder().encode(word);
-  const lenBytes = encodeLength(encoded.length);
-  const result = new Uint8Array(lenBytes.length + encoded.length);
-  result.set(lenBytes);
-  result.set(encoded, lenBytes.length);
-  return result;
+  const e = new TextEncoder().encode(word);
+  const lb = encodeLength(e.length);
+  const o = new Uint8Array(lb.length + e.length);
+  o.set(lb); o.set(e, lb.length); return o;
 }
-
-async function writeAll(conn: Deno.TcpConn, data: Uint8Array): Promise<void> {
-  let written = 0;
-  while (written < data.length) {
-    const n = await conn.write(data.subarray(written));
-    if (n === 0) throw new Error("Connection closed during write");
-    written += n;
-  }
+async function writeAll(c: Deno.TcpConn, d: Uint8Array) {
+  let w = 0; while (w < d.length) { const n = await c.write(d.subarray(w)); if (n === 0) throw new Error("closed"); w += n; }
 }
-
-async function writeSentence(conn: Deno.TcpConn, words: string[]): Promise<void> {
-  const parts: Uint8Array[] = [];
-  for (const word of words) parts.push(encodeWord(word));
-  parts.push(new Uint8Array([0]));
-  let totalLen = 0;
-  for (const p of parts) totalLen += p.length;
-  const buf = new Uint8Array(totalLen);
-  let offset = 0;
-  for (const p of parts) { buf.set(p, offset); offset += p.length; }
-  await writeAll(conn, buf);
+async function writeSentence(c: Deno.TcpConn, words: string[]) {
+  const parts: Uint8Array[] = []; for (const w of words) parts.push(encodeWord(w)); parts.push(new Uint8Array([0]));
+  let t = 0; for (const p of parts) t += p.length;
+  const b = new Uint8Array(t); let o = 0; for (const p of parts) { b.set(p, o); o += p.length; }
+  await writeAll(c, b);
 }
-
-async function readByte(conn: Deno.TcpConn): Promise<number> {
-  const buf = new Uint8Array(1);
-  const n = await conn.read(buf);
-  if (n === null || n === 0) throw new Error("Connection closed");
-  return buf[0];
+async function readByte(c: Deno.TcpConn): Promise<number> {
+  const b = new Uint8Array(1); const n = await c.read(b); if (!n) throw new Error("closed"); return b[0];
 }
-
-async function readBytes(conn: Deno.TcpConn, count: number): Promise<Uint8Array> {
-  const buf = new Uint8Array(count);
-  let offset = 0;
-  while (offset < count) {
-    const n = await conn.read(buf.subarray(offset));
-    if (n === null || n === 0) throw new Error("Connection closed during read");
-    offset += n;
-  }
-  return buf;
+async function readBytes(c: Deno.TcpConn, n: number): Promise<Uint8Array> {
+  const b = new Uint8Array(n); let o = 0; while (o < n) { const r = await c.read(b.subarray(o)); if (!r) throw new Error("closed"); o += r; } return b;
 }
-
-async function readLength(conn: Deno.TcpConn): Promise<number> {
-  const b = await readByte(conn);
+async function readLength(c: Deno.TcpConn): Promise<number> {
+  const b = await readByte(c);
   if ((b & 0x80) === 0) return b;
-  if ((b & 0xc0) === 0x80) { const b2 = await readByte(conn); return ((b & 0x3f) << 8) | b2; }
-  if ((b & 0xe0) === 0xc0) { const r = await readBytes(conn, 2); return ((b & 0x1f) << 16) | (r[0] << 8) | r[1]; }
-  if ((b & 0xf0) === 0xe0) { const r = await readBytes(conn, 3); return ((b & 0x0f) << 24) | (r[0] << 16) | (r[1] << 8) | r[2]; }
-  const r = await readBytes(conn, 4);
-  return (r[0] << 24) | (r[1] << 16) | (r[2] << 8) | r[3];
+  if ((b & 0xc0) === 0x80) { const b2 = await readByte(c); return ((b & 0x3f) << 8) | b2; }
+  if ((b & 0xe0) === 0xc0) { const r = await readBytes(c, 2); return ((b & 0x1f) << 16) | (r[0] << 8) | r[1]; }
+  if ((b & 0xf0) === 0xe0) { const r = await readBytes(c, 3); return ((b & 0x0f) << 24) | (r[0] << 16) | (r[1] << 8) | r[2]; }
+  const r = await readBytes(c, 4); return (r[0] << 24) | (r[1] << 16) | (r[2] << 8) | r[3];
 }
-
-async function readWord(conn: Deno.TcpConn): Promise<string> {
-  const len = await readLength(conn);
-  if (len === 0) return "";
-  const data = await readBytes(conn, len);
-  return new TextDecoder().decode(data);
+async function readWord(c: Deno.TcpConn): Promise<string> {
+  const l = await readLength(c); if (l === 0) return ""; return new TextDecoder().decode(await readBytes(c, l));
 }
-
-async function readSentence(conn: Deno.TcpConn): Promise<string[]> {
-  const words: string[] = [];
+async function readSentence(c: Deno.TcpConn): Promise<string[]> {
+  const ws: string[] = []; while (true) { const w = await readWord(c); if (w === "") break; ws.push(w); } return ws;
+}
+function parseAttrs(ws: string[]): Record<string, string> {
+  const a: Record<string, string> = {}; for (const w of ws) { if (w.startsWith("=")) { const i = w.indexOf("=", 1); if (i !== -1) a[w.substring(1, i)] = w.substring(i + 1); } } return a;
+}
+async function login(c: Deno.TcpConn, u: string, p: string) {
+  await writeSentence(c, ["/login", `=name=${u}`, `=password=${p}`]);
+  const r = await readSentence(c);
+  if (r[0] === "!trap") throw new Error(`login: ${parseAttrs(r).message}`);
+  if (r[0] !== "!done") throw new Error(`login bad: ${r.join(",")}`);
+}
+async function command(c: Deno.TcpConn, cmd: string, params?: Record<string, string>): Promise<Record<string, string>[]> {
+  const ws = [cmd];
+  if (params) for (const [k, v] of Object.entries(params)) ws.push(k.startsWith("?") ? `${k}=${v}` : `=${k}=${v}`);
+  await writeSentence(c, ws);
+  const out: Record<string, string>[] = [];
   while (true) {
-    const word = await readWord(conn);
-    if (word === "") break;
-    words.push(word);
+    const s = await readSentence(c);
+    if (s.length === 0) continue;
+    if (s[0] === "!re") out.push(parseAttrs(s));
+    else if (s[0] === "!done") break;
+    else if (s[0] === "!trap") throw new Error(`cmd: ${parseAttrs(s).message}`);
   }
-  return words;
+  return out;
 }
 
-function parseSentenceAttrs(words: string[]): Record<string, string> {
-  const attrs: Record<string, string> = {};
-  for (const word of words) {
-    if (word.startsWith("=")) {
-      const eqIdx = word.indexOf("=", 1);
-      if (eqIdx !== -1) {
-        attrs[word.substring(1, eqIdx)] = word.substring(eqIdx + 1);
-      }
-    }
-  }
-  return attrs;
-}
-
-async function mikrotikLogin(conn: Deno.TcpConn, username: string, password: string): Promise<void> {
-  await writeSentence(conn, ["/login", `=name=${username}`, `=password=${password}`]);
-  const reply = await readSentence(conn);
-  if (reply[0] === "!trap") {
-    const attrs = parseSentenceAttrs(reply);
-    throw new Error(`Login failed: ${attrs.message || "authentication error"}`);
-  }
-  if (reply[0] !== "!done") throw new Error(`Unexpected login response: ${reply.join(",")}`);
-}
-
-async function mikrotikCommand(conn: Deno.TcpConn, command: string, params?: Record<string, string>): Promise<Record<string, string>[]> {
-  const words = [command];
-  if (params) {
-    for (const [k, v] of Object.entries(params)) {
-      if (k.startsWith("?")) words.push(`${k}=${v}`);
-      else words.push(`=${k}=${v}`);
-    }
-  }
-  await writeSentence(conn, words);
-  const results: Record<string, string>[] = [];
-  while (true) {
-    const sentence = await readSentence(conn);
-    if (sentence.length === 0) continue;
-    if (sentence[0] === "!re") results.push(parseSentenceAttrs(sentence));
-    else if (sentence[0] === "!done") break;
-    else if (sentence[0] === "!trap") {
-      const attrs = parseSentenceAttrs(sentence);
-      throw new Error(`Command error: ${attrs.message || "unknown"}`);
-    }
-  }
-  return results;
-}
-
-function getCurrentMonthStart(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+function monthStart(): string {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const { data: devices, error: devErr } = await supabase
-      .from("mikrotik_devices")
-      .select("*")
-      .eq("enabled", true);
-
-    if (devErr || !devices || devices.length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, message: "No enabled MikroTik devices found" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const { data: devices } = await supabase.from("mikrotik_devices").select("*").eq("enabled", true);
+    if (!devices?.length) {
+      return new Response(JSON.stringify({ success: false, message: "no devices" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { data: allClients } = await supabase
-      .from("clients")
-      .select("id, username, mikrotik_id")
-      .not("username", "is", null);
+      .from("clients").select("id, username, mikrotik_id").not("username", "is", null);
 
     const clientMap = new Map<string, { id: string; mikrotik_id: string | null }>();
-    if (allClients) {
-      for (const c of allClients) {
-        if (c.username) clientMap.set(c.username, { id: c.id, mikrotik_id: c.mikrotik_id });
-      }
-    }
+    for (const c of allClients || []) if (c.username) clientMap.set(c.username.toLowerCase(), { id: c.id, mikrotik_id: c.mikrotik_id });
 
-    let totalCollected = 0;
+    let updated = 0;
     const errors: string[] = [];
-    const currentMonth = getCurrentMonthStart();
+    const month = monthStart();
 
     for (const device of devices) {
+      let conn: Deno.TcpConn | null = null;
       try {
-        const conn = await Deno.connect({
-          hostname: device.ip_address,
-          port: device.api_port || 8728,
-        });
+        conn = await Deno.connect({ hostname: device.ip_address, port: device.api_port || 8728 });
+        await login(conn, device.username || "admin", device.password_encrypted || "");
 
-        try {
-          await mikrotikLogin(conn, device.username || "admin", device.password_encrypted || "");
+        const active = await command(conn, "/ppp/active/print");
+        const ifaces = await command(conn, "/interface/print", { stats: "" });
+        conn.close();
 
-          const activeSessions = await mikrotikCommand(conn, "/ppp/active/print");
+        if (!active.length) continue;
 
-          conn.close();
+        // Build name → iface stats map
+        const ifaceByName = new Map<string, Record<string, string>>();
+        for (const i of ifaces) if (i.name) ifaceByName.set(i.name, i);
 
-          if (activeSessions.length === 0) continue;
+        const trafficLogs: any[] = [];
 
-          const usernames = activeSessions.map((s) => s.name).filter(Boolean);
-          
-          const { data: lastLogs } = await supabase
-            .from("client_traffic_logs")
-            .select("username, upload_bytes, download_bytes, recorded_at")
-            .in("username", usernames)
-            .eq("device_id", device.id)
-            .order("recorded_at", { ascending: false });
+        for (const session of active) {
+          const username = session.name;
+          if (!username) continue;
+          const ci = clientMap.get(username.toLowerCase());
+          if (!ci) continue;
 
-          const lastLogMap = new Map<string, { upload_bytes: number; download_bytes: number }>();
-          if (lastLogs) {
-            for (const log of lastLogs) {
-              if (!lastLogMap.has(log.username!)) {
-                lastLogMap.set(log.username!, {
-                  upload_bytes: Number(log.upload_bytes),
-                  download_bytes: Number(log.download_bytes),
-                });
-              }
+          // Find matching interface
+          const candidates = [
+            session["interface"],
+            session["service"] ? `<${session["service"]}-${username}>` : null,
+            `<pppoe-${username}>`,
+          ].filter(Boolean) as string[];
+
+          let iface: Record<string, string> | undefined;
+          for (const cand of candidates) {
+            iface = ifaceByName.get(cand);
+            if (iface) break;
+          }
+          if (!iface) {
+            for (const [n, v] of ifaceByName) {
+              if (n.toLowerCase().includes(username.toLowerCase())) { iface = v; break; }
             }
           }
+          if (!iface) continue;
 
-          const trafficLogs: any[] = [];
-          const clientUpdates: { id: string; username: string; upload_delta: number; download_delta: number }[] = [];
+          // MikroTik perspective: rx-byte = into router = client UPLOAD; tx-byte = out of router = client DOWNLOAD
+          const upload = parseInt(iface["rx-byte"] || "0", 10);
+          const download = parseInt(iface["tx-byte"] || "0", 10);
 
-          for (const session of activeSessions) {
-            const username = session.name;
-            if (!username) continue;
+          trafficLogs.push({
+            client_id: ci.id,
+            username,
+            device_id: device.id,
+            upload_bytes: upload,
+            download_bytes: download,
+          });
 
-            const currentUpload = parseInt(session["bytes-in"] || "0", 10);
-            const currentDownload = parseInt(session["bytes-out"] || "0", 10);
+          // Overwrite cumulative on client row (session-absolute counter)
+          await supabase.from("clients").update({
+            total_upload: upload,
+            total_download: download,
+            is_online: true,
+          }).eq("id", ci.id);
 
-            const lastReading = lastLogMap.get(username);
-            let uploadDelta = currentUpload;
-            let downloadDelta = currentDownload;
+          // Monthly aggregation: store latest snapshot for the month
+          const { data: existing } = await supabase
+            .from("client_traffic_monthly")
+            .select("id")
+            .eq("client_id", ci.id)
+            .eq("month", month)
+            .maybeSingle();
 
-            if (lastReading) {
-              uploadDelta = currentUpload >= lastReading.upload_bytes 
-                ? currentUpload - lastReading.upload_bytes 
-                : currentUpload;
-              downloadDelta = currentDownload >= lastReading.download_bytes 
-                ? currentDownload - lastReading.download_bytes 
-                : currentDownload;
-            }
-
-            const clientInfo = clientMap.get(username);
-            
-            trafficLogs.push({
-              client_id: clientInfo?.id || null,
-              username,
-              device_id: device.id,
-              upload_bytes: currentUpload,
-              download_bytes: currentDownload,
+          if (existing) {
+            await supabase.from("client_traffic_monthly").update({
+              total_upload: upload, total_download: download, updated_at: new Date().toISOString(),
+            }).eq("id", existing.id);
+          } else {
+            await supabase.from("client_traffic_monthly").insert({
+              client_id: ci.id, username, month, total_upload: upload, total_download: download,
             });
-
-            if (clientInfo && (uploadDelta > 0 || downloadDelta > 0)) {
-              clientUpdates.push({
-                id: clientInfo.id,
-                username,
-                upload_delta: uploadDelta,
-                download_delta: downloadDelta,
-              });
-            }
           }
-
-          // Batch insert traffic logs
-          if (trafficLogs.length > 0) {
-            const { error: insertErr } = await supabase
-              .from("client_traffic_logs")
-              .insert(trafficLogs);
-            if (insertErr) {
-              errors.push(`${device.name}: insert error - ${insertErr.message}`);
-            } else {
-              totalCollected += trafficLogs.length;
-            }
-          }
-
-          // Update client totals + monthly aggregation
-          for (const upd of clientUpdates) {
-            const { data: currentClient } = await supabase
-              .from("clients")
-              .select("total_upload, total_download")
-              .eq("id", upd.id)
-              .single();
-
-            if (currentClient) {
-              await supabase
-                .from("clients")
-                .update({
-                  total_upload: (Number(currentClient.total_upload) || 0) + upd.upload_delta,
-                  total_download: (Number(currentClient.total_download) || 0) + upd.download_delta,
-                })
-                .eq("id", upd.id);
-            }
-
-            // Upsert monthly traffic
-            const { data: existing } = await supabase
-              .from("client_traffic_monthly")
-              .select("id, total_upload, total_download")
-              .eq("client_id", upd.id)
-              .eq("month", currentMonth)
-              .maybeSingle();
-
-            if (existing) {
-              await supabase
-                .from("client_traffic_monthly")
-                .update({
-                  total_upload: (Number(existing.total_upload) || 0) + upd.upload_delta,
-                  total_download: (Number(existing.total_download) || 0) + upd.download_delta,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq("id", existing.id);
-            } else {
-              await supabase
-                .from("client_traffic_monthly")
-                .insert({
-                  client_id: upd.id,
-                  username: upd.username,
-                  month: currentMonth,
-                  total_upload: upd.upload_delta,
-                  total_download: upd.download_delta,
-                });
-            }
-          }
-
-        } catch (cmdErr) {
-          conn.close();
-          errors.push(`${device.name}: ${(cmdErr as Error).message}`);
+          updated++;
         }
-      } catch (connErr) {
-        errors.push(`${device.name}: connection failed - ${(connErr as Error).message}`);
+
+        if (trafficLogs.length) {
+          await supabase.from("client_traffic_logs").insert(trafficLogs);
+        }
+      } catch (e) {
+        try { conn?.close(); } catch (_) { /* noop */ }
+        errors.push(`${device.name}: ${(e as Error).message}`);
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        collected: totalCollected,
-        devices_processed: devices.length,
-        errors: errors.length > 0 ? errors : undefined,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({
+      success: true, updated, devices: devices.length, errors: errors.length ? errors : undefined,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
-    console.error("collect-client-traffic error:", err);
-    return new Response(
-      JSON.stringify({ error: (err as Error).message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("collect-client-traffic:", err);
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
