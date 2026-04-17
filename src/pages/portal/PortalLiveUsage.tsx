@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
@@ -108,7 +108,7 @@ const PortalLiveUsage = () => {
   }, [clientId]);
 
   const latest = samples[samples.length - 1];
-  const isOnline = !!client?.is_online;
+  const isOnline = snapshotOnline ?? !!client?.is_online;
 
   const infoRows = [
     { icon: User, label: "Client Name", value: client?.name || "—" },
