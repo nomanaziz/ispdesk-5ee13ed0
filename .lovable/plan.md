@@ -1,61 +1,60 @@
 
-User wants a global loading overlay system so that when API/edge function calls are in progress (especially multiple/long-running ones like deploy jobs, inspect, backup, fetch users), the UI shows a light animated loader and **blocks other interactions** until complete.
+User reports MikroTik backup not actually creating files on the device. Job shows "completed" but MikroTik `/file` directory is empty.
 
-Current state: individual buttons show spinners (`Loader2`), but user can still click other things and trigger parallel API hits, which is slow on MikroTik native API.
+## Root cause analysis
 
-## Plan: Global Loading Overlay + Mutation Lock
+Looking at `backup-mikrotik-device/index.ts`:
+- Uses **REST API** (`http://ip:port/rest/export` and `/system/backup/save`)
+- AFTABNAGAR device uses port **8523 = native binary API**, not REST
+- So the POST requests silently fail (timeout/connection refused) → caught in try/catch → falls through to "stub placeholder content" path → uploads a fake text file to storage → marks status as `completed`
+- That's why job looks ✅ but device has no real backup file
 
-### 1. New `GlobalLoadingOverlay` component
-`src/components/GlobalLoadingOverlay.tsx`
-- Fixed full-screen overlay (`z-[100]`), semi-transparent backdrop (`bg-background/60 backdrop-blur-sm`)
-- Centered card with animated spinner + message + optional sub-text (e.g. "৩টি ডিভাইসে কাজ চলছে...")
-- `pointer-events: auto` → blocks all clicks underneath
-- Uses existing `animate-fade-in` + `animate-scale-in` utilities
+This is the **same bug** I just fixed for `inspect-device`/`process-deploy-job`/`fetch-device-users` — backup function was missed.
 
-### 2. Global loading store
-`src/stores/useGlobalLoading.ts` (zustand — already in project deps via shadcn patterns, else simple React context)
-- State: `{ active: boolean, message: string, count: number }`
-- Actions: `start(message)`, `stop()`, auto-stack (multiple starts increment count, only hides at 0)
+## Fix plan
 
-### 3. Auto-wire to React Query mutations
-In `src/App.tsx` — wrap `QueryClient` with `MutationCache` callbacks:
-```ts
-new QueryClient({
-  mutationCache: new MutationCache({
-    onMutate: () => useGlobalLoading.getState().start(),
-    onSettled: () => useGlobalLoading.getState().stop(),
-  }),
-})
-```
-This makes **every** `useMutation` across the app automatically trigger the overlay — zero changes needed in 200+ existing dialogs/forms.
+### 1. Rewrite `backup-mikrotik-device/index.ts` to use native binary API
 
-### 4. Render overlay once
-Add `<GlobalLoadingOverlay />` in `App.tsx` (next to `<Toaster />`).
+Use the new `_shared/mikrotik-api.ts` helper. Commands:
 
-### 5. Opt-out mechanism
-Mutations can pass `meta: { silent: true }` to skip the overlay (for background/polling tasks like 5s job auto-refresh).
+**For `.rsc` (text export):**
+- Send `/export` with `=file=<name>` → device creates `<name>.rsc` in its file system
+- Wait 2-3 seconds for file generation
+- Send `/file/print` with `?name=<name>.rsc` → confirm exists, get size
+- Send `/file/print` with `=.proplist=contents` and `?name=<name>.rsc` → fetch text contents
+- Upload to `device-backups` storage
 
-Apply `silent: true` to:
-- `Jobs.tsx` 5-second auto-refresh queries (queries don't trigger this anyway, only mutations — but the per-row Retry should show overlay)
-- Any background sync we don't want blocking
+**For `.backup` (binary):**
+- Send `/system/backup/save` with `=name=<name>` → device creates `<name>.backup`
+- Wait, then `/file/print` to confirm
+- ⚠️ Binary `.backup` files **cannot** be read via API (only via FTP/SFTP/Winbox download). Two options:
+  - **(a)** Mark as "created on device" with file path reference, status `completed_on_device`, no upload — user downloads manually from MikroTik
+  - **(b)** Try FTP fetch (would need new credential field — out of scope now)
+  - → Go with **(a)** + clear message: "ফাইল device-এ তৈরি হয়েছে — Winbox/FTP দিয়ে download করুন"
 
-### 6. Custom messages for important ops
-Slight enhancement in heavy mutations (DeployUserDialog, DeviceInspectorDialog, Backups) to call `start("ডিপ্লয় চলছে — অপেক্ষা করুন")` manually before invoke and `stop()` in onSettled, overriding the default generic message.
+### 2. Verify file actually exists before marking completed
+- After save command, MUST do `/file/print ?name=...` and check returned rows
+- If 0 rows → status `failed` with error "Device-এ ফাইল তৈরি হয়নি"
+- This prevents fake-completed status
 
-### Files
-**New:**
-- `src/components/GlobalLoadingOverlay.tsx`
-- `src/stores/useGlobalLoading.ts`
+### 3. Update DB row to capture `device_file_path`
+- Add note column reuse: store device-side path in `error_message` field (or just use `file_name`) so user knows where to grab the binary
+- For `.rsc` (uploaded): `file_path` = storage path, downloadable from UI ✅
+- For `.backup` (device-only): `file_path` = null, but new flag in `error_message`: `"📁 Device path: /<name>.backup — download via Winbox/FTP"`
 
-**Edit:**
-- `src/App.tsx` — QueryClient mutationCache + render overlay
-- `src/components/device-admin/DeployUserDialog.tsx` — custom message
-- `src/components/device-admin/DeviceInspectorDialog.tsx` — custom message
-- `src/pages/dashboard/device-admin/Backups.tsx` — custom message
-- `src/pages/dashboard/device-admin/Jobs.tsx` — custom message on Retry
+### 4. UI tweak in `Backups.tsx`
+- For `.backup` rows with no `file_path` but `completed` status → show info icon with tooltip explaining device-side download
+- Disable Download button accordingly (already does)
+
+### Files to edit
+- **Edit:** `supabase/functions/backup-mikrotik-device/index.ts` — full rewrite using native API
+- **Edit:** `src/pages/dashboard/device-admin/Backups.tsx` — better status messaging for `.backup`
+
+### Files NOT changed
+- `_shared/mikrotik-api.ts` already has needed helpers
+- DB schema unchanged
 
 ### Result
-- যেকোনো API call চলাকালীন হালকা blur overlay + spinner + Bangla message দেখাবে
-- পুরো UI temporarily non-clickable → user accidentally multiple action trigger করতে পারবে না
-- Existing code-এ minimal change (QueryClient level interception)
-- Background queries unaffected (only mutations block)
+- `.rsc` ব্যাকআপ → device-এ তৈরি হবে + storage-এ upload হবে → UI থেকে download করা যাবে
+- `.backup` ব্যাকআপ → device-এ তৈরি হবে → UI-তে দেখাবে "Device-এ আছে, FTP দিয়ে নিন"
+- যদি device-এ ফাইল তৈরি না হয় → status `failed` দেখাবে (আর fake completed না)
