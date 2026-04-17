@@ -18,6 +18,8 @@ export default function UserReview() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { hasRole } = useAuth();
+  const isSuperAdmin = hasRole("super_admin");
 
   const [editStep, setEditStep] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<any>({});
