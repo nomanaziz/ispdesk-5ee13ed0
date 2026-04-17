@@ -3272,6 +3272,7 @@ export type Database = {
           last_run_at: string | null
           name: string
           next_run_at: string | null
+          payload: Json
           schedule_type: string
           updated_at: string
         }
@@ -3288,6 +3289,7 @@ export type Database = {
           last_run_at?: string | null
           name: string
           next_run_at?: string | null
+          payload?: Json
           schedule_type?: string
           updated_at?: string
         }
@@ -3304,6 +3306,7 @@ export type Database = {
           last_run_at?: string | null
           name?: string
           next_run_at?: string | null
+          payload?: Json
           schedule_type?: string
           updated_at?: string
         }
@@ -3316,6 +3319,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      device_admin_user_inventory: {
+        Row: {
+          created_at: string
+          device_id: string
+          device_name: string | null
+          device_type: string
+          id: string
+          last_synced_at: string
+          permission: string | null
+          raw_data: Json | null
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          device_name?: string | null
+          device_type: string
+          id?: string
+          last_synced_at?: string
+          permission?: string | null
+          raw_data?: Json | null
+          username: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          device_name?: string | null
+          device_type?: string
+          id?: string
+          last_synced_at?: string
+          permission?: string | null
+          raw_data?: Json | null
+          username?: string
+        }
+        Relationships: []
       }
       districts: {
         Row: {
