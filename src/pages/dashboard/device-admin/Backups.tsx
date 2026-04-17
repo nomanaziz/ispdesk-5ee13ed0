@@ -141,6 +141,7 @@ export default function BackupCenter() {
         <TabsList>
           <TabsTrigger value="files">ব্যাকআপ ফাইল</TabsTrigger>
           <TabsTrigger value="manual">ম্যানুয়াল ব্যাকআপ</TabsTrigger>
+          <TabsTrigger value="email">ইমেইল সেটআপ</TabsTrigger>
         </TabsList>
 
         <TabsContent value="files">
