@@ -5,14 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatBDT } from "@/lib/shopUtils";
-import { Search, Package as PackageIcon, ShieldCheck } from "lucide-react";
+import { Search, Package as PackageIcon, ShieldCheck, Truck } from "lucide-react";
 import { useCart } from "@/stores/useCart";
 import { toast } from "sonner";
 
 interface Product {
   id: string; name: string; slug: string; price: number; compare_price: number | null;
   stock: number; warranty_months: number; images: any; brand: string | null;
-  short_desc: string | null; category_id: string | null; status: string;
+  short_desc: string | null; category_id: string | null; status: string; free_shipping?: boolean;
 }
 interface Category { id: string; name: string; slug: string; }
 
@@ -98,8 +98,13 @@ export default function Shop() {
                     )}
                   </div>
                   {p.warranty_months > 0 && (
-                    <Badge variant="secondary" className="mb-2 text-[10px]">
+                    <Badge variant="secondary" className="mb-2 text-[10px] mr-1">
                       <ShieldCheck className="h-3 w-3 mr-1" />{p.warranty_months} মাস ওয়ারেন্টি
+                    </Badge>
+                  )}
+                  {p.free_shipping && (
+                    <Badge variant="default" className="mb-2 text-[10px] bg-emerald-600 hover:bg-emerald-700">
+                      <Truck className="h-3 w-3 mr-1" />ফ্রি শিপিং
                     </Badge>
                   )}
                   <Button
@@ -110,6 +115,7 @@ export default function Shop() {
                       addItem({
                         productId: p.id, name: p.name, slug: p.slug, price: p.price,
                         image: img, warrantyMonths: p.warranty_months, stock: p.stock,
+                        freeShipping: !!p.free_shipping,
                       });
                       toast.success("কার্টে যোগ হয়েছে");
                     }}

@@ -20,7 +20,7 @@ export default function ShopProductForm() {
     sku: "", name: "", slug: "", category_id: "", brand: "",
     short_desc: "", long_desc: "", price: 0, compare_price: "",
     stock: 0, low_stock_alert: 5, unit: "pcs", weight_kg: 0,
-    warranty_months: 12, images: [], specs: [], featured: false, status: "active",
+    warranty_months: 12, images: [], specs: [], featured: false, free_shipping: false, status: "active",
   });
 
   useEffect(() => {
@@ -107,6 +107,7 @@ export default function ShopProductForm() {
               </select>
             </div>
             <label className="flex items-center gap-2 mt-6"><input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} /><span>Featured</span></label>
+            <label className="flex items-center gap-2 mt-6"><input type="checkbox" checked={form.free_shipping} onChange={(e) => setForm({ ...form, free_shipping: e.target.checked })} /><span>ফ্রি শিপিং</span></label>
           </div>
 
           <div><Label>সংক্ষিপ্ত বিবরণ</Label><Textarea value={form.short_desc} onChange={(e) => setForm({ ...form, short_desc: e.target.value })} rows={2} /></div>

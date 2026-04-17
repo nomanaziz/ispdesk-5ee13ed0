@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, CheckCircle2, Truck } from "lucide-react";
 import { formatBDT } from "@/lib/shopUtils";
 import { toast } from "sonner";
 
@@ -35,15 +35,45 @@ export default function ShopOrderDetail() {
     toast.success("আপডেট হয়েছে"); load();
   };
 
+  const sealOrder = async () => {
+    if (!confirm("অর্ডার সম্পন্ন হিসেবে সিল করবেন? ওয়ারেন্টি স্বয়ংক্রিয়ভাবে সক্রিয় হবে।")) return;
+    const { error } = await supabase.from("shop_orders").update({
+      order_status: "completed", payment_status: "paid",
+    }).eq("id", id!);
+    if (error) { toast.error(error.message); return; }
+    toast.success("অর্ডার সম্পন্ন হয়েছে — ওয়ারেন্টি সক্রিয়"); load();
+  };
+
+  const makeFreeShipping = async () => {
+    const newTotal = Number(order.subtotal || 0) - Number(order.discount || 0);
+    const { error } = await supabase.from("shop_orders").update({
+      shipping: 0, total: newTotal,
+    }).eq("id", id!);
+    if (error) { toast.error(error.message); return; }
+    toast.success("ফ্রি শিপিং প্রয়োগ হয়েছে"); load();
+  };
+
   if (!order) return <div className="text-center py-16 text-muted-foreground">লোড হচ্ছে...</div>;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <Link to="/dashboard/shop/orders" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />ফিরুন
         </Link>
-        <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />প্রিন্ট</Button>
+        <div className="flex gap-2 print:hidden">
+          {order.shipping > 0 && (
+            <Button variant="outline" size="sm" onClick={makeFreeShipping}>
+              <Truck className="h-4 w-4 mr-1" />ফ্রি শিপিং করুন
+            </Button>
+          )}
+          {order.order_status !== "completed" && (
+            <Button size="sm" onClick={sealOrder} className="bg-emerald-600 hover:bg-emerald-700">
+              <CheckCircle2 className="h-4 w-4 mr-1" />অর্ডার সম্পন্ন (Seal)
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />প্রিন্ট</Button>
+        </div>
       </div>
 
       <Card>

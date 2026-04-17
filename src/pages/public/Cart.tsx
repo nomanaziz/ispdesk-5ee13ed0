@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useCart } from "@/stores/useCart";
 import { Button } from "@/components/ui/button";
 import { formatBDT } from "@/lib/shopUtils";
-import { Trash2, Minus, Plus, ShoppingBag } from "lucide-react";
+import { Trash2, Minus, Plus, ShoppingBag, Truck } from "lucide-react";
 
 export default function Cart() {
   const { items, updateQty, removeItem, subtotal } = useCart();
@@ -31,6 +31,11 @@ export default function Cart() {
               <div className="flex-1 min-w-0">
                 <Link to={`/shop/${it.slug}`} className="font-semibold text-slate-900 hover:text-cyan-700 line-clamp-2 block">{it.name}</Link>
                 <p className="text-cyan-700 font-bold mt-1">{formatBDT(it.price)}</p>
+                {it.freeShipping && (
+                  <span className="inline-flex items-center gap-1 mt-1 text-[11px] text-emerald-700 font-medium">
+                    <Truck className="h-3 w-3" />ফ্রি শিপিং
+                  </span>
+                )}
                 <div className="flex items-center gap-3 mt-2">
                   <div className="flex items-center border rounded">
                     <button onClick={() => updateQty(it.productId, it.quantity - 1)} className="p-1.5 hover:bg-slate-50"><Minus className="h-3.5 w-3.5" /></button>
