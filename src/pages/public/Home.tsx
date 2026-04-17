@@ -71,20 +71,20 @@ function HeroSection() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
             <div className="inline-flex items-center gap-2 bg-cyan-500/20 text-cyan-300 px-4 py-1.5 rounded-full text-sm font-medium mb-6 border border-cyan-500/30">
-              <Signal className="h-4 w-4" /> ৯৯.৯% আপটাইম গ্যারান্টি
+              <Signal className="h-4 w-4" /> {badge}
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-6">
-              দ্রুতগতির <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-300">ফাইবার অপটিক</span> ইন্টারনেট
+              {title1} <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-300">{titleHighlight}</span> {title2}
             </h1>
             <p className="text-lg text-slate-300 mb-8 leading-relaxed max-w-xl">
-              সাশ্রয়ী মূল্যে BDIX, FTP ও ক্যাশ সার্ভার সুবিধাসহ উচ্চ গতির ইন্টারনেট সেবা। বাফারিং ছাড়া YouTube, Facebook, Netflix উপভোগ করুন।
+              {subtitle}
             </p>
 
             {/* Price badge */}
             <div className="inline-flex items-baseline gap-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white px-6 py-3 rounded-xl mb-8 shadow-lg shadow-orange-500/30">
-              <span className="text-sm">মাত্র</span>
-              <span className="text-4xl font-extrabold">৳৫০০</span>
-              <span className="text-sm">/মাস থেকে শুরু</span>
+              <span className="text-sm">{priceLabel}</span>
+              <span className="text-4xl font-extrabold">{price}</span>
+              <span className="text-sm">{priceSuffix}</span>
             </div>
 
             <div className="flex flex-wrap gap-3">
