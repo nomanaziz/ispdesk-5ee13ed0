@@ -238,11 +238,33 @@ Deno.serve(async (req) => {
           conn = await Deno.connect({ hostname: ip, port });
           await mikrotikLogin(conn, username, password);
 
-          // Get active PPP connections
+          // Get active PPP connections + interface counters for reliable session traffic
           const activeConns = await mikrotikCommand(conn, "/ppp/active/print");
+          const ifaces = await mikrotikCommand(conn, "/interface/print", { stats: "" });
           for (const ac of activeConns) {
+            const username = ac.name || "";
+            const ifaceCandidates = [
+              ac.interface || "",
+              ac.service && username ? `<${ac.service}-${username}>` : "",
+              username ? `<pppoe-${username}>` : "",
+              username,
+            ].filter(Boolean);
+
+            const matchedIface =
+              ifaces.find((iface) => ifaceCandidates.includes(iface.name || "")) ||
+              ifaces.find((iface) => (iface.name || "").toLowerCase().includes(username.toLowerCase()));
+
+            const sessionUploadBytes = parseInt(
+              matchedIface?.["rx-byte"] || ac["bytes-in"] || "0",
+              10,
+            );
+            const sessionDownloadBytes = parseInt(
+              matchedIface?.["tx-byte"] || ac["bytes-out"] || "0",
+              10,
+            );
+
             allSessions.push({
-              name: ac.name || "",
+              name: username,
               address: ac.address || "",
               uptime: ac.uptime || "",
               caller_id: ac["caller-id"] || "",
@@ -250,8 +272,8 @@ Deno.serve(async (req) => {
               encoding: ac.encoding || "",
               server_name: device.name,
               device_id: device.id,
-              session_upload_bytes: parseInt(ac["bytes-in"] || "0", 10),
-              session_download_bytes: parseInt(ac["bytes-out"] || "0", 10),
+              session_upload_bytes: Number.isFinite(sessionUploadBytes) ? sessionUploadBytes : 0,
+              session_download_bytes: Number.isFinite(sessionDownloadBytes) ? sessionDownloadBytes : 0,
             });
           }
 
