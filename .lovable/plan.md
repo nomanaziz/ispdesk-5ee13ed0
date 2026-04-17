@@ -1,56 +1,61 @@
 
+User wants a global loading overlay system so that when API/edge function calls are in progress (especially multiple/long-running ones like deploy jobs, inspect, backup, fetch users), the UI shows a light animated loader and **blocks other interactions** until complete.
 
-## সমস্যা ও সমাধান
+Current state: individual buttons show spinners (`Loader2`), but user can still click other things and trigger parallel API hits, which is slow on MikroTik native API.
 
-### কেন fail করছে?
-`inspect-device`, `fetch-device-users`, `process-deploy-job` — তিনটাই **MikroTik REST API** (`http://ip:port/rest/...`) call করছে। কিন্তু:
-- AFTABNAGAR device-এর `api_port = 8523` → এটা **native binary API port**, REST না
-- REST API আলাদা (port 80/443, www-service enable করতে হয়) — বেশিরভাগ MikroTik routers এ default off
-- তাই request টাই reach করে না → "Failed to send a request to the Edge Function" (function crash/timeout)
+## Plan: Global Loading Overlay + Mutation Lock
 
-### "AFTABNAGAR" কোথা থেকে এলো?
-এটা আপনার আগেই **Mikrotik → Servers** page থেকে add করা device। `mikrotik_devices` table-এ আছে (IP `103.147.107.13`, user `nafisa`, port `8523`)। Device Admin module এই same table query করে — তাই এক জায়গায় add করলেই সব জায়গায় দেখায়।
+### 1. New `GlobalLoadingOverlay` component
+`src/components/GlobalLoadingOverlay.tsx`
+- Fixed full-screen overlay (`z-[100]`), semi-transparent backdrop (`bg-background/60 backdrop-blur-sm`)
+- Centered card with animated spinner + message + optional sub-text (e.g. "৩টি ডিভাইসে কাজ চলছে...")
+- `pointer-events: auto` → blocks all clicks underneath
+- Uses existing `animate-fade-in` + `animate-scale-in` utilities
 
-Status `online` দেখাচ্ছে কারণ অন্য working function (`check-mikrotik-status` / `fetch-mikrotik-ppp`) **native binary API** দিয়ে successfully connect করতে পারছে port 8523-এ। কিন্তু নতুন Device Admin functions REST ব্যবহার করছে — সেটাই mismatch।
+### 2. Global loading store
+`src/stores/useGlobalLoading.ts` (zustand — already in project deps via shadcn patterns, else simple React context)
+- State: `{ active: boolean, message: string, count: number }`
+- Actions: `start(message)`, `stop()`, auto-stack (multiple starts increment count, only hides at 0)
 
-### Fix Plan
+### 3. Auto-wire to React Query mutations
+In `src/App.tsx` — wrap `QueryClient` with `MutationCache` callbacks:
+```ts
+new QueryClient({
+  mutationCache: new MutationCache({
+    onMutate: () => useGlobalLoading.getState().start(),
+    onSettled: () => useGlobalLoading.getState().stop(),
+  }),
+})
+```
+This makes **every** `useMutation` across the app automatically trigger the overlay — zero changes needed in 200+ existing dialogs/forms.
 
-**1. সব Device Admin edge function কে native API protocol-এ convert করব** (existing `fetch-mikrotik-ppp`-এর binary protocol pattern ব্যবহার করে)। একটা shared helper module বানাব।
+### 4. Render overlay once
+Add `<GlobalLoadingOverlay />` in `App.tsx` (next to `<Toaster />`).
 
-**File:** `supabase/functions/_shared/mikrotik-api.ts` (নতুন)
-- `connectMikrotik(host, port, user, pass)` → TCP socket login
-- `sendCommand(conn, words[])` → command চালিয়ে rows return
-- Reuse করবে: `inspect-device`, `fetch-device-users`, `process-deploy-job`
+### 5. Opt-out mechanism
+Mutations can pass `meta: { silent: true }` to skip the overlay (for background/polling tasks like 5s job auto-refresh).
 
-**2. Update `inspect-device/index.ts`:**
-- REST fetch বাদ → native API
-- Commands:
-  - users → `/user/print`
-  - interfaces → `/interface/print`
-  - vlans → `/interface/vlan/print`
-  - vlan_ips → `/ip/address/print` (filter where interface contains "vlan")
+Apply `silent: true` to:
+- `Jobs.tsx` 5-second auto-refresh queries (queries don't trigger this anyway, only mutations — but the per-row Retry should show overlay)
+- Any background sync we don't want blocking
 
-**3. Update `process-deploy-job/index.ts`:**
-- REST `PUT /user` বাদ → native `/user/add` (deploy) এবং `/user/remove` (delete)
-- এতে job pending না থেকে actually complete হবে
+### 6. Custom messages for important ops
+Slight enhancement in heavy mutations (DeployUserDialog, DeviceInspectorDialog, Backups) to call `start("ডিপ্লয় চলছে — অপেক্ষা করুন")` manually before invoke and `stop()` in onSettled, overriding the default generic message.
 
-**4. Update `fetch-device-users/index.ts`:**
-- Same conversion
+### Files
+**New:**
+- `src/components/GlobalLoadingOverlay.tsx`
+- `src/stores/useGlobalLoading.ts`
 
-**5. UI feedback improvements:**
-- `DeviceInspectorDialog`-এ error হলে প্রকৃত cause দেখাবে (timeout / auth fail / port closed)
-- Devices page-এ Inspect button-এ tooltip add: "device must be reachable on API port"
+**Edit:**
+- `src/App.tsx` — QueryClient mutationCache + render overlay
+- `src/components/device-admin/DeployUserDialog.tsx` — custom message
+- `src/components/device-admin/DeviceInspectorDialog.tsx` — custom message
+- `src/pages/dashboard/device-admin/Backups.tsx` — custom message
+- `src/pages/dashboard/device-admin/Jobs.tsx` — custom message on Retry
 
-**6. একটা Info Card** Devices page-এ ছোট করে দেখাব:
-> "এই device গুলো MikroTik → Servers থেকে sync হয়। নতুন non-MikroTik device এই page-এর Add Device button দিয়ে যোগ করুন।"
-
-### কোনো DB migration লাগবে না — শুধু edge functions update।
-
-### Files to edit
-- **New:** `supabase/functions/_shared/mikrotik-api.ts`
-- **Edit:** `supabase/functions/inspect-device/index.ts`
-- **Edit:** `supabase/functions/process-deploy-job/index.ts`
-- **Edit:** `supabase/functions/fetch-device-users/index.ts`
-- **Edit:** `src/components/device-admin/DeviceInspectorDialog.tsx` (better error UI)
-- **Edit:** `src/pages/dashboard/device-admin/Devices.tsx` (info banner)
-
+### Result
+- যেকোনো API call চলাকালীন হালকা blur overlay + spinner + Bangla message দেখাবে
+- পুরো UI temporarily non-clickable → user accidentally multiple action trigger করতে পারবে না
+- Existing code-এ minimal change (QueryClient level interception)
+- Background queries unaffected (only mutations block)
