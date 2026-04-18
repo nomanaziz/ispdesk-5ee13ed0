@@ -21,6 +21,12 @@ import ServerMigrationDialog from "@/components/billing/ServerMigrationDialog";
 import BulkStatusChangeDialog from "@/components/billing/BulkStatusChangeDialog";
 import BulkZoneChangeDialog from "@/components/billing/BulkZoneChangeDialog";
 import BulkProfileChangeDialog from "@/components/billing/BulkProfileChangeDialog";
+import BulkSmsDialog from "@/components/billing/BulkSmsDialog";
+import BulkEmailDialog from "@/components/billing/BulkEmailDialog";
+import BulkDateExtendDialog from "@/components/billing/BulkDateExtendDialog";
+import BulkDistrictChangeDialog from "@/components/billing/BulkDistrictChangeDialog";
+import BulkThanaChangeDialog from "@/components/billing/BulkThanaChangeDialog";
+import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows } from "@/lib/exportClients";
 
 export default function ClientList() {
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
@@ -37,13 +43,18 @@ export default function ClientList() {
   const [statusChangeOpen, setStatusChangeOpen] = useState(false);
   const [zoneChangeOpen, setZoneChangeOpen] = useState(false);
   const [profileChangeOpen, setProfileChangeOpen] = useState(false);
+  const [smsOpen, setSmsOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [dateExtendOpen, setDateExtendOpen] = useState(false);
+  const [districtOpen, setDistrictOpen] = useState(false);
+  const [thanaOpen, setThanaOpen] = useState(false);
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ["clients-list"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("*, zones:zone_id(name), isp_packages:package_id(name, bandwidth_down, price)")
+        .select("*, zones:zone_id(name), isp_packages:package_id(name, bandwidth_down, price), mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -182,7 +193,10 @@ export default function ClientList() {
     queryClient.invalidateQueries({ queryKey: ["clients-list"] });
   };
 
-  const notImplemented = () => toast.info("শীঘ্রই আসছে — এই ফিচার এখনো তৈরি হচ্ছে");
+  const requireSel = () => { if (selectedClients.length === 0) { toast.error("কোনো ক্লায়েন্ট সিলেক্ট করা হয়নি"); return false; } return true; };
+  const handleExcel = () => { if (!requireSel()) return; exportClientsExcel(clientsToRows(selectedClients), "clients"); toast.success("Excel ডাউনলোড হয়েছে"); };
+  const handlePdf = () => { if (!requireSel()) return; exportClientsPdf(clientsToRows(selectedClients), "clients", "Client List"); toast.success("PDF ডাউনলোড হয়েছে"); };
+  const handleInvoiceDownload = () => { if (!requireSel()) return; exportInvoicesPdf(selectedClients, "invoices"); toast.success("ইনভয়েস ডাউনলোড হয়েছে"); };
 
   const getExpireBadge = (expireDate: string | null, isVip: boolean) => {
     if (isVip) return { color: "bg-purple-500/10 text-purple-600 border-purple-500/30", label: "VIP" };
@@ -231,19 +245,19 @@ export default function ClientList() {
       {/* Bulk Actions */}
       <BulkActionButtons
         selectedCount={selectedIds.size}
-        onGenerateExcel={notImplemented}
-        onGeneratePdf={notImplemented}
+        onGenerateExcel={handleExcel}
+        onGeneratePdf={handlePdf}
         onSyncClients={handleSyncOnline}
         onDisableSelected={() => handleDisableEnable("disable")}
         onEnableSelected={() => handleDisableEnable("enable")}
         onBulkStatusChange={() => setStatusChangeOpen(true)}
         onBulkZoneChange={() => setZoneChangeOpen(true)}
-        onBulkDistrictChange={notImplemented}
-        onBulkThanaChange={notImplemented}
-        onDownloadInvoice={notImplemented}
-        onSmsSelected={notImplemented}
-        onEmailSelected={notImplemented}
-        onBulkDateExtend={notImplemented}
+        onBulkDistrictChange={() => setDistrictOpen(true)}
+        onBulkThanaChange={() => setThanaOpen(true)}
+        onDownloadInvoice={handleInvoiceDownload}
+        onSmsSelected={() => setSmsOpen(true)}
+        onEmailSelected={() => setEmailOpen(true)}
+        onBulkDateExtend={() => setDateExtendOpen(true)}
         onMigrateServer={() => setMigrateOpen(true)}
         onBulkVip={() => handleBulkVip(true)}
         onBulkRemoveVip={() => handleBulkVip(false)}
@@ -358,7 +372,7 @@ export default function ClientList() {
                     <TableCell className="text-xs">{c.client_type || "-"}</TableCell>
                     <TableCell className="text-xs">{c.remote_address || "-"}</TableCell>
                     <TableCell className="text-xs font-mono text-[10px]">{c.mac_address || "-"}</TableCell>
-                    <TableCell className="text-xs">{c.server_name || "-"}</TableCell>
+                    <TableCell className="text-xs">{c.mikrotik_device?.name || c.server_name || "-"}</TableCell>
                     <TableCell className="text-xs">
                       <Badge variant={c.billing_status === "Active" ? "default" : "secondary"} className="text-[10px]">
                         {c.billing_status || "Active"}
@@ -401,6 +415,11 @@ export default function ClientList() {
       <BulkStatusChangeDialog open={statusChangeOpen} onOpenChange={setStatusChangeOpen} selectedClientIds={[...selectedIds]} />
       <BulkZoneChangeDialog open={zoneChangeOpen} onOpenChange={setZoneChangeOpen} selectedClientIds={[...selectedIds]} />
       <BulkProfileChangeDialog open={profileChangeOpen} onOpenChange={setProfileChangeOpen} selectedClients={selectedClients} />
+      <BulkSmsDialog open={smsOpen} onOpenChange={setSmsOpen} selectedClients={selectedClients} />
+      <BulkEmailDialog open={emailOpen} onOpenChange={setEmailOpen} selectedClients={selectedClients} />
+      <BulkDateExtendDialog open={dateExtendOpen} onOpenChange={setDateExtendOpen} selectedClients={selectedClients} invalidateKey="clients-list" />
+      <BulkDistrictChangeDialog open={districtOpen} onOpenChange={setDistrictOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
+      <BulkThanaChangeDialog open={thanaOpen} onOpenChange={setThanaOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
     </div>
   );
 }

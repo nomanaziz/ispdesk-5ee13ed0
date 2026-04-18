@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,14 @@ import ServerMigrationDialog from "@/components/billing/ServerMigrationDialog";
 import BulkStatusChangeDialog from "@/components/billing/BulkStatusChangeDialog";
 import BulkZoneChangeDialog from "@/components/billing/BulkZoneChangeDialog";
 import BulkProfileChangeDialog from "@/components/billing/BulkProfileChangeDialog";
+import BulkSmsDialog from "@/components/billing/BulkSmsDialog";
+import BulkEmailDialog from "@/components/billing/BulkEmailDialog";
+import BulkDateExtendDialog from "@/components/billing/BulkDateExtendDialog";
+import BulkDistrictChangeDialog from "@/components/billing/BulkDistrictChangeDialog";
+import BulkThanaChangeDialog from "@/components/billing/BulkThanaChangeDialog";
 import BillReceiveDialog from "@/components/billing/BillReceiveDialog";
 import BillingDatePopover from "@/components/billing/BillingDatePopover";
+import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows } from "@/lib/exportClients";
 import { toast } from "sonner";
 
 const currentMonth = () => {
@@ -40,6 +46,11 @@ export default function BillingList() {
   const [statusChangeOpen, setStatusChangeOpen] = useState(false);
   const [zoneChangeOpen, setZoneChangeOpen] = useState(false);
   const [profileChangeOpen, setProfileChangeOpen] = useState(false);
+  const [smsOpen, setSmsOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [dateExtendOpen, setDateExtendOpen] = useState(false);
+  const [districtOpen, setDistrictOpen] = useState(false);
+  const [thanaOpen, setThanaOpen] = useState(false);
   const [payClient, setPayClient] = useState<any>(null);
   const [payBilling, setPayBilling] = useState<any>(null);
 
@@ -54,10 +65,11 @@ export default function BillingList() {
             client_type, connection_type, monthly_bill, expire_date, speed,
             server_name, mac_address, protocol_type, profile, password,
             mikrotik_id, mikrotik_status, is_vip, billing_date, is_online,
-            zone_id, sub_zone_id, box_id, package_id,
+            zone_id, sub_zone_id, box_id, package_id, email, billing_status,
             zone:zones(name),
             package:isp_packages(name),
-            billing!billing_client_id_fkey(id, month, amount, paid, due, discount, advance, vat, status, pay_date)
+            mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name),
+            billing!billing_client_id_fkey(id, bill_id, month, amount, paid, due, discount, advance, vat, status, pay_date)
           `)
           .eq("status", "active")
           .order("client_id", { ascending: true }),
@@ -191,7 +203,61 @@ export default function BillingList() {
     queryClient.invalidateQueries({ queryKey: ["billing-list"] });
   };
 
-  const notImplemented = () => toast.info("শীঘ্রই আসছে — এই ফিচার এখনো তৈরি হচ্ছে");
+  const requireSelection = () => {
+    if (selectedClients.length === 0) {
+      toast.error("কোনো ক্লায়েন্ট সিলেক্ট করা হয়নি");
+      return false;
+    }
+    return true;
+  };
+
+  const handleExcel = () => {
+    if (!requireSelection()) return;
+    exportClientsExcel(clientsToRows(selectedClients), "billing");
+    toast.success("Excel ডাউনলোড হয়েছে");
+  };
+  const handlePdf = () => {
+    if (!requireSelection()) return;
+    exportClientsPdf(clientsToRows(selectedClients), "billing", "Billing List");
+    toast.success("PDF ডাউনলোড হয়েছে");
+  };
+  const handleInvoiceDownload = () => {
+    if (!requireSelection()) return;
+    exportInvoicesPdf(selectedClients, "invoices");
+    toast.success("ইনভয়েস ডাউনলোড হয়েছে");
+  };
+
+  const regenerateMut = useMutation({
+    mutationFn: async () => {
+      const month = `${filters.month}-01`;
+      const monthKey = filters.month;
+      let created = 0;
+      let skipped = 0;
+      for (const c of selectedClients) {
+        const existing = (c.billing || []).find((b: any) => b.month === month);
+        if (existing) { skipped++; continue; }
+        const billId = `BILL-${c.client_id}-${monthKey}`;
+        const amount = Number(c.monthly_bill || 0);
+        const { error } = await supabase.from("billing").insert({
+          bill_id: billId,
+          client_id: c.id,
+          month,
+          amount,
+          due: amount,
+          paid: 0,
+          status: "unpaid",
+          generated: true,
+        });
+        if (!error) created++;
+      }
+      return { created, skipped };
+    },
+    onSuccess: ({ created, skipped }) => {
+      toast.success(`তৈরি হয়েছে: ${created}, ইতিমধ্যে আছে: ${skipped}`);
+      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const [syncing, setSyncing] = useState(false);
   const handleSyncClients = async () => {
@@ -255,24 +321,31 @@ export default function BillingList() {
       {/* Bulk Actions */}
       <BulkActionButtons
         selectedCount={selectedIds.size}
-        onGenerateExcel={notImplemented}
-        onGeneratePdf={notImplemented}
+        onGenerateExcel={handleExcel}
+        onGeneratePdf={handlePdf}
         onSyncClients={handleSyncClients}
         onDisableSelected={() => handleDisableEnable("disable")}
         onEnableSelected={() => handleDisableEnable("enable")}
         onBulkStatusChange={() => setStatusChangeOpen(true)}
         onBulkZoneChange={() => setZoneChangeOpen(true)}
-        onBulkDistrictChange={notImplemented}
-        onBulkThanaChange={notImplemented}
-        onDownloadInvoice={notImplemented}
-        onSmsSelected={notImplemented}
-        onEmailSelected={notImplemented}
-        onBulkDateExtend={notImplemented}
+        onBulkDistrictChange={() => setDistrictOpen(true)}
+        onBulkThanaChange={() => setThanaOpen(true)}
+        onDownloadInvoice={handleInvoiceDownload}
+        onSmsSelected={() => setSmsOpen(true)}
+        onEmailSelected={() => setEmailOpen(true)}
+        onBulkDateExtend={() => setDateExtendOpen(true)}
         onMigrateServer={() => setMigrateOpen(true)}
         onBulkVip={() => handleBulkVip(true)}
         onBulkRemoveVip={() => handleBulkVip(false)}
         onBulkProfileChange={() => setProfileChangeOpen(true)}
+        onRegenerateInvoice={() => regenerateMut.mutate()}
       />
+
+      <BulkSmsDialog open={smsOpen} onOpenChange={setSmsOpen} selectedClients={selectedClients} />
+      <BulkEmailDialog open={emailOpen} onOpenChange={setEmailOpen} selectedClients={selectedClients} />
+      <BulkDateExtendDialog open={dateExtendOpen} onOpenChange={setDateExtendOpen} selectedClients={selectedClients} invalidateKey="billing-list" />
+      <BulkDistrictChangeDialog open={districtOpen} onOpenChange={setDistrictOpen} selectedClientIds={[...selectedIds]} invalidateKey="billing-list" />
+      <BulkThanaChangeDialog open={thanaOpen} onOpenChange={setThanaOpen} selectedClientIds={[...selectedIds]} invalidateKey="billing-list" />
 
       {/* Table */}
       <Card>
