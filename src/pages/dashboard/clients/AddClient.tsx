@@ -34,13 +34,32 @@ export default function AddClient() {
     core_color: "", device_type: "", device_serial: "", vendor: "", purchase_date: "",
     client_id: "", package_id: "", profile: "", client_type: "Home", billing_status: "Active",
     username: "", remote_address: "", password: "", joining_date: format(new Date(), "yyyy-MM-dd"),
-    monthly_bill: 0, billing_start_month: "", expire_date: "",
+    monthly_bill: 0, billing_start_month: "", expire_day: "",
     reference_by: "", is_vip: false, connected_by: "", affiliator_id: "",
     same_address: false,
   });
 
   const [mikrotikProfiles, setMikrotikProfiles] = useState<{ name: string; rateLimit?: string }[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
+
+  // Compute full expire_date from selected day-of-month (1-31). Uses current month;
+  // if today is past that day, rolls to next month. Clamps to last day if month-এ দিন কম.
+  const computeExpireDate = (day: string | number | null | undefined): string | null => {
+    const d = Number(day);
+    if (!d || d < 1 || d > 31) return null;
+    const now = new Date();
+    let year = now.getFullYear();
+    let month = now.getMonth();
+    if (now.getDate() > d) {
+      month += 1;
+      if (month > 11) { month = 0; year += 1; }
+    }
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const safeDay = Math.min(d, lastDay);
+    const mm = String(month + 1).padStart(2, "0");
+    const dd = String(safeDay).padStart(2, "0");
+    return `${year}-${mm}-${dd}`;
+  };
 
   const setField = (key: string, value: any) => setForm(prev => {
     const next = { ...prev, [key]: value };
@@ -72,6 +91,7 @@ export default function AddClient() {
         server_name: prefill.server_name || prev.server_name,
         mac_address: prefill.mac_address || prev.mac_address,
         client_id: prefill.client_id || prev.client_id,
+        expire_day: prefill.expire_date ? String(new Date(prefill.expire_date).getDate()) : prev.expire_day,
       }));
 
       // Auto-fetch MikroTik profiles if mikrotik_id is prefilled
@@ -127,17 +147,12 @@ export default function AddClient() {
         fiber_code: form.fiber_code || null, core_count: form.core_count ? Number(form.core_count) : null,
         core_color: form.core_color || null, device_type: form.device_type || null,
         device_serial: form.device_serial || null, vendor: form.vendor || null,
-        purchase_date: form.purchase_date || null, expire_date: form.expire_date || null,
+        purchase_date: form.purchase_date || null, expire_date: computeExpireDate(form.expire_day),
         joining_date: form.joining_date || null, billing_start_month: form.billing_start_month || null,
         reference_by: form.reference_by || null, is_vip: form.is_vip || false,
         connected_by: form.connected_by || null, affiliator_id: form.affiliator_id || null,
         mikrotik_status: mikrotikStatus,
       };
-      // Free/Personal/VIP status-এ MikroTik disable করব না, line সবসময় চলবে
-      const noBillingStatuses = ["Free", "Personal", "VIP"];
-      const isNoBilling = noBillingStatuses.includes(form.billing_status);
-      const shouldDisableMk = !isNoBilling && form.billing_status !== "Active";
-
       if (editMode && editClientId) {
         if (shouldSyncMikrotik) {
           const { data, error: mkErr } = await supabase.functions.invoke("manage-mikrotik-ppp", {
@@ -149,7 +164,7 @@ export default function AddClient() {
               password: form.password || undefined,
               profile: form.profile || undefined,
               remote_address: form.remote_address || undefined,
-              disabled: shouldDisableMk,
+              disabled: form.billing_status !== "Active",
             },
           });
 
@@ -170,7 +185,7 @@ export default function AddClient() {
               password: form.password || null,
               profile: form.profile || null,
               remote_address: form.remote_address || null,
-              disabled: shouldDisableMk,
+              disabled: form.billing_status !== "Active",
             },
           });
 
@@ -179,6 +194,7 @@ export default function AddClient() {
           mikrotikStatus = data?.mikrotik_status || "unknown";
           payload.mikrotik_status = mikrotikStatus;
 
+          // If secret already existed, merge its data into payload
           if (data?.already_exists) {
             if (data.existing_profile) payload.profile = data.existing_profile;
             if (data.existing_remote_address) payload.remote_address = data.existing_remote_address;
@@ -188,8 +204,8 @@ export default function AddClient() {
         const { data: insertedClient, error } = await supabase.from("clients").insert(payload).select("id").single();
         if (error) throw error;
 
-        // Auto-generate billing record only for Active clients with bill > 0
-        if (insertedClient?.id && !isNoBilling && form.billing_status === "Active" && (form.monthly_bill || 0) > 0) {
+        // Auto-generate billing record for current month
+        if (insertedClient?.id) {
           const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`;
           const billId = `BILL-${form.client_id}-${currentMonth.slice(0, 7)}`;
           await supabase.from("billing").insert({
@@ -532,17 +548,7 @@ export default function AddClient() {
           </div>
           <div>
             <Label>বিলিং স্ট্যাটাস *</Label>
-            <Select value={form.billing_status} onValueChange={v => {
-              setField("billing_status", v);
-              if (v !== "Active") {
-                setField("monthly_bill", 0);
-                setField("billing_start_month", "");
-                setField("expire_date", "");
-              } else {
-                const pkg = packages?.find(p => p.id === form.package_id);
-                if (pkg) setField("monthly_bill", pkg.price);
-              }
-            }}>
+            <Select value={form.billing_status} onValueChange={v => setField("billing_status", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {billingStatuses?.map((bs: any) => <SelectItem key={bs.id} value={bs.name}>{bs.name}</SelectItem>)}
@@ -565,22 +571,25 @@ export default function AddClient() {
             <Label>যোগদানের তারিখ *</Label>
             <Input type="date" value={form.joining_date} onChange={e => setField("joining_date", e.target.value)} />
           </div>
-          {form.billing_status === "Active" && (
-            <>
-              <div>
-                <Label>মাসিক বিল *</Label>
-                <Input type="number" value={form.monthly_bill} onChange={e => setField("monthly_bill", Number(e.target.value))} />
-              </div>
-              <div>
-                <Label>বিলিং শুরুর মাস *</Label>
-                <Input type="month" value={form.billing_start_month} onChange={e => setField("billing_start_month", e.target.value)} />
-              </div>
-              <div>
-                <Label>মেয়াদ শেষের তারিখ *</Label>
-                <Input type="date" value={form.expire_date} onChange={e => setField("expire_date", e.target.value)} />
-              </div>
-            </>
-          )}
+          <div>
+            <Label>মাসিক বিল *</Label>
+            <Input type="number" value={form.monthly_bill} onChange={e => setField("monthly_bill", Number(e.target.value))} />
+          </div>
+          <div>
+            <Label>বিলিং শুরুর মাস *</Label>
+            <Input type="month" value={form.billing_start_month} onChange={e => setField("billing_start_month", e.target.value)} />
+          </div>
+          <div>
+            <Label>Expired Date (মাসের কোন দিন) *</Label>
+            <Select value={String(form.expire_day || "")} onValueChange={v => setField("expire_day", v)}>
+              <SelectTrigger><SelectValue placeholder="দিন নির্বাচন (1-31)" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                  <SelectItem key={d} value={String(d)}>প্রতি মাসের {d} তারিখ</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <Label>রেফারেন্স</Label>
             <Input value={form.reference_by} onChange={e => setField("reference_by", e.target.value)} />

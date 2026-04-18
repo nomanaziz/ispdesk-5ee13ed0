@@ -204,9 +204,24 @@ export default function ClientList() {
     const now = new Date();
     const expire = parseISO(expireDate);
     const daysLeft = differenceInDays(expire, now);
-    if (daysLeft < 0) return { color: "bg-red-500/10 text-red-600 border-red-500/30", label: format(expire, "dd/MM") };
-    if (daysLeft <= 7) return { color: "bg-amber-500/10 text-amber-600 border-amber-500/30", label: format(expire, "dd/MM") };
-    return { color: "bg-green-500/10 text-green-600 border-green-500/30", label: format(expire, "dd/MM") };
+    const dayLabel = `${expire.getDate()} তারিখ`;
+    if (daysLeft < 0) return { color: "bg-red-500/10 text-red-600 border-red-500/30", label: dayLabel };
+    if (daysLeft <= 7) return { color: "bg-amber-500/10 text-amber-600 border-amber-500/30", label: dayLabel };
+    return { color: "bg-green-500/10 text-green-600 border-green-500/30", label: dayLabel };
+  };
+
+  // Build full ISO date from chosen day-of-month (current month or next if past)
+  const buildExpireDateFromDay = (day: number): string => {
+    const now = new Date();
+    let y = now.getFullYear();
+    let m = now.getMonth();
+    if (now.getDate() > day) {
+      m += 1;
+      if (m > 11) { m = 0; y += 1; }
+    }
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    const safe = Math.min(day, lastDay);
+    return `${y}-${String(m + 1).padStart(2, "0")}-${String(safe).padStart(2, "0")}`;
   };
 
   const summaryCards = [
@@ -337,11 +352,7 @@ export default function ClientList() {
                     <TableCell className="text-xs">{c.contact}</TableCell>
                     <TableCell className="text-xs">{c.zones?.name || "-"}</TableCell>
                     <TableCell className="text-xs">
-                      {c.profile
-                        ? c.profile
-                        : c.isp_packages
-                          ? `${c.isp_packages.name}/${c.isp_packages.bandwidth_down}Mb`
-                          : "-"}
+                      {c.isp_packages ? `${c.isp_packages.name}/${c.isp_packages.bandwidth_down}Mb` : "-"}
                     </TableCell>
                     <TableCell className="text-xs">{c.monthly_bill || 0}</TableCell>
                     <TableCell className="text-xs">
@@ -359,15 +370,19 @@ export default function ClientList() {
                               </Badge>
                             </button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={c.expire_date ? parseISO(c.expire_date) : undefined}
-                              onSelect={(date) => {
-                                if (date) updateExpireMutation.mutate({ id: c.id, date: format(date, "yyyy-MM-dd") });
-                              }}
-                              className={cn("p-3 pointer-events-auto")}
-                            />
+                          <PopoverContent className="w-48 p-2" align="start">
+                            <div className="text-xs font-medium mb-2 text-muted-foreground">মাসের কোন দিন</div>
+                            <Select
+                              value={c.expire_date ? String(parseISO(c.expire_date).getDate()) : ""}
+                              onValueChange={(v) => updateExpireMutation.mutate({ id: c.id, date: buildExpireDateFromDay(Number(v)) })}
+                            >
+                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="দিন (1-31)" /></SelectTrigger>
+                              <SelectContent className="max-h-72">
+                                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                  <SelectItem key={d} value={String(d)} className="text-xs">প্রতি মাসের {d} তারিখ</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </PopoverContent>
                         </Popover>
                       )}
