@@ -7,8 +7,12 @@ const PortalCompanyInfo = () => {
   const { data: settings } = useQuery({
     queryKey: ["portal-company-settings"],
     queryFn: async () => {
-      const { data } = await supabase.from("system_settings").select("*").limit(1).maybeSingle();
-      return data;
+      const { data } = await supabase
+        .from("system_settings")
+        .select("setting_value")
+        .eq("setting_key", "company_info")
+        .maybeSingle();
+      return data?.setting_value as any;
     },
   });
 
