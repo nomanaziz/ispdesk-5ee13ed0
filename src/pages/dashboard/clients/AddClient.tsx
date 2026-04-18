@@ -528,7 +528,17 @@ export default function AddClient() {
           </div>
           <div>
             <Label>বিলিং স্ট্যাটাস *</Label>
-            <Select value={form.billing_status} onValueChange={v => setField("billing_status", v)}>
+            <Select value={form.billing_status} onValueChange={v => {
+              setField("billing_status", v);
+              if (v !== "Active") {
+                setField("monthly_bill", 0);
+                setField("billing_start_month", "");
+                setField("expire_date", "");
+              } else {
+                const pkg = packages?.find(p => p.id === form.package_id);
+                if (pkg) setField("monthly_bill", pkg.price);
+              }
+            }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {billingStatuses?.map((bs: any) => <SelectItem key={bs.id} value={bs.name}>{bs.name}</SelectItem>)}
