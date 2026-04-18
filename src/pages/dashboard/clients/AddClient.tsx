@@ -528,7 +528,17 @@ export default function AddClient() {
           </div>
           <div>
             <Label>বিলিং স্ট্যাটাস *</Label>
-            <Select value={form.billing_status} onValueChange={v => setField("billing_status", v)}>
+            <Select value={form.billing_status} onValueChange={v => {
+              setField("billing_status", v);
+              if (v !== "Active") {
+                setField("monthly_bill", 0);
+                setField("billing_start_month", "");
+                setField("expire_date", "");
+              } else {
+                const pkg = packages?.find(p => p.id === form.package_id);
+                if (pkg) setField("monthly_bill", pkg.price);
+              }
+            }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {billingStatuses?.map((bs: any) => <SelectItem key={bs.id} value={bs.name}>{bs.name}</SelectItem>)}
@@ -551,18 +561,22 @@ export default function AddClient() {
             <Label>যোগদানের তারিখ *</Label>
             <Input type="date" value={form.joining_date} onChange={e => setField("joining_date", e.target.value)} />
           </div>
-          <div>
-            <Label>মাসিক বিল *</Label>
-            <Input type="number" value={form.monthly_bill} onChange={e => setField("monthly_bill", Number(e.target.value))} />
-          </div>
-          <div>
-            <Label>বিলিং শুরুর মাস *</Label>
-            <Input type="month" value={form.billing_start_month} onChange={e => setField("billing_start_month", e.target.value)} />
-          </div>
-          <div>
-            <Label>মেয়াদ শেষের তারিখ *</Label>
-            <Input type="date" value={form.expire_date} onChange={e => setField("expire_date", e.target.value)} />
-          </div>
+          {form.billing_status === "Active" && (
+            <>
+              <div>
+                <Label>মাসিক বিল *</Label>
+                <Input type="number" value={form.monthly_bill} onChange={e => setField("monthly_bill", Number(e.target.value))} />
+              </div>
+              <div>
+                <Label>বিলিং শুরুর মাস *</Label>
+                <Input type="month" value={form.billing_start_month} onChange={e => setField("billing_start_month", e.target.value)} />
+              </div>
+              <div>
+                <Label>মেয়াদ শেষের তারিখ *</Label>
+                <Input type="date" value={form.expire_date} onChange={e => setField("expire_date", e.target.value)} />
+              </div>
+            </>
+          )}
           <div>
             <Label>রেফারেন্স</Label>
             <Input value={form.reference_by} onChange={e => setField("reference_by", e.target.value)} />
