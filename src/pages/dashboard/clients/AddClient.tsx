@@ -158,7 +158,7 @@ export default function AddClient() {
           // MikroTik action by billing_status:
           // Left → delete, Inactive → disable, everything else (Active/Personal/Free/VIP) → enable
           const status = (form.billing_status || "Active").toLowerCase();
-          const mkAction = status === "left" ? "delete" : "update";
+          const mkAction = status === "left" ? "remove" : "update";
           const mkDisabled = status === "inactive";
           const { data, error: mkErr } = await supabase.functions.invoke("manage-mikrotik-ppp", {
             body: {
