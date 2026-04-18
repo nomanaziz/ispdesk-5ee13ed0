@@ -34,7 +34,7 @@ export default function AddClient() {
     core_color: "", device_type: "", device_serial: "", vendor: "", purchase_date: "",
     client_id: "", package_id: "", profile: "", client_type: "Home", billing_status: "Active",
     username: "", remote_address: "", password: "", joining_date: format(new Date(), "yyyy-MM-dd"),
-    monthly_bill: 0, billing_start_month: "", expire_date: "",
+    monthly_bill: 0, billing_start_month: "", expire_day: "",
     reference_by: "", is_vip: false, connected_by: "", affiliator_id: "",
     same_address: false,
   });
