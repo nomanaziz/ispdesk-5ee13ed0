@@ -151,7 +151,6 @@ export default function AddClient() {
         joining_date: form.joining_date || null, billing_start_month: form.billing_status === "Active" ? (form.billing_start_month || null) : null,
         reference_by: form.reference_by || null, is_vip: form.is_vip || false,
         connected_by: form.connected_by || null,
-        monthly_bill_override: form.billing_status === "Active" ? (form.monthly_bill || 0) : 0,
         mikrotik_status: mikrotikStatus,
       };
       if (editMode && editClientId) {
