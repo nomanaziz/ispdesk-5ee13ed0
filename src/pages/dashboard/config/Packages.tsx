@@ -12,7 +12,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Package, Search, Globe, Plus, Edit, Trash2, Power, PowerOff, Eye } from "lucide-react";
+import { Package, Search, Globe, Plus, Edit, Trash2, Power, PowerOff, Eye, Percent } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useSystemSetting } from "@/hooks/useSystemSetting";
+
+interface VatDefault { percent: number; mode: "including" | "excluding" }
+const VAT_DEFAULTS: VatDefault = { percent: 0, mode: "including" };
 
 const PACKAGE_TYPES = [
   { value: "home", label: "Home", color: "bg-blue-500" },
@@ -30,8 +36,9 @@ export default function Packages() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editingPkg, setEditingPkg] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", code: "", price: "", bandwidth: "", protocol: "", setup_fee: "", package_type: "home" });
+  const [form, setForm] = useState({ name: "", code: "", price: "", bandwidth: "", protocol: "", setup_fee: "", package_type: "home", vat_percent: "0", price_includes_vat: true, show_vat_breakdown: false });
   const queryClient = useQueryClient();
+  const { value: vatDefaults } = useSystemSetting<VatDefault>("vat_default", VAT_DEFAULTS);
 
   const { data: packages, isLoading } = useQuery({
     queryKey: ["isp-packages"],
@@ -89,7 +96,10 @@ export default function Packages() {
         protocol: form.protocol || null,
         setup_fee: Number(form.setup_fee) || 0,
         package_type: form.package_type || "home",
-      };
+        vat_percent: Number(form.vat_percent) || 0,
+        price_includes_vat: !!form.price_includes_vat,
+        show_vat_breakdown: !!form.show_vat_breakdown,
+      } as any;
       if (editingPkg) {
         const { error } = await supabase.from("isp_packages").update(data).eq("id", editingPkg.id);
         if (error) throw error;
@@ -135,7 +145,12 @@ export default function Packages() {
 
   const openAdd = () => {
     setEditingPkg(null);
-    setForm({ name: "", code: "", price: "", bandwidth: "", protocol: "", setup_fee: "", package_type: "home" });
+    setForm({
+      name: "", code: "", price: "", bandwidth: "", protocol: "", setup_fee: "", package_type: "home",
+      vat_percent: String(vatDefaults?.percent ?? 0),
+      price_includes_vat: (vatDefaults?.mode ?? "including") === "including",
+      show_vat_breakdown: false,
+    });
     setDialogOpen(true);
   };
 
@@ -146,6 +161,9 @@ export default function Packages() {
       bandwidth: String(pkg.bandwidth_down || 0),
       protocol: pkg.protocol || "", setup_fee: String(pkg.setup_fee || 0),
       package_type: pkg.package_type || "home",
+      vat_percent: String(pkg.vat_percent ?? 0),
+      price_includes_vat: pkg.price_includes_vat ?? true,
+      show_vat_breakdown: pkg.show_vat_breakdown ?? false,
     });
     setDialogOpen(true);
   };
