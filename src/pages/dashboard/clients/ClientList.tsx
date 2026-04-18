@@ -204,9 +204,24 @@ export default function ClientList() {
     const now = new Date();
     const expire = parseISO(expireDate);
     const daysLeft = differenceInDays(expire, now);
-    if (daysLeft < 0) return { color: "bg-red-500/10 text-red-600 border-red-500/30", label: format(expire, "dd/MM") };
-    if (daysLeft <= 7) return { color: "bg-amber-500/10 text-amber-600 border-amber-500/30", label: format(expire, "dd/MM") };
-    return { color: "bg-green-500/10 text-green-600 border-green-500/30", label: format(expire, "dd/MM") };
+    const dayLabel = `${expire.getDate()} তারিখ`;
+    if (daysLeft < 0) return { color: "bg-red-500/10 text-red-600 border-red-500/30", label: dayLabel };
+    if (daysLeft <= 7) return { color: "bg-amber-500/10 text-amber-600 border-amber-500/30", label: dayLabel };
+    return { color: "bg-green-500/10 text-green-600 border-green-500/30", label: dayLabel };
+  };
+
+  // Build full ISO date from chosen day-of-month (current month or next if past)
+  const buildExpireDateFromDay = (day: number): string => {
+    const now = new Date();
+    let y = now.getFullYear();
+    let m = now.getMonth();
+    if (now.getDate() > day) {
+      m += 1;
+      if (m > 11) { m = 0; y += 1; }
+    }
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    const safe = Math.min(day, lastDay);
+    return `${y}-${String(m + 1).padStart(2, "0")}-${String(safe).padStart(2, "0")}`;
   };
 
   const summaryCards = [
