@@ -133,6 +133,11 @@ export default function AddClient() {
         connected_by: form.connected_by || null, affiliator_id: form.affiliator_id || null,
         mikrotik_status: mikrotikStatus,
       };
+      // Free/Personal/VIP status-এ MikroTik disable করব না, line সবসময় চলবে
+      const noBillingStatuses = ["Free", "Personal", "VIP"];
+      const isNoBilling = noBillingStatuses.includes(form.billing_status);
+      const shouldDisableMk = !isNoBilling && form.billing_status !== "Active";
+
       if (editMode && editClientId) {
         if (shouldSyncMikrotik) {
           const { data, error: mkErr } = await supabase.functions.invoke("manage-mikrotik-ppp", {
@@ -144,7 +149,7 @@ export default function AddClient() {
               password: form.password || undefined,
               profile: form.profile || undefined,
               remote_address: form.remote_address || undefined,
-              disabled: form.billing_status !== "Active",
+              disabled: shouldDisableMk,
             },
           });
 
@@ -165,7 +170,7 @@ export default function AddClient() {
               password: form.password || null,
               profile: form.profile || null,
               remote_address: form.remote_address || null,
-              disabled: form.billing_status !== "Active",
+              disabled: shouldDisableMk,
             },
           });
 
@@ -174,7 +179,6 @@ export default function AddClient() {
           mikrotikStatus = data?.mikrotik_status || "unknown";
           payload.mikrotik_status = mikrotikStatus;
 
-          // If secret already existed, merge its data into payload
           if (data?.already_exists) {
             if (data.existing_profile) payload.profile = data.existing_profile;
             if (data.existing_remote_address) payload.remote_address = data.existing_remote_address;
@@ -184,8 +188,8 @@ export default function AddClient() {
         const { data: insertedClient, error } = await supabase.from("clients").insert(payload).select("id").single();
         if (error) throw error;
 
-        // Auto-generate billing record for current month
-        if (insertedClient?.id) {
+        // Auto-generate billing record only for Active clients with bill > 0
+        if (insertedClient?.id && !isNoBilling && form.billing_status === "Active" && (form.monthly_bill || 0) > 0) {
           const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`;
           const billId = `BILL-${form.client_id}-${currentMonth.slice(0, 7)}`;
           await supabase.from("billing").insert({
