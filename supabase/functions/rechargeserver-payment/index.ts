@@ -43,11 +43,13 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Support both new (fields.*) and legacy (top-level) schemas
+    const f = rs.fields || rs;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "API-KEY": rs.api_key,
-      "SECRET-KEY": rs.secret_key,
-      "BRAND-KEY": rs.brand_key || "",
+      "API-KEY": f.api_key || "",
+      "SECRET-KEY": f.secret_key || "",
+      "BRAND-KEY": f.brand_key || "",
     };
 
     if (action === "create") {
