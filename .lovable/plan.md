@@ -2,96 +2,65 @@
 
 ## লক্ষ্য
 
-চারটা payment gateway-র **actual API integration** করব — bKash Merchant, Nagad Merchant, SSLCommerz, RechargeServer। প্রতিটার জন্য edge function তৈরি/update করব যাতে hosted checkout flow কাজ করে। Payment success হলে auto bill paid + receipt।
+প্রতিটা package-এ **VAT % set** করার system + website-এ **including/excluding price display** + customer-এর জন্য **VAT calculator toggle**।
 
-## বর্তমান অবস্থা
+## DB Migration
 
-- **RechargeServer**: edge function আছে (`rechargeserver-payment/index.ts`) — create + verify কাজ করে
-- **bKash/Nagad/SSLCommerz**: কোনো edge function নেই, QuickPayDialog-এ "শীঘ্রই আসছে" toast দেখায়
-- Admin PaymentGateways page-এ সব field structure ঠিক আছে (merchant credentials)
+`isp_packages` table-এ ৩টা column যোগ:
+- `vat_percent` numeric default `0` — VAT rate (e.g. 5, 10, 15)
+- `price_includes_vat` boolean default `true` — price-এ VAT অন্তর্ভুক্ত কিনা
+- `show_vat_breakdown` boolean default `false` — website-এ VAT breakdown দেখাবে কিনা
+
+এছাড়া একটা global `system_settings` key `vat_default` (default percent + default mode) — নতুন package-এ auto-fill হবে।
 
 ## পরিবর্তন
 
-### 1. Edge Functions (নতুন ৩টা)
+### 1. Admin → `Packages.tsx`
+Add/Edit dialog-এ একটা "VAT" section:
+- **VAT % input** (default global setting থেকে)
+- **Radio:** "Price includes VAT (পাঁচশো ৫% সহ)" / "Price excludes VAT (পাঁচশো + ২৫ টাকা VAT)"
+- **Switch:** "Website-এ VAT breakdown দেখাও" (optional helper toggle)
+- Table-এ ছোট badge: `VAT 5% Incl.` / `+5% VAT` etc.
 
-**`supabase/functions/bkash-payment/index.ts`**
-- bKash Tokenized Checkout API (v1.2.0-beta)
-- `action: "create"` → Grant Token → Create Payment → return bKash URL
-- `action: "execute"` → Execute Payment (callback থেকে paymentID দিয়ে)
-- `action: "query"` → Query Payment status
-- Sandbox/Production toggle: admin-এর `fields.sandbox` পড়ে base URL switch করবে
-  - Sandbox: `https://tokenized.sandbox.bka.sh/v1.2.0-beta`
-  - Production: `https://tokenized.pay.bka.sh/v1.2.0-beta`
-- Credentials: `fields.app_key`, `fields.app_secret`, `fields.username`, `fields.password`
+### 2. Global Setting → `system/Setup.tsx` (or new `VatSettings`)
+- Default VAT % (e.g. 5)
+- Default mode: Including / Excluding
+- নতুন package add করলে auto-prefill
 
-**`supabase/functions/nagad-payment/index.ts`**
-- Nagad Payment Gateway API
-- `action: "create"` → Initialize → Complete → return redirect URL
-- `action: "verify"` → Verify payment by payment_ref_id
-- Credentials: `fields.merchant_id`, `fields.merchant_number`, `fields.public_key`, `fields.private_key`
-- Sandbox/Production toggle
+### 3. Public website → `Packages.tsx` + `Home.tsx` package cards
+Display logic:
+- **`vat_percent === 0`**: শুধু `৳500/মাস` (কিছু extra না)
+- **`price_includes_vat === true`**:
+  - Main: `৳500/মাস` 
+  - Small line: `(৫% VAT সহ)`
+  - Optional breakdown (if `show_vat_breakdown`): `Base ৳476.19 + VAT ৳23.81`
+- **`price_includes_vat === false`**:
+  - Main: `৳525/মাস` (price + VAT total)
+  - Small line: `Base ৳500 + ৫% VAT ৳25`
 
-**`supabase/functions/sslcommerz-payment/index.ts`**
-- SSLCommerz Session API
-- `action: "create"` → POST to `/gwprocess/v4/api.php` → return GatewayPageURL
-- `action: "validate"` → POST to `/validator/api/validationserverAPI.php`
-- Sandbox: `https://sandbox.sslcommerz.com`
-- Production: `https://securepay.sslcommerz.com`
-- Credentials: `fields.store_id`, `fields.store_password`
+### 4. VAT Calculator toggle (customer-facing)
+Public Packages page-এ একটা toggle button: **"VAT সহ দেখুন / VAT ছাড়া দেখুন"**
+- যাদের package-এ `vat_percent = 0` (currently no VAT) সেগুলোর জন্য — toggle ON করলে user ইনপুট দিতে পারবে "Apply VAT %" (5/10/15) → সব price live recalculate হবে → পরিষ্কার বুঝবে কত বাড়ে
+- Helper utility: `src/lib/vat.ts` — `calcVat(price, percent, mode)` returning `{ base, vat, total }`
 
-### 2. Payment Callback Edge Function (নতুন)
-
-**`supabase/functions/payment-callback/index.ts`**
-- সব gateway-র success/fail/cancel callback handle করবে
-- URL pattern: `/payment-callback?gateway=bkash&status=success&paymentID=xxx`
-- Success flow:
-  1. Gateway-specific verify call → confirm paid
-  2. `billing` table-এ invoice `status = 'paid'` mark
-  3. `bill_collections` table-এ entry (amount, method, trx_id, date)
-  4. Redirect to portal invoice page with success message
-- Fail/Cancel → redirect with error message
-
-### 3. QuickPayDialog Update
-
-- Gateway/Merchant category click → edge function call → redirect to gateway checkout page
-- Personal/Bank → আগের মতোই manual Trx ID submit
-- Loading state দেখাবে "Gateway-এ নিয়ে যাচ্ছে..."
-
-### 4. Portal Invoice Page — Payment Return
-
-- URL param `?payment=success` বা `?payment=failed` check
-- Success → green toast "পেমেন্ট সফল হয়েছে"
-- Failed → red toast "পেমেন্ট ব্যর্থ হয়েছে"
-
-### 5. Admin PaymentGateways.tsx — Sandbox Toggle
-
-- bKash Merchant, Nagad Merchant, SSLCommerz → `sandbox` field যোগ (SSLCommerz-এ আগে থেকেই আছে, বাকি দুটোতে যোগ)
-- Toggle UI দেখাবে "Sandbox Mode" switch
-
-## ব্লকার: RechargeServer Documentation
-
-আপনি বলেছেন documentation দেবেন। সেটা পাওয়ার পর RechargeServer-এর flow finalize করব। বর্তমানে যা আছে (create + verify) সেটা ঠিকই কাজ করবে, তবে callback/webhook integration-এর জন্য docs লাগবে।
+### 5. Billing impact (notice only, no auto-change)
+Plan-এ এই step **ঐচ্ছিক** — আপাতত just display। যদি চান billing generation-এ VAT auto-apply করব (separate plan), but এই round-এ scope-এর বাইরে। Plan note রাখব।
 
 ## Files
 
-**নতুন:**
-- `supabase/functions/bkash-payment/index.ts`
-- `supabase/functions/nagad-payment/index.ts`
-- `supabase/functions/sslcommerz-payment/index.ts`
-- `supabase/functions/payment-callback/index.ts`
+**Migration:** `isp_packages` + 3 columns
 
 **Edit:**
-- `src/components/public/QuickPayDialog.tsx` — gateway redirect flow
-- `src/pages/dashboard/system/PaymentGateways.tsx` — sandbox toggle সব merchant-এ
-- `src/pages/portal/PortalBillInvoice.tsx` — payment return handling
-
-**DB Migration:**
-- `public_payment_requests` table-এ `gateway_response` jsonb column যোগ (callback data store)
+- `src/pages/dashboard/config/Packages.tsx` — VAT fields in form + table badge
+- `src/pages/dashboard/system/Setup.tsx` — default VAT settings (or new tab)
+- `src/pages/public/Packages.tsx` — including/excluding display + customer VAT toggle
+- `src/pages/public/Home.tsx` — package card VAT line
+- `src/lib/vat.ts` (নতুন utility)
 
 ## ফলাফল
 
-- bKash Merchant → admin sandbox toggle ON → "Pay Now" click → bKash checkout page → payment → auto redirect → invoice paid
-- Nagad/SSLCommerz → same flow
-- RechargeServer → existing flow + callback auto-mark (docs পাওয়ার পর finalize)
-- Personal/Bank → আগের মতোই manual Trx ID
+- Admin per-package VAT % set + mode choose করতে পারবে
+- Website cards পরিষ্কার দেখাবে: `৳500 (৫% VAT সহ)` বা `৳525 = ৳500 + ৳25 VAT`
+- VAT-হীন package-এ customer নিজে toggle দিয়ে hypothetical VAT calculate করে দেখতে পারবে
+- Global default থাকায় একই VAT প্রতিবার type করতে হবে না
 
