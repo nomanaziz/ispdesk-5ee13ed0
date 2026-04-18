@@ -158,13 +158,13 @@ export default function PaymentGateways() {
             </div>
           );
         })}
-        {gw.category === "gateway" && gw.name === "SSLCommerz" && (
-          <div className="flex items-center gap-2">
+        {(gw.category === "gateway" || gw.category === "mobile_merchant") && "sandbox" in gw.fields && (
+          <div className="flex items-center gap-2 md:col-span-2">
             <Switch
               checked={gw.fields.sandbox === "true"}
               onCheckedChange={v => updateField(idx, "sandbox", v ? "true" : "false")}
             />
-            <Label className="text-xs">Sandbox Mode</Label>
+            <Label className="text-xs">Sandbox Mode (টেস্ট পরিবেশ)</Label>
           </div>
         )}
       </div>
