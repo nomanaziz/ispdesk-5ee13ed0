@@ -8,6 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BreadcrumbBanner } from "@/components/public/BreadcrumbBanner";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { calcVat } from "@/lib/vat";
 
 const tabs = [
   { label: "সকল", value: "all" },
@@ -18,6 +21,8 @@ const tabs = [
 
 export default function Packages() {
   const [activeTab, setActiveTab] = useState("all");
+  const [previewVatOn, setPreviewVatOn] = useState(false);
+  const [previewVatPct, setPreviewVatPct] = useState(5);
 
   const { data: packages, isLoading } = useQuery({
     queryKey: ["public-packages-all"],
