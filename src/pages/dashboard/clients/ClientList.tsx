@@ -337,7 +337,11 @@ export default function ClientList() {
                     <TableCell className="text-xs">{c.contact}</TableCell>
                     <TableCell className="text-xs">{c.zones?.name || "-"}</TableCell>
                     <TableCell className="text-xs">
-                      {c.isp_packages ? `${c.isp_packages.name}/${c.isp_packages.bandwidth_down}Mb` : "-"}
+                      {c.profile
+                        ? c.profile
+                        : c.isp_packages
+                          ? `${c.isp_packages.name}/${c.isp_packages.bandwidth_down}Mb`
+                          : "-"}
                     </TableCell>
                     <TableCell className="text-xs">{c.monthly_bill || 0}</TableCell>
                     <TableCell className="text-xs">
