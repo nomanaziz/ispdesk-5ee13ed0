@@ -548,7 +548,11 @@ export default function AddClient() {
           </div>
           <div>
             <Label>বিলিং স্ট্যাটাস *</Label>
-            <Select value={form.billing_status} onValueChange={v => setField("billing_status", v)}>
+            <Select value={form.billing_status} onValueChange={v => setForm(prev => ({
+              ...prev,
+              billing_status: v,
+              ...(v !== "Active" ? { monthly_bill: 0, billing_start_month: "", expire_day: "" } : {}),
+            }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {billingStatuses?.map((bs: any) => <SelectItem key={bs.id} value={bs.name}>{bs.name}</SelectItem>)}
@@ -571,25 +575,29 @@ export default function AddClient() {
             <Label>যোগদানের তারিখ *</Label>
             <Input type="date" value={form.joining_date} onChange={e => setField("joining_date", e.target.value)} />
           </div>
-          <div>
-            <Label>মাসিক বিল *</Label>
-            <Input type="number" value={form.monthly_bill} onChange={e => setField("monthly_bill", Number(e.target.value))} />
-          </div>
-          <div>
-            <Label>বিলিং শুরুর মাস *</Label>
-            <Input type="month" value={form.billing_start_month} onChange={e => setField("billing_start_month", e.target.value)} />
-          </div>
-          <div>
-            <Label>Expired Date (মাসের কোন দিন) *</Label>
-            <Select value={String(form.expire_day || "")} onValueChange={v => setField("expire_day", v)}>
-              <SelectTrigger><SelectValue placeholder="দিন নির্বাচন (1-31)" /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                  <SelectItem key={d} value={String(d)}>প্রতি মাসের {d} তারিখ</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {form.billing_status === "Active" && (
+            <>
+              <div>
+                <Label>মাসিক বিল *</Label>
+                <Input type="number" value={form.monthly_bill} onChange={e => setField("monthly_bill", Number(e.target.value))} />
+              </div>
+              <div>
+                <Label>বিলিং শুরুর মাস *</Label>
+                <Input type="month" value={form.billing_start_month} onChange={e => setField("billing_start_month", e.target.value)} />
+              </div>
+              <div>
+                <Label>Expired Date (মাসের কোন দিন) *</Label>
+                <Select value={String(form.expire_day || "")} onValueChange={v => setField("expire_day", v)}>
+                  <SelectTrigger><SelectValue placeholder="দিন নির্বাচন (1-31)" /></SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                      <SelectItem key={d} value={String(d)}>প্রতি মাসের {d} তারিখ</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
           <div>
             <Label>রেফারেন্স</Label>
             <Input value={form.reference_by} onChange={e => setField("reference_by", e.target.value)} />
@@ -600,14 +608,10 @@ export default function AddClient() {
           </div>
           <div>
             <Label>সংযোগ দিয়েছেন</Label>
-            <Input value={form.connected_by} onChange={e => setField("connected_by", e.target.value)} />
-          </div>
-          <div>
-            <Label>অ্যাফিলিয়েটর</Label>
-            <Select value={form.affiliator_id} onValueChange={v => setField("affiliator_id", v)}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+            <Select value={form.connected_by} onValueChange={v => setField("connected_by", v)}>
+              <SelectTrigger><SelectValue placeholder="কর্মচারী নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
-                {affiliates?.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                {employees?.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
