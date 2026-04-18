@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import {
   FileSpreadsheet, FileText, RefreshCw, Download, Ban, CheckCircle,
   MapPin, Building, ArrowRightLeft, Star, StarOff, Settings,
-  MessageSquare, Mail, CalendarPlus, Zap
+  MessageSquare, Mail, CalendarPlus, Zap, FilePlus
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -25,6 +25,7 @@ interface Props {
   onBulkVip: () => void;
   onBulkRemoveVip: () => void;
   onBulkProfileChange: () => void;
+  onRegenerateInvoice?: () => void;
 }
 
 export default function BulkActionButtons({
@@ -46,6 +47,7 @@ export default function BulkActionButtons({
   onBulkVip,
   onBulkRemoveVip,
   onBulkProfileChange,
+  onRegenerateInvoice,
 }: Props) {
   const requireSelection = (fn: () => void) => {
     if (selectedCount === 0) {
@@ -79,6 +81,9 @@ export default function BulkActionButtons({
         <ActionBtn icon={Star} label="VIP করুন" onClick={() => requireSelection(onBulkVip)} />
         <ActionBtn icon={StarOff} label="VIP বাতিল" onClick={() => requireSelection(onBulkRemoveVip)} />
         <ActionBtn icon={Settings} label="প্রোফাইল পরিবর্তন" onClick={() => requireSelection(onBulkProfileChange)} />
+        {onRegenerateInvoice && (
+          <ActionBtn icon={FilePlus} label="ইনভয়েস পুনরায় তৈরি" onClick={() => requireSelection(onRegenerateInvoice)} color="bg-violet-600 hover:bg-violet-700 text-white" />
+        )}
       </div>
       {selectedCount > 0 && (
         <p className="text-xs text-muted-foreground">{selectedCount} জন ক্লায়েন্ট সিলেক্ট করা হয়েছে</p>
