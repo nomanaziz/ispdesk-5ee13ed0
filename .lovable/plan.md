@@ -2,58 +2,96 @@
 
 ## লক্ষ্য
 
-Admin Payment Gateways page-এ প্রতিটা gateway-র জন্য **type-specific fields** দেখাব (এক-সাইজ-ফিট-অল API/Secret form বাদ)। আর `QuickPayDialog`-এর hardcoded `PAYMENT_CONFIG` সরিয়ে DB থেকে real data পড়ব।
+চারটা payment gateway-র **actual API integration** করব — bKash Merchant, Nagad Merchant, SSLCommerz, RechargeServer। প্রতিটার জন্য edge function তৈরি/update করব যাতে hosted checkout flow কাজ করে। Payment success হলে auto bill paid + receipt।
+
+## বর্তমান অবস্থা
+
+- **RechargeServer**: edge function আছে (`rechargeserver-payment/index.ts`) — create + verify কাজ করে
+- **bKash/Nagad/SSLCommerz**: কোনো edge function নেই, QuickPayDialog-এ "শীঘ্রই আসছে" toast দেখায়
+- Admin PaymentGateways page-এ সব field structure ঠিক আছে (merchant credentials)
 
 ## পরিবর্তন
 
-### 1. `src/pages/dashboard/system/PaymentGateways.tsx` — restructure
+### 1. Edge Functions (নতুন ৩টা)
 
-নতুন gateway list (default), প্রত্যেকটার **আলাদা fields**:
+**`supabase/functions/bkash-payment/index.ts`**
+- bKash Tokenized Checkout API (v1.2.0-beta)
+- `action: "create"` → Grant Token → Create Payment → return bKash URL
+- `action: "execute"` → Execute Payment (callback থেকে paymentID দিয়ে)
+- `action: "query"` → Query Payment status
+- Sandbox/Production toggle: admin-এর `fields.sandbox` পড়ে base URL switch করবে
+  - Sandbox: `https://tokenized.sandbox.bka.sh/v1.2.0-beta`
+  - Production: `https://tokenized.pay.bka.sh/v1.2.0-beta`
+- Credentials: `fields.app_key`, `fields.app_secret`, `fields.username`, `fields.password`
 
-| Gateway | Type | Fields |
-|---|---|---|
-| **bKash Personal** | Mobile (Personal) | Number, Account Holder Name, Instructions |
-| **bKash Merchant** | Mobile (Merchant) | Merchant Number, App Key, App Secret, Username, Password |
-| **Nagad Personal** | Mobile (Personal) | Number, Account Holder Name, Instructions |
-| **Nagad Merchant** | Mobile (Merchant) | Merchant ID, Merchant Number, Public Key, Private Key |
-| **Rocket Personal** | Mobile (Personal) | Number, Account Holder Name, Instructions |
-| **Bank Transfer** | Bank | Bank Name, Account Name, Account Number, Branch, Routing Number, Address (no API/Secret) |
-| **SSLCommerz** | Gateway | Store ID, Store Password, Sandbox toggle |
-| **RechargeServer** | Gateway | API Key, Secret Key, Brand Key, Account |
+**`supabase/functions/nagad-payment/index.ts`**
+- Nagad Payment Gateway API
+- `action: "create"` → Initialize → Complete → return redirect URL
+- `action: "verify"` → Verify payment by payment_ref_id
+- Credentials: `fields.merchant_id`, `fields.merchant_number`, `fields.public_key`, `fields.private_key`
+- Sandbox/Production toggle
 
-Implementation:
-- `Gateway` interface-এ `category: "mobile_personal" | "mobile_merchant" | "bank" | "gateway"` + flexible `fields: Record<string, string>` object
-- প্রতি category-র জন্য একটা `renderFields(gw, idx)` function যা শুধু relevant inputs render করবে (icons সহ — `Building2` bank-এ, `Smartphone` mobile-এ, `Key` merchant-এ)
-- Default seed array-এ ৮টা gateway থাকবে
-- "Show on website" + "Active" toggles আগের মতই
+**`supabase/functions/sslcommerz-payment/index.ts`**
+- SSLCommerz Session API
+- `action: "create"` → POST to `/gwprocess/v4/api.php` → return GatewayPageURL
+- `action: "validate"` → POST to `/validator/api/validationserverAPI.php`
+- Sandbox: `https://sandbox.sslcommerz.com`
+- Production: `https://securepay.sslcommerz.com`
+- Credentials: `fields.store_id`, `fields.store_password`
 
-### 2. `src/components/public/QuickPayDialog.tsx` — DB-driven
+### 2. Payment Callback Edge Function (নতুন)
 
-- Hardcoded `PAYMENT_CONFIG` সরিয়ে `useSystemSetting<Gateway[]>("payment_gateways", [])` দিয়ে fetch
-- শুধু `active && show_on_website` gateways list-এ দেখাব
-- Method choose করার পর সেই gateway-র `fields` থেকে number/bank info dynamic-ভাবে render
-- `Method` type extend করে `rocket_personal`, `bkash_merchant` ইত্যাদি cover
+**`supabase/functions/payment-callback/index.ts`**
+- সব gateway-র success/fail/cancel callback handle করবে
+- URL pattern: `/payment-callback?gateway=bkash&status=success&paymentID=xxx`
+- Success flow:
+  1. Gateway-specific verify call → confirm paid
+  2. `billing` table-এ invoice `status = 'paid'` mark
+  3. `bill_collections` table-এ entry (amount, method, trx_id, date)
+  4. Redirect to portal invoice page with success message
+- Fail/Cancel → redirect with error message
 
-### 3. `supabase/functions/rechargeserver-payment/index.ts`
+### 3. QuickPayDialog Update
 
-- Field path adjust: `gw.fields.api_key`, `gw.fields.secret_key`, `gw.fields.brand_key` (যেহেতু schema বদলাচ্ছি)
+- Gateway/Merchant category click → edge function call → redirect to gateway checkout page
+- Personal/Bank → আগের মতোই manual Trx ID submit
+- Loading state দেখাবে "Gateway-এ নিয়ে যাচ্ছে..."
 
-### 4. Existing data migration
+### 4. Portal Invoice Page — Payment Return
 
-- One-time data upsert (insert tool ব্যবহার করে) — পুরনো `payment_gateways` setting-কে নতুন structure-এ rewrite, default values সহ। যদি admin আগে কিছু save করে থাকেন তাহলে old keys (`api_key`, `secret_key`, `account`) → নতুন `fields.*`-এ map।
+- URL param `?payment=success` বা `?payment=failed` check
+- Success → green toast "পেমেন্ট সফল হয়েছে"
+- Failed → red toast "পেমেন্ট ব্যর্থ হয়েছে"
+
+### 5. Admin PaymentGateways.tsx — Sandbox Toggle
+
+- bKash Merchant, Nagad Merchant, SSLCommerz → `sandbox` field যোগ (SSLCommerz-এ আগে থেকেই আছে, বাকি দুটোতে যোগ)
+- Toggle UI দেখাবে "Sandbox Mode" switch
+
+## ব্লকার: RechargeServer Documentation
+
+আপনি বলেছেন documentation দেবেন। সেটা পাওয়ার পর RechargeServer-এর flow finalize করব। বর্তমানে যা আছে (create + verify) সেটা ঠিকই কাজ করবে, তবে callback/webhook integration-এর জন্য docs লাগবে।
 
 ## Files
 
-**Edit:**
-- `src/pages/dashboard/system/PaymentGateways.tsx` (rewrite — category-based fields)
-- `src/components/public/QuickPayDialog.tsx` (DB-driven config)
-- `supabase/functions/rechargeserver-payment/index.ts` (field path update)
+**নতুন:**
+- `supabase/functions/bkash-payment/index.ts`
+- `supabase/functions/nagad-payment/index.ts`
+- `supabase/functions/sslcommerz-payment/index.ts`
+- `supabase/functions/payment-callback/index.ts`
 
-**Data update:** `system_settings.payment_gateways` row reset (insert tool)
+**Edit:**
+- `src/components/public/QuickPayDialog.tsx` — gateway redirect flow
+- `src/pages/dashboard/system/PaymentGateways.tsx` — sandbox toggle সব merchant-এ
+- `src/pages/portal/PortalBillInvoice.tsx` — payment return handling
+
+**DB Migration:**
+- `public_payment_requests` table-এ `gateway_response` jsonb column যোগ (callback data store)
 
 ## ফলাফল
 
-- Admin → Payment Gateways: bKash Personal-এ শুধু Number+Holder Name; Bank Transfer-এ Account/Routing/Branch (API field নেই); Merchant gateways-এ proper API fields
-- Public QuickPay dialog admin-এর সংরক্ষিত আসল number/bank info দেখাবে
-- নতুন payment options যোগ করা সহজ হবে (Rocket Personal এখনই যোগ করা হলো)
+- bKash Merchant → admin sandbox toggle ON → "Pay Now" click → bKash checkout page → payment → auto redirect → invoice paid
+- Nagad/SSLCommerz → same flow
+- RechargeServer → existing flow + callback auto-mark (docs পাওয়ার পর finalize)
+- Personal/Bank → আগের মতোই manual Trx ID
 
