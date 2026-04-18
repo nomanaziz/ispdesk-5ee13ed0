@@ -147,10 +147,11 @@ export default function AddClient() {
         fiber_code: form.fiber_code || null, core_count: form.core_count ? Number(form.core_count) : null,
         core_color: form.core_color || null, device_type: form.device_type || null,
         device_serial: form.device_serial || null, vendor: form.vendor || null,
-        purchase_date: form.purchase_date || null, expire_date: computeExpireDate(form.expire_day),
-        joining_date: form.joining_date || null, billing_start_month: form.billing_start_month || null,
+        purchase_date: form.purchase_date || null, expire_date: form.billing_status === "Active" ? computeExpireDate(form.expire_day) : null,
+        joining_date: form.joining_date || null, billing_start_month: form.billing_status === "Active" ? (form.billing_start_month || null) : null,
         reference_by: form.reference_by || null, is_vip: form.is_vip || false,
-        connected_by: form.connected_by || null, affiliator_id: form.affiliator_id || null,
+        connected_by: form.connected_by || null,
+        monthly_bill_override: form.billing_status === "Active" ? (form.monthly_bill || 0) : 0,
         mikrotik_status: mikrotikStatus,
       };
       if (editMode && editClientId) {
