@@ -312,10 +312,44 @@ function PackagePreviewSection() {
                 <div className="text-sm text-slate-500 mb-3">
                   ↓ {pkg.bandwidth_down} Mbps &nbsp;|&nbsp; ↑ {pkg.bandwidth_up} Mbps
                 </div>
-                <div className="text-4xl font-extrabold text-cyan-600 mb-1">
-                  ৳{pkg.price}
-                </div>
-                <div className="text-xs text-slate-400 mb-4">মাসিক</div>
+                {(() => {
+                  const pkgVat = Number((pkg as any).vat_percent) || 0;
+                  const includes = (pkg as any).price_includes_vat ?? true;
+                  const showBreak = (pkg as any).show_vat_breakdown ?? false;
+                  const base = Number(pkg.price) || 0;
+                  if (pkgVat <= 0) {
+                    return (
+                      <>
+                        <div className="text-4xl font-extrabold text-cyan-600 mb-1">৳{base.toLocaleString()}</div>
+                        <div className="text-xs text-slate-400 mb-4">মাসিক</div>
+                      </>
+                    );
+                  }
+                  if (includes) {
+                    const baseAmt = +(base / (1 + pkgVat / 100)).toFixed(2);
+                    const vatAmt = +(base - baseAmt).toFixed(2);
+                    return (
+                      <>
+                        <div className="text-4xl font-extrabold text-cyan-600 mb-1">৳{base.toLocaleString()}</div>
+                        <div className="text-[11px] text-slate-500">({pkgVat}% VAT সহ)</div>
+                        {showBreak && (
+                          <div className="text-[10px] text-slate-400 mb-2">Base ৳{baseAmt.toLocaleString()} + VAT ৳{vatAmt.toLocaleString()}</div>
+                        )}
+                        <div className="text-xs text-slate-400 mb-4">মাসিক</div>
+                      </>
+                    );
+                  }
+                  // excluding
+                  const vatAmt = +((base * pkgVat) / 100).toFixed(2);
+                  const total = +(base + vatAmt).toFixed(2);
+                  return (
+                    <>
+                      <div className="text-4xl font-extrabold text-cyan-600 mb-1">৳{total.toLocaleString()}</div>
+                      <div className="text-[11px] text-slate-500">Base ৳{base.toLocaleString()} + {pkgVat}% VAT ৳{vatAmt.toLocaleString()}</div>
+                      <div className="text-xs text-slate-400 mb-4">মাসিক</div>
+                    </>
+                  );
+                })()}
 
                 {/* Feature badges */}
                 <div className="flex flex-wrap justify-center gap-1.5 mb-4">
