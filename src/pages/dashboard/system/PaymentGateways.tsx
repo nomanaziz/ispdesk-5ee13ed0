@@ -23,11 +23,11 @@ const defaultGateways: Gateway[] = [
   { name: "bKash Personal", category: "mobile_personal", type: "Mobile Banking (Personal)", active: false, show_on_website: true, color: "#E2136E",
     fields: { number: "", holder_name: "", instructions: "Send Money করুন এবং Transaction ID দিন" } },
   { name: "bKash Merchant", category: "mobile_merchant", type: "Mobile Banking (Merchant)", active: false, show_on_website: false, color: "#E2136E",
-    fields: { merchant_number: "", app_key: "", app_secret: "", username: "", password: "" } },
+    fields: { merchant_number: "", app_key: "", app_secret: "", username: "", password: "", sandbox: "true" } },
   { name: "Nagad Personal", category: "mobile_personal", type: "Mobile Banking (Personal)", active: false, show_on_website: true, color: "#F6921E",
     fields: { number: "", holder_name: "", instructions: "Send Money করুন এবং Transaction ID দিন" } },
   { name: "Nagad Merchant", category: "mobile_merchant", type: "Mobile Banking (Merchant)", active: false, show_on_website: false, color: "#F6921E",
-    fields: { merchant_id: "", merchant_number: "", public_key: "", private_key: "" } },
+    fields: { merchant_id: "", merchant_number: "", public_key: "", private_key: "", sandbox: "true" } },
   { name: "Rocket Personal", category: "mobile_personal", type: "Mobile Banking (Personal)", active: false, show_on_website: true, color: "#8B2F8B",
     fields: { number: "", holder_name: "", instructions: "Send Money করুন এবং Transaction ID দিন" } },
   { name: "Bank Transfer", category: "bank", type: "Bank", active: false, show_on_website: true, color: "#1E88E5",
@@ -158,13 +158,13 @@ export default function PaymentGateways() {
             </div>
           );
         })}
-        {gw.category === "gateway" && gw.name === "SSLCommerz" && (
-          <div className="flex items-center gap-2">
+        {(gw.category === "gateway" || gw.category === "mobile_merchant") && "sandbox" in gw.fields && (
+          <div className="flex items-center gap-2 md:col-span-2">
             <Switch
               checked={gw.fields.sandbox === "true"}
               onCheckedChange={v => updateField(idx, "sandbox", v ? "true" : "false")}
             />
-            <Label className="text-xs">Sandbox Mode</Label>
+            <Label className="text-xs">Sandbox Mode (টেস্ট পরিবেশ)</Label>
           </div>
         )}
       </div>

@@ -54,12 +54,80 @@ export default function QuickPayDialog({ open, onOpenChange, client, defaultAmou
 
   const handleClose = (v: boolean) => { if (!v) reset(); onOpenChange(v); };
 
+  const startGatewayCheckout = async (gw: Gateway) => {
+    const amt = Number(amount) || defaultAmount || 0;
+    if (!amt) {
+      toast({ title: "ত্রুটি", description: "পরিমাণ দিন", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      // 1) Create payment_request row first to get an ID for callback
+      const methodKey = gw.name.toLowerCase().replace(/\s+/g, "_");
+      const { data: pr, error: prErr } = await supabase.from("public_payment_requests").insert({
+        client_id: client.id, amount: amt, method: methodKey, trx_id: `pending-${Date.now()}`,
+        status: "pending", note: `Online checkout via ${gw.name}`,
+      }).select("id").single();
+      if (prErr || !pr) throw new Error(prErr?.message || "Failed to create request");
+
+      const projectId = (import.meta as any).env.VITE_SUPABASE_PROJECT_ID;
+      const fnBase = `https://${projectId}.functions.supabase.co`;
+      const callbackBase = `${fnBase}/payment-callback`;
+
+      let redirectUrl = "";
+      if (gw.name === "bKash Merchant") {
+        const callback = `${callbackBase}?gateway=bkash&request_id=${pr.id}`;
+        const r = await supabase.functions.invoke("bkash-payment", {
+          body: { action: "create", amount: amt, callback_url: callback, request_id: pr.id, payment_request_id: pr.id, payer_reference: client.contact || "01" },
+        });
+        const data: any = r.data;
+        redirectUrl = data?.bkashURL || "";
+        if (!redirectUrl) throw new Error(data?.message || data?.statusMessage || "bKash checkout URL missing");
+      } else if (gw.name === "SSLCommerz") {
+        const tran_id = `TXN-${pr.id.slice(0, 8)}-${Date.now()}`;
+        const r = await supabase.functions.invoke("sslcommerz-payment", {
+          body: {
+            action: "create", amount: amt, tran_id,
+            success_url: `${callbackBase}?gateway=sslcommerz&request_id=${pr.id}&status=VALID`,
+            fail_url: `${callbackBase}?gateway=sslcommerz&request_id=${pr.id}&status=FAILED`,
+            cancel_url: `${callbackBase}?gateway=sslcommerz&request_id=${pr.id}&status=CANCELLED`,
+            cus_name: client.name, cus_email: client.email, cus_phone: client.contact,
+            product_name: `Bill payment for ${client.name}`,
+            payment_request_id: pr.id,
+          },
+        });
+        const data: any = r.data;
+        redirectUrl = data?.GatewayPageURL || "";
+        if (!redirectUrl) throw new Error(data?.failedreason || "SSLCommerz session failed");
+      } else if (gw.name === "RechargeServer") {
+        const r = await supabase.functions.invoke("rechargeserver-payment", {
+          body: {
+            action: "create", amount: amt, cus_name: client.name, cus_email: client.email,
+            success_url: `${callbackBase}?gateway=rechargeserver&request_id=${pr.id}&status=success`,
+            cancel_url: `${callbackBase}?gateway=rechargeserver&request_id=${pr.id}&status=failed`,
+            meta_data: { request_id: pr.id, client_id: client.id },
+          },
+        });
+        const data: any = r.data;
+        redirectUrl = data?.payment_url || data?.url || data?.data?.payment_url || "";
+        if (!redirectUrl) throw new Error(data?.message || "RechargeServer URL missing");
+      } else if (gw.name === "Nagad Merchant") {
+        toast({ title: "Nagad", description: "Nagad RSA-keys configure করার পর active হবে।", variant: "destructive" });
+        setSubmitting(false);
+        return;
+      }
+
+      toast({ title: "Gateway-এ নিয়ে যাচ্ছে...", description: gw.name });
+      window.location.href = redirectUrl;
+    } catch (e: any) {
+      toast({ title: "ব্যর্থ", description: e.message, variant: "destructive" });
+      setSubmitting(false);
+    }
+  };
+
   const pickGateway = (gw: Gateway) => {
     if (gw.category === "gateway" || gw.category === "mobile_merchant") {
-      toast({
-        title: "শীঘ্রই আসছে",
-        description: `${gw.name} অটোমেটিক gateway Phase 2-এ চালু হবে। বর্তমানে Personal/Bank পদ্ধতি ব্যবহার করুন।`,
-      });
+      startGatewayCheckout(gw);
       return;
     }
     setSelected(gw);
@@ -122,19 +190,19 @@ export default function QuickPayDialog({ open, onOpenChange, client, defaultAmou
 
             {visible.map(gw => {
               const Icon = iconFor(gw.category);
-              const disabled = gw.category === "gateway" || gw.category === "mobile_merchant";
+              const isAuto = gw.category === "gateway" || gw.category === "mobile_merchant";
               const desc = gw.category === "bank"
                 ? "Bank account-এ পাঠিয়ে Transaction ID দিন"
                 : gw.category === "mobile_personal"
                 ? "Send Money করে Trx ID submit করুন"
-                : "অটোমেটিক gateway — শীঘ্রই";
+                : "অটোমেটিক — পেমেন্ট পেজে নিয়ে যাবে";
               return (
                 <button
                   key={gw.name}
                   onClick={() => pickGateway(gw)}
-                  disabled={disabled}
+                  disabled={submitting}
                   className={`w-full flex items-center gap-3 p-3 border rounded-lg text-left transition ${
-                    disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-accent hover:border-primary/40"
+                    submitting ? "opacity-60" : "hover:bg-accent hover:border-primary/40"
                   }`}
                 >
                   <div className="h-10 w-10 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: `${gw.color}20`, color: gw.color }}>
@@ -144,10 +212,13 @@ export default function QuickPayDialog({ open, onOpenChange, client, defaultAmou
                     <div className="font-medium text-sm">{gw.name}</div>
                     <div className="text-xs text-muted-foreground">{desc}</div>
                   </div>
-                  {disabled && <Badge variant="outline" className="text-[10px]">শীঘ্রই</Badge>}
+                  {isAuto && <Badge variant="outline" className="text-[10px]">Auto</Badge>}
                 </button>
               );
             })}
+            {submitting && (
+              <p className="text-xs text-center text-muted-foreground animate-pulse">Gateway-এ নিয়ে যাচ্ছে...</p>
+            )}
           </div>
         )}
 

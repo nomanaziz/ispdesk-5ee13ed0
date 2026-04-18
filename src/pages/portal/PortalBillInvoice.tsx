@@ -1,5 +1,5 @@
-import { useParams, Link } from "react-router-dom";
-import { useState } from "react";
+import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,6 +19,20 @@ const PortalBillInvoice = () => {
   const { id } = useParams();
   const { customer } = usePortalAuth();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const p = searchParams.get("payment");
+    if (p === "success") {
+      toast.success("পেমেন্ট সফল হয়েছে — ধন্যবাদ!");
+      qc.invalidateQueries({ queryKey: ["portal-bill", id] });
+      searchParams.delete("payment"); setSearchParams(searchParams, { replace: true });
+    } else if (p === "failed") {
+      toast.error("পেমেন্ট ব্যর্থ হয়েছে — আবার চেষ্টা করুন");
+      searchParams.delete("payment"); setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data: bill, isLoading } = useQuery({
     queryKey: ["portal-bill", id],
