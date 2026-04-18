@@ -203,7 +203,61 @@ export default function BillingList() {
     queryClient.invalidateQueries({ queryKey: ["billing-list"] });
   };
 
-  const notImplemented = () => toast.info("শীঘ্রই আসছে — এই ফিচার এখনো তৈরি হচ্ছে");
+  const requireSelection = () => {
+    if (selectedClients.length === 0) {
+      toast.error("কোনো ক্লায়েন্ট সিলেক্ট করা হয়নি");
+      return false;
+    }
+    return true;
+  };
+
+  const handleExcel = () => {
+    if (!requireSelection()) return;
+    exportClientsExcel(clientsToRows(selectedClients), "billing");
+    toast.success("Excel ডাউনলোড হয়েছে");
+  };
+  const handlePdf = () => {
+    if (!requireSelection()) return;
+    exportClientsPdf(clientsToRows(selectedClients), "billing", "Billing List");
+    toast.success("PDF ডাউনলোড হয়েছে");
+  };
+  const handleInvoiceDownload = () => {
+    if (!requireSelection()) return;
+    exportInvoicesPdf(selectedClients, "invoices");
+    toast.success("ইনভয়েস ডাউনলোড হয়েছে");
+  };
+
+  const regenerateMut = useMutation({
+    mutationFn: async () => {
+      const month = `${filters.month}-01`;
+      const monthKey = filters.month;
+      let created = 0;
+      let skipped = 0;
+      for (const c of selectedClients) {
+        const existing = (c.billing || []).find((b: any) => b.month === month);
+        if (existing) { skipped++; continue; }
+        const billId = `BILL-${c.client_id}-${monthKey}`;
+        const amount = Number(c.monthly_bill || 0);
+        const { error } = await supabase.from("billing").insert({
+          bill_id: billId,
+          client_id: c.id,
+          month,
+          amount,
+          due: amount,
+          paid: 0,
+          status: "unpaid",
+          generated: true,
+        });
+        if (!error) created++;
+      }
+      return { created, skipped };
+    },
+    onSuccess: ({ created, skipped }) => {
+      toast.success(`তৈরি হয়েছে: ${created}, ইতিমধ্যে আছে: ${skipped}`);
+      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const [syncing, setSyncing] = useState(false);
   const handleSyncClients = async () => {
