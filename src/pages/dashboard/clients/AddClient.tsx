@@ -190,7 +190,7 @@ export default function AddClient() {
               password: form.password || null,
               profile: form.profile || null,
               remote_address: form.remote_address || null,
-              disabled: form.billing_status !== "Active",
+              disabled: (form.billing_status || "Active").toLowerCase() === "inactive",
             },
           });
 
