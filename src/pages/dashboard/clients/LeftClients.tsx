@@ -161,7 +161,7 @@ export default function LeftClients() {
                   <TableCell className="text-xs">{c.remote_address || "-"}</TableCell>
                   <TableCell className="text-xs">{c.isp_packages ? `${c.isp_packages.name}/${c.isp_packages.bandwidth_down}Mb` : "-"}</TableCell>
                   <TableCell className="text-xs">{c.monthly_bill || 0}</TableCell>
-                  <TableCell className="text-xs">{c.server_name || "-"}</TableCell>
+                  <TableCell className="text-xs">{c.mikrotik_device?.name || c.server_name || "-"}</TableCell>
                   <TableCell className="text-xs"><Badge variant="destructive" className="text-[10px]">Left</Badge></TableCell>
                   <TableCell className="text-xs">{c.left_date || "-"}</TableCell>
                   <TableCell className="text-xs">{c.left_reason || "-"}</TableCell>
