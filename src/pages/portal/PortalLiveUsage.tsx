@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Download, Upload, Wifi, User, Hash, Phone, Clock, Gauge, WifiOff, Mail, MapPin } from "lucide-react";
+import { Activity, Download, Upload, Wifi, User, Hash, Phone, Clock, Gauge, WifiOff, Mail, MapPin, Shield } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
