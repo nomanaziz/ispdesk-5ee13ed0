@@ -121,6 +121,34 @@ Deno.serve(async (req) => {
         note: `Online payment via ${gateway}`,
         status: "approved",
       });
+
+      // Auto re-enable client on MikroTik after successful payment
+      if (newDue <= 0 && pr.client_id) {
+        try {
+          const { data: client } = await supabase.from("clients")
+            .select("id, mikrotik_id, username, billing_status")
+            .eq("id", pr.client_id).maybeSingle();
+          if (client?.mikrotik_id && client?.username) {
+            await supabase.from("clients").update({
+              billing_status: "Active",
+              mikrotik_status: "enabled",
+            }).eq("id", client.id);
+            await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/manage-mikrotik-ppp`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+              body: JSON.stringify({
+                client_id: client.id,
+                mikrotik_id: client.mikrotik_id,
+                username: client.username,
+                action: "update",
+                disabled: false,
+              }),
+            });
+          }
+        } catch (e) {
+          console.error("auto re-enable failed", e);
+        }
+      }
     }
   }
 
