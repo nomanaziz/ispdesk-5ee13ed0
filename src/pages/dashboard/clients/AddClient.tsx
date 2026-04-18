@@ -116,7 +116,7 @@ export default function AddClient() {
   const { data: clientTypes } = useQuery({ queryKey: ["client-types-active"], queryFn: async () => { const { data } = await supabase.from("client_types").select("id, name").eq("status", "active"); return data || []; } });
   const { data: mikrotiks } = useQuery({ queryKey: ["mikrotik-devices"], queryFn: async () => { const { data } = await supabase.from("mikrotik_devices").select("id, name"); return data || []; } });
   const { data: protocolTypes } = useQuery({ queryKey: ["protocol-types-active"], queryFn: async () => { const { data } = await supabase.from("protocol_types" as any).select("id, name").eq("status", "active"); return data || []; } });
-  const { data: affiliates } = useQuery({ queryKey: ["affiliates-active"], queryFn: async () => { const { data } = await supabase.from("affiliates").select("id, name").eq("status", "active"); return data || []; } });
+  const { data: employees } = useQuery({ queryKey: ["employees-active"], queryFn: async () => { const { data } = await supabase.from("employees").select("id, name").eq("status", "active"); return data || []; } });
   const { data: billingStatuses } = useQuery({ queryKey: ["billing-statuses"], queryFn: async () => { const { data } = await supabase.from("billing_statuses").select("id, name").eq("status", "active"); return data || []; } });
 
   const filteredSubZones = useMemo(() => form.zone_id ? subZones?.filter((s: any) => s.zone_id === form.zone_id) : subZones, [form.zone_id, subZones]);
