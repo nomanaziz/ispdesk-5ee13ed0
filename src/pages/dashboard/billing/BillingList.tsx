@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -321,24 +321,31 @@ export default function BillingList() {
       {/* Bulk Actions */}
       <BulkActionButtons
         selectedCount={selectedIds.size}
-        onGenerateExcel={notImplemented}
-        onGeneratePdf={notImplemented}
+        onGenerateExcel={handleExcel}
+        onGeneratePdf={handlePdf}
         onSyncClients={handleSyncClients}
         onDisableSelected={() => handleDisableEnable("disable")}
         onEnableSelected={() => handleDisableEnable("enable")}
         onBulkStatusChange={() => setStatusChangeOpen(true)}
         onBulkZoneChange={() => setZoneChangeOpen(true)}
-        onBulkDistrictChange={notImplemented}
-        onBulkThanaChange={notImplemented}
-        onDownloadInvoice={notImplemented}
-        onSmsSelected={notImplemented}
-        onEmailSelected={notImplemented}
-        onBulkDateExtend={notImplemented}
+        onBulkDistrictChange={() => setDistrictOpen(true)}
+        onBulkThanaChange={() => setThanaOpen(true)}
+        onDownloadInvoice={handleInvoiceDownload}
+        onSmsSelected={() => setSmsOpen(true)}
+        onEmailSelected={() => setEmailOpen(true)}
+        onBulkDateExtend={() => setDateExtendOpen(true)}
         onMigrateServer={() => setMigrateOpen(true)}
         onBulkVip={() => handleBulkVip(true)}
         onBulkRemoveVip={() => handleBulkVip(false)}
         onBulkProfileChange={() => setProfileChangeOpen(true)}
+        onRegenerateInvoice={() => regenerateMut.mutate()}
       />
+
+      <BulkSmsDialog open={smsOpen} onOpenChange={setSmsOpen} selectedClients={selectedClients} />
+      <BulkEmailDialog open={emailOpen} onOpenChange={setEmailOpen} selectedClients={selectedClients} />
+      <BulkDateExtendDialog open={dateExtendOpen} onOpenChange={setDateExtendOpen} selectedClients={selectedClients} invalidateKey="billing-list" />
+      <BulkDistrictChangeDialog open={districtOpen} onOpenChange={setDistrictOpen} selectedClientIds={[...selectedIds]} invalidateKey="billing-list" />
+      <BulkThanaChangeDialog open={thanaOpen} onOpenChange={setThanaOpen} selectedClientIds={[...selectedIds]} invalidateKey="billing-list" />
 
       {/* Table */}
       <Card>
