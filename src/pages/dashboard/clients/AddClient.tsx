@@ -42,6 +42,25 @@ export default function AddClient() {
   const [mikrotikProfiles, setMikrotikProfiles] = useState<{ name: string; rateLimit?: string }[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
 
+  // Compute full expire_date from selected day-of-month (1-31). Uses current month;
+  // if today is past that day, rolls to next month. Clamps to last day if month-এ দিন কম.
+  const computeExpireDate = (day: string | number | null | undefined): string | null => {
+    const d = Number(day);
+    if (!d || d < 1 || d > 31) return null;
+    const now = new Date();
+    let year = now.getFullYear();
+    let month = now.getMonth();
+    if (now.getDate() > d) {
+      month += 1;
+      if (month > 11) { month = 0; year += 1; }
+    }
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const safeDay = Math.min(d, lastDay);
+    const mm = String(month + 1).padStart(2, "0");
+    const dd = String(safeDay).padStart(2, "0");
+    return `${year}-${mm}-${dd}`;
+  };
+
   const setField = (key: string, value: any) => setForm(prev => {
     const next = { ...prev, [key]: value };
     if (key === "same_address" && value) next.permanent_address = prev.address;
@@ -560,8 +579,15 @@ export default function AddClient() {
             <Input type="month" value={form.billing_start_month} onChange={e => setField("billing_start_month", e.target.value)} />
           </div>
           <div>
-            <Label>মেয়াদ শেষের তারিখ *</Label>
-            <Input type="date" value={form.expire_date} onChange={e => setField("expire_date", e.target.value)} />
+            <Label>Expired Date (মাসের কোন দিন) *</Label>
+            <Select value={String(form.expire_day || "")} onValueChange={v => setField("expire_day", v)}>
+              <SelectTrigger><SelectValue placeholder="দিন নির্বাচন (1-31)" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                  <SelectItem key={d} value={String(d)}>প্রতি মাসের {d} তারিখ</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>রেফারেন্স</Label>
