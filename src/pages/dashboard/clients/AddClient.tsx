@@ -35,7 +35,7 @@ export default function AddClient() {
     client_id: "", package_id: "", profile: "", client_type: "Home", billing_status: "Active",
     username: "", remote_address: "", password: "", joining_date: format(new Date(), "yyyy-MM-dd"),
     monthly_bill: 0, billing_start_month: "", expire_day: "",
-    reference_by: "", is_vip: false, connected_by: "", affiliator_id: "",
+    reference_by: "", is_vip: false, connected_by: "",
     same_address: false,
   });
 
@@ -116,7 +116,7 @@ export default function AddClient() {
   const { data: clientTypes } = useQuery({ queryKey: ["client-types-active"], queryFn: async () => { const { data } = await supabase.from("client_types").select("id, name").eq("status", "active"); return data || []; } });
   const { data: mikrotiks } = useQuery({ queryKey: ["mikrotik-devices"], queryFn: async () => { const { data } = await supabase.from("mikrotik_devices").select("id, name"); return data || []; } });
   const { data: protocolTypes } = useQuery({ queryKey: ["protocol-types-active"], queryFn: async () => { const { data } = await supabase.from("protocol_types" as any).select("id, name").eq("status", "active"); return data || []; } });
-  const { data: affiliates } = useQuery({ queryKey: ["affiliates-active"], queryFn: async () => { const { data } = await supabase.from("affiliates").select("id, name").eq("status", "active"); return data || []; } });
+  const { data: employees } = useQuery({ queryKey: ["employees-active"], queryFn: async () => { const { data } = await supabase.from("employees").select("id, name").eq("status", "active"); return data || []; } });
   const { data: billingStatuses } = useQuery({ queryKey: ["billing-statuses"], queryFn: async () => { const { data } = await supabase.from("billing_statuses").select("id, name").eq("status", "active"); return data || []; } });
 
   const filteredSubZones = useMemo(() => form.zone_id ? subZones?.filter((s: any) => s.zone_id === form.zone_id) : subZones, [form.zone_id, subZones]);
@@ -131,7 +131,7 @@ export default function AddClient() {
         name: form.name, client_id: form.client_id, contact: form.contact, email: form.email,
         address: form.address, zone_id: form.zone_id || null, sub_zone_id: form.sub_zone_id || null,
         connection_type: form.connection_type || null, client_type: form.client_type || null,
-        package_id: form.package_id || null, monthly_bill: form.monthly_bill || 0,
+        package_id: form.package_id || null, monthly_bill: form.billing_status === "Active" ? (form.monthly_bill || 0) : 0,
         mikrotik_id: form.mikrotik_id || null, username: form.username || null,
         password: form.password || null, remote_address: form.remote_address || null,
         mac_address: form.mac_address || null, protocol_type: form.protocol_type || null,
@@ -147,10 +147,10 @@ export default function AddClient() {
         fiber_code: form.fiber_code || null, core_count: form.core_count ? Number(form.core_count) : null,
         core_color: form.core_color || null, device_type: form.device_type || null,
         device_serial: form.device_serial || null, vendor: form.vendor || null,
-        purchase_date: form.purchase_date || null, expire_date: computeExpireDate(form.expire_day),
-        joining_date: form.joining_date || null, billing_start_month: form.billing_start_month || null,
+        purchase_date: form.purchase_date || null, expire_date: form.billing_status === "Active" ? computeExpireDate(form.expire_day) : null,
+        joining_date: form.joining_date || null, billing_start_month: form.billing_status === "Active" ? (form.billing_start_month || null) : null,
         reference_by: form.reference_by || null, is_vip: form.is_vip || false,
-        connected_by: form.connected_by || null, affiliator_id: form.affiliator_id || null,
+        connected_by: form.connected_by || null,
         mikrotik_status: mikrotikStatus,
       };
       if (editMode && editClientId) {
@@ -518,7 +518,7 @@ export default function AddClient() {
             <Select value={form.package_id} onValueChange={v => {
               setField("package_id", v);
               const pkg = packages?.find(p => p.id === v);
-              if (pkg) setField("monthly_bill", pkg.price);
+              if (pkg && form.billing_status === "Active") setField("monthly_bill", pkg.price);
             }}>
               <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
@@ -548,7 +548,11 @@ export default function AddClient() {
           </div>
           <div>
             <Label>বিলিং স্ট্যাটাস *</Label>
-            <Select value={form.billing_status} onValueChange={v => setField("billing_status", v)}>
+            <Select value={form.billing_status} onValueChange={v => setForm(prev => ({
+              ...prev,
+              billing_status: v,
+              ...(v !== "Active" ? { monthly_bill: 0, billing_start_month: "", expire_day: "" } : {}),
+            }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {billingStatuses?.map((bs: any) => <SelectItem key={bs.id} value={bs.name}>{bs.name}</SelectItem>)}
@@ -571,25 +575,29 @@ export default function AddClient() {
             <Label>যোগদানের তারিখ *</Label>
             <Input type="date" value={form.joining_date} onChange={e => setField("joining_date", e.target.value)} />
           </div>
-          <div>
-            <Label>মাসিক বিল *</Label>
-            <Input type="number" value={form.monthly_bill} onChange={e => setField("monthly_bill", Number(e.target.value))} />
-          </div>
-          <div>
-            <Label>বিলিং শুরুর মাস *</Label>
-            <Input type="month" value={form.billing_start_month} onChange={e => setField("billing_start_month", e.target.value)} />
-          </div>
-          <div>
-            <Label>Expired Date (মাসের কোন দিন) *</Label>
-            <Select value={String(form.expire_day || "")} onValueChange={v => setField("expire_day", v)}>
-              <SelectTrigger><SelectValue placeholder="দিন নির্বাচন (1-31)" /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                  <SelectItem key={d} value={String(d)}>প্রতি মাসের {d} তারিখ</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {form.billing_status === "Active" && (
+            <>
+              <div>
+                <Label>মাসিক বিল *</Label>
+                <Input type="number" value={form.monthly_bill} onChange={e => setField("monthly_bill", Number(e.target.value))} />
+              </div>
+              <div>
+                <Label>বিলিং শুরুর মাস *</Label>
+                <Input type="month" value={form.billing_start_month} onChange={e => setField("billing_start_month", e.target.value)} />
+              </div>
+              <div>
+                <Label>Expired Date (মাসের কোন দিন) *</Label>
+                <Select value={String(form.expire_day || "")} onValueChange={v => setField("expire_day", v)}>
+                  <SelectTrigger><SelectValue placeholder="দিন নির্বাচন (1-31)" /></SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                      <SelectItem key={d} value={String(d)}>প্রতি মাসের {d} তারিখ</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
           <div>
             <Label>রেফারেন্স</Label>
             <Input value={form.reference_by} onChange={e => setField("reference_by", e.target.value)} />
@@ -600,14 +608,10 @@ export default function AddClient() {
           </div>
           <div>
             <Label>সংযোগ দিয়েছেন</Label>
-            <Input value={form.connected_by} onChange={e => setField("connected_by", e.target.value)} />
-          </div>
-          <div>
-            <Label>অ্যাফিলিয়েটর</Label>
-            <Select value={form.affiliator_id} onValueChange={v => setField("affiliator_id", v)}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+            <Select value={form.connected_by} onValueChange={v => setField("connected_by", v)}>
+              <SelectTrigger><SelectValue placeholder="কর্মচারী নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
-                {affiliates?.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                {employees?.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
