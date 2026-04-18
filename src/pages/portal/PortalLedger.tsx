@@ -16,45 +16,80 @@ interface LedgerRow {
 
 const PortalLedger = () => {
   const { customer } = usePortalAuth();
+  const isClient = customer?.type === "client";
 
   const { data: rows, isLoading } = useQuery({
-    queryKey: ["portal-ledger", customer?.sub],
+    queryKey: ["portal-ledger", customer?.sub, customer?.type],
     queryFn: async () => {
       const out: LedgerRow[] = [];
 
-      // Invoices = debits
-      const { data: invoices } = await supabase
-        .from("bw_sales_invoices")
-        .select("invoice_no, amount, paid_amount, created_at, month")
-        .eq("customer_id", customer!.sub)
-        .order("created_at");
+      if (isClient) {
+        // Client: use billing (debit) + bill_collections (credit)
+        const { data: bills } = await supabase
+          .from("billing")
+          .select("bill_id, amount, paid, due, month, created_at")
+          .eq("client_id", customer!.sub)
+          .order("created_at");
 
-      // Collections = credits
-      const { data: collections } = await supabase
-        .from("bw_sale_collections")
-        .select("amount, receive_date, created_at, payment_method, note")
-        .eq("customer_id", customer!.sub)
-        .order("receive_date");
+        const { data: collections } = await supabase
+          .from("bill_collections")
+          .select("amount, discount, payment_method, note, created_at")
+          .eq("client_id", customer!.sub)
+          .order("created_at");
 
-      invoices?.forEach((i: any) => {
-        out.push({
-          date: i.created_at,
-          type: "debit",
-          description: `Invoice ${i.invoice_no}${i.month ? ` (${i.month})` : ""}`,
-          amount: i.amount || 0,
-          balance: 0,
-          ref: i.invoice_no,
+        bills?.forEach((b: any) => {
+          out.push({
+            date: b.created_at,
+            type: "debit",
+            description: `Invoice ${b.bill_id}${b.month ? ` (${b.month})` : ""}`,
+            amount: Number(b.amount || 0),
+            balance: 0,
+            ref: b.bill_id,
+          });
         });
-      });
-      collections?.forEach((c: any) => {
-        out.push({
-          date: c.receive_date || c.created_at,
-          type: "credit",
-          description: `Payment received${c.payment_method ? ` via ${c.payment_method}` : ""}`,
-          amount: c.amount || 0,
-          balance: 0,
+        collections?.forEach((c: any) => {
+          out.push({
+            date: c.created_at,
+            type: "credit",
+            description: `Payment received${c.payment_method ? ` via ${c.payment_method}` : ""}${c.note ? ` — ${c.note}` : ""}`,
+            amount: Number(c.amount || 0) + Number(c.discount || 0),
+            balance: 0,
+          });
         });
-      });
+      } else {
+        // Reseller / BW customer: invoices + collections
+        const { data: invoices } = await supabase
+          .from("bw_sales_invoices")
+          .select("invoice_no, amount, paid_amount, created_at, month")
+          .eq("customer_id", customer!.sub)
+          .order("created_at");
+
+        const { data: collections } = await supabase
+          .from("bw_sale_collections")
+          .select("amount, receive_date, created_at, payment_method, note")
+          .eq("customer_id", customer!.sub)
+          .order("receive_date");
+
+        invoices?.forEach((i: any) => {
+          out.push({
+            date: i.created_at,
+            type: "debit",
+            description: `Invoice ${i.invoice_no}${i.month ? ` (${i.month})` : ""}`,
+            amount: i.amount || 0,
+            balance: 0,
+            ref: i.invoice_no,
+          });
+        });
+        collections?.forEach((c: any) => {
+          out.push({
+            date: c.receive_date || c.created_at,
+            type: "credit",
+            description: `Payment received${c.payment_method ? ` via ${c.payment_method}` : ""}`,
+            amount: c.amount || 0,
+            balance: 0,
+          });
+        });
+      }
 
       out.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       let bal = 0;

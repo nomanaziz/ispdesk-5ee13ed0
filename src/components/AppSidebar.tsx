@@ -103,6 +103,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "বিলিং তালিকা", url: "/dashboard/billing", icon: CreditCard },
       { title: "দৈনিক বিল কালেকশন", url: "/dashboard/billing/daily-collection", icon: Wallet },
+      { title: "বিলিং সাইকেল সেটিংস", url: "/dashboard/billing/cycle-settings", icon: Cog },
       { title: "ইনস্টলেশন ফি", url: "/dashboard/sales/installation-fee", icon: DollarSign },
     ],
   },
