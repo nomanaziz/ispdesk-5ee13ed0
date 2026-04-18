@@ -1,50 +1,44 @@
 
 
-## সমস্যা
+## লক্ষ্য
 
-আগের আশ্বাস সত্ত্বেও AddClient.tsx-এ আসলে এই পরিবর্তনগুলো **apply হয়নি**:
-- Affiliator field এখনও line 605-613-এ আছে
-- "সংযোগ দিয়েছেন" এখনও plain Input (line 602-604), employee dropdown হয়নি
-- মাসিক বিল / বিলিং শুরুর মাস / Expire Day — কোনো conditional wrap নেই, সব status-এ দেখা যাচ্ছে
+ছোট স্ক্রিনে Client List ও Billing List-এ horizontal scroll এড়ানোর জন্য action button গুলো একটা **3-dot menu (More)**-এর ভিতরে ঢুকিয়ে দেব। বড় স্ক্রিনে আগের মতোই inline icon row থাকবে।
 
-## এবার যা করব (একবারে, সম্পূর্ণ)
+## সমাধান
 
-### `src/pages/dashboard/clients/AddClient.tsx`
+### `src/components/client-actions/ClientActionButtons.tsx` (একটাই ফাইল edit)
 
-1. **Affiliator সম্পূর্ণ মুছে ফেলা**
-   - JSX block (line 605-613) delete
-   - `form.affiliator_id` state field delete (line 38)
-   - payload থেকে `affiliator_id: form.affiliator_id || null` delete (line 153)
-   - `affiliates` query (line 119) delete
-   - `affiliator_id` prefill যদি কোথাও থাকে remove
+Tailwind responsive utility দিয়ে dual rendering:
 
-2. **"সংযোগ দিয়েছেন" → Employee dropdown**
-   - Plain Input (line 602-604) → `<Select>` যেটা `employees` table থেকে active employee load করে
-   - `useQuery` যোগ: `from("employees").select("id, name").eq("status", "active")`
-   - Value `connected_by`-তে employee id store হবে
+- **`hidden md:flex`** — বড় স্ক্রিনে (≥768px) বর্তমান 6টা icon button row যেমন আছে তেমনই থাকবে (Delete, Status, Package, SMS, Edit, View)
+- **`md:hidden`** — ছোট স্ক্রিনে শুধু একটা **3-dot button** (`MoreVertical` icon) দেখাবে। Click করলে DropdownMenu খুলবে যেখানে সব action serial-ভাবে label সহ থাকবে:
+  - 👁 ভিউ
+  - ✏️ এডিট
+  - 💬 SMS পাঠান
+  - 📦 প্যাকেজ শিডিউলার
+  - 📅 স্ট্যাটাস শিডিউলার
+  - 🗑 ডিলিট (red)
 
-3. **Billing fields conditional wrapping** — শুধু `billing_status === "Active"` হলে দেখাবে:
-   - মাসিক বিল (line 574-577)
-   - বিলিং শুরুর মাস (line 578-581)
-   - Expired Date day select (line 582-592)
-   
-   একসাথে একটা `{form.billing_status === "Active" && (<>...</>)}` block-এ wrap
+### Component ব্যবহার
 
-4. **Status change handler**: যখন `billing_status` Active থেকে অন্য কিছুতে যায়, reset:
-   ```ts
-   setForm(prev => ({ ...prev, billing_status: v, monthly_bill: 0, billing_start_month: "", expire_day: "" }))
-   ```
+`shadcn/ui`-এর `DropdownMenu` (`DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`) — already available in `src/components/ui/dropdown-menu.tsx`।
 
-5. **Package select**: যদি current status "Active" না হয়, package select করলেও `monthly_bill` auto-set করবে না (line 519-522)
+Delete-এর জন্য `AlertDialog` confirm flow `DropdownMenuItem`-এর `onSelect` থেকে controlled state দিয়ে trigger করব (যাতে dropdown বন্ধ হওয়ার পরও confirm dialog ঠিকমতো খোলে)। Status ও Package scheduler dialog একই pattern-এ।
+
+### Breakpoint যুক্তি
+
+- `md` = 768px (Tailwind default) — laptop/desktop
+- এর নিচে (mobile/small tablet) = 3-dot menu
 
 ## Files
 
-- `src/pages/dashboard/clients/AddClient.tsx` — উপরের পাঁচটা পরিবর্তন
+**Edit:**
+- `src/components/client-actions/ClientActionButtons.tsx` — dual layout (inline + dropdown)
+
+ClientList.tsx ও BillingList.tsx-এ পরিবর্তন লাগবে না — তারা `<ClientActionButtons />` ব্যবহার করে, একই component তাই সব জায়গায় অটো কাজ করবে।
 
 ## ফলাফল
 
-- Affiliator field সম্পূর্ণ গায়েব
-- "সংযোগ দিয়েছেন"-এ employee list থেকে select করা যাবে
-- Free / Personal / VIP / Suspended যেকোন non-Active status দিলে মাসিক বিল, বিলিং শুরু, Expire Day তিনটাই hide হবে
-- Active status select করলেই কেবল billing fields ফিরে আসবে
+- Mobile/small screen: একটা পরিষ্কার 3-dot icon → tap → vertical menu → action select
+- Desktop: আগের মতোই 6টা icon side-by-side, কোনো পরিবর্তন নেই
 
