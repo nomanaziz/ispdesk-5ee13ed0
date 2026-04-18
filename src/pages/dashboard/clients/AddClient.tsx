@@ -35,7 +35,7 @@ export default function AddClient() {
     client_id: "", package_id: "", profile: "", client_type: "Home", billing_status: "Active",
     username: "", remote_address: "", password: "", joining_date: format(new Date(), "yyyy-MM-dd"),
     monthly_bill: 0, billing_start_month: "", expire_day: "",
-    reference_by: "", is_vip: false, connected_by: "", affiliator_id: "",
+    reference_by: "", is_vip: false, connected_by: "",
     same_address: false,
   });
 
