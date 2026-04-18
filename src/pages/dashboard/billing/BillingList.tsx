@@ -19,8 +19,14 @@ import ServerMigrationDialog from "@/components/billing/ServerMigrationDialog";
 import BulkStatusChangeDialog from "@/components/billing/BulkStatusChangeDialog";
 import BulkZoneChangeDialog from "@/components/billing/BulkZoneChangeDialog";
 import BulkProfileChangeDialog from "@/components/billing/BulkProfileChangeDialog";
+import BulkSmsDialog from "@/components/billing/BulkSmsDialog";
+import BulkEmailDialog from "@/components/billing/BulkEmailDialog";
+import BulkDateExtendDialog from "@/components/billing/BulkDateExtendDialog";
+import BulkDistrictChangeDialog from "@/components/billing/BulkDistrictChangeDialog";
+import BulkThanaChangeDialog from "@/components/billing/BulkThanaChangeDialog";
 import BillReceiveDialog from "@/components/billing/BillReceiveDialog";
 import BillingDatePopover from "@/components/billing/BillingDatePopover";
+import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows } from "@/lib/exportClients";
 import { toast } from "sonner";
 
 const currentMonth = () => {
@@ -40,6 +46,11 @@ export default function BillingList() {
   const [statusChangeOpen, setStatusChangeOpen] = useState(false);
   const [zoneChangeOpen, setZoneChangeOpen] = useState(false);
   const [profileChangeOpen, setProfileChangeOpen] = useState(false);
+  const [smsOpen, setSmsOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [dateExtendOpen, setDateExtendOpen] = useState(false);
+  const [districtOpen, setDistrictOpen] = useState(false);
+  const [thanaOpen, setThanaOpen] = useState(false);
   const [payClient, setPayClient] = useState<any>(null);
   const [payBilling, setPayBilling] = useState<any>(null);
 
@@ -54,10 +65,11 @@ export default function BillingList() {
             client_type, connection_type, monthly_bill, expire_date, speed,
             server_name, mac_address, protocol_type, profile, password,
             mikrotik_id, mikrotik_status, is_vip, billing_date, is_online,
-            zone_id, sub_zone_id, box_id, package_id,
+            zone_id, sub_zone_id, box_id, package_id, email, billing_status,
             zone:zones(name),
             package:isp_packages(name),
-            billing!billing_client_id_fkey(id, month, amount, paid, due, discount, advance, vat, status, pay_date)
+            mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name),
+            billing!billing_client_id_fkey(id, bill_id, month, amount, paid, due, discount, advance, vat, status, pay_date)
           `)
           .eq("status", "active")
           .order("client_id", { ascending: true }),
