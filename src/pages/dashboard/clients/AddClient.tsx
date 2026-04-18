@@ -131,7 +131,7 @@ export default function AddClient() {
         name: form.name, client_id: form.client_id, contact: form.contact, email: form.email,
         address: form.address, zone_id: form.zone_id || null, sub_zone_id: form.sub_zone_id || null,
         connection_type: form.connection_type || null, client_type: form.client_type || null,
-        package_id: form.package_id || null, monthly_bill: form.monthly_bill || 0,
+        package_id: form.package_id || null, monthly_bill: form.billing_status === "Active" ? (form.monthly_bill || 0) : 0,
         mikrotik_id: form.mikrotik_id || null, username: form.username || null,
         password: form.password || null, remote_address: form.remote_address || null,
         mac_address: form.mac_address || null, protocol_type: form.protocol_type || null,
