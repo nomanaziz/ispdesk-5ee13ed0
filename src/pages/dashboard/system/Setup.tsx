@@ -251,7 +251,6 @@ export default function Setup() {
           </div>
         </div>
       </div>
-      </div>
 
       {/* VAT Defaults */}
       <div className="border rounded-lg overflow-hidden">
