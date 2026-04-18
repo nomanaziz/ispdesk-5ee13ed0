@@ -5944,8 +5944,11 @@ export type Database = {
           amount: number
           approved_at: string | null
           approved_by: string | null
+          billing_id: string | null
           client_id: string
           created_at: string
+          gateway_payment_id: string | null
+          gateway_response: Json | null
           id: string
           method: string
           note: string | null
@@ -5958,8 +5961,11 @@ export type Database = {
           amount?: number
           approved_at?: string | null
           approved_by?: string | null
+          billing_id?: string | null
           client_id: string
           created_at?: string
+          gateway_payment_id?: string | null
+          gateway_response?: Json | null
           id?: string
           method: string
           note?: string | null
@@ -5972,8 +5978,11 @@ export type Database = {
           amount?: number
           approved_at?: string | null
           approved_by?: string | null
+          billing_id?: string | null
           client_id?: string
           created_at?: string
+          gateway_payment_id?: string | null
+          gateway_response?: Json | null
           id?: string
           method?: string
           note?: string | null
@@ -5982,6 +5991,13 @@ export type Database = {
           trx_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "public_payment_requests_billing_id_fkey"
+            columns: ["billing_id"]
+            isOneToOne: false
+            referencedRelation: "billing"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "public_payment_requests_client_id_fkey"
             columns: ["client_id"]

@@ -22,18 +22,18 @@ Deno.serve(async (req) => {
 
     const { data: setting } = await supabase
       .from("system_settings")
-      .select("value")
-      .eq("key", "payment_gateways")
-      .single();
+      .select("setting_value")
+      .eq("setting_key", "payment_gateways")
+      .maybeSingle();
 
-    if (!setting?.value) {
+    if (!setting?.setting_value) {
       return new Response(
         JSON.stringify({ status: false, message: "Payment gateways not configured" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const gateways = setting.value as any[];
+    const gateways = setting.setting_value as any[];
     const rs = gateways.find((g: any) => g.name === "RechargeServer" && g.active);
 
     if (!rs) {
