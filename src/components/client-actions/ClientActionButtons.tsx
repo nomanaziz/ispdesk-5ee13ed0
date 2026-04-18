@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Trash2, CalendarClock, Package, MessageSquare, Edit, Eye, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
@@ -57,68 +57,9 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
 
   return (
     <>
-      {/* Desktop: inline icons (≥md) */}
       <TooltipProvider delayDuration={200}>
-        <div className="hidden md:flex gap-0.5">
-          <AlertDialog>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <AlertDialogTrigger asChild>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </AlertDialogTrigger>
-              </TooltipTrigger>
-              <TooltipContent>ডিলিট</TooltipContent>
-            </Tooltip>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>ক্লায়েন্ট মুছে ফেলবেন?</AlertDialogTitle>
-                <AlertDialogDescription>{client.name} ({client.client_id}) মুছে ফেলা হবে।</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>বাতিল</AlertDialogCancel>
-                <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground">মুছুন</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setStatusOpen(true)}>
-                <CalendarClock className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>স্ট্যাটাস শিডিউলার</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setPackageOpen(true)}>
-                <Package className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>প্যাকেজ শিডিউলার</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSMS}>
-                <MessageSquare className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>SMS</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleEdit}>
-                <Edit className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>এডিট</TooltipContent>
-          </Tooltip>
-
+        <div className="flex items-center gap-0.5">
+          {/* View — always visible */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleView}>
@@ -127,59 +68,59 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
             </TooltipTrigger>
             <TooltipContent>ভিউ</TooltipContent>
           </Tooltip>
+
+          {/* More — all other actions */}
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="ghost" className="h-7 w-7">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>আরও অপশন</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="w-44 z-50 bg-popover">
+              <DropdownMenuItem onSelect={handleEdit}>
+                <Edit className="mr-2 h-4 w-4" /> এডিট
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleSMS}>
+                <MessageSquare className="mr-2 h-4 w-4" /> SMS পাঠান
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setPackageOpen(true)}>
+                <Package className="mr-2 h-4 w-4" /> প্যাকেজ শিডিউলার
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setStatusOpen(true)}>
+                <CalendarClock className="mr-2 h-4 w-4" /> স্ট্যাটাস শিডিউলার
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setTimeout(() => setDeleteOpen(true), 0);
+                }}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> ডিলিট
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </TooltipProvider>
 
-      {/* Mobile: 3-dot menu (<md) */}
-      <div className="md:hidden">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="icon" variant="ghost" className="h-7 w-7">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem onSelect={handleView}>
-              <Eye className="mr-2 h-4 w-4" /> ভিউ
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={handleEdit}>
-              <Edit className="mr-2 h-4 w-4" /> এডিট
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={handleSMS}>
-              <MessageSquare className="mr-2 h-4 w-4" /> SMS পাঠান
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setPackageOpen(true)}>
-              <Package className="mr-2 h-4 w-4" /> প্যাকেজ শিডিউলার
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setStatusOpen(true)}>
-              <CalendarClock className="mr-2 h-4 w-4" /> স্ট্যাটাস শিডিউলার
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                setTimeout(() => setDeleteOpen(true), 0);
-              }}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> ডিলিট
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>ক্লায়েন্ট মুছে ফেলবেন?</AlertDialogTitle>
-              <AlertDialogDescription>{client.name} ({client.client_id}) মুছে ফেলা হবে।</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>বাতিল</AlertDialogCancel>
-              <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground">মুছুন</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ক্লায়েন্ট মুছে ফেলবেন?</AlertDialogTitle>
+            <AlertDialogDescription>{client.name} ({client.client_id}) মুছে ফেলা হবে।</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>বাতিল</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground">মুছুন</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <StatusSchedulerDialog open={statusOpen} onOpenChange={setStatusOpen} client={client} invalidateKey={invalidateKey} />
       <PackageSchedulerDialog open={packageOpen} onOpenChange={setPackageOpen} client={client} invalidateKey={invalidateKey} />
