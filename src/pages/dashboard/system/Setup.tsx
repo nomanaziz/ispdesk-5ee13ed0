@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
-import { Save, Settings, DollarSign, Clock, Calendar, Globe, RotateCcw, ShieldAlert, Timer, CalendarClock } from "lucide-react";
+import { Save, Settings, DollarSign, Clock, Calendar, Globe, RotateCcw, ShieldAlert, Timer, CalendarClock, Percent } from "lucide-react";
 
 interface SystemConfig {
   currency: string;
@@ -24,6 +24,13 @@ interface BillingEnforcement {
   enforcement_day: "same" | "next";
 }
 
+interface VatDefault {
+  percent: number;
+  mode: "including" | "excluding";
+}
+
+const vatDefaults: VatDefault = { percent: 0, mode: "including" };
+
 const defaults: SystemConfig = {
   currency: "BDT", currency_symbol: "৳", timezone: "Asia/Dhaka",
   date_format: "DD/MM/YYYY", language: "bn", billing_cycle: "monthly",
@@ -40,12 +47,15 @@ const enforcementDefaults: BillingEnforcement = {
 export default function Setup() {
   const { value, isLoading, save, isSaving } = useSystemSetting<SystemConfig>("system_config", defaults);
   const { value: enforcement, isLoading: enfLoading, save: saveEnf, isSaving: enfSaving } = useSystemSetting<BillingEnforcement>("billing_enforcement", enforcementDefaults);
+  const { value: vatVal, isLoading: vatLoading, save: saveVat, isSaving: vatSaving } = useSystemSetting<VatDefault>("vat_default", vatDefaults);
 
   const [form, setForm] = useState<SystemConfig>(defaults);
   const [enfForm, setEnfForm] = useState<BillingEnforcement>(enforcementDefaults);
+  const [vatForm, setVatForm] = useState<VatDefault>(vatDefaults);
 
   useEffect(() => { setForm(value); }, [value]);
   useEffect(() => { setEnfForm(enforcement); }, [enforcement]);
+  useEffect(() => { setVatForm(vatVal); }, [vatVal]);
 
   const set = (k: keyof SystemConfig, v: string) => setForm(p => ({ ...p, [k]: v }));
   const setEnf = (k: keyof BillingEnforcement, v: any) => setEnfForm(p => ({ ...p, [k]: v }));
