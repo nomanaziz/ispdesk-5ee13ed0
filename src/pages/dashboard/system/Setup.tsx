@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
-import { Save, Settings, DollarSign, Clock, Calendar, Globe, RotateCcw, ShieldAlert, Timer, CalendarClock } from "lucide-react";
+import { Save, Settings, DollarSign, Clock, Calendar, Globe, RotateCcw, ShieldAlert, Timer, CalendarClock, Percent } from "lucide-react";
 
 interface SystemConfig {
   currency: string;
@@ -24,6 +24,13 @@ interface BillingEnforcement {
   enforcement_day: "same" | "next";
 }
 
+interface VatDefault {
+  percent: number;
+  mode: "including" | "excluding";
+}
+
+const vatDefaults: VatDefault = { percent: 0, mode: "including" };
+
 const defaults: SystemConfig = {
   currency: "BDT", currency_symbol: "৳", timezone: "Asia/Dhaka",
   date_format: "DD/MM/YYYY", language: "bn", billing_cycle: "monthly",
@@ -40,17 +47,20 @@ const enforcementDefaults: BillingEnforcement = {
 export default function Setup() {
   const { value, isLoading, save, isSaving } = useSystemSetting<SystemConfig>("system_config", defaults);
   const { value: enforcement, isLoading: enfLoading, save: saveEnf, isSaving: enfSaving } = useSystemSetting<BillingEnforcement>("billing_enforcement", enforcementDefaults);
+  const { value: vatVal, isLoading: vatLoading, save: saveVat, isSaving: vatSaving } = useSystemSetting<VatDefault>("vat_default", vatDefaults);
 
   const [form, setForm] = useState<SystemConfig>(defaults);
   const [enfForm, setEnfForm] = useState<BillingEnforcement>(enforcementDefaults);
+  const [vatForm, setVatForm] = useState<VatDefault>(vatDefaults);
 
   useEffect(() => { setForm(value); }, [value]);
   useEffect(() => { setEnfForm(enforcement); }, [enforcement]);
+  useEffect(() => { setVatForm(vatVal); }, [vatVal]);
 
   const set = (k: keyof SystemConfig, v: string) => setForm(p => ({ ...p, [k]: v }));
   const setEnf = (k: keyof BillingEnforcement, v: any) => setEnfForm(p => ({ ...p, [k]: v }));
 
-  if (isLoading || enfLoading) return <div className="p-8 text-center text-muted-foreground">লোড হচ্ছে...</div>;
+  if (isLoading || enfLoading || vatLoading) return <div className="p-8 text-center text-muted-foreground">লোড হচ্ছে...</div>;
 
   return (
     <div className="space-y-4">
@@ -237,6 +247,47 @@ export default function Setup() {
           <div className="flex justify-end pt-2">
             <Button onClick={() => saveEnf(enfForm)} disabled={enfSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
               <Save className="h-4 w-4" /> {enfSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* VAT Defaults */}
+      <div className="border rounded-lg overflow-hidden">
+        <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
+          <Percent className="h-4 w-4" /> VAT ডিফল্ট সেটিংস
+        </div>
+        <div className="p-5 space-y-5 bg-card">
+          <p className="text-xs text-muted-foreground">নতুন প্যাকেজ যোগ করার সময় এই VAT মান auto-fill হবে। প্রতিটি প্যাকেজে আলাদাভাবে পরিবর্তন করা যাবে।</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs mb-1 block">ডিফল্ট VAT (%)</Label>
+              <div className="relative">
+                <Percent className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="number" min="0" step="0.01"
+                  value={vatForm.percent}
+                  onChange={e => setVatForm(p => ({ ...p, percent: parseFloat(e.target.value) || 0 }))}
+                  className="pl-9"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">যেমন: 5, 10, 15। শূন্য মানে VAT নেই।</p>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">ডিফল্ট মূল্য মোড</Label>
+              <Select value={vatForm.mode} onValueChange={(v) => setVatForm(p => ({ ...p, mode: v as any }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="including">Including VAT (মূল্যে অন্তর্ভুক্ত)</SelectItem>
+                  <SelectItem value="excluding">Excluding VAT (আলাদা যোগ হবে)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">"Including" মানে দেখানো মূল্যেই VAT ধরা।</p>
+            </div>
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button onClick={() => saveVat(vatForm)} disabled={vatSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
+              <Save className="h-4 w-4" /> {vatSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
             </Button>
           </div>
         </div>

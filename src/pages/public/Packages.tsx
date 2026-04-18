@@ -8,6 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BreadcrumbBanner } from "@/components/public/BreadcrumbBanner";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { calcVat } from "@/lib/vat";
 
 const tabs = [
   { label: "সকল", value: "all" },
@@ -18,6 +21,8 @@ const tabs = [
 
 export default function Packages() {
   const [activeTab, setActiveTab] = useState("all");
+  const [previewVatOn, setPreviewVatOn] = useState(false);
+  const [previewVatPct, setPreviewVatPct] = useState(5);
 
   const { data: packages, isLoading } = useQuery({
     queryKey: ["public-packages-all"],
@@ -66,7 +71,7 @@ export default function Packages() {
       <div className="py-12 bg-slate-50 min-h-[60vh]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Tabs */}
-          <div className="flex justify-center gap-2 mb-10">
+          <div className="flex justify-center gap-2 mb-6 flex-wrap">
             {tabs.map((tab) => (
               <button
                 key={tab.value}
@@ -81,6 +86,30 @@ export default function Packages() {
                 {tab.label}
               </button>
             ))}
+          </div>
+
+          {/* VAT preview toggle for VAT-less packages */}
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-8 bg-white border border-slate-200 rounded-xl px-4 py-3 max-w-2xl mx-auto">
+            <div className="flex items-center gap-2">
+              <Switch checked={previewVatOn} onCheckedChange={setPreviewVatOn} id="vat-toggle" />
+              <label htmlFor="vat-toggle" className="text-sm font-medium text-slate-700 cursor-pointer">
+                VAT সহ দেখুন (Preview)
+              </label>
+            </div>
+            {previewVatOn && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-500">VAT %:</span>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={previewVatPct}
+                  onChange={(e) => setPreviewVatPct(parseFloat(e.target.value) || 0)}
+                  className="h-8 w-20"
+                />
+                <span className="text-xs text-slate-400">(VAT-হীন প্যাকেজে প্রযোজ্য)</span>
+              </div>
+            )}
           </div>
 
           {isLoading ? (
@@ -112,10 +141,46 @@ export default function Packages() {
                       </div>
                     </div>
 
-                    <div className="text-4xl font-extrabold text-cyan-600 mb-1">
-                      ৳{pkg.price}
-                      <span className="text-sm font-normal text-slate-400">/মাস</span>
-                    </div>
+                    {(() => {
+                      const pkgVat = Number((pkg as any).vat_percent) || 0;
+                      const includes = (pkg as any).price_includes_vat ?? true;
+                      const showBreak = (pkg as any).show_vat_breakdown ?? false;
+                      const basePrice = Number(pkg.price) || 0;
+
+                      // If package has its own VAT, honour it. Otherwise, optionally apply preview VAT.
+                      const hasOwnVat = pkgVat > 0;
+                      const applyPreview = !hasOwnVat && previewVatOn && previewVatPct > 0;
+                      const effPct = hasOwnVat ? pkgVat : (applyPreview ? previewVatPct : 0);
+                      const effMode: "including" | "excluding" = hasOwnVat
+                        ? (includes ? "including" : "excluding")
+                        : "excluding"; // preview always treats listed price as base
+                      const v = calcVat(basePrice, effPct, effMode);
+
+                      return (
+                        <>
+                          <div className="text-4xl font-extrabold text-cyan-600 mb-1">
+                            ৳{v.total.toLocaleString()}
+                            <span className="text-sm font-normal text-slate-400">/মাস</span>
+                          </div>
+                          {effPct > 0 && effMode === "including" && (
+                            <div className="text-[11px] text-slate-500 mb-1">({effPct}% VAT সহ)</div>
+                          )}
+                          {effPct > 0 && effMode === "excluding" && (
+                            <div className="text-[11px] text-slate-500 mb-1">
+                              Base ৳{v.base.toLocaleString()} + {effPct}% VAT ৳{v.vat.toLocaleString()}
+                            </div>
+                          )}
+                          {effPct > 0 && effMode === "including" && showBreak && (
+                            <div className="text-[10px] text-slate-400 mb-1">
+                              Base ৳{v.base.toLocaleString()} + VAT ৳{v.vat.toLocaleString()}
+                            </div>
+                          )}
+                          {applyPreview && (
+                            <div className="text-[10px] text-amber-600 mb-1">Preview only</div>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     {pkg.setup_fee && pkg.setup_fee > 0 && (
                       <div className="text-xs text-slate-400 mb-4">ইনস্টলেশন ফি: ৳{pkg.setup_fee}</div>

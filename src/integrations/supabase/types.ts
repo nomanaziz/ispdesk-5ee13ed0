@@ -4022,10 +4022,13 @@ export type Database = {
           package_type: string | null
           portal_visible: boolean
           price: number
+          price_includes_vat: boolean
           protocol: string | null
           setup_fee: number | null
           show_on_homepage: boolean | null
+          show_vat_breakdown: boolean
           status: string
+          vat_percent: number
         }
         Insert: {
           bandwidth_down?: number | null
@@ -4039,10 +4042,13 @@ export type Database = {
           package_type?: string | null
           portal_visible?: boolean
           price?: number
+          price_includes_vat?: boolean
           protocol?: string | null
           setup_fee?: number | null
           show_on_homepage?: boolean | null
+          show_vat_breakdown?: boolean
           status?: string
+          vat_percent?: number
         }
         Update: {
           bandwidth_down?: number | null
@@ -4056,10 +4062,13 @@ export type Database = {
           package_type?: string | null
           portal_visible?: boolean
           price?: number
+          price_includes_vat?: boolean
           protocol?: string | null
           setup_fee?: number | null
           show_on_homepage?: boolean | null
+          show_vat_breakdown?: boolean
           status?: string
+          vat_percent?: number
         }
         Relationships: [
           {
