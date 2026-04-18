@@ -155,16 +155,21 @@ export default function AddClient() {
       };
       if (editMode && editClientId) {
         if (shouldSyncMikrotik) {
+          // MikroTik action by billing_status:
+          // Left → delete, Inactive → disable, everything else (Active/Personal/Free/VIP) → enable
+          const status = (form.billing_status || "Active").toLowerCase();
+          const mkAction = status === "left" ? "delete" : "update";
+          const mkDisabled = status === "inactive";
           const { data, error: mkErr } = await supabase.functions.invoke("manage-mikrotik-ppp", {
             body: {
               client_id: editClientId,
               mikrotik_id: form.mikrotik_id,
               username: form.username,
-              action: "update",
+              action: mkAction,
               password: form.password || undefined,
               profile: form.profile || undefined,
               remote_address: form.remote_address || undefined,
-              disabled: form.billing_status !== "Active",
+              disabled: mkDisabled,
             },
           });
 
