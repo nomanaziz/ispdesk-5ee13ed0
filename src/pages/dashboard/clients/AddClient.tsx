@@ -91,6 +91,7 @@ export default function AddClient() {
         server_name: prefill.server_name || prev.server_name,
         mac_address: prefill.mac_address || prev.mac_address,
         client_id: prefill.client_id || prev.client_id,
+        expire_day: prefill.expire_date ? String(new Date(prefill.expire_date).getDate()) : prev.expire_day,
       }));
 
       // Auto-fetch MikroTik profiles if mikrotik_id is prefilled
