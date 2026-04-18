@@ -518,7 +518,7 @@ export default function AddClient() {
             <Select value={form.package_id} onValueChange={v => {
               setField("package_id", v);
               const pkg = packages?.find(p => p.id === v);
-              if (pkg) setField("monthly_bill", pkg.price);
+              if (pkg && form.billing_status === "Active") setField("monthly_bill", pkg.price);
             }}>
               <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
