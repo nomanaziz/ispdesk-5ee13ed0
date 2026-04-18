@@ -370,15 +370,19 @@ export default function ClientList() {
                               </Badge>
                             </button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={c.expire_date ? parseISO(c.expire_date) : undefined}
-                              onSelect={(date) => {
-                                if (date) updateExpireMutation.mutate({ id: c.id, date: format(date, "yyyy-MM-dd") });
-                              }}
-                              className={cn("p-3 pointer-events-auto")}
-                            />
+                          <PopoverContent className="w-48 p-2" align="start">
+                            <div className="text-xs font-medium mb-2 text-muted-foreground">মাসের কোন দিন</div>
+                            <Select
+                              value={c.expire_date ? String(parseISO(c.expire_date).getDate()) : ""}
+                              onValueChange={(v) => updateExpireMutation.mutate({ id: c.id, date: buildExpireDateFromDay(Number(v)) })}
+                            >
+                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="দিন (1-31)" /></SelectTrigger>
+                              <SelectContent className="max-h-72">
+                                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                  <SelectItem key={d} value={String(d)} className="text-xs">প্রতি মাসের {d} তারিখ</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </PopoverContent>
                         </Popover>
                       )}
