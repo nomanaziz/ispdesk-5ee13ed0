@@ -34,7 +34,7 @@ export default function BulkDateExtendDialog({ open, onOpenChange, selectedClien
           base.setDate(base.getDate() + days);
           target = base.toISOString().slice(0, 10);
         }
-        updates.push(supabase.from("clients").update({ expire_date: target }).eq("id", c.id));
+        updates.push(Promise.resolve(supabase.from("clients").update({ expire_date: target }).eq("id", c.id)));
       }
       await Promise.all(updates);
     },

@@ -33,7 +33,7 @@ export default function BulkThanaChangeDialog({ open, onOpenChange, selectedClie
       const updates: Promise<any>[] = [];
       for (const id of selectedClientIds) {
         updates.push(
-          supabase.from("clients").update({ remarks: `Upazila: ${upazila?.name}` }).eq("id", id)
+          Promise.resolve(supabase.from("clients").update({ remarks: `Upazila: ${upazila?.name}` }).eq("id", id))
         );
       }
       await Promise.all(updates);
