@@ -81,6 +81,7 @@ import ClientPortalManage from "@/pages/dashboard/clients/PortalManage";
 import BillingList from "@/pages/dashboard/billing/BillingList";
 import BillingDailyCollection from "@/pages/dashboard/billing/DailyCollection";
 import ClientProfile from "@/pages/dashboard/billing/ClientProfile";
+import BillingCycleSettings from "@/pages/dashboard/billing/BillingCycleSettings";
 
 // Mikrotik
 import MikrotikServers from "@/pages/dashboard/mikrotik/Servers";
@@ -401,6 +402,7 @@ const App = () => (
               <Route path="/dashboard/billing" element={<P><BillingList /></P>} />
               <Route path="/dashboard/billing/client/:id" element={<P><ClientProfile /></P>} />
               <Route path="/dashboard/billing/daily-collection" element={<P><BillingDailyCollection /></P>} />
+              <Route path="/dashboard/billing/cycle-settings" element={<P><BillingCycleSettings /></P>} />
 
               {/* Mikrotik */}
               <Route path="/dashboard/mikrotik/servers" element={<P><MikrotikServers /></P>} />

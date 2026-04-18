@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Download, Upload, Wifi, User, Hash, Phone, Clock, Gauge } from "lucide-react";
+import { Activity, Download, Upload, Wifi, User, Hash, Phone, Clock, Gauge, WifiOff, Mail, MapPin, Shield } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -54,7 +54,7 @@ const PortalLiveUsage = () => {
       const { data } = await supabase
         .from("clients")
         .select(
-          "id, name, client_id, username, contact, speed, is_online, total_upload, total_download, joining_date"
+          "id, name, client_id, username, contact, email, address, nid_number, speed, is_online, total_upload, total_download, joining_date, connection_type, protocol_type, zones(name)"
         )
         .eq("id", clientId)
         .maybeSingle();
@@ -118,11 +118,16 @@ const PortalLiveUsage = () => {
     { icon: User, label: "Client Name", value: client?.name || "—" },
     { icon: Hash, label: "Client Code", value: client?.client_id || "—" },
     { icon: User, label: "Username", value: client?.username || "—" },
-    { icon: Phone, label: "Mobile", value: client?.contact || (client as any)?.mobile || "—" },
+    { icon: Phone, label: "Mobile", value: client?.contact || "—" },
+    { icon: Mail, label: "Email", value: client?.email || "—" },
+    { icon: MapPin, label: "Zone", value: (client as any)?.zones?.name || "—" },
+    { icon: Hash, label: "NID", value: (client as any)?.nid_number || "—" },
     { icon: Gauge, label: "Package Speed", value: client?.speed || "—" },
-    { icon: Clock, label: "Connection Since", value: client?.joining_date ? new Date(client.joining_date).toLocaleDateString() : "—" },
-    { icon: Download, label: "Downloaded Data", value: fmtBytes(Number(client?.total_download || 0)) },
-    { icon: Upload, label: "Uploaded Data", value: fmtBytes(Number(client?.total_upload || 0)) },
+    { icon: Wifi, label: "Connection", value: (client as any)?.connection_type || "—" },
+    { icon: Shield, label: "Protocol", value: (client as any)?.protocol_type || "—" },
+    { icon: Clock, label: "Joining Date", value: client?.joining_date ? new Date(client.joining_date).toLocaleDateString() : "—" },
+    { icon: Download, label: "Downloaded", value: fmtBytes(Number(client?.total_download || 0)) },
+    { icon: Upload, label: "Uploaded", value: fmtBytes(Number(client?.total_upload || 0)) },
   ];
 
   return (
@@ -173,6 +178,23 @@ const PortalLiveUsage = () => {
         </CardContent>
       </Card>
 
+      {/* Offline state */}
+      {!isOnline && (
+        <Card className="border-0 shadow-sm bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-900 dark:to-slate-800">
+          <CardContent className="py-12 flex flex-col items-center text-center gap-3">
+            <div className="h-16 w-16 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+              <WifiOff className="h-8 w-8 text-slate-500" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold">You are Offline</h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-md">
+                আপনার connection বর্তমানে inactive। Connection live হলে এখানে real-time speed ও traffic graph দেখা যাবে।
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Live speed cards */}
       <div className="grid grid-cols-2 gap-3">
         <Card className="border-0 shadow-sm bg-gradient-to-br from-emerald-500/10 to-teal-500/5">
@@ -205,8 +227,8 @@ const PortalLiveUsage = () => {
         </Card>
       </div>
 
-      {/* Real-time graph */}
-      <Card className="border-0 shadow-sm">
+      {/* Real-time graph — only when online */}
+      {isOnline && <Card className="border-0 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Activity className="h-4 w-4 text-primary" /> Live Traffic Monitoring
@@ -268,13 +290,8 @@ const PortalLiveUsage = () => {
               </LineChart>
             </ResponsiveContainer>
           </div>
-          {!isOnline && (
-            <p className="text-xs text-muted-foreground mt-3 text-center">
-              Client is offline — live speed will appear once the connection is active and traffic sync is running.
-            </p>
-          )}
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 };
