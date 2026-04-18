@@ -60,7 +60,7 @@ export default function Setup() {
   const set = (k: keyof SystemConfig, v: string) => setForm(p => ({ ...p, [k]: v }));
   const setEnf = (k: keyof BillingEnforcement, v: any) => setEnfForm(p => ({ ...p, [k]: v }));
 
-  if (isLoading || enfLoading) return <div className="p-8 text-center text-muted-foreground">লোড হচ্ছে...</div>;
+  if (isLoading || enfLoading || vatLoading) return <div className="p-8 text-center text-muted-foreground">লোড হচ্ছে...</div>;
 
   return (
     <div className="space-y-4">
@@ -247,6 +247,48 @@ export default function Setup() {
           <div className="flex justify-end pt-2">
             <Button onClick={() => saveEnf(enfForm)} disabled={enfSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
               <Save className="h-4 w-4" /> {enfSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+            </Button>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      {/* VAT Defaults */}
+      <div className="border rounded-lg overflow-hidden">
+        <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
+          <Percent className="h-4 w-4" /> VAT ডিফল্ট সেটিংস
+        </div>
+        <div className="p-5 space-y-5 bg-card">
+          <p className="text-xs text-muted-foreground">নতুন প্যাকেজ যোগ করার সময় এই VAT মান auto-fill হবে। প্রতিটি প্যাকেজে আলাদাভাবে পরিবর্তন করা যাবে।</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs mb-1 block">ডিফল্ট VAT (%)</Label>
+              <div className="relative">
+                <Percent className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="number" min="0" step="0.01"
+                  value={vatForm.percent}
+                  onChange={e => setVatForm(p => ({ ...p, percent: parseFloat(e.target.value) || 0 }))}
+                  className="pl-9"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">যেমন: 5, 10, 15। শূন্য মানে VAT নেই।</p>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">ডিফল্ট মূল্য মোড</Label>
+              <Select value={vatForm.mode} onValueChange={(v) => setVatForm(p => ({ ...p, mode: v as any }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="including">Including VAT (মূল্যে অন্তর্ভুক্ত)</SelectItem>
+                  <SelectItem value="excluding">Excluding VAT (আলাদা যোগ হবে)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">"Including" মানে দেখানো মূল্যেই VAT ধরা।</p>
+            </div>
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button onClick={() => saveVat(vatForm)} disabled={vatSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
+              <Save className="h-4 w-4" /> {vatSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
             </Button>
           </div>
         </div>
