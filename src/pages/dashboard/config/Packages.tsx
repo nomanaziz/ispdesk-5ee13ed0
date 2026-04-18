@@ -259,7 +259,16 @@ export default function Packages() {
                       <TableCell className="font-medium">{pkg.name}</TableCell>
                       <TableCell>{getPackageTypeBadge(pkg.package_type)}</TableCell>
                       <TableCell>{pkg.bandwidth_down || 0} Mbps</TableCell>
-                      <TableCell>{pkg.price.toLocaleString()}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <span>{pkg.price.toLocaleString()}</span>
+                          {Number((pkg as any).vat_percent) > 0 && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-0.5">
+                              {(pkg as any).price_includes_vat ? `${(pkg as any).vat_percent}% Incl.` : `+${(pkg as any).vat_percent}%`}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>{pkg.protocol || "—"}</TableCell>
                       <TableCell>
                         <Switch checked={pkg.status === "active"} onCheckedChange={(c) => toggleStatus.mutate({ id: pkg.id, status: c ? "active" : "inactive" })} />
@@ -305,8 +314,50 @@ export default function Packages() {
                     ))}
                   </SelectContent>
                 </Select>
+            </div>
+
+            {/* VAT Section */}
+            <div className="border rounded-lg p-3 space-y-3 bg-muted/30">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Percent className="h-4 w-4 text-primary" /> VAT সেটিংস
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">VAT শতকরা (%)</Label>
+                  <Input type="number" min="0" step="0.01" value={form.vat_percent} onChange={(e) => setForm({...form, vat_percent: e.target.value})} placeholder="0 = VAT নেই" />
+                </div>
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <Checkbox checked={form.show_vat_breakdown} onCheckedChange={(c) => setForm({...form, show_vat_breakdown: !!c})} />
+                    <span>Website-এ VAT breakdown দেখাও</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs mb-1.5 block">মূল্যের ধরন</Label>
+                <RadioGroup
+                  value={form.price_includes_vat ? "including" : "excluding"}
+                  onValueChange={(v) => setForm({...form, price_includes_vat: v === "including"})}
+                  className="grid grid-cols-1 gap-2"
+                >
+                  <label className="flex items-start gap-2 border rounded-md p-2 cursor-pointer hover:bg-accent">
+                    <RadioGroupItem value="including" className="mt-0.5" />
+                    <div>
+                      <div className="text-xs font-medium">Including VAT (মূল্য-এ VAT অন্তর্ভুক্ত)</div>
+                      <div className="text-[10px] text-muted-foreground">যেমন: ৳৫০০ → এর মধ্যেই ৫% VAT আছে</div>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-2 border rounded-md p-2 cursor-pointer hover:bg-accent">
+                    <RadioGroupItem value="excluding" className="mt-0.5" />
+                    <div>
+                      <div className="text-xs font-medium">Excluding VAT (VAT আলাদা যোগ হবে)</div>
+                      <div className="text-[10px] text-muted-foreground">যেমন: ৳৫০০ + ৫% VAT ৳২৫ = ৳৫২৫</div>
+                    </div>
+                  </label>
+                </RadioGroup>
               </div>
             </div>
+          </div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-sm font-medium">মূল্য (৳)</label><Input type="number" value={form.price} onChange={(e) => setForm({...form, price: e.target.value})} /></div>
               <div><label className="text-sm font-medium">সেটআপ ফি</label><Input type="number" value={form.setup_fee} onChange={(e) => setForm({...form, setup_fee: e.target.value})} /></div>
