@@ -158,6 +158,7 @@ const menuGroups: MenuGroup[] = [
     icon: Cpu,
     items: [
       { title: "OLT ডিভাইস", url: "/dashboard/olt", icon: Server },
+      { title: "OLT Power Dashboard", url: "/dashboard/olt/power-dashboard", icon: Activity },
       { title: "ONU তালিকা", url: "/dashboard/olt/onu", icon: List },
       { title: "OLT ইউজার", url: "/dashboard/olt/users", icon: Users },
       { title: "OLT Port Classification", url: "/dashboard/olt/ports", icon: Network },
@@ -172,7 +173,8 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "অনলাইন মনিটরিং", url: "/dashboard/monitoring/online", icon: Wifi },
       { title: "Live Traffic", url: "/dashboard/monitoring/live-traffic", icon: Activity },
-      { title: "সুইচ তালিকা", url: "/dashboard/monitoring/switches", icon: Network },
+      { title: "Switch ম্যানেজমেন্ট", url: "/dashboard/network/switches", icon: Network },
+      { title: "সুইচ তালিকা (legacy)", url: "/dashboard/monitoring/switches", icon: Network },
       { title: "সুইচ যোগ করুন", url: "/dashboard/monitoring/add-switch", icon: UserPlus },
       { title: "POP DASS", url: "/dashboard/monitoring/pop-dass", icon: Monitor },
       { title: "POP IP", url: "/dashboard/monitoring/pop-ip", icon: Globe },
@@ -363,6 +365,7 @@ const menuGroups: MenuGroup[] = [
       { title: "অ্যাপ ইউজার", url: "/dashboard/system/users", icon: Users },
       { title: "রোল", url: "/dashboard/system/roles", icon: Shield },
       { title: "OLT পারমিশন", url: "/dashboard/system/olt-permissions", icon: Cpu },
+      { title: "Device Permissions", url: "/dashboard/system/device-permissions", icon: Shield },
       { title: "কোম্পানি সেটআপ", url: "/dashboard/system/company", icon: Building },
       { title: "ইনভয়েস সেটআপ", url: "/dashboard/system/invoice", icon: FileText },
       { title: "পিরিয়ড সেটআপ", url: "/dashboard/system/periods", icon: Calendar },

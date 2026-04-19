@@ -122,9 +122,14 @@ import OltDevices from "@/pages/dashboard/olt/OltDevices";
 import OltUsers from "@/pages/dashboard/olt/OltUsers";
 import OltPorts from "@/pages/dashboard/olt/OltPorts";
 import OnuList from "@/pages/dashboard/olt/OnuList";
+import OnuDetail from "@/pages/dashboard/olt/OnuDetail";
+import PowerDashboard from "@/pages/dashboard/olt/PowerDashboard";
 import UserDownCount from "@/pages/dashboard/olt/UserDownCount";
 import FiberDownFinder from "@/pages/dashboard/olt/FiberDownFinder";
 import OltSharing from "@/pages/dashboard/olt/OltSharing";
+import DevicePermissions from "@/pages/dashboard/system/DevicePermissions";
+import NetworkSwitchList from "@/pages/dashboard/network/SwitchList";
+import NetworkSwitchDetail from "@/pages/dashboard/network/SwitchDetail";
 
 // Network Monitoring
 import SwitchList from "@/pages/dashboard/monitoring/SwitchList";
@@ -441,12 +446,19 @@ const App = () => (
 
               {/* OLT */}
               <Route path="/dashboard/olt" element={<P><OltDevices /></P>} />
+              <Route path="/dashboard/olt/power-dashboard" element={<P><PowerDashboard /></P>} />
               <Route path="/dashboard/olt/onu" element={<P><OnuList /></P>} />
+              <Route path="/dashboard/olt/onu/:id" element={<P><OnuDetail /></P>} />
               <Route path="/dashboard/olt/users" element={<P><OltUsers /></P>} />
               <Route path="/dashboard/olt/ports" element={<P><OltPorts /></P>} />
               <Route path="/dashboard/olt/user-down" element={<P><UserDownCount /></P>} />
               <Route path="/dashboard/olt/fiber-down" element={<P><FiberDownFinder /></P>} />
               <Route path="/dashboard/olt/sharing" element={<P><OltSharing /></P>} />
+
+              {/* Network — Switches */}
+              <Route path="/dashboard/network/switches" element={<P><NetworkSwitchList /></P>} />
+              <Route path="/dashboard/network/switches/:id" element={<P><NetworkSwitchDetail /></P>} />
+              <Route path="/dashboard/system/device-permissions" element={<P><DevicePermissions /></P>} />
 
               {/* Network Monitoring */}
               <Route path="/dashboard/monitoring/online" element={<P><OnlineClientMonitoring /></P>} />
