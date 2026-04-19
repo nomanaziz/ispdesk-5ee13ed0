@@ -146,6 +146,7 @@ export default function Invoices() {
           </div>
         </CardContent>
       </Card>
+      <ReceiveBillDialog open={payOpen} onOpenChange={setPayOpen} onSaved={fetchData} />
     </div>
   );
 }
