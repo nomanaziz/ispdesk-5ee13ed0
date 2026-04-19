@@ -435,7 +435,7 @@ export default function BillingList() {
                           <Badge className="text-[10px] h-6 flex items-center bg-emerald-500/20 text-emerald-600 border-emerald-500/30" variant="outline">পরিশোধিত</Badge>
                         ) : isPartial ? (
                           <div className="flex items-center gap-1">
-                            <Badge className="text-[10px] h-6 flex items-center bg-amber-500/20 text-amber-600 border-amber-500/30" variant="outline">আংশিক ৳{paidAmt}</Badge>
+                            <Badge className="text-[10px] h-6 flex items-center bg-amber-500/20 text-amber-600 border-amber-500/30" variant="outline">আংশিক</Badge>
                             <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
                               পরিশোধ
                             </Button>
