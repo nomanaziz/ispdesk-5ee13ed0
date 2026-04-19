@@ -516,6 +516,57 @@ export type Database = {
           },
         ]
       }
+      billing_history: {
+        Row: {
+          action: string
+          billing_id: string | null
+          changed_at: string
+          changed_by: string | null
+          client_id: string | null
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          remarks: string | null
+        }
+        Insert: {
+          action: string
+          billing_id?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          client_id?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          remarks?: string | null
+        }
+        Update: {
+          action?: string
+          billing_id?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          client_id?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          remarks?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_history_billing_id_fkey"
+            columns: ["billing_id"]
+            isOneToOne: false
+            referencedRelation: "billing"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_statuses: {
         Row: {
           color: string | null
@@ -2661,11 +2712,13 @@ export type Database = {
           documents: Json
           email: string | null
           expire_date: string | null
+          expire_day: number | null
           father_name: string | null
           fiber_code: string | null
           gender: string | null
           house_number: string | null
           id: string
+          installed_by_ids: string[] | null
           is_online: boolean
           is_vip: boolean | null
           joining_date: string | null
@@ -2732,11 +2785,13 @@ export type Database = {
           documents?: Json
           email?: string | null
           expire_date?: string | null
+          expire_day?: number | null
           father_name?: string | null
           fiber_code?: string | null
           gender?: string | null
           house_number?: string | null
           id?: string
+          installed_by_ids?: string[] | null
           is_online?: boolean
           is_vip?: boolean | null
           joining_date?: string | null
@@ -2803,11 +2858,13 @@ export type Database = {
           documents?: Json
           email?: string | null
           expire_date?: string | null
+          expire_day?: number | null
           father_name?: string | null
           fiber_code?: string | null
           gender?: string | null
           house_number?: string | null
           id?: string
+          installed_by_ids?: string[] | null
           is_online?: boolean
           is_vip?: boolean | null
           joining_date?: string | null
