@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard, FileText, HeadphonesIcon, LogOut, Menu, X,
   Activity, Bell, Building2, Clapperboard, BookOpen, ChevronDown, Rocket,
-  ShoppingBag, Package, Receipt, Globe,
+  ShoppingBag, Package, Receipt, Globe, UserCog,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -16,6 +16,7 @@ import {
 
 const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/portal/dashboard" },
+  { label: "My Profile", icon: UserCog, path: "/portal/profile" },
   { label: "Live Usage", icon: Activity, path: "/portal/live-usage" },
   { label: "Notices", icon: Bell, path: "/portal/notices" },
   { label: "Company Info", icon: Building2, path: "/portal/company" },

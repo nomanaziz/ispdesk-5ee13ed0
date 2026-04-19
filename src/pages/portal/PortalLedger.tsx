@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,22 +22,10 @@ const PortalLedger = () => {
     queryKey: ["portal-ledger", customer?.sub, customer?.type],
     queryFn: async () => {
       const out: LedgerRow[] = [];
+      const res = await callPortal<any>("get_ledger");
 
       if (isClient) {
-        // Client: use billing (debit) + bill_collections (credit)
-        const { data: bills } = await supabase
-          .from("billing")
-          .select("bill_id, amount, paid, due, month, created_at")
-          .eq("client_id", customer!.sub)
-          .order("created_at");
-
-        const { data: collections } = await supabase
-          .from("bill_collections")
-          .select("amount, discount, payment_method, note, created_at")
-          .eq("client_id", customer!.sub)
-          .order("created_at");
-
-        bills?.forEach((b: any) => {
+        (res.bills || []).forEach((b: any) => {
           out.push({
             date: b.created_at,
             type: "debit",
@@ -47,7 +35,7 @@ const PortalLedger = () => {
             ref: b.bill_id,
           });
         });
-        collections?.forEach((c: any) => {
+        (res.collections || []).forEach((c: any) => {
           out.push({
             date: c.created_at,
             type: "credit",
@@ -57,20 +45,7 @@ const PortalLedger = () => {
           });
         });
       } else {
-        // Reseller / BW customer: invoices + collections
-        const { data: invoices } = await supabase
-          .from("bw_sales_invoices")
-          .select("invoice_no, amount, paid_amount, created_at, month")
-          .eq("customer_id", customer!.sub)
-          .order("created_at");
-
-        const { data: collections } = await supabase
-          .from("bw_sale_collections")
-          .select("amount, receive_date, created_at, payment_method, note")
-          .eq("customer_id", customer!.sub)
-          .order("receive_date");
-
-        invoices?.forEach((i: any) => {
+        (res.invoices || []).forEach((i: any) => {
           out.push({
             date: i.created_at,
             type: "debit",
@@ -80,7 +55,7 @@ const PortalLedger = () => {
             ref: i.invoice_no,
           });
         });
-        collections?.forEach((c: any) => {
+        (res.collections || []).forEach((c: any) => {
           out.push({
             date: c.receive_date || c.created_at,
             type: "credit",

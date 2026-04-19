@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Bell, Pin, Calendar, Paperclip, Newspaper } from "lucide-react";
@@ -16,30 +16,14 @@ const typeColor: Record<string, string> = {
 const PortalNotices = () => {
   const [tab, setTab] = useState<"notices" | "news">("notices");
 
-  const { data: notices, isLoading: lN } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["portal-notices-all"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("client_notices")
-        .select("*")
-        .eq("active", true)
-        .order("pinned", { ascending: false })
-        .order("created_at", { ascending: false });
-      return data || [];
-    },
+    queryFn: () => callPortal<any>("get_notices"),
   });
-
-  const { data: news, isLoading: lE } = useQuery({
-    queryKey: ["portal-news-all"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("client_news_events")
-        .select("*")
-        .eq("active", true)
-        .order("created_at", { ascending: false });
-      return data || [];
-    },
-  });
+  const notices: any[] = data?.notices || [];
+  const news: any[] = data?.news || [];
+  const lN = isLoading;
+  const lE = isLoading;
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
