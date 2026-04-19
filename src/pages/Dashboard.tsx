@@ -128,7 +128,11 @@ function useStats() {
         supabase.from("payroll").select("net_pay").gte("created_at", monthStart),
         // SMS balance (system_settings)
         supabase.from("system_settings").select("setting_value").eq("setting_key", "sms_balance").maybeSingle(),
-      ]);
+        // Billing-type breakdown (case-insensitive via ilike)
+        supabase.from("clients").select("id", { count: "exact", head: true }).ilike("billing_status", "Active"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).ilike("billing_status", "Free"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).ilike("billing_status", "Personal"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("is_vip", true),
 
       // Fetch client names for latest billing
       const latestInvoices: { bill_id: string; amount: number; client_name: string; status: string }[] = [];
