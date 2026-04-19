@@ -85,7 +85,7 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "🏠 হোম ক্লায়েন্ট",
+    label: "হোম ক্লায়েন্ট",
     icon: Users,
     items: [
       { title: "নতুন রিকোয়েস্ট", url: "/dashboard/clients/new-request", icon: MessageSquare },
@@ -103,7 +103,7 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "📡 POP / MAC ক্লায়েন্ট",
+    label: "POP / MAC ক্লায়েন্ট",
     icon: Radio,
     items: [
       { title: "POP যোগ করুন", url: "/dashboard/branches/add-manager", icon: UserPlus },
@@ -116,7 +116,7 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "📶 ব্যান্ডউইথ ক্লায়েন্ট",
+    label: "ব্যান্ডউইথ ক্লায়েন্ট",
     icon: Wifi,
     items: [
       { title: "POP / কাস্টমার", url: "/dashboard/bw-sale/pop", icon: Radio },
