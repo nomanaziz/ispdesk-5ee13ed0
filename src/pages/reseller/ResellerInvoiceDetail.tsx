@@ -18,7 +18,7 @@ const ResellerInvoiceDetail = () => {
       const [inv, items, payments] = await Promise.all([
         supabase
           .from("bw_sales_invoices")
-          .select("*, bw_sale_customers(customer_name, customer_code, address, mobile, email)")
+          .select("*, bw_sale_customers!bw_sales_invoices_customer_id_fkey(customer_name, customer_code, address, mobile, email)")
           .eq("id", id)
           .maybeSingle(),
         supabase.from("bw_invoice_items").select("*").eq("invoice_id", id).order("sort_order"),

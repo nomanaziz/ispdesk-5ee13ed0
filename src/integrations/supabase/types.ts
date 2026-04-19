@@ -1448,42 +1448,65 @@ export type Database = {
         Row: {
           billing_month: string | null
           created_at: string
+          current_service_id: string | null
           id: string
           note: string | null
           order_no: string
+          request_type: string | null
           reseller_id: string
           status: string
+          target_service_id: string | null
           total: number
           updated_at: string
         }
         Insert: {
           billing_month?: string | null
           created_at?: string
+          current_service_id?: string | null
           id?: string
           note?: string | null
           order_no: string
+          request_type?: string | null
           reseller_id: string
           status?: string
+          target_service_id?: string | null
           total?: number
           updated_at?: string
         }
         Update: {
           billing_month?: string | null
           created_at?: string
+          current_service_id?: string | null
           id?: string
           note?: string | null
           order_no?: string
+          request_type?: string | null
           reseller_id?: string
           status?: string
+          target_service_id?: string | null
           total?: number
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "bw_purchase_orders_current_service_id_fkey"
+            columns: ["current_service_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_services"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bw_purchase_orders_reseller_id_fkey"
             columns: ["reseller_id"]
             isOneToOne: false
             referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_purchase_orders_target_service_id_fkey"
+            columns: ["target_service_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_services"
             referencedColumns: ["id"]
           },
         ]
@@ -1654,7 +1677,9 @@ export type Database = {
           ip_addresses: Json | null
           mobile: string | null
           nttn_info: string | null
+          own_bkash_number: string | null
           password: string | null
+          payment_mode: string | null
           phone: string | null
           pop_id: string | null
           pop_name_last_mile: string | null
@@ -1681,7 +1706,9 @@ export type Database = {
           ip_addresses?: Json | null
           mobile?: string | null
           nttn_info?: string | null
+          own_bkash_number?: string | null
           password?: string | null
+          payment_mode?: string | null
           phone?: string | null
           pop_id?: string | null
           pop_name_last_mile?: string | null
@@ -1708,7 +1735,9 @@ export type Database = {
           ip_addresses?: Json | null
           mobile?: string | null
           nttn_info?: string | null
+          own_bkash_number?: string | null
           password?: string | null
+          payment_mode?: string | null
           phone?: string | null
           pop_id?: string | null
           pop_name_last_mile?: string | null
@@ -6605,6 +6634,47 @@ export type Database = {
             columns: ["reseller_id"]
             isOneToOne: false
             referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reseller_subscriptions: {
+        Row: {
+          active: boolean
+          created_at: string
+          customer_id: string
+          expires_at: string | null
+          features: Json
+          id: string
+          plan: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          customer_id: string
+          expires_at?: string | null
+          features?: Json
+          id?: string
+          plan?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          customer_id?: string
+          expires_at?: string | null
+          features?: Json
+          id?: string
+          plan?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reseller_subscriptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "bw_sale_customers"
             referencedColumns: ["id"]
           },
         ]

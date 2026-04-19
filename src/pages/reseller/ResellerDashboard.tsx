@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
+import { getBillingCustomerId } from "@/lib/portalIdentity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,7 +18,7 @@ import { format } from "date-fns";
 
 const ResellerDashboard = () => {
   const { customer } = usePortalAuth();
-  const resellerId = customer?.parent_reseller_id || customer?.sub;
+  const resellerId = getBillingCustomerId(customer);
 
   const { data } = useQuery({
     queryKey: ["reseller-dashboard", resellerId],
@@ -40,6 +41,7 @@ const ResellerDashboard = () => {
           .from("support_tickets")
           .select("id, ticket_no, subject, status, created_at")
           .eq("source", "bw_reseller")
+          .eq("complain_no", resellerId!)
           .order("created_at", { ascending: false })
           .limit(5),
         supabase
