@@ -1,13 +1,16 @@
-import { Settings, Sun, Moon, Monitor, X, RotateCcw, LayoutGrid, Maximize2 } from "lucide-react";
+import { Sun, Moon, Monitor, X, RotateCcw, LayoutGrid, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useTheme, primaryColors, ThemeMode, ThemeSkin } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
 import { Separator } from "@/components/ui/separator";
 
-export function ThemeCustomizer() {
-  const [open, setOpen] = useState(false);
+interface ThemeCustomizerProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
   const { settings, updateSettings, resetSettings } = useTheme();
 
   const modeOptions: { value: ThemeMode; icon: React.ElementType; label: string }[] = [
