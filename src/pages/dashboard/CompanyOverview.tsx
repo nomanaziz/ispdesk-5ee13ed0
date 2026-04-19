@@ -64,7 +64,7 @@ export default function CompanyOverview() {
         supabase.from("billing").select("id", { count: "exact", head: true }).neq("status", "paid").gte("created_at", monthStart.toISOString()),
         supabase.from("bill_collections").select("amount").gte("created_at", todayStart.toISOString()),
         supabase.from("bill_collections").select("amount").gte("created_at", monthStart.toISOString()),
-        supabase.from("clients").select("id", { count: "exact", head: true }).eq("is_online" as any, true).then(r => r).catch(() => ({ count: 0 } as any)),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "active"),
       ]);
 
       const sumAmt = (rows: any) => (rows.data || []).reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
