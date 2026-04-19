@@ -1,28 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, MapPin, Phone, Mail, Globe, CreditCard } from "lucide-react";
+import { Building2, MapPin, Phone, Mail, Globe, CreditCard, Smartphone } from "lucide-react";
 
 const PortalCompanyInfo = () => {
-  const { data: settings } = useQuery({
-    queryKey: ["portal-company-settings"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("system_settings")
-        .select("setting_value")
-        .eq("setting_key", "company_info")
-        .maybeSingle();
-      return data?.setting_value as any;
-    },
+  const { data, isLoading } = useQuery({
+    queryKey: ["portal-company-info"],
+    queryFn: () => callPortal<any>("get_company"),
   });
 
-  const s: any = settings || {};
+  const c: any = data?.company || {};
 
   const infoBlocks = [
-    { icon: MapPin, label: "Address", value: s.company_address || s.address || "—", tint: "from-rose-500 to-pink-500" },
-    { icon: Phone, label: "Hotline", value: s.hotline || s.phone || s.contact || "—", tint: "from-emerald-500 to-teal-500" },
-    { icon: Mail, label: "Email", value: s.email || "—", tint: "from-sky-500 to-cyan-500" },
-    { icon: Globe, label: "Website", value: s.website || "—", tint: "from-violet-500 to-indigo-500" },
+    { icon: MapPin, label: "Address", value: [c.address, c.address2].filter(Boolean).join(", ") || "—", tint: "from-rose-500 to-pink-500" },
+    { icon: Phone, label: "Hotline", value: c.hotline || "—", tint: "from-emerald-500 to-teal-500" },
+    { icon: Smartphone, label: "Mobile", value: c.mobile || "—", tint: "from-amber-500 to-orange-500" },
+    { icon: Phone, label: "Phone", value: c.phone || "—", tint: "from-blue-500 to-indigo-500" },
+    { icon: Mail, label: "Email", value: c.email || "—", tint: "from-sky-500 to-cyan-500" },
+    { icon: Globe, label: "Website", value: c.website || "—", tint: "from-violet-500 to-indigo-500" },
   ];
 
   return (
@@ -37,18 +32,16 @@ const PortalCompanyInfo = () => {
         </div>
       </div>
 
-      {/* Hero */}
       <Card className="border-0 shadow-md overflow-hidden">
         <div className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white p-6 sm:p-8 text-center">
-          {s.logo_url && (
-            <img src={s.logo_url} alt="logo" className="h-16 mx-auto mb-3 bg-white/10 rounded-xl p-2" />
+          {c.logo_url && (
+            <img src={c.logo_url} alt="logo" className="h-16 mx-auto mb-3 bg-white/10 rounded-xl p-2" />
           )}
-          <h2 className="text-2xl font-bold">{s.company_name || s.site_name || "Your ISP"}</h2>
-          {s.tagline && <p className="text-white/80 mt-1 text-sm">{s.tagline}</p>}
+          <h2 className="text-2xl font-bold">{isLoading ? "Loading…" : (c.name || "Your ISP")}</h2>
+          {c.tagline && <p className="text-white/80 mt-1 text-sm">{c.tagline}</p>}
         </div>
       </Card>
 
-      {/* Info grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {infoBlocks.map((b) => (
           <Card key={b.label} className="border-0 shadow-sm">
@@ -65,15 +58,14 @@ const PortalCompanyInfo = () => {
         ))}
       </div>
 
-      {/* Payment instructions */}
-      {s.payment_instructions && (
+      {c.payment_instructions && (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-3">
               <CreditCard className="h-4 w-4 text-emerald-600" />
               <h3 className="font-semibold">Payment Instructions</h3>
             </div>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{s.payment_instructions}</p>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{c.payment_instructions}</p>
           </CardContent>
         </Card>
       )}
