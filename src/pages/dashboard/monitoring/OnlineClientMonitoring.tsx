@@ -180,10 +180,19 @@ export default function OnlineClientMonitoring() {
   }, [filterServer]);
 
   const loadActiveSessions = useCallback(async () => {
+    // Require an active device — never load all servers at once.
+    if (!filterServer) {
+      setSessions([]);
+      setOfflineClients([]);
+      setOnlineCount(0);
+      setOfflineCount(0);
+      setTotalClients(0);
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("fetch-mikrotik-ppp", {
-        body: { action: "active-sessions", device_id: filterServer !== "all" ? filterServer : "all" },
+        body: { action: "active-sessions", device_id: filterServer },
       });
       if (error) throw error;
       if (data?.sessions) {
@@ -193,11 +202,15 @@ export default function OnlineClientMonitoring() {
         setTotalClients(data.total_clients || 0);
 
         const onlineUsernames = new Set((data.sessions as ActiveSession[]).map(s => s.name));
+        // Scope offline list to the same device, exclude left clients,
+        // and only include clients whose MikroTik PPPoE is enabled.
         const { data: allClients } = await supabase
           .from("clients")
-          .select("id, client_id, name, contact, username, remote_address, zone:zones(name), sub_zone:sub_zones(name), box:boxes(name), connection_type, profile, status, mikrotik_id, server_name, total_upload, total_download, mac_address, mikrotik_device:mikrotik_devices(name)")
-          .eq("status", "active");
-        
+          .select("id, client_id, name, contact, username, remote_address, zone:zones(name), sub_zone:sub_zones(name), box:boxes(name), connection_type, profile, status, mikrotik_id, server_name, total_upload, total_download, mac_address, mikrotik_status, mikrotik_device:mikrotik_devices(name)")
+          .neq("status", "left")
+          .eq("mikrotik_id", filterServer)
+          .eq("mikrotik_status", "enabled");
+
         if (allClients) {
           const offline = allClients
             .filter((c: any) => c.username && !onlineUsernames.has(c.username))
@@ -226,6 +239,7 @@ export default function OnlineClientMonitoring() {
             }));
           setOfflineClients(offline);
           setOfflineCount(offline.length);
+          setTotalClients((data.sessions?.length || 0) + offline.length);
         }
       }
       if (data?.mismatch) {
