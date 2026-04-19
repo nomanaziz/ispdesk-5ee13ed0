@@ -1147,6 +1147,7 @@ export type Database = {
           id: string
           invoice_id: string
           item_id: string | null
+          item_name: string | null
           period_end: string
           period_start: string
           quantity: number | null
@@ -1171,6 +1172,7 @@ export type Database = {
           id?: string
           invoice_id: string
           item_id?: string | null
+          item_name?: string | null
           period_end: string
           period_start: string
           quantity?: number | null
@@ -1195,6 +1197,7 @@ export type Database = {
           id?: string
           invoice_id?: string
           item_id?: string | null
+          item_name?: string | null
           period_end?: string
           period_start?: string
           quantity?: number | null
