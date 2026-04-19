@@ -32,20 +32,24 @@ const PortalDashboard = () => {
   const lastInvoice = bills[0];
   const paidCount = bills.filter((i: any) => i.status === "paid").length;
   const isOnline = clientRow?.is_online ?? false;
-  const status = clientRow?.status || "Active";
-  const pkgName = clientRow?.isp_packages?.name || "—";
+  const status = clientRow?.status || clientRow?.billing_status || "Active";
+  const pkg = clientRow?.package;
+  const pkgName = pkg?.name || "—";
+  const speedStr = pkg?.bandwidth_down
+    ? `${pkg.bandwidth_down}${pkg.bandwidth_up ? `/${pkg.bandwidth_up}` : ""} Mbps`
+    : (clientRow?.speed || "—");
   const monthlyBill = clientRow?.monthly_bill || customer?.monthly_bill || 0;
-  const balance = clientRow?.balance ?? customer?.balance ?? 0;
+  const balance = data?.balance?.due ?? 0;
 
   const initials =
     customer?.name?.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
   const stats = [
     { label: "Monthly Bill", value: `৳${Number(monthlyBill).toLocaleString()}`, icon: DollarSign, tint: "from-violet-500 to-indigo-500" },
-    { label: "Service", value: clientRow?.connection_types?.name || "Internet", icon: Wifi, tint: "from-sky-500 to-cyan-500" },
+    { label: "Service", value: clientRow?.connection_type || "Internet", icon: Wifi, tint: "from-sky-500 to-cyan-500" },
     { label: "Package", value: pkgName, icon: Package, tint: "from-emerald-500 to-teal-500" },
     { label: "Join Date", value: clientRow?.joining_date ? new Date(clientRow.joining_date).toLocaleDateString() : "—", icon: Calendar, tint: "from-amber-500 to-orange-500" },
-    { label: "Ledger Balance", value: `৳${Number(balance).toLocaleString()}`, icon: Wallet, tint: "from-rose-500 to-pink-500", badge: totalDue === 0 ? "Paid" : "Due" },
+    { label: "Ledger Due", value: `৳${Number(balance).toLocaleString()}`, icon: Wallet, tint: "from-rose-500 to-pink-500", badge: balance <= 0 ? "Clear" : "Due" },
   ];
 
   return (
@@ -141,11 +145,11 @@ const PortalDashboard = () => {
             <dl className="space-y-2.5 text-sm">
               <Row label="Username" value={clientRow?.username || customer?.username || "—"} />
               <Row label="Package" value={pkgName} />
-              <Row label="Speed" value={clientRow?.isp_packages?.download_speed ? `${clientRow.isp_packages.download_speed}/${clientRow.isp_packages.upload_speed} Mbps` : (clientRow?.speed || "—")} />
-              <Row label="Connection" value={clientRow?.connection_types?.name || clientRow?.connection_type || "—"} />
-              <Row label="Protocol" value={clientRow?.protocol_types?.name || clientRow?.protocol_type || "—"} />
+              <Row label="Speed" value={speedStr} />
+              <Row label="Connection" value={clientRow?.connection_type || "—"} />
+              <Row label="Protocol" value={clientRow?.protocol_type || "—"} />
               <Row label="Status" value={
-                <Badge className={status === "Active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-rose-100 text-rose-700 border-0"}>{status}</Badge>
+                <Badge className={status === "Active" || status === "active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-rose-100 text-rose-700 border-0"}>{status}</Badge>
               } />
             </dl>
           </CardContent>
@@ -167,7 +171,7 @@ const PortalDashboard = () => {
               <Row label="Mobile" value={clientRow?.contact || "—"} />
               <Row label="Email" value={clientRow?.email || "—"} />
               <Row label="Present Address" value={clientRow?.present_address || clientRow?.address || "—"} />
-              <Row label="Zone" value={clientRow?.zones?.name || "—"} />
+              <Row label="Zone" value={clientRow?.zone?.name || "—"} />
               <Row label="NID" value={clientRow?.nid_number || "—"} />
             </dl>
           </CardContent>
