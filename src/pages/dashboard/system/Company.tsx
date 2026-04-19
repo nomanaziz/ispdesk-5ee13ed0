@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
-import { Building2, Save, Mail, Phone, Globe, MapPin, FileText, Image, Home } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Building2, Save, Mail, Phone, Globe, MapPin, FileText, Image as ImageIcon, Upload, X, Loader2 } from "lucide-react";
 
 interface CompanyInfo {
   name: string;
@@ -34,10 +36,33 @@ const defaults: CompanyInfo = {
 export default function Company() {
   const { value, isLoading, save, isSaving } = useSystemSetting<CompanyInfo>("company_info", defaults);
   const [form, setForm] = useState<CompanyInfo>(defaults);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setForm(value); }, [value]);
 
   const set = (k: keyof CompanyInfo, v: any) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleUpload = async (file: File) => {
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error("লোগো ফাইল ২MB এর বেশি হতে পারবে না"); return; }
+    if (!file.type.startsWith("image/")) { toast.error("শুধুমাত্র ছবি আপলোড করুন"); return; }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const path = `company-logo-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("pop-logos").upload(path, file, { upsert: true, contentType: file.type });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from("pop-logos").getPublicUrl(path);
+      set("logo_url", publicUrl);
+      toast.success("লোগো আপলোড হয়েছে — সংরক্ষণ করতে আপডেট চাপুন");
+    } catch (e: any) {
+      toast.error(e.message || "আপলোড ব্যর্থ");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">লোড হচ্ছে...</div>;
 
@@ -98,11 +123,32 @@ export default function Company() {
                 <Input value={form.address2} onChange={e => set("address2", e.target.value)} className="pl-9" placeholder="বিকল্প ঠিকানা" />
               </div>
             </div>
-            <div>
-              <Label className="text-xs mb-1 block">লোগো URL</Label>
-              <div className="relative">
-                <Image className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input value={form.logo_url} onChange={e => set("logo_url", e.target.value)} className="pl-9" placeholder="https://..." />
+            <div className="md:col-span-3">
+              <Label className="text-xs mb-1 block">কোম্পানি লোগো</Label>
+              <div className="flex items-center gap-4 p-3 border rounded-md bg-muted/30">
+                <div className="h-20 w-20 rounded-md border bg-background flex items-center justify-center overflow-hidden shrink-0">
+                  {form.logo_url ? (
+                    <img src={form.logo_url} alt="logo" className="h-full w-full object-contain" />
+                  ) : (
+                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleUpload(e.target.files[0])} />
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-2">
+                      {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                      {uploading ? "আপলোড হচ্ছে..." : "লোগো আপলোড করুন"}
+                    </Button>
+                    {form.logo_url && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => set("logo_url", "")} className="gap-1 text-destructive">
+                        <X className="h-3.5 w-3.5" /> মুছে ফেলুন
+                      </Button>
+                    )}
+                  </div>
+                  <Input value={form.logo_url} onChange={e => set("logo_url", e.target.value)} placeholder="অথবা লোগো URL পেস্ট করুন" className="text-xs" />
+                  <p className="text-[11px] text-muted-foreground">PNG/JPG, সর্বোচ্চ ২MB। স্বচ্ছ পটভূমি (PNG) সবচেয়ে ভালো দেখায়।</p>
+                </div>
               </div>
             </div>
             <div>
