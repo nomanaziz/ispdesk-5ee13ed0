@@ -155,8 +155,7 @@ export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
               রিসেট করুন
             </Button>
           </div>
-        </SheetContent>
-      </Sheet>
-    </>
+      </SheetContent>
+    </Sheet>
   );
 }
