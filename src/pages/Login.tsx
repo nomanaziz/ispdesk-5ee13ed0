@@ -18,11 +18,19 @@ const LoginInner = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [company, setCompany] = useState<any>(null);
   const { signIn } = useAuth();
   const { login: portalLogin } = usePortalAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    supabase.from("system_settings").select("setting_value").eq("setting_key", "company_info").maybeSingle()
+      .then(({ data }) => setCompany(data?.setting_value as any || null));
+  }, []);
+
+  const showCompany = company?.show_on_login;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
