@@ -179,6 +179,30 @@ export default function OnlineClientMonitoring() {
     if (connRes.data) setConnectionTypes(connRes.data);
   }, [filterServer]);
 
+  const mapClientToSession = (c: any, isOnline: boolean): ActiveSession => ({
+    name: c.username || "",
+    address: c.remote_address || "",
+    uptime: "—",
+    caller_id: c.mac_address || "",
+    service: "pppoe",
+    encoding: "",
+    server_name: c.mikrotik_device?.name || c.server_name || "",
+    device_id: c.mikrotik_id || "",
+    client_id: c.id,
+    client_code: c.client_id,
+    client_name: c.name,
+    contact: c.contact,
+    zone_name: c.zone?.name || "",
+    sub_zone_name: c.sub_zone?.name || "",
+    box_name: c.box?.name || "",
+    connection_type: c.connection_type,
+    profile: c.profile,
+    status: isOnline ? "online" : "offline",
+    mikrotik_id: c.mikrotik_id,
+    total_upload: c.total_upload || 0,
+    total_download: c.total_download || 0,
+  });
+
   const loadActiveSessions = useCallback(async () => {
     // Require an active device — never load all servers at once.
     if (!filterServer) {
@@ -189,66 +213,71 @@ export default function OnlineClientMonitoring() {
       setTotalClients(0);
       return;
     }
+
+    // Phase 1 (FAST): load enabled clients from DB and show immediately
     setLoading(true);
+    let allClients: any[] = [];
+    try {
+      const { data } = await supabase
+        .from("clients")
+        .select("id, client_id, name, contact, username, remote_address, zone:zones(name), sub_zone:sub_zones(name), box:boxes(name), connection_type, profile, status, mikrotik_id, server_name, total_upload, total_download, mac_address, is_online, mikrotik_status, mikrotik_device:mikrotik_devices(name)")
+        .neq("status", "left")
+        .eq("mikrotik_id", filterServer)
+        .eq("mikrotik_status", "enabled");
+      allClients = data || [];
+
+      // Use cached is_online flag for instant render
+      const initialOnline = allClients.filter((c) => c.is_online).map((c) => mapClientToSession(c, true));
+      const initialOffline = allClients.filter((c) => !c.is_online).map((c) => mapClientToSession(c, false));
+      setSessions(initialOnline);
+      setOfflineClients(initialOffline);
+      setOnlineCount(initialOnline.length);
+      setOfflineCount(initialOffline.length);
+      setTotalClients(allClients.length);
+    } catch (err: any) {
+      toast.error("ক্লায়েন্ট লোড ব্যর্থ: " + (err.message || "Unknown error"));
+    } finally {
+      setLoading(false);
+    }
+
+    // Phase 2 (BACKGROUND): fetch live MikroTik sessions, then refine list
+    setSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke("fetch-mikrotik-ppp", {
         body: { action: "active-sessions", device_id: filterServer },
       });
       if (error) throw error;
+
       if (data?.sessions) {
-        setSessions(data.sessions);
-        setOnlineCount(data.online_count || data.sessions.length);
-        setOfflineCount(data.offline_count || 0);
-        setTotalClients(data.total_clients || 0);
+        const liveSessions = data.sessions as ActiveSession[];
+        const liveByName = new Map(liveSessions.map((s) => [s.name.toLowerCase(), s]));
 
-        const onlineUsernames = new Set((data.sessions as ActiveSession[]).map(s => s.name));
-        // Scope offline list to the same device, exclude left clients,
-        // and only include clients whose MikroTik PPPoE is enabled.
-        const { data: allClients } = await supabase
-          .from("clients")
-          .select("id, client_id, name, contact, username, remote_address, zone:zones(name), sub_zone:sub_zones(name), box:boxes(name), connection_type, profile, status, mikrotik_id, server_name, total_upload, total_download, mac_address, mikrotik_status, mikrotik_device:mikrotik_devices(name)")
-          .neq("status", "left")
-          .eq("mikrotik_id", filterServer)
-          .eq("mikrotik_status", "enabled");
-
-        if (allClients) {
-          const offline = allClients
-            .filter((c: any) => c.username && !onlineUsernames.has(c.username))
-            .map((c: any): ActiveSession => ({
-              name: c.username || "",
-              address: c.remote_address || "",
-              uptime: "—",
-              caller_id: c.mac_address || "",
-              service: "pppoe",
-              encoding: "",
-              server_name: c.mikrotik_device?.name || c.server_name || "",
-              device_id: c.mikrotik_id || "",
-              client_id: c.id,
-              client_code: c.client_id,
-              client_name: c.name,
-              contact: c.contact,
-              zone_name: c.zone?.name || "",
-              sub_zone_name: c.sub_zone?.name || "",
-              box_name: c.box?.name || "",
-              connection_type: c.connection_type,
-              profile: c.profile,
-              status: "offline",
-              mikrotik_id: c.mikrotik_id,
-              total_upload: c.total_upload || 0,
-              total_download: c.total_download || 0,
-            }));
-          setOfflineClients(offline);
-          setOfflineCount(offline.length);
-          setTotalClients((data.sessions?.length || 0) + offline.length);
+        // Merge: enrich DB clients with live session traffic/uptime when online
+        const online: ActiveSession[] = [];
+        const offline: ActiveSession[] = [];
+        for (const c of allClients) {
+          const uname = (c.username || "").toLowerCase();
+          const live = uname ? liveByName.get(uname) : undefined;
+          if (live) {
+            online.push({ ...mapClientToSession(c, true), ...live, client_id: c.id, client_code: c.client_id, client_name: c.name, contact: c.contact, zone_name: c.zone?.name || "", sub_zone_name: c.sub_zone?.name || "", box_name: c.box?.name || "", connection_type: c.connection_type, profile: c.profile });
+          } else {
+            offline.push(mapClientToSession(c, false));
+          }
         }
+        setSessions(online);
+        setOfflineClients(offline);
+        setOnlineCount(online.length);
+        setOfflineCount(offline.length);
+        setTotalClients(allClients.length);
       }
       if (data?.mismatch) {
         setMismatchData(data.mismatch);
       }
     } catch (err: any) {
-      toast.error("সেশন লোড ব্যর্থ: " + (err.message || "Unknown error"));
+      // Silent — DB-cached view already showing
+      console.warn("Live sync failed:", err.message);
     } finally {
-      setLoading(false);
+      setSyncing(false);
     }
   }, [filterServer]);
 
