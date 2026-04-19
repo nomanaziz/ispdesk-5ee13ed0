@@ -1,91 +1,135 @@
 
 
-## প্রসঙ্গ বুঝেছি
+## লক্ষ্য
 
-OLT trunk topology-তে user-to-ONU mapping চ্যালেঞ্জ:
-- MikroTik PPP user-এর caller-id (MAC) আছে
-- OLT-এর MAC table-এ ONU-র MAC এবং সেগুলো কোন PON port-এ আছে সেটা থাকে
-- **সমস্যা**: OLT1 ↔ OLT2 trunk হলে একই client MAC দুটো OLT-তেই দেখা যাবে (uplink port দিয়ে leak করে)
-- **সমাধান**: শুধু MAC match না, **PON port number**-ও check করতে হবে — uplink/trunk port বাদ দিয়ে শুধু **access PON port (GPON/EPON)** থেকে আসা MAC-ই genuine
+3টা feature combine করে দেব, সব permission-gated:
 
-## আর্কিটেকচার
+1. **OLT Power Dashboard** (DB List) — power band অনুযায়ী ONU bucket grid + click → popup with details
+2. **ONU Detail page** — single ONU's power graph, history, current stats
+3. **Switch Management** — port on/off, description, VLAN add/del, SFP power, live traffic
 
-### Data flow
+---
+
+## 1) Permission system (foundation, security-first)
+
+নতুন permission keys (existing `has_role` + `olt_permissions` table extend করে):
+
+| Permission key | বাংলা |
+|---|---|
+| `olt.dashboard.view` | OLT power dashboard দেখা |
+| `olt.onu.view` | ONU details দেখা |
+| `switch.view` | Switch list/info |
+| `switch.port.toggle` | Port on/off |
+| `switch.port.edit` | Description/VLAN edit |
+| `switch.vlan.manage` | VLAN add/delete |
+| `switch.traffic.view` | Live traffic monitor |
+
+**DB:** নতুন table `device_permissions` (user_id, permission_key, scope: 'all'|'branch'|'device', scope_id) + helper function `has_device_permission(uid, key, device_id)` (SECURITY DEFINER).
+
+**Frontend:** `usePermission(key, deviceId?)` hook + `<PermissionGate>` wrapper component যা button/page/action hide করবে।
+
+**Backend:** প্রতিটা edge function (port toggle, vlan change, traffic query) entry-তে permission check — JWT validate → `has_device_permission` call → 403 যদি না থাকে।
+
+---
+
+## 2) OLT Power Dashboard (`/dashboard/olt/power-dashboard`)
+
+Reference image-119 অনুযায়ী:
 
 ```text
-MikroTik PPP secrets ──► caller_id (MAC)
-                            │
-                            ▼
-                     match by MAC
-                            │
-        ┌───────────────────┴───────────────────┐
-        ▼                                       ▼
-   OLT1 MAC table                          OLT2 MAC table
-   (per-port snapshot)                     (per-port snapshot)
-        │                                       │
-        └────► filter: port_type='access' ◄─────┘
-                            │
-                            ▼
-              unique ONU + PON port found
-                            │
-                            ▼
-            user_onu_mapping (user → onu_id, pon_port, olt_id)
+┌─ DB List ───────────────────────────────────────────┐
+│  [DB 24 ●130]  [DB 25 ●106]  [DB 26 ●59] [DB 27 ●31]│  green = healthy
+│  [DB 28 ●12]  [DB 29 ●5]    [DB 30 ●23] [DB 31+ ●86]│  red = critical
+└─────────────────────────────────────────────────────┘
 ```
 
-### DB schema (নতুন)
+- Power buckets: `< -24` healthy / `-24 to -27` warning / `> -27` critical / `> -31` dead
+- প্রতি card ক্লিকে dialog → ওই bucket-এর সব ONU list (OLT, MAC, PPPoE, RX, port, last seen)
+- "Download" icon → CSV export
+- GPON port utilization panel (`OLT-100.26 | Port Used: 685`) — `onu_list` group by `interface`
 
-**`olt_mac_table`** — per-OLT MAC snapshot
-- `id`, `olt_id` (FK), `mac` (text, indexed), `port` (text, e.g. `gpon-olt_0/1/2`), `port_type` (`access`|`uplink`|`trunk`), `vlan` (int), `seen_at` (timestamptz)
-- Unique index: `(olt_id, mac, port)`
+Permission: `olt.dashboard.view`
 
-**`olt_ports`** — port classification (manual/auto)
-- `id`, `olt_id`, `port_name` (e.g. `0/1/2`, `xgei-0/1`), `port_type` (`access_pon`|`uplink_trunk`|`management`), `description`
-- User edit করতে পারবে: কোনটা PON access port, কোনটা uplink
+---
 
-**`user_onu_mapping`** (existing extend)
-- + `pon_port` (text), + `match_method` (`mac+port`|`mac_only_ambiguous`|`unmapped`)
+## 3) ONU Detail Page (`/dashboard/olt/onu/:id`)
 
-### Edge functions (নতুন)
+Reference image-120-এর মতো panel grid:
 
-1. **`snmp-fetch-olt-mac-table`** — OLT-এর Bridge-MIB (`1.3.6.1.2.1.17.4.3.1.x`) বা vendor-specific OID থেকে MAC↔port snapshot pull করে `olt_mac_table`-এ insert
-2. **`map-users-to-onu`** — improved logic:
-   - প্রতি PPP user-এর MAC নাও
-   - সব OLT-র `olt_mac_table` query করো `WHERE port_type='access'`
-   - exactly one match → confident mapping
-   - multiple matches (trunk leak) → port_type filter দিয়ে narrow → তবু একাধিক হলে `mac_only_ambiguous` flag
+- Top cards: Uptime, PPPoE ID, dBm, Up/Down, OLT name, Vendor, Router brand, Remote addr, Temp/VLAN, Last update, Last disconnect, Port number, Down count
+- "Previous dBm" row (last reading snapshot)
+- **Chart**: recharts line graph from `onu_history` table — RX power over time, day filter tabs (All/Sun/Mon/Tue...)
+- Row click `OnuList.tsx` → navigate এ যাবে এই page-এ
 
-### UI পরিবর্তন
+Permission: `olt.onu.view`
 
-**`OltDevices.tsx`** — row action যোগ:
-- "Sync MAC Table" button (per OLT) → edge function trigger
+---
 
-**নতুন page: `OltPorts.tsx`** (`/dashboard/olt/ports`)
-- প্রতি OLT-র port list, dropdown দিয়ে `access_pon` / `uplink_trunk` mark করা
-- "Auto-detect" button: যে port-এ ONU MAC বেশি দেখা যায় সেটা access, যেটায় বিভিন্ন vendor MAC mixed সেটা uplink
+## 4) Switch Management
 
-**`OltUsers.tsx` / `OnuList.tsx`** — extra column:
-- "Mapped User" + ambiguity badge (যদি একই MAC দুই OLT-তে থাকে)
+### A) DB extend
+- `switches` table-এ যোগ: `vendor`, `snmp_community`, `snmp_version`, `username`, `password_encrypted`, `description`, `model`, `firmware`
+- নতুন table `switch_ports`: `id, switch_id, interface, description, enabled, speed, duplex, status, tx_power, rx_power, mac_address, vlan_id, last_synced`
+- নতুন table `switch_vlans`: `id, switch_id, vlan_id, name, tagged_ports[], untagged_ports[]`
+
+### B) Pages
+
+**`/dashboard/network/switches`** (Switch List — image-124)
+- Table: OLT/Switch name, Port, Status, TX/RX power, Details
+- "Sw Connect" button → Add/Edit dialog
+- Row click → Switch Detail
+
+**`/dashboard/network/switches/:id`** (Switch Detail — image-121,122,123)
+3 tabs:
+- **SFP Info**: Switch info card + interface-wise TX/RX/Bias table
+- **Interface State**: per-port speed/duplex/flow/in-out rate/MAC (image-123)
+- **Port Shutdown**: per-port toggle switches (image-122) — `switch.port.toggle` permission
+- Each port row: edit description (`switch.port.edit`), VLAN assignment (`switch.vlan.manage`), live traffic mini-chart (`switch.traffic.view`)
+
+### C) Edge functions (SNMP/CLI)
+- `snmp-fetch-switch-info` — sysName, sysDescr, uptime, CPU, mem
+- `snmp-fetch-switch-ports` — IF-MIB walk: ifDescr, ifOperStatus, ifAdminStatus, ifSpeed, ifInOctets, ifOutOctets, ifPhysAddress
+- `snmp-fetch-switch-sfp` — vendor-specific SFP DOM OID for TX/RX
+- `switch-port-toggle` — SNMP SET ifAdminStatus (1=up, 2=down) — **permission check first**
+- `switch-port-update` — description/VLAN change — **permission check first**
+- `switch-traffic-poll` — 30s polling for live in/out octets → store in `switch_traffic_samples` table
+
+সব edge function: header থেকে JWT → user_id → `has_device_permission` RPC call → unauthorized হলে 403।
+
+### D) Live traffic
+Small recharts area chart in port row, polling `switch_traffic_samples` every 5s (last 60 points). On-demand only when expanded।
+
+---
 
 ## Files
 
 **Migration:**
-- `olt_mac_table` table + indexes
-- `olt_ports` table
-- `user_onu_mapping` ALTER → add `pon_port`, `match_method`
+- `device_permissions` table + RLS + `has_device_permission()` SECURITY DEFINER function
+- Extend `switches` columns
+- New: `switch_ports`, `switch_vlans`, `switch_traffic_samples`
 
 **Create:**
-- `supabase/functions/snmp-fetch-olt-mac-table/index.ts`
-- `supabase/functions/map-users-to-onu/index.ts` (new improved version, পুরোনো `trigger-mapping` deprecated)
-- `src/pages/dashboard/olt/OltPorts.tsx`
+- `src/hooks/usePermission.ts`
+- `src/components/PermissionGate.tsx`
+- `src/pages/dashboard/olt/PowerDashboard.tsx`
+- `src/pages/dashboard/olt/OnuDetail.tsx`
+- `src/pages/dashboard/network/SwitchList.tsx` (replace placeholder)
+- `src/pages/dashboard/network/SwitchDetail.tsx`
+- `src/pages/dashboard/system/DevicePermissions.tsx` (admin grants)
+- Edge functions: `snmp-fetch-switch-info`, `snmp-fetch-switch-ports`, `snmp-fetch-switch-sfp`, `switch-port-toggle`, `switch-port-update`, `switch-traffic-poll`
 
 **Edit:**
-- `src/pages/dashboard/olt/OltDevices.tsx` — "Sync MAC" action button
-- `src/pages/dashboard/olt/OnuList.tsx` — mapped-user column + ambiguity badge
-- `src/components/AppSidebar.tsx` + `src/App.tsx` — OLT Ports route
+- `src/App.tsx` — 4 new routes
+- `src/components/AppSidebar.tsx` — menu entries (visibility-gated by permission)
+- `src/pages/dashboard/olt/OnuList.tsx` — row → ONU Detail link
+- existing `OltDevices.tsx` — "Power Dashboard" CTA
 
-## ফলাফল
+---
 
-- OLT1↔OLT2 trunk হলেও সঠিক ONU-তে user assign হবে কারণ uplink port-এ পাওয়া MAC বাদ পড়বে
-- Ambiguous case-গুলোতে badge দেখাবে — manually verify করা যাবে
-- Port classification একবার set করলে future sync স্বয়ংক্রিয়ভাবে কাজ করবে
+## Security guarantees
+
+- প্রতিটা destructive action (port toggle, VLAN change) — **server-side** permission check, frontend hide শুধু UX
+- RLS policies use `has_device_permission()` — never trust client claims
+- SNMP credentials encrypted column, never returned to frontend
+- Edge function logs audit trail in `device_audit_log` (who toggled which port when)
 
