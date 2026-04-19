@@ -120,6 +120,7 @@ import HrSettings from "@/pages/dashboard/hr/HrSettings";
 // OLT
 import OltDevices from "@/pages/dashboard/olt/OltDevices";
 import OltUsers from "@/pages/dashboard/olt/OltUsers";
+import OltPorts from "@/pages/dashboard/olt/OltPorts";
 import OnuList from "@/pages/dashboard/olt/OnuList";
 import UserDownCount from "@/pages/dashboard/olt/UserDownCount";
 import FiberDownFinder from "@/pages/dashboard/olt/FiberDownFinder";
@@ -442,6 +443,7 @@ const App = () => (
               <Route path="/dashboard/olt" element={<P><OltDevices /></P>} />
               <Route path="/dashboard/olt/onu" element={<P><OnuList /></P>} />
               <Route path="/dashboard/olt/users" element={<P><OltUsers /></P>} />
+              <Route path="/dashboard/olt/ports" element={<P><OltPorts /></P>} />
               <Route path="/dashboard/olt/user-down" element={<P><UserDownCount /></P>} />
               <Route path="/dashboard/olt/fiber-down" element={<P><FiberDownFinder /></P>} />
               <Route path="/dashboard/olt/sharing" element={<P><OltSharing /></P>} />

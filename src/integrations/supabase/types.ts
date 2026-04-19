@@ -4990,6 +4990,47 @@ export type Database = {
           },
         ]
       }
+      olt_mac_table: {
+        Row: {
+          created_at: string
+          id: string
+          mac: string
+          olt_id: string
+          port: string
+          port_type: string
+          seen_at: string
+          vlan: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mac: string
+          olt_id: string
+          port: string
+          port_type?: string
+          seen_at?: string
+          vlan?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mac?: string
+          olt_id?: string
+          port?: string
+          port_type?: string
+          seen_at?: string
+          vlan?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "olt_mac_table_olt_id_fkey"
+            columns: ["olt_id"]
+            isOneToOne: false
+            referencedRelation: "olt_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       olt_permissions: {
         Row: {
           id: string
@@ -5009,6 +5050,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "olt_permissions_olt_id_fkey"
+            columns: ["olt_id"]
+            isOneToOne: false
+            referencedRelation: "olt_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      olt_ports: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          olt_id: string
+          port_name: string
+          port_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          olt_id: string
+          port_name: string
+          port_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          olt_id?: string
+          port_name?: string
+          port_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "olt_ports_olt_id_fkey"
             columns: ["olt_id"]
             isOneToOne: false
             referencedRelation: "olt_devices"
@@ -7812,7 +7891,9 @@ export type Database = {
           created_at: string
           id: string
           mapped_at: string | null
+          match_method: string | null
           onu_id: string | null
+          pon_port: string | null
           ppp_username: string
           status: Database["public"]["Enums"]["mapping_status"]
         }
@@ -7821,7 +7902,9 @@ export type Database = {
           created_at?: string
           id?: string
           mapped_at?: string | null
+          match_method?: string | null
           onu_id?: string | null
+          pon_port?: string | null
           ppp_username: string
           status?: Database["public"]["Enums"]["mapping_status"]
         }
@@ -7830,7 +7913,9 @@ export type Database = {
           created_at?: string
           id?: string
           mapped_at?: string | null
+          match_method?: string | null
           onu_id?: string | null
+          pon_port?: string | null
           ppp_username?: string
           status?: Database["public"]["Enums"]["mapping_status"]
         }

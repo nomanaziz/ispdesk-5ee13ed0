@@ -160,6 +160,7 @@ const menuGroups: MenuGroup[] = [
       { title: "OLT ডিভাইস", url: "/dashboard/olt", icon: Server },
       { title: "ONU তালিকা", url: "/dashboard/olt/onu", icon: List },
       { title: "OLT ইউজার", url: "/dashboard/olt/users", icon: Users },
+      { title: "OLT Port Classification", url: "/dashboard/olt/ports", icon: Network },
       { title: "ইউজার ডাউন কাউন্ট", url: "/dashboard/olt/user-down", icon: UserX },
       { title: "ফাইবার ডাউন ফাইন্ডার", url: "/dashboard/olt/fiber-down", icon: Cable },
       { title: "OLT শেয়ারিং", url: "/dashboard/olt/sharing", icon: Link2 },
