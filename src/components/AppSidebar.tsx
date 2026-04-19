@@ -23,6 +23,7 @@ import { Sidebar, SidebarContent, useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useSidebarBadges } from "@/hooks/useSidebarBadges";
 
 interface MenuItem { title: string; url: string; icon: LucideIcon; }
 interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; }
@@ -386,11 +387,15 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
   const collapsed = state === "collapsed";
   const { resolvedMode } = useTheme();
   const isLight = resolvedMode === "light";
+  const { data: badges } = useSidebarBadges();
   const isActiveGroup = group.items.some(item =>
     item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url)
   );
   const [open, setOpen] = useState(group.defaultOpen || isActiveGroup);
   const effectiveOpen = forceOpen ?? open;
+
+  // Sum of badge counts for items inside this group (used in collapsed mode + group label)
+  const groupBadgeCount = group.items.reduce((sum, it) => sum + (badges?.[it.url] || 0), 0);
 
   if (collapsed) {
     return (
@@ -399,12 +404,17 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
           const isActive = item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url);
           return (
             <NavLink key={item.url} to={item.url}
-              className={cn("flex items-center justify-center w-10 h-10 rounded-lg mb-0.5 transition-colors",
+              className={cn("relative flex items-center justify-center w-10 h-10 rounded-lg mb-0.5 transition-colors",
                 isActive
                   ? "bg-primary/15 text-primary"
                   : isLight ? "text-muted-foreground hover:text-primary hover:bg-primary/5" : "text-slate-400 hover:text-white hover:bg-white/5"
               )} title={group.label}>
               <group.icon className="h-4 w-4" />
+              {groupBadgeCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                  {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
+                </span>
+              )}
             </NavLink>
           );
         })}
@@ -422,12 +432,18 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
         )} style={{ width: "calc(100% - 16px)" }}>
         <group.icon className="h-4 w-4 shrink-0" />
         <span className="flex-1 text-left truncate">{group.label}</span>
+        {groupBadgeCount > 0 && !effectiveOpen && (
+          <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+            {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
+          </span>
+        )}
         {effectiveOpen ? <ChevronDown className="h-3 w-3 opacity-50" /> : <ChevronRight className="h-3 w-3 opacity-50" />}
       </button>
       {effectiveOpen && (
         <div className="mx-2 mt-0.5 space-y-0.5">
           {group.items.map((item) => {
             const isActive = item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url);
+            const count = badges?.[item.url] || 0;
             return (
               <NavLink key={item.url} to={item.url}
                 className={cn("flex items-center gap-2.5 px-4 py-[7px] text-[13px] rounded-lg transition-colors ml-3",
@@ -438,7 +454,12 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
                       : "text-slate-400 hover:text-white hover:bg-white/5"
                 )}>
                 <item.icon className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{item.title}</span>
+                <span className="flex-1 truncate">{item.title}</span>
+                {count > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                    {count > 99 ? "99+" : count}
+                  </span>
+                )}
               </NavLink>
             );
           })}
