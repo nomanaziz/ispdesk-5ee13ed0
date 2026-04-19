@@ -57,11 +57,41 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // Helper: load full client with joined refs (correct schema)
+  const loadClient = async () => {
+    const { data: client } = await sb
+      .from("clients")
+      .select(
+        "id, name, client_id, username, contact, email, address, present_address, permanent_address, nid_number, photo_url, nid_front_url, nid_back_url, monthly_bill, status, billing_status, joining_date, expire_date, billing_date, speed, connection_type, protocol_type, mac_address, remote_address, server_name, profile, is_online, total_upload, total_download, package_id, zone_id, sub_zone_id, branch_id"
+      )
+      .eq("id", tok.sub)
+      .maybeSingle();
+    if (!client) return null;
+    const [pkg, zone, subZone] = await Promise.all([
+      client.package_id
+        ? sb.from("isp_packages").select("id, name, code, bandwidth_down, bandwidth_up, price").eq("id", client.package_id).maybeSingle()
+        : Promise.resolve({ data: null } as any),
+      client.zone_id
+        ? sb.from("zones").select("id, name").eq("id", client.zone_id).maybeSingle()
+        : Promise.resolve({ data: null } as any),
+      client.sub_zone_id
+        ? sb.from("sub_zones").select("id, name").eq("id", client.sub_zone_id).maybeSingle()
+        : Promise.resolve({ data: null } as any),
+    ]);
+    return { ...client, package: pkg.data, zone: zone.data, sub_zone: subZone.data };
+  };
+
+  const computeBalance = (bills: any[], cols: any[]) => {
+    const totalBill = bills.reduce((s, b) => s + Number(b.amount || 0) - Number(b.discount || 0), 0);
+    const totalPaid = cols.reduce((s, c) => s + Number(c.amount || 0), 0);
+    const due = totalBill - totalPaid;
+    return { totalBill, totalPaid, due };
+  };
+
   try {
     switch (action) {
       case "get_dashboard": {
         if (tok.type !== "client") {
-          // bw_customer
           const { data: cust } = await sb
             .from("bw_sale_customers")
             .select("*")
@@ -75,13 +105,7 @@ Deno.serve(async (req) => {
             .limit(24);
           return json({ customer: cust, invoices: invoices || [] });
         }
-        const { data: client } = await sb
-          .from("clients")
-          .select(
-            "*, isp_packages(name, price, download_speed, upload_speed), zones(name), sub_zones(name), connection_types(name), protocol_types(name)"
-          )
-          .eq("id", tok.sub)
-          .maybeSingle();
+        const client = await loadClient();
         const { data: bills } = await sb
           .from("billing")
           .select("id, bill_id, month, amount, paid, due, status, discount, vat, created_at, due_date, pay_date, extend_date, payment_method")
@@ -94,14 +118,19 @@ Deno.serve(async (req) => {
           .eq("client_id", tok.sub)
           .order("created_at", { ascending: false })
           .limit(24);
-        const { data: notices } = await sb
-          .from("client_notices")
-          .select("*")
-          .eq("active", true)
-          .order("pinned", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(5);
-        return json({ client, bills: bills || [], collections: collections || [], notices: notices || [] });
+        let notices: any[] = [];
+        try {
+          const r = await sb
+            .from("client_notices")
+            .select("*")
+            .eq("active", true)
+            .order("pinned", { ascending: false })
+            .order("created_at", { ascending: false })
+            .limit(5);
+          notices = r.data || [];
+        } catch (_) { /* table may not exist */ }
+        const balance = computeBalance(bills || [], collections || []);
+        return json({ client, bills: bills || [], collections: collections || [], notices, balance });
       }
 
       case "get_bills": {
@@ -114,13 +143,92 @@ Deno.serve(async (req) => {
         return json({ bills: data || [] });
       }
 
+      case "get_invoices": {
+        // Client => billing rows; bw_customer => bw_sales_invoices
+        if (tok.type === "client") {
+          const { data } = await sb
+            .from("billing")
+            .select("*")
+            .eq("client_id", tok.sub)
+            .order("created_at", { ascending: false });
+          return json({ invoices: data || [], kind: "billing" });
+        }
+        const { data } = await sb
+          .from("bw_sales_invoices")
+          .select("*")
+          .eq("customer_id", tok.sub)
+          .order("created_at", { ascending: false });
+        return json({ invoices: data || [], kind: "bw" });
+      }
+
+      case "get_bill_detail": {
+        if (tok.type !== "client") return json({ error: "Not allowed" }, 403);
+        const billId = String(payload.id || "");
+        if (!billId) return json({ error: "Missing id" }, 400);
+        const { data: bill } = await sb
+          .from("billing")
+          .select("*")
+          .eq("id", billId)
+          .eq("client_id", tok.sub)
+          .maybeSingle();
+        if (!bill) return json({ error: "Bill not found" }, 404);
+        const { data: client } = await sb
+          .from("clients")
+          .select("name, client_id, contact, address, email, monthly_bill")
+          .eq("id", tok.sub)
+          .maybeSingle();
+        const { data: settings } = await sb
+          .from("system_settings")
+          .select("setting_value")
+          .eq("setting_key", "company_info")
+          .maybeSingle();
+        const ci: any = settings?.setting_value || {};
+        const company = {
+          name: ci.company_name || ci.name || "ISP Desk",
+          address: ci.company_address || ci.address1 || ci.address || "",
+          hotline: ci.hotline || ci.mobile1 || ci.phone1 || ci.phone || "",
+          email: ci.email || "",
+          website: ci.website || "",
+          logo_url: ci.logo_url || "",
+          payment_instructions: ci.payment_instructions || "",
+          tagline: ci.tagline || "",
+        };
+        return json({ bill, client, company });
+      }
+
+      case "submit_bill_payment": {
+        if (tok.type !== "client") return json({ error: "Not allowed" }, 403);
+        const { billing_id, amount, payment_method, transaction_id, note } = payload;
+        if (!billing_id || !amount || !transaction_id) return json({ error: "Missing fields" }, 400);
+        // Verify bill belongs to client
+        const { data: bill } = await sb
+          .from("billing")
+          .select("id, client_id")
+          .eq("id", billing_id)
+          .eq("client_id", tok.sub)
+          .maybeSingle();
+        if (!bill) return json({ error: "Bill not found" }, 404);
+        const { error } = await sb.from("bill_collections").insert({
+          billing_id,
+          client_id: tok.sub,
+          amount: Number(amount),
+          payment_method: payment_method || "bkash",
+          transaction_id,
+          note: note || "Online payment via portal",
+          status: "pending",
+        });
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true });
+      }
+
       case "get_ledger": {
         if (tok.type === "client") {
           const [{ data: bills }, { data: cols }] = await Promise.all([
-            sb.from("billing").select("bill_id, amount, paid, due, month, created_at").eq("client_id", tok.sub).order("created_at"),
+            sb.from("billing").select("bill_id, amount, paid, due, discount, month, created_at").eq("client_id", tok.sub).order("created_at"),
             sb.from("bill_collections").select("amount, discount, payment_method, note, created_at").eq("client_id", tok.sub).order("created_at"),
           ]);
-          return json({ bills: bills || [], collections: cols || [] });
+          const balance = computeBalance(bills || [], cols || []);
+          return json({ bills: bills || [], collections: cols || [], balance });
         }
         const [{ data: invoices }, { data: cols }] = await Promise.all([
           sb.from("bw_sales_invoices").select("invoice_no, amount, paid_amount, created_at, month").eq("customer_id", tok.sub).order("created_at"),
@@ -130,11 +238,47 @@ Deno.serve(async (req) => {
       }
 
       case "get_notices": {
-        const [{ data: notices }, { data: news }] = await Promise.all([
-          sb.from("client_notices").select("*").eq("active", true).order("pinned", { ascending: false }).order("created_at", { ascending: false }),
-          sb.from("client_news_events").select("*").eq("active", true).order("created_at", { ascending: false }),
-        ]);
-        return json({ notices: notices || [], news: news || [] });
+        const out: any = { notices: [], news: [] };
+        try {
+          const { data } = await sb.from("client_notices").select("*").eq("active", true).order("pinned", { ascending: false }).order("created_at", { ascending: false });
+          out.notices = data || [];
+        } catch (_) {}
+        try {
+          const { data } = await sb.from("client_news_events").select("*").eq("active", true).order("created_at", { ascending: false });
+          out.news = data || [];
+        } catch (_) {}
+        return json(out);
+      }
+
+      case "get_company": {
+        const { data: settings } = await sb
+          .from("system_settings")
+          .select("setting_value")
+          .eq("setting_key", "company_info")
+          .maybeSingle();
+        const ci: any = settings?.setting_value || {};
+        return json({
+          company: {
+            name: ci.company_name || ci.name || "ISP Desk",
+            tagline: ci.tagline || "",
+            address: ci.company_address || ci.address1 || ci.address || "",
+            address2: ci.address2 || "",
+            hotline: ci.hotline || "",
+            mobile: ci.mobile1 || ci.mobile2 || "",
+            phone: ci.phone1 || ci.phone || "",
+            email: ci.email || "",
+            website: ci.website || "",
+            logo_url: ci.logo_url || "",
+            payment_instructions: ci.payment_instructions || "",
+          },
+          raw: ci,
+        });
+      }
+
+      case "get_live_usage": {
+        if (tok.type !== "client") return json({ client: null });
+        const client = await loadClient();
+        return json({ client });
       }
 
       case "get_profile": {
@@ -168,7 +312,6 @@ Deno.serve(async (req) => {
 
       case "submit_doc_update": {
         if (tok.type !== "client") return json({ error: "Not allowed" }, 403);
-        // payload.changes: {photo_url?, nid_front_url?, nid_back_url?, documents?}
         const allowed = ["photo_url", "nid_front_url", "nid_back_url", "documents", "name", "nid_number"];
         const changes: Record<string, any> = {};
         for (const k of allowed) {
@@ -187,7 +330,6 @@ Deno.serve(async (req) => {
 
       case "upload_document": {
         if (tok.type !== "client") return json({ error: "Not allowed" }, 403);
-        // payload: { filename, content_type, base64 }
         const { filename, content_type, base64 } = payload;
         if (!filename || !base64) return json({ error: "Missing file" }, 400);
         const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
