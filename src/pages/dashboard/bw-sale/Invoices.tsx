@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Eye, Pencil, Trash2, Search, FileText, CheckCircle, AlertCircle, DollarSign } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Search, FileText, CheckCircle, AlertCircle, DollarSign, Wallet } from "lucide-react";
+import { ReceiveBillDialog } from "@/components/bw-sale/ReceiveBillDialog";
 
 export default function Invoices() {
   const nav = useNavigate();
@@ -15,6 +16,7 @@ export default function Invoices() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [payOpen, setPayOpen] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
