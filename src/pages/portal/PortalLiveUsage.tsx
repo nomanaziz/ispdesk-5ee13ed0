@@ -92,17 +92,23 @@ const PortalLiveUsage = () => {
   const latest = samples[samples.length - 1];
   const isOnline = snapshotOnline ?? !!client?.is_online;
 
+  const pkg = client?.package;
+  const speedStr = pkg?.bandwidth_down
+    ? `${pkg.bandwidth_down}${pkg.bandwidth_up ? `/${pkg.bandwidth_up}` : ""} Mbps`
+    : (client?.speed || "—");
+
   const infoRows = [
     { icon: User, label: "Client Name", value: client?.name || "—" },
     { icon: Hash, label: "Client Code", value: client?.client_id || "—" },
     { icon: User, label: "Username", value: client?.username || "—" },
     { icon: Phone, label: "Mobile", value: client?.contact || "—" },
     { icon: Mail, label: "Email", value: client?.email || "—" },
-    { icon: MapPin, label: "Zone", value: (client as any)?.zones?.name || "—" },
-    { icon: Hash, label: "NID", value: (client as any)?.nid_number || "—" },
-    { icon: Gauge, label: "Package Speed", value: client?.speed || "—" },
-    { icon: Wifi, label: "Connection", value: (client as any)?.connection_type || "—" },
-    { icon: Shield, label: "Protocol", value: (client as any)?.protocol_type || "—" },
+    { icon: MapPin, label: "Zone", value: client?.zone?.name || "—" },
+    { icon: Hash, label: "NID", value: client?.nid_number || "—" },
+    { icon: Gauge, label: "Package", value: pkg?.name || "—" },
+    { icon: Gauge, label: "Speed", value: speedStr },
+    { icon: Wifi, label: "Connection", value: client?.connection_type || "—" },
+    { icon: Shield, label: "Protocol", value: client?.protocol_type || "—" },
     { icon: Clock, label: "Joining Date", value: client?.joining_date ? new Date(client.joining_date).toLocaleDateString() : "—" },
     { icon: Download, label: "Downloaded", value: fmtBytes(Number(client?.total_download || 0)) },
     { icon: Upload, label: "Uploaded", value: fmtBytes(Number(client?.total_upload || 0)) },
