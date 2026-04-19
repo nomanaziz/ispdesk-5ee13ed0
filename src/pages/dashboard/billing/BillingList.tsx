@@ -72,6 +72,8 @@ export default function BillingList() {
             billing!billing_client_id_fkey(id, bill_id, month, amount, paid, due, discount, advance, vat, status, pay_date)
           `)
           .eq("status", "active")
+          .ilike("billing_status", "active")
+          .gt("monthly_bill", 0)
           .order("client_id", { ascending: true }),
         supabase.functions.invoke("fetch-mikrotik-ppp", {
           body: { action: "active-sessions", device_id: "all" },
