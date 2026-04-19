@@ -47,11 +47,11 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
     customer?.name?.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background print:block print:min-h-0">
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-72 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col transition-transform duration-200 lg:relative lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 w-72 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col transition-transform duration-200 lg:relative lg:translate-x-0 print:hidden",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -135,7 +135,7 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="h-14 sticky top-0 z-20 bg-card/80 backdrop-blur border-b border-border flex items-center justify-between px-4">
+        <header className="h-14 sticky top-0 z-20 bg-card/80 backdrop-blur border-b border-border flex items-center justify-between px-4 print:hidden">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
               <Menu className="h-5 w-5" />
@@ -172,10 +172,10 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 pb-24 lg:pb-6 overflow-auto">{children}</main>
+        <main className="flex-1 p-4 md:p-6 pb-24 lg:pb-6 overflow-auto print:p-0 print:pb-0 print:overflow-visible">{children}</main>
 
         {/* Bottom nav (mobile only) */}
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-card border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)]">
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-card border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)] print:hidden">
           <div className="grid grid-cols-5">
             {bottomNav.map((item) => {
               const active = location.pathname === item.path;
