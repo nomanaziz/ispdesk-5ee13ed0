@@ -25,7 +25,10 @@ const PortalDashboard = () => {
   const bills = data?.bills || data?.invoices || [];
   const notices = data?.notices || [];
 
-  const totalDue = bills.reduce((s: number, b: any) => s + Number(b.due ?? (b.amount - (b.paid_amount || 0)) ?? 0), 0);
+  const totalDue = bills.reduce((s: number, b: any) => {
+    const due = b.due != null ? Number(b.due) : Number(b.amount || 0) - Number(b.paid_amount || b.paid || 0);
+    return s + (isFinite(due) ? due : 0);
+  }, 0);
   const lastInvoice = bills[0];
   const paidCount = bills.filter((i: any) => i.status === "paid").length;
   const isOnline = clientRow?.is_online ?? false;
