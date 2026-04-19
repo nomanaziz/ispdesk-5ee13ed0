@@ -25,7 +25,7 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
   const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  const monthlyBill = Number(client?.monthly_bill || 0);
+  const monthlyBill = Number(billing?.amount ?? client?.monthly_bill ?? 0);
   const alreadyPaid = Number(billing?.paid || 0);
   const dueAmount = monthlyBill - alreadyPaid;
 
