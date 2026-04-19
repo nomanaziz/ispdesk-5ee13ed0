@@ -16,7 +16,7 @@ import {
   RefreshCw, Users, Wifi, WifiOff, Search, Filter, ChevronDown, ChevronUp,
   AlertTriangle, ShieldAlert, ShieldCheck, Activity, Radio, RotateCcw,
   MessageSquare, Send, ArrowUpFromLine, ArrowDownToLine, History,
-  ArrowUp, ArrowDown, ArrowUpDown,
+  ArrowUp, ArrowDown, ArrowUpDown, Server,
 } from "lucide-react";
 
 interface ActiveSession {
@@ -107,13 +107,13 @@ export default function OnlineClientMonitoring() {
     setSortBy(null); setSortDir("asc");
   };
 
-  // Filters
-  const [filterServer, setFilterServer] = useState("all");
+  // Filters — filterServer is the *active* MikroTik device (mandatory; never "all")
+  const [filterServer, setFilterServer] = useState<string>("");
   const [filterZone, setFilterZone] = useState("all");
   const [filterConnectionType, setFilterConnectionType] = useState("all");
 
   // Filter options
-  const [servers, setServers] = useState<{ id: string; name: string }[]>([]);
+  const [servers, setServers] = useState<{ id: string; name: string; order_no: number | null }[]>([]);
   const [zones, setZones] = useState<{ id: string; name: string }[]>([]);
   const [connectionTypes, setConnectionTypes] = useState<{ id: string; name: string }[]>([]);
 
@@ -159,20 +159,40 @@ export default function OnlineClientMonitoring() {
 
   const loadFilterOptions = useCallback(async () => {
     const [devRes, zoneRes, connRes] = await Promise.all([
-      supabase.from("mikrotik_devices").select("id, name").eq("enabled", true),
+      supabase
+        .from("mikrotik_devices")
+        .select("id, name, order_no")
+        .eq("enabled", true)
+        .order("order_no", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true }),
       supabase.from("zones").select("id, name").eq("status", "active"),
       supabase.from("connection_types_config").select("id, name").eq("status", "active"),
     ]);
-    if (devRes.data) setServers(devRes.data);
+    if (devRes.data) {
+      setServers(devRes.data as any);
+      // Auto-select first device on mount if none selected
+      if (!filterServer && devRes.data.length > 0) {
+        setFilterServer((devRes.data[0] as any).id);
+      }
+    }
     if (zoneRes.data) setZones(zoneRes.data);
     if (connRes.data) setConnectionTypes(connRes.data);
-  }, []);
+  }, [filterServer]);
 
   const loadActiveSessions = useCallback(async () => {
+    // Require an active device — never load all servers at once.
+    if (!filterServer) {
+      setSessions([]);
+      setOfflineClients([]);
+      setOnlineCount(0);
+      setOfflineCount(0);
+      setTotalClients(0);
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("fetch-mikrotik-ppp", {
-        body: { action: "active-sessions", device_id: filterServer !== "all" ? filterServer : "all" },
+        body: { action: "active-sessions", device_id: filterServer },
       });
       if (error) throw error;
       if (data?.sessions) {
@@ -182,11 +202,15 @@ export default function OnlineClientMonitoring() {
         setTotalClients(data.total_clients || 0);
 
         const onlineUsernames = new Set((data.sessions as ActiveSession[]).map(s => s.name));
+        // Scope offline list to the same device, exclude left clients,
+        // and only include clients whose MikroTik PPPoE is enabled.
         const { data: allClients } = await supabase
           .from("clients")
-          .select("id, client_id, name, contact, username, remote_address, zone:zones(name), sub_zone:sub_zones(name), box:boxes(name), connection_type, profile, status, mikrotik_id, server_name, total_upload, total_download, mac_address, mikrotik_device:mikrotik_devices(name)")
-          .eq("status", "active");
-        
+          .select("id, client_id, name, contact, username, remote_address, zone:zones(name), sub_zone:sub_zones(name), box:boxes(name), connection_type, profile, status, mikrotik_id, server_name, total_upload, total_download, mac_address, mikrotik_status, mikrotik_device:mikrotik_devices(name)")
+          .neq("status", "left")
+          .eq("mikrotik_id", filterServer)
+          .eq("mikrotik_status", "enabled");
+
         if (allClients) {
           const offline = allClients
             .filter((c: any) => c.username && !onlineUsernames.has(c.username))
@@ -215,6 +239,7 @@ export default function OnlineClientMonitoring() {
             }));
           setOfflineClients(offline);
           setOfflineCount(offline.length);
+          setTotalClients((data.sessions?.length || 0) + offline.length);
         }
       }
       if (data?.mismatch) {
@@ -919,7 +944,42 @@ export default function OnlineClientMonitoring() {
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* MikroTik Device Switcher — only one device's clients are loaded at a time */}
+      <Card>
+        <CardContent className="p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Server className="h-4 w-4 text-primary" />
+            <p className="text-xs font-semibold uppercase text-muted-foreground">MikroTik Server (একটি করে লোড হবে)</p>
+          </div>
+          {servers.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2">কোনো enabled MikroTik সার্ভার পাওয়া যায়নি</p>
+          ) : (
+            <div className="flex flex-wrap gap-2 overflow-x-auto">
+              {servers.map((s) => {
+                const active = filterServer === s.id;
+                return (
+                  <Button
+                    key={s.id}
+                    size="sm"
+                    variant={active ? "default" : "outline"}
+                    onClick={() => { setFilterServer(s.id); setSelectedIds(new Set()); }}
+                    className="h-8"
+                    disabled={loading && active}
+                  >
+                    <Badge variant="secondary" className="mr-1.5 h-5 min-w-5 px-1 font-mono text-[10px]">
+                      {s.order_no ?? "?"}
+                    </Badge>
+                    {s.name}
+                    {active && loading && <RefreshCw className="h-3 w-3 ml-1.5 animate-spin" />}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Summary Cards (scoped to active device) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
@@ -978,20 +1038,13 @@ export default function OnlineClientMonitoring() {
             </div>
           </div>
           {showFilters && (
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t">
               <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "online" | "offline")}>
                 <SelectTrigger className="h-9"><SelectValue placeholder="All Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All ({onlineCount + offlineCount})</SelectItem>
                   <SelectItem value="online">Online ({onlineCount})</SelectItem>
                   <SelectItem value="offline">Offline ({offlineCount})</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterServer} onValueChange={setFilterServer}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="All Servers" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Servers</SelectItem>
-                  {servers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={filterZone} onValueChange={setFilterZone}>

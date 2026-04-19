@@ -4819,6 +4819,7 @@ export type Database = {
           id: string
           ip_address: string
           name: string
+          order_no: number | null
           password_encrypted: string | null
           status: Database["public"]["Enums"]["device_status"]
           timeout: number
@@ -4835,6 +4836,7 @@ export type Database = {
           id?: string
           ip_address: string
           name: string
+          order_no?: number | null
           password_encrypted?: string | null
           status?: Database["public"]["Enums"]["device_status"]
           timeout?: number
@@ -4851,6 +4853,7 @@ export type Database = {
           id?: string
           ip_address?: string
           name?: string
+          order_no?: number | null
           password_encrypted?: string | null
           status?: Database["public"]["Enums"]["device_status"]
           timeout?: number
