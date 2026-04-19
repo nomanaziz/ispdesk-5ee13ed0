@@ -80,6 +80,7 @@ function useStats() {
         popCount,
         salaryThisMonth,
         smsBalance,
+        billingActiveClients, freeClients, personalClients, vipClients,
       ] = await Promise.all([
         supabase.from("clients").select("id", { count: "exact", head: true }),
         supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "active"),
@@ -128,6 +129,11 @@ function useStats() {
         supabase.from("payroll").select("net_pay").gte("created_at", monthStart),
         // SMS balance (system_settings)
         supabase.from("system_settings").select("setting_value").eq("setting_key", "sms_balance").maybeSingle(),
+        // Billing-type breakdown (case-insensitive via ilike)
+        supabase.from("clients").select("id", { count: "exact", head: true }).ilike("billing_status", "Active"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).ilike("billing_status", "Free"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).ilike("billing_status", "Personal"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("is_vip", true),
       ]);
 
       // Fetch client names for latest billing
@@ -237,7 +243,11 @@ function useStats() {
         dueClients: dueCount,
         paidClients: paidCount,
         partialClients: partialCount,
-        billingClients: billingTM.length,
+        billingClients: billingActiveClients.count ?? 0,
+        freeClients: freeClients.count ?? 0,
+        personalClients: personalClients.count ?? 0,
+        vipClients: vipClients.count ?? 0,
+        billingMonthRows: billingTM.length,
         suspendClients: clientsSuspended.count ?? 0,
         inactiveClients: clientsInactive.count ?? 0,
         todaySales: sum(billingToday.data),
@@ -346,6 +356,10 @@ const Dashboard = () => {
         { title: "হোম ক্লায়েন্ট", value: d?.homeClients ?? 0, icon: Home, colorIndex: 3 },
         { title: "সচল ক্লায়েন্ট", value: d?.totalActive ?? 0, icon: UserCheck, colorIndex: 4 },
         { title: "হোম অ্যাক্টিভ", value: d?.homeActive ?? 0, icon: Home, colorIndex: 5 },
+        { title: "বিলিং ক্লায়েন্ট", value: d?.billingClients ?? 0, icon: FileText, colorIndex: 1 },
+        { title: "ফ্রি ক্লায়েন্ট", value: d?.freeClients ?? 0, icon: ShieldCheck, colorIndex: 6 },
+        { title: "পার্সোনাল ক্লায়েন্ট", value: d?.personalClients ?? 0, icon: UserCheck, colorIndex: 7 },
+        { title: "VIP ক্লায়েন্ট", value: d?.vipClients ?? 0, icon: Award, colorIndex: 11 },
       ])}
 
       {/* Row 2: Status Breakdown */}
