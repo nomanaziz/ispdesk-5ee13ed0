@@ -1,87 +1,45 @@
 import { Link } from "react-router-dom";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { callPortal } from "@/lib/portalApi";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DollarSign, Package, Calendar, Wifi, Wallet,
-  FileText, HeadphonesIcon, CreditCard, Bell, Sparkles,
+  FileText, HeadphonesIcon, CreditCard, Bell, Sparkles, UserCog,
 } from "lucide-react";
 
 const PortalDashboard = () => {
   const { customer } = usePortalAuth();
 
-  const { data: invoices } = useQuery({
-    queryKey: ["portal-bills-dash", customer?.sub, customer?.type],
-    queryFn: async () => {
-      if (customer?.type === "client") {
-        const { data } = await supabase
-          .from("billing")
-          .select("id, bill_id, month, amount, paid, due, status, created_at, discount")
-          .eq("client_id", customer!.sub)
-          .order("month", { ascending: false });
-        return (data || []).map((b: any) => ({
-          ...b,
-          invoice_no: b.bill_id,
-          paid_amount: b.paid,
-        }));
-      }
-      const { data } = await supabase
-        .from("bw_sales_invoices")
-        .select("*")
-        .eq("customer_id", customer!.sub)
-        .order("created_at", { ascending: false });
-      return data || [];
-    },
+  const { data, isLoading } = useQuery({
+    queryKey: ["portal-dashboard", customer?.sub],
+    queryFn: () => callPortal<any>("get_dashboard"),
     enabled: !!customer?.sub,
   });
 
-  const { data: clientRow } = useQuery({
-    queryKey: ["portal-client", customer?.sub],
-    queryFn: async () => {
-      if (customer?.type !== "client") return null;
-      const { data } = await supabase
-        .from("clients")
-        .select("*, isp_packages(name, price), zones(name)")
-        .eq("id", customer!.sub)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!customer?.sub && customer?.type === "client",
-  });
+  const isClient = customer?.type === "client";
+  const clientRow = data?.client;
+  const bills = data?.bills || data?.invoices || [];
+  const notices = data?.notices || [];
 
-  const { data: notices } = useQuery({
-    queryKey: ["portal-notices-active"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("client_notices")
-        .select("*")
-        .eq("active", true)
-        .order("pinned", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(3);
-      return data || [];
-    },
-  });
-
-  const totalDue = invoices?.reduce((s, i) => s + (i.due || 0), 0) || 0;
-  const lastInvoice = invoices?.[0];
-  const paidCount = invoices?.filter((i) => i.status === "paid").length || 0;
+  const totalDue = bills.reduce((s: number, b: any) => s + Number(b.due ?? (b.amount - (b.paid_amount || 0)) ?? 0), 0);
+  const lastInvoice = bills[0];
+  const paidCount = bills.filter((i: any) => i.status === "paid").length;
   const isOnline = clientRow?.is_online ?? false;
   const status = clientRow?.status || "Active";
   const pkgName = clientRow?.isp_packages?.name || "—";
   const monthlyBill = clientRow?.monthly_bill || customer?.monthly_bill || 0;
-  const balance = customer?.balance ?? 0;
+  const balance = clientRow?.balance ?? customer?.balance ?? 0;
 
   const initials =
     customer?.name?.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
   const stats = [
     { label: "Monthly Bill", value: `৳${Number(monthlyBill).toLocaleString()}`, icon: DollarSign, tint: "from-violet-500 to-indigo-500" },
-    { label: "Service", value: clientRow?.connection_type || "Internet", icon: Wifi, tint: "from-sky-500 to-cyan-500" },
+    { label: "Service", value: clientRow?.connection_types?.name || "Internet", icon: Wifi, tint: "from-sky-500 to-cyan-500" },
     { label: "Package", value: pkgName, icon: Package, tint: "from-emerald-500 to-teal-500" },
     { label: "Join Date", value: clientRow?.joining_date ? new Date(clientRow.joining_date).toLocaleDateString() : "—", icon: Calendar, tint: "from-amber-500 to-orange-500" },
     { label: "Ledger Balance", value: `৳${Number(balance).toLocaleString()}`, icon: Wallet, tint: "from-rose-500 to-pink-500", badge: totalDue === 0 ? "Paid" : "Due" },
@@ -89,8 +47,7 @@ const PortalDashboard = () => {
 
   return (
     <div className="space-y-5 animate-in fade-in duration-300">
-      {/* Notice banner */}
-      {notices && notices.length > 0 && (
+      {notices.length > 0 && (
         <div className="flex items-start gap-3 rounded-2xl border border-amber-200/70 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-3">
           <div className="h-9 w-9 shrink-0 rounded-full bg-amber-100 flex items-center justify-center">
             <Bell className="h-4 w-4 text-amber-600" />
@@ -109,18 +66,15 @@ const PortalDashboard = () => {
         </div>
       )}
 
-      {/* Hero card */}
       <Card className="overflow-hidden border-0 shadow-md">
         <div className="relative bg-gradient-to-br from-violet-500 via-indigo-500 to-blue-600 text-white p-5 sm:p-7">
           <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
           <div className="absolute -bottom-12 -left-8 h-40 w-40 rounded-full bg-fuchsia-400/20 blur-3xl" />
-
           <div className="relative flex flex-col lg:flex-row gap-5 lg:items-center">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16 sm:h-20 sm:w-20 ring-4 ring-white/30 shadow-xl">
-                <AvatarFallback className="bg-white/20 backdrop-blur text-white text-xl font-bold">
-                  {initials}
-                </AvatarFallback>
+                {clientRow?.photo_url && <img src={clientRow.photo_url} alt={customer?.name} className="object-cover" />}
+                <AvatarFallback className="bg-white/20 backdrop-blur text-white text-xl font-bold">{initials}</AvatarFallback>
               </Avatar>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-white/80 text-xs">
@@ -128,38 +82,31 @@ const PortalDashboard = () => {
                 </div>
                 <h1 className="text-xl sm:text-2xl font-bold mt-0.5 truncate">{customer?.name}</h1>
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                  <Badge className="bg-white/20 hover:bg-white/25 text-white border-0 text-[10px] uppercase tracking-wide">
-                    {pkgName}
-                  </Badge>
-                  <Badge className={`text-[10px] uppercase border-0 ${status === "Active" ? "bg-emerald-400/30 text-emerald-50" : "bg-rose-400/30 text-rose-50"}`}>
-                    {status}
-                  </Badge>
-                  <Badge className={`text-[10px] uppercase border-0 ${isOnline ? "bg-green-400/30 text-green-50" : "bg-slate-400/30 text-slate-50"}`}>
-                    ● {isOnline ? "Online" : "Offline"}
-                  </Badge>
-                  <Badge className="bg-white/15 text-white border-0 text-[10px]">
-                    @{customer?.username}
-                  </Badge>
+                  <Badge className="bg-white/20 hover:bg-white/25 text-white border-0 text-[10px] uppercase tracking-wide">{pkgName}</Badge>
+                  <Badge className={`text-[10px] uppercase border-0 ${status === "Active" ? "bg-emerald-400/30 text-emerald-50" : "bg-rose-400/30 text-rose-50"}`}>{status}</Badge>
+                  <Badge className={`text-[10px] uppercase border-0 ${isOnline ? "bg-green-400/30 text-green-50" : "bg-slate-400/30 text-slate-50"}`}>● {isOnline ? "Online" : "Offline"}</Badge>
+                  <Badge className="bg-white/15 text-white border-0 text-[10px]">@{customer?.username}</Badge>
                 </div>
               </div>
             </div>
-
             <div className="lg:ml-auto flex flex-wrap gap-2">
               <Button asChild size="sm" variant="secondary" className="bg-white text-violet-700 hover:bg-white/90 shadow">
-                <Link to={customer?.type === "client" ? "/portal/bills" : "/portal/invoices"}><FileText className="h-4 w-4" /> {customer?.type === "client" ? "মাসিক বিল" : "Invoices"}</Link>
+                <Link to={isClient ? "/portal/bills" : "/portal/invoices"}><FileText className="h-4 w-4" /> {isClient ? "মাসিক বিল" : "Invoices"}</Link>
+              </Button>
+              <Button asChild size="sm" variant="secondary" className="bg-white/15 text-white hover:bg-white/25 backdrop-blur border-0">
+                <Link to="/portal/profile"><UserCog className="h-4 w-4" /> Profile</Link>
               </Button>
               <Button asChild size="sm" variant="secondary" className="bg-white/15 text-white hover:bg-white/25 backdrop-blur border-0">
                 <Link to="/portal/support"><HeadphonesIcon className="h-4 w-4" /> Support</Link>
               </Button>
               <Button asChild size="sm" className="bg-emerald-400 hover:bg-emerald-500 text-emerald-950 font-semibold shadow">
-                <Link to={customer?.type === "client" ? "/portal/bills" : "/portal/invoices"}><CreditCard className="h-4 w-4" /> Pay Now</Link>
+                <Link to={isClient ? "/portal/bills" : "/portal/invoices"}><CreditCard className="h-4 w-4" /> Pay Now</Link>
               </Button>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {stats.map((s) => (
           <Card key={s.label} className="border-0 shadow-sm hover:shadow-md transition-shadow">
@@ -169,9 +116,7 @@ const PortalDashboard = () => {
                   <s.icon className="h-4 w-4" />
                 </div>
                 {s.badge && (
-                  <Badge className={s.badge === "Paid" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-rose-100 text-rose-700 border-0"}>
-                    {s.badge}
-                  </Badge>
+                  <Badge className={s.badge === "Paid" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-rose-100 text-rose-700 border-0"}>{s.badge}</Badge>
                 )}
               </div>
               <div className="mt-3 text-xs text-muted-foreground">{s.label}</div>
@@ -181,7 +126,6 @@ const PortalDashboard = () => {
         ))}
       </div>
 
-      {/* Service & Client details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-5">
@@ -192,15 +136,13 @@ const PortalDashboard = () => {
               <h3 className="font-semibold">Service Overview</h3>
             </div>
             <dl className="space-y-2.5 text-sm">
-              <Row label="Username" value={customer?.username || "—"} />
+              <Row label="Username" value={clientRow?.username || customer?.username || "—"} />
               <Row label="Package" value={pkgName} />
-              <Row label="Speed" value={clientRow?.speed || "—"} />
-              <Row label="Connection" value={clientRow?.connection_type || "—"} />
-              <Row label="Protocol" value={clientRow?.protocol_type || "—"} />
+              <Row label="Speed" value={clientRow?.isp_packages?.download_speed ? `${clientRow.isp_packages.download_speed}/${clientRow.isp_packages.upload_speed} Mbps` : (clientRow?.speed || "—")} />
+              <Row label="Connection" value={clientRow?.connection_types?.name || clientRow?.connection_type || "—"} />
+              <Row label="Protocol" value={clientRow?.protocol_types?.name || clientRow?.protocol_type || "—"} />
               <Row label="Status" value={
-                <Badge className={status === "Active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-rose-100 text-rose-700 border-0"}>
-                  {status}
-                </Badge>
+                <Badge className={status === "Active" ? "bg-emerald-100 text-emerald-700 border-0" : "bg-rose-100 text-rose-700 border-0"}>{status}</Badge>
               } />
             </dl>
           </CardContent>
@@ -213,12 +155,15 @@ const PortalDashboard = () => {
                 <Package className="h-4 w-4 text-indigo-600" />
               </div>
               <h3 className="font-semibold">Client Details</h3>
+              <Button asChild size="sm" variant="ghost" className="ml-auto text-xs">
+                <Link to="/portal/profile">Edit</Link>
+              </Button>
             </div>
             <dl className="space-y-2.5 text-sm">
-              <Row label="Customer Code" value={customer?.code || "—"} />
-              <Row label="Mobile" value={customer?.mobile || clientRow?.contact || "—"} />
-              <Row label="Email" value={customer?.email || clientRow?.email || "—"} />
-              <Row label="Address" value={customer?.address || clientRow?.address || "—"} />
+              <Row label="Customer Code" value={clientRow?.client_id || customer?.code || "—"} />
+              <Row label="Mobile" value={clientRow?.contact || "—"} />
+              <Row label="Email" value={clientRow?.email || "—"} />
+              <Row label="Present Address" value={clientRow?.present_address || clientRow?.address || "—"} />
               <Row label="Zone" value={clientRow?.zones?.name || "—"} />
               <Row label="NID" value={clientRow?.nid_number || "—"} />
             </dl>
@@ -226,7 +171,6 @@ const PortalDashboard = () => {
         </Card>
       </div>
 
-      {/* Billing Info Strip */}
       <Card className="border-0 shadow-sm bg-gradient-to-r from-slate-50 to-blue-50/40">
         <CardContent className="p-5">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -237,7 +181,7 @@ const PortalDashboard = () => {
             <div>
               <div className="text-xs text-muted-foreground">Last Invoice</div>
               <div className="text-lg font-bold text-slate-900">
-                {lastInvoice ? `#${lastInvoice.invoice_no}` : "—"}
+                {lastInvoice ? `#${lastInvoice.bill_id || lastInvoice.invoice_no}` : "—"}
               </div>
               <div className="text-xs text-muted-foreground">{lastInvoice?.month || ""}</div>
             </div>
@@ -255,6 +199,8 @@ const PortalDashboard = () => {
           </div>
         </CardContent>
       </Card>
+
+      {isLoading && <div className="text-center text-xs text-muted-foreground">লোড হচ্ছে...</div>}
     </div>
   );
 };
