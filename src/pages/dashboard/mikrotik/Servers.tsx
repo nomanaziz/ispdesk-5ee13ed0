@@ -60,11 +60,20 @@ export default function Servers() {
   const { data: devices = [], isLoading } = useQuery({
     queryKey: ["mikrotik_devices"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("mikrotik_devices").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("mikrotik_devices")
+        .select("*")
+        .order("order_no", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data as MikrotikDevice[];
     },
   });
+
+  const nextOrderNo = () => {
+    const maxOrder = devices.reduce((m, d) => Math.max(m, d.order_no || 0), 0);
+    return maxOrder + 1;
+  };
 
   const upsertMutation = useMutation({
     mutationFn: async (values: typeof defaultForm & { id?: string }) => {
@@ -132,7 +141,13 @@ export default function Servers() {
 
   const openEdit = (d: MikrotikDevice) => {
     setEditId(d.id);
-    setForm({ name: d.name, ip_address: d.ip_address, username: d.username, password_encrypted: d.password_encrypted || "", api_port: d.api_port, version: d.version, timeout: d.timeout });
+    setForm({ name: d.name, ip_address: d.ip_address, username: d.username, password_encrypted: d.password_encrypted || "", api_port: d.api_port, version: d.version, timeout: d.timeout, order_no: d.order_no || nextOrderNo() });
+    setDialogOpen(true);
+  };
+
+  const openAdd = () => {
+    setEditId(null);
+    setForm({ ...defaultForm, order_no: nextOrderNo() });
     setDialogOpen(true);
   };
 
