@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+@media print {
+  html, body, #root { background: #fff !important; }
+  body * { visibility: visible; }
+  .print\:hidden { display: none !important; }
+  @page { margin: 12mm; }
+}
+
 @layer base {
   /* ── Light Mode (Default) ── */
   :root,

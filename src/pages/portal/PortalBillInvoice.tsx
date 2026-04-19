@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Printer, Receipt, CreditCard, AlertCircle } from "lucide-react";
+import { ArrowLeft, Printer, Receipt, CreditCard, AlertCircle, Download } from "lucide-react";
 import { toast } from "sonner";
 
 const PortalBillInvoice = () => {
@@ -94,6 +94,9 @@ const PortalBillInvoice = () => {
           )}
           <Button onClick={() => window.print()} size="sm" variant="outline">
             <Printer className="h-4 w-4" /> প্রিন্ট
+          </Button>
+          <Button onClick={() => window.print()} size="sm" variant="outline">
+            <Download className="h-4 w-4" /> Download PDF
           </Button>
         </div>
       </div>
