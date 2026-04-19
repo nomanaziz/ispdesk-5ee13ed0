@@ -95,8 +95,13 @@ export default function BillingList() {
         }
       }
 
+      const monthKey = filters.month; // YYYY-MM
       return (data || []).map((c: any) => {
-        const bill = (c.billing || []).find((b: any) => b.month === filters.month);
+        const bill = (c.billing || []).find((b: any) => {
+          if (!b?.month) return false;
+          const m = String(b.month).slice(0, 7); // normalize YYYY-MM-01 -> YYYY-MM
+          return m === monthKey;
+        });
         return {
           ...c,
           currentBill: bill || null,
