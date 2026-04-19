@@ -57,45 +57,25 @@ export default function BillingList() {
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["billing-list", filters.month],
     queryFn: async () => {
-      const [clientsResult, sessionsResult] = await Promise.allSettled([
-        supabase
-          .from("clients")
-          .select(`
-            id, client_id, name, contact, username, remote_address, status,
-            client_type, connection_type, monthly_bill, expire_date, speed,
-            server_name, mac_address, protocol_type, profile, password,
-            mikrotik_id, mikrotik_status, is_vip, billing_date, is_online,
-            zone_id, sub_zone_id, box_id, package_id, email, billing_status,
-            zone:zones(name),
-            package:isp_packages(name),
-            mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name),
-            billing!billing_client_id_fkey(id, bill_id, month, amount, paid, due, discount, advance, vat, status, pay_date)
-          `)
-          .eq("status", "active")
-          .ilike("billing_status", "active")
-          .gt("monthly_bill", 0)
-          .order("client_id", { ascending: true }),
-        supabase.functions.invoke("fetch-mikrotik-ppp", {
-          body: { action: "active-sessions", device_id: "all" },
-        }),
-      ]);
+      const { data, error } = await supabase
+        .from("clients")
+        .select(`
+          id, client_id, name, contact, username, remote_address, status,
+          client_type, connection_type, monthly_bill, expire_date, speed,
+          server_name, mac_address, protocol_type, profile, password,
+          mikrotik_id, mikrotik_status, is_vip, billing_date, is_online,
+          zone_id, sub_zone_id, box_id, package_id, email, billing_status,
+          zone:zones(name),
+          package:isp_packages(name),
+          mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name),
+          billing!billing_client_id_fkey(id, bill_id, month, amount, paid, due, discount, advance, vat, status, pay_date)
+        `)
+        .eq("status", "active")
+        .ilike("billing_status", "active")
+        .gt("monthly_bill", 0)
+        .order("client_id", { ascending: true });
 
-      if (clientsResult.status === "rejected") throw clientsResult.reason;
-
-      const { data, error } = clientsResult.value;
       if (error) throw error;
-
-      const hasLiveSessionData =
-        sessionsResult.status === "fulfilled" &&
-        !sessionsResult.value.error &&
-        Array.isArray(sessionsResult.value.data?.sessions);
-
-      const onlineUsernames = new Set<string>();
-      if (hasLiveSessionData) {
-        for (const session of sessionsResult.value.data.sessions as Array<{ name?: string }>) {
-          if (session.name) onlineUsernames.add(session.name.toLowerCase());
-        }
-      }
 
       const monthKey = filters.month; // YYYY-MM
       return (data || []).map((c: any) => {
@@ -107,9 +87,7 @@ export default function BillingList() {
         return {
           ...c,
           currentBill: bill || null,
-          isOnlineLive: hasLiveSessionData
-            ? Boolean(c.username && onlineUsernames.has(c.username.toLowerCase()))
-            : Boolean(c.is_online),
+          isOnlineLive: Boolean(c.is_online),
         };
       });
     },
