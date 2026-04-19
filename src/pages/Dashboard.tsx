@@ -134,6 +134,7 @@ function useStats() {
         supabase.from("clients").select("id", { count: "exact", head: true }).ilike("billing_status", "Free"),
         supabase.from("clients").select("id", { count: "exact", head: true }).ilike("billing_status", "Personal"),
         supabase.from("clients").select("id", { count: "exact", head: true }).eq("is_vip", true),
+      ]);
 
       // Fetch client names for latest billing
       const latestInvoices: { bill_id: string; amount: number; client_name: string; status: string }[] = [];
