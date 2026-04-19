@@ -216,6 +216,68 @@ export type Database = {
           },
         ]
       }
+      asset_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          created_at: string
+          id: string
+          inventory_item_id: string
+          notes: string | null
+          quantity: number
+          recipient_id: string | null
+          recipient_name: string
+          recipient_type: string
+          returned_at: string | null
+          returned_by: string | null
+          serial_no: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          notes?: string | null
+          quantity?: number
+          recipient_id?: string | null
+          recipient_name: string
+          recipient_type: string
+          returned_at?: string | null
+          returned_by?: string | null
+          serial_no?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          notes?: string | null
+          quantity?: number
+          recipient_id?: string | null
+          recipient_name?: string
+          recipient_type?: string
+          returned_at?: string | null
+          returned_by?: string | null
+          serial_no?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_assignments_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assets: {
         Row: {
           assigned_to: string | null
