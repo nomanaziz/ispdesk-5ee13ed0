@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PortalAuthProvider, usePortalAuth } from "@/contexts/PortalAuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Activity, User, Lock, Eye, EyeOff } from "lucide-react";
+import { Activity, User, Lock, Eye, EyeOff, MapPin, Phone, Mail, Globe } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PublicLayout } from "@/components/PublicLayout";
 import { useLanguage } from "@/contexts/LanguageContext";
