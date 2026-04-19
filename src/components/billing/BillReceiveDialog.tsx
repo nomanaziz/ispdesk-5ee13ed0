@@ -122,6 +122,21 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
         status: "approved",
       });
 
+      // Insert income entry for accounting (cash/online/bank — all collections count as income)
+      const monthKey = (billing?.month || receivedDate || new Date().toISOString().slice(0, 10)).slice(0, 7);
+      await supabase.from("income_entries").insert({
+        amount: totalReceived,
+        source: "bill_collection",
+        description: `বিল কালেকশন — ${client.name} (${client.client_id || ""})`,
+        income_date: receivedDate,
+        month: monthKey,
+        client_id: client.id,
+        payment_method: paymentMethod,
+        reference: billing?.id || null,
+        received_by: receivedBy || null,
+        status: "approved",
+      });
+
       // Extend expire date if checked
       if (setNextBilling) {
         const bd = client.billing_date || 1;
