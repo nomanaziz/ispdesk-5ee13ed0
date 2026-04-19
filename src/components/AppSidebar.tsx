@@ -85,7 +85,7 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "ক্লায়েন্ট",
+    label: "🏠 হোম ক্লায়েন্ট",
     icon: Users,
     items: [
       { title: "নতুন রিকোয়েস্ট", url: "/dashboard/clients/new-request", icon: MessageSquare },
@@ -96,6 +96,30 @@ const menuGroups: MenuGroup[] = [
       { title: "পরিবর্তন রিকোয়েস্ট", url: "/dashboard/clients/change-request", icon: RefreshCw },
       { title: "পোর্টাল ম্যানেজ", url: "/dashboard/clients/portal-manage", icon: Monitor },
       { title: "আপডেট রিকোয়েস্ট", url: "/dashboard/clients/update-requests", icon: ShieldCheck },
+    ],
+  },
+  {
+    label: "📡 POP / MAC ক্লায়েন্ট",
+    icon: Radio,
+    items: [
+      { title: "POP যোগ করুন", url: "/dashboard/branches/add-manager", icon: UserPlus },
+      { title: "POP ম্যানেজার লিস্ট", url: "/dashboard/branches/managers", icon: Users },
+      { title: "ট্যারিফ কনফিগ", url: "/dashboard/branches/tariff", icon: Settings },
+      { title: "POP ফান্ডিং", url: "/dashboard/branches/funding", icon: Banknote },
+      { title: "ক্লায়েন্ট PGW পেমেন্ট", url: "/dashboard/branches/pgw-payments", icon: CreditCardIcon },
+      { title: "PGW সেটেলমেন্ট", url: "/dashboard/branches/pgw-settlement", icon: Receipt },
+      { title: "POP নোটিশ", url: "/dashboard/branches/pop-notice", icon: Bell },
+    ],
+  },
+  {
+    label: "📶 ব্যান্ডউইথ ক্লায়েন্ট",
+    icon: Wifi,
+    items: [
+      { title: "POP / কাস্টমার", url: "/dashboard/bw-sale/pop", icon: Radio },
+      { title: "সার্ভিস ক্যাটালগ", url: "/dashboard/bw-sale/services", icon: Layers },
+      { title: "বিক্রয় ইনভয়েস", url: "/dashboard/bw-sale/invoices", icon: FileText },
+      { title: "বিল কালেকশন", url: "/dashboard/bw-sale/collection", icon: Wallet },
+      { title: "রিকারিং ইনভয়েস", url: "/dashboard/bw-sale/recurring", icon: RefreshCw },
     ],
   },
   {
