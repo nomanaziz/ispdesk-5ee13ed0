@@ -653,6 +653,7 @@ const App = () => (
               <Route path="/portal/shop" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalShop /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/checkout" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalShopCheckout /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/my-orders" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalMyOrders /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/profile" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalProfile /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
 
               {/* Reseller Portal */}
               <Route path="/reseller" element={<Navigate to="/reseller/dashboard" replace />} />

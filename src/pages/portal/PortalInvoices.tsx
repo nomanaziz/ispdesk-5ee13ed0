@@ -1,6 +1,7 @@
-import { usePortalAuth } from "@/contexts/PortalAuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { usePortalAuth } from "@/contexts/PortalAuthContext";
+import { callPortal } from "@/lib/portalApi";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,37 +11,41 @@ import { FileText, Search, CreditCard, Calendar, Hash } from "lucide-react";
 
 const statusColor: Record<string, string> = {
   paid: "bg-emerald-100 text-emerald-700",
+  partial: "bg-amber-100 text-amber-700",
   due: "bg-rose-100 text-rose-700",
-  unpaid: "bg-amber-100 text-amber-700",
+  unpaid: "bg-rose-100 text-rose-700",
 };
 
 const PortalInvoices = () => {
   const { customer } = usePortalAuth();
   const [search, setSearch] = useState("");
+  const isClient = customer?.type === "client";
 
-  const { data: invoices, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["portal-invoices-list", customer?.sub],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("bw_sales_invoices")
-        .select("*")
-        .eq("customer_id", customer!.sub)
-        .order("created_at", { ascending: false });
-      return data || [];
-    },
+    queryFn: () => callPortal<any>("get_invoices"),
     enabled: !!customer?.sub,
   });
 
-  const filtered =
-    invoices?.filter(
-      (i) =>
-        i.invoice_no.toLowerCase().includes(search.toLowerCase()) ||
-        (i.month || "").toLowerCase().includes(search.toLowerCase())
-    ) || [];
+  const invoices: any[] = data?.invoices || [];
+  const kind = data?.kind || (isClient ? "billing" : "bw");
 
-  const totalAmount = filtered.reduce((s, i) => s + (i.amount || 0), 0);
-  const totalPaid = filtered.reduce((s, i) => s + (i.paid_amount || 0), 0);
-  const totalDue = filtered.reduce((s, i) => s + (i.due || 0), 0);
+  const getNo = (i: any) => i.bill_id || i.invoice_no || "";
+  const getAmount = (i: any) => Number(i.amount || 0);
+  const getPaid = (i: any) => Number(i.paid ?? i.paid_amount ?? 0);
+  const getDue = (i: any) => Number(i.due ?? Math.max(getAmount(i) - getPaid(i), 0));
+
+  const filtered = invoices.filter((i) => {
+    const q = search.toLowerCase();
+    return (
+      getNo(i).toLowerCase().includes(q) ||
+      String(i.month || "").toLowerCase().includes(q)
+    );
+  });
+
+  const totalAmount = filtered.reduce((s, i) => s + getAmount(i), 0);
+  const totalPaid = filtered.reduce((s, i) => s + getPaid(i), 0);
+  const totalDue = filtered.reduce((s, i) => s + getDue(i), 0);
 
   return (
     <div className="space-y-5 animate-in fade-in duration-300">
@@ -50,7 +55,7 @@ const PortalInvoices = () => {
             <FileText className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Billing Invoices</h1>
+            <h1 className="text-xl font-bold">{isClient ? "Invoices" : "Billing Invoices"}</h1>
             <p className="text-sm text-muted-foreground">Your invoice history & payments</p>
           </div>
         </div>
@@ -60,12 +65,11 @@ const PortalInvoices = () => {
             placeholder="Search…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 w-64 bg-white"
+            className="pl-9 w-64"
           />
         </div>
       </div>
 
-      {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
@@ -87,7 +91,6 @@ const PortalInvoices = () => {
         </Card>
       </div>
 
-      {/* Invoice cards */}
       {isLoading ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-10 text-center text-muted-foreground">Loading…</CardContent>
@@ -99,7 +102,10 @@ const PortalInvoices = () => {
       ) : (
         <div className="space-y-2.5">
           {filtered.map((inv) => {
-            const isDue = (inv.due || 0) > 0;
+            const due = getDue(inv);
+            const isDue = due > 0;
+            const status = inv.status || (isDue ? "unpaid" : "paid");
+            const detailLink = kind === "billing" ? `/portal/bills/${inv.id}` : undefined;
             return (
               <Card key={inv.id} className="border-0 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                 <CardContent className="p-0">
@@ -109,32 +115,37 @@ const PortalInvoices = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-sm flex items-center gap-1">
-                            <Hash className="h-3 w-3 text-muted-foreground" />{inv.invoice_no}
+                            <Hash className="h-3 w-3 text-muted-foreground" />{getNo(inv)}
                           </span>
-                          <Badge className={`${statusColor[inv.status] || statusColor.due} border-0 capitalize text-[10px]`}>
-                            {inv.status}
+                          <Badge className={`${statusColor[status] || statusColor.unpaid} border-0 capitalize text-[10px]`}>
+                            {status}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1.5 flex-wrap">
                           <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{inv.month || new Date(inv.created_at).toLocaleDateString()}</span>
-                          <span>Paid: ৳{(inv.paid_amount || 0).toLocaleString()}</span>
-                          {(inv.discount || 0) > 0 && <span>Discount: ৳{inv.discount.toLocaleString()}</span>}
+                          <span>Paid: ৳{getPaid(inv).toLocaleString()}</span>
+                          {Number(inv.discount || 0) > 0 && <span>Discount: ৳{Number(inv.discount).toLocaleString()}</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
                           <div className="text-[10px] text-muted-foreground uppercase">Amount</div>
-                          <div className="font-bold">৳{(inv.amount || 0).toLocaleString()}</div>
+                          <div className="font-bold">৳{getAmount(inv).toLocaleString()}</div>
                         </div>
                         {isDue && (
                           <div className="text-right">
                             <div className="text-[10px] text-muted-foreground uppercase">Due</div>
-                            <div className="font-bold text-rose-600">৳{(inv.due || 0).toLocaleString()}</div>
+                            <div className="font-bold text-rose-600">৳{due.toLocaleString()}</div>
                           </div>
                         )}
-                        {isDue && (
-                          <Button size="sm" className="bg-gradient-to-r from-emerald-500 to-teal-600 shadow">
-                            <CreditCard className="h-3.5 w-3.5" /> Pay
+                        {detailLink && (
+                          <Button asChild size="sm" variant="outline">
+                            <Link to={detailLink}><FileText className="h-3.5 w-3.5" /> View</Link>
+                          </Button>
+                        )}
+                        {isDue && detailLink && (
+                          <Button asChild size="sm" className="bg-gradient-to-r from-emerald-500 to-teal-600 shadow">
+                            <Link to={detailLink}><CreditCard className="h-3.5 w-3.5" /> Pay</Link>
                           </Button>
                         )}
                       </div>

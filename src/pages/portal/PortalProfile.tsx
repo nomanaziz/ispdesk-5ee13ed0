@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { callPortal } from "@/lib/portalApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,8 +32,8 @@ const PortalProfile = () => {
   const requests: any[] = data?.requests || [];
 
   const [form, setForm] = useState<any>({});
-  const [docName, setDocName] = useState(client?.name || "");
-  const [docNid, setDocNid] = useState(client?.nid_number || "");
+  const [docName, setDocName] = useState("");
+  const [docNid, setDocNid] = useState("");
   const fileRefs = {
     photo: useRef<HTMLInputElement>(null),
     nidFront: useRef<HTMLInputElement>(null),
@@ -41,8 +41,8 @@ const PortalProfile = () => {
   };
   const [pendingDocs, setPendingDocs] = useState<{ photo_url?: string; nid_front_url?: string; nid_back_url?: string }>({});
 
-  // initialize form once data loads
-  if (client && Object.keys(form).length === 0) {
+  useEffect(() => {
+    if (!client) return;
     setForm({
       contact: client.contact || "",
       email: client.email || "",
@@ -51,7 +51,8 @@ const PortalProfile = () => {
     });
     setDocName(client.name || "");
     setDocNid(client.nid_number || "");
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client?.id]);
 
   const saveProfile = useMutation({
     mutationFn: () => callPortal("update_profile", form),

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Download, Upload, Wifi, User, Hash, Phone, Clock, Gauge, WifiOff, Mail, MapPin, Shield } from "lucide-react";
@@ -27,19 +28,6 @@ const fmtBytes = (b: number) => {
   return `${v.toFixed(2)} ${u[i]}`;
 };
 
-const fmtUptime = (since?: string | null) => {
-  if (!since) return "—";
-  const ms = Date.now() - new Date(since).getTime();
-  if (ms < 0) return "—";
-  const s = Math.floor(ms / 1000);
-  const d = Math.floor(s / 86400);
-  const h = Math.floor((s % 86400) / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (d > 0) return `${d}d ${h}h ${m}m`;
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-};
-
 type Sample = { time: string; down: number; up: number };
 const MAX_POINTS = 30;
 
@@ -47,23 +35,13 @@ const PortalLiveUsage = () => {
   const { customer } = usePortalAuth();
   const clientId = customer?.type === "client" ? customer.sub : undefined;
 
-  const { data: client } = useQuery({
-    queryKey: ["portal-live-client", clientId],
-    queryFn: async () => {
-      if (!clientId) return null;
-      const { data } = await supabase
-        .from("clients")
-        .select(
-          "id, name, client_id, username, contact, email, address, nid_number, speed, is_online, total_upload, total_download, joining_date, connection_type, protocol_type, zones(name)"
-        )
-        .eq("id", clientId)
-        .maybeSingle();
-      return data;
-    },
+  const { data } = useQuery({
+    queryKey: ["portal-live-usage", clientId],
+    queryFn: () => callPortal<any>("get_live_usage"),
     enabled: !!clientId,
-    refetchInterval: 10000,
+    refetchInterval: 15000,
   });
-
+  const client: any = data?.client;
   const [samples, setSamples] = useState<Sample[]>([]);
   const [snapshotOnline, setSnapshotOnline] = useState<boolean | null>(null);
   const [snapUptime, setSnapUptime] = useState<string | null>(null);
@@ -114,17 +92,23 @@ const PortalLiveUsage = () => {
   const latest = samples[samples.length - 1];
   const isOnline = snapshotOnline ?? !!client?.is_online;
 
+  const pkg = client?.package;
+  const speedStr = pkg?.bandwidth_down
+    ? `${pkg.bandwidth_down}${pkg.bandwidth_up ? `/${pkg.bandwidth_up}` : ""} Mbps`
+    : (client?.speed || "—");
+
   const infoRows = [
     { icon: User, label: "Client Name", value: client?.name || "—" },
     { icon: Hash, label: "Client Code", value: client?.client_id || "—" },
     { icon: User, label: "Username", value: client?.username || "—" },
     { icon: Phone, label: "Mobile", value: client?.contact || "—" },
     { icon: Mail, label: "Email", value: client?.email || "—" },
-    { icon: MapPin, label: "Zone", value: (client as any)?.zones?.name || "—" },
-    { icon: Hash, label: "NID", value: (client as any)?.nid_number || "—" },
-    { icon: Gauge, label: "Package Speed", value: client?.speed || "—" },
-    { icon: Wifi, label: "Connection", value: (client as any)?.connection_type || "—" },
-    { icon: Shield, label: "Protocol", value: (client as any)?.protocol_type || "—" },
+    { icon: MapPin, label: "Zone", value: client?.zone?.name || "—" },
+    { icon: Hash, label: "NID", value: client?.nid_number || "—" },
+    { icon: Gauge, label: "Package", value: pkg?.name || "—" },
+    { icon: Gauge, label: "Speed", value: speedStr },
+    { icon: Wifi, label: "Connection", value: client?.connection_type || "—" },
+    { icon: Shield, label: "Protocol", value: client?.protocol_type || "—" },
     { icon: Clock, label: "Joining Date", value: client?.joining_date ? new Date(client.joining_date).toLocaleDateString() : "—" },
     { icon: Download, label: "Downloaded", value: fmtBytes(Number(client?.total_download || 0)) },
     { icon: Upload, label: "Uploaded", value: fmtBytes(Number(client?.total_upload || 0)) },

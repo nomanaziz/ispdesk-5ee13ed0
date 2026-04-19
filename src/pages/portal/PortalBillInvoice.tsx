@@ -1,7 +1,7 @@
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { ArrowLeft, Printer, Receipt, CreditCard, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -34,31 +34,15 @@ const PortalBillInvoice = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { data: bill, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["portal-bill", id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("billing")
-        .select("*, clients(name, client_id, contact, address, email, monthly_bill)")
-        .eq("id", id!)
-        .eq("client_id", customer!.sub)
-        .maybeSingle();
-      return data;
-    },
+    queryFn: () => callPortal<any>("get_bill_detail", { id }),
     enabled: !!id && !!customer?.sub,
   });
 
-  const { data: company } = useQuery({
-    queryKey: ["portal-company-info-invoice"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("system_settings")
-        .select("setting_value")
-        .eq("setting_key", "company_info")
-        .maybeSingle();
-      return (data?.setting_value || {}) as any;
-    },
-  });
+  const bill: any = data?.bill;
+  const c: any = data?.client;
+  const company: any = data?.company || {};
 
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState<number>(0);
@@ -67,36 +51,29 @@ const PortalBillInvoice = () => {
   const [note, setNote] = useState("");
 
   const submitPay = useMutation({
-    mutationFn: async () => {
-      if (!bill) throw new Error("No bill");
-      if (!txnId) throw new Error("Transaction ID required");
-      const { error } = await supabase.from("bill_collections").insert({
-        billing_id: bill.id,
-        client_id: bill.client_id,
-        amount: payAmount,
-        payment_method: payMethod,
-        transaction_id: txnId,
-        note: note || `Online payment via portal`,
-        status: "pending",
-      });
-      if (error) throw error;
-    },
+    mutationFn: () => callPortal("submit_bill_payment", {
+      billing_id: bill.id,
+      amount: payAmount,
+      payment_method: payMethod,
+      transaction_id: txnId,
+      note: note || "Online payment via portal",
+    }),
     onSuccess: () => {
       toast.success("পেমেন্ট সাবমিট হয়েছে — admin অনুমোদনের পর update হবে");
       setPayOpen(false);
+      setTxnId(""); setNote("");
       qc.invalidateQueries({ queryKey: ["portal-bill", id] });
     },
     onError: (e: any) => toast.error(e.message),
   });
 
-  if (isLoading) return <div className="p-10 text-center">লোড হচ্ছে...</div>;
-  if (!bill) return <div className="p-10 text-center">বিল পাওয়া যায়নি</div>;
+  if (isLoading) return <div className="p-10 text-center text-muted-foreground">লোড হচ্ছে...</div>;
+  if (!bill) return <div className="p-10 text-center text-muted-foreground">বিল পাওয়া যায়নি</div>;
 
-  const c: any = bill.clients;
   const due = Number(bill.due || 0);
   const isUnpaid = due > 0 && bill.status !== "paid";
-  const companyName = company?.name || company?.brand?.name || "ISP Desk";
-  const hotline = company?.hotline || company?.phone;
+  const companyName = company.name || "ISP Desk";
+  const hotline = company.hotline;
 
   const openPay = () => {
     setPayAmount(due);
@@ -105,7 +82,6 @@ const PortalBillInvoice = () => {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
-      {/* Top action bar */}
       <div className="flex items-center justify-between gap-2 flex-wrap print:hidden">
         <Button asChild variant="ghost" size="sm">
           <Link to="/portal/bills"><ArrowLeft className="h-4 w-4" /> ফিরে যান</Link>
@@ -122,14 +98,13 @@ const PortalBillInvoice = () => {
         </div>
       </div>
 
-      {/* UNPAID banner */}
       {isUnpaid && (
         <div className="rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-900 px-4 py-3 flex items-center gap-3 print:hidden">
           <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
           <div className="flex-1">
             <div className="text-sm font-semibold text-rose-900 dark:text-rose-200">UNPAID — ৳{due.toLocaleString()} বকেয়া</div>
             <div className="text-xs text-rose-700 dark:text-rose-300">
-              {hotline ? `অথবা ${hotline} নম্বরে bKash/Nagad/Rocket-এ পাঠিয়ে Transaction ID submit করুন।` : "আপনার পেমেন্ট দিতে Pay Now চাপুন।"}
+              {hotline ? `${hotline} নম্বরে bKash/Nagad/Rocket-এ পাঠিয়ে Transaction ID submit করুন।` : "আপনার পেমেন্ট দিতে Pay Now চাপুন।"}
             </div>
           </div>
         </div>
@@ -137,10 +112,9 @@ const PortalBillInvoice = () => {
 
       <Card className="border-0 shadow-sm print:shadow-none">
         <CardContent className="p-8">
-          {/* Header */}
           <div className="flex items-start justify-between border-b pb-5 mb-5 gap-4 flex-wrap">
             <div className="flex items-center gap-3">
-              {company?.logo_url ? (
+              {company.logo_url ? (
                 <img src={company.logo_url} alt={companyName} className="h-14 w-14 rounded-xl object-cover" />
               ) : (
                 <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white">
@@ -149,11 +123,11 @@ const PortalBillInvoice = () => {
               )}
               <div>
                 <h1 className="text-2xl font-bold">{companyName}</h1>
-                {company?.address && <p className="text-xs text-muted-foreground">{company.address}</p>}
+                {company.address && <p className="text-xs text-muted-foreground">{company.address}</p>}
                 <p className="text-xs text-muted-foreground">
                   {hotline && <>📞 {hotline}</>}
-                  {company?.email && <> • ✉️ {company.email}</>}
-                  {company?.website && <> • 🌐 {company.website}</>}
+                  {company.email && <> • ✉️ {company.email}</>}
+                  {company.website && <> • 🌐 {company.website}</>}
                 </p>
               </div>
             </div>
@@ -166,7 +140,6 @@ const PortalBillInvoice = () => {
             </div>
           </div>
 
-          {/* Bill to */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
             <div>
               <div className="text-xs uppercase text-muted-foreground mb-1.5">Bill To</div>
@@ -184,7 +157,6 @@ const PortalBillInvoice = () => {
             </div>
           </div>
 
-          {/* Items */}
           <table className="w-full mb-6 text-sm border rounded overflow-hidden">
             <thead className="bg-muted/40">
               <tr>
@@ -212,7 +184,6 @@ const PortalBillInvoice = () => {
             </tbody>
           </table>
 
-          {/* Totals */}
           <div className="flex justify-end">
             <div className="w-full sm:w-72 space-y-2">
               <div className="flex justify-between text-sm">
@@ -237,7 +208,6 @@ const PortalBillInvoice = () => {
         </CardContent>
       </Card>
 
-      {/* Pay Now dialog */}
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
