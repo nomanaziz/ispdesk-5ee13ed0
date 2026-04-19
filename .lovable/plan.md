@@ -1,85 +1,86 @@
 
 
-## মূল সমস্যা (Root Cause)
+## কাজের সারসংক্ষেপ
 
-Portal user-রা **custom JWT** দিয়ে login করে — Supabase Auth session নয়। তাই `clients`, `billing`, `zones`, `isp_packages` table-এর RLS policies (`auth.uid()` based, `authenticated` role) → **সব query empty** ফেরত দেয়। তাই dashboard-এ শুধু JWT payload দেখায় (username, code), DB থেকে কিছুই আসে না।
+৪টা আলাদা উন্নতি Add Client form + Client Profile-এ করতে হবে:
 
-DB check করে দেখলাম:
-- naeem-এর client row আছে — package, speed, protocol, monthly_bill সব আছে
-- ১টা billing row আছে
-- কিন্তু `contact`, `email`, `address` column গুলো আসলেই **খালি**
+### ১) Add Client form ঠিক করা (`AddClient.tsx`)
 
-## সমাধান কৌশল
+**সমস্যা:**
+- "Billing শুরু মাস" এ date দেখাচ্ছে না, একটু পর পর reset হয়
+- Expire date ঠিকমতো render হচ্ছে না
+- Default expire day নাই
 
-Client-side থেকে সরাসরি RLS-protected table query না করে — একটা **portal-data edge function** বানাব যা JWT verify করে service role দিয়ে data fetch করবে। সাথে user-self-update flow।
+**সমাধান:**
+- "Billing Start Month" — proper month picker (YYYY-MM) যা state-এ persist করবে
+- "Expire Day" field — by default `10` set করা থাকবে (every client)
+- Validation + display fix
 
-### A) Edge function: `portal-data`
-Action-based endpoint:
-- `get_dashboard` → client row + zone + package + last 12 billing → একসাথে return
-- `get_bills` / `get_ledger` / `get_notices` / `get_live_usage` — পরে portal pages ও same function ব্যবহার করবে
-- `update_profile` → present_address / permanent_address / mobile / email update (auto-apply, simple fields)
-- `submit_doc_update` → NID/photo/document upload request (admin approval দরকার)
-- `upload_url` → signed upload URL for storage
+### ২) "সংযোগ দিয়েছেন" (Installed By) — multi-technician
 
-প্রতি call-এ Bearer token (portal_token) verify → expired check → user_type check।
+**বর্তমান:** single user dropdown
+**পরিবর্তন:**
+- Multi-select dropdown (technician/employee থেকে)
+- যদি client converted হয় কোন `client_requests` থেকে — ওই request-এ assign করা technician-দের নাম auto-populate হবে
+- Manual add client হলে field ফাঁকা থাকবে, user-ই select করবে
+- DB: `clients.installed_by` text → `installed_by_ids uuid[]` (or jsonb array)
 
-### B) DB changes (migration)
-- **`clients` table extend**: `present_address`, `permanent_address`, `photo_url`, `nid_front_url`, `nid_back_url`, `documents` (jsonb)
-- **নতুন table `client_update_requests`**: 
-  - `id, client_id, request_type ('profile'|'document'), changes (jsonb), status ('pending'|'approved'|'rejected'), reviewed_by, reviewed_at, created_at, note`
-  - RLS: admins manage; portal users insert via edge function only
-- **নতুন storage bucket `client-documents`** (private) + RLS — শুধু admin + edge function read
+### ৩) Pro-rated first-month invoice logic
 
-### C) Portal frontend updates
-- `PortalDashboard.tsx` → useQuery `portal-data?action=get_dashboard` দিয়ে replace সব Supabase direct query
-- নতুন **`PortalProfile.tsx`** page (`/portal/profile`):
-  - Self-update form: present/permanent address, mobile, email — Save → instant update
-  - Photo upload (avatar)
-  - NID front/back upload, other documents
-  - Pending requests panel (status দেখাবে)
-- Sidebar-এ "My Profile" link
+যখন নতুন client add হয় mid-month-এ (যেমন ১২ তারিখ):
 
-### D) Admin notification
-- নতুন **`UserUpdateRequests.tsx`** admin page (`/dashboard/clients/update-requests`):
-  - Pending requests list, side-by-side diff (current vs requested), Approve/Reject buttons
-  - Approve → apply changes to `clients` table + mark approved
-- **TopBar bell badge** → pending count (poll every 60s) → click navigate
-- Realtime subscription on `client_update_requests` (optional refinement)
+```text
+days_in_month = 30 (বা actual)
+days_remaining = days_in_month - join_day + 1
+prorated_bill = (monthly_package_price / days_in_month) × days_remaining
+```
 
-### E) ছোট portal pages একই pattern-এ
-PortalBills, PortalLedger, PortalNotices, PortalLiveUsage — সব `portal-data` edge function call করবে (RLS bypass safely via JWT verification)।
+- শুধু **ওই মাসের** জন্য একটা invoice generate হবে → amount = prorated
+- পরের মাস থেকে full monthly bill normal cycle-এ চলবে
+- Billing list-এ এই prorated invoice দেখাবে remarks-সহ: "১২-৩০ এপ্রিল, ১৯ দিনের bill"
+- Logic যাবে edge function-এ (`generate-monthly-billing`-এর pattern follow করে) অথবা client save trigger-এ
+
+### ৪) Client Profile — "Generated & Updated Bill/Invoices" tab + edit
+
+Reference image-125, image-126:
+
+- ClientProfile.tsx-এ নতুন tab **"Generated & Updated Bill/Invoices"**
+- Table: Date, Billing Month, Package, Speed, Bill Amount, Action (edit icon)
+- Expandable row → ওই invoice-এর change history (system generated / edited by admin) দেখাবে
+- Edit icon click → Dialog (image-126):
+  - Package dropdown (current selected)
+  - Bill Amount input
+  - Remarks textarea
+  - Submit → update billing row + insert audit row in `billing_history` table
+- Permission: শুধু `billing.edit` role-এর user
+
+### ৫) DB changes
+
+**ALTER:**
+- `clients` add: `installed_by_ids uuid[]`, `expire_day integer DEFAULT 10`, `billing_start_month text` (YYYY-MM)
+
+**CREATE:**
+- `billing_history` — `id, billing_id, action ('generated'|'edited'), old_value jsonb, new_value jsonb, changed_by, changed_at, remarks`
+
+**RLS:** standard admin/branch-scoped policies।
 
 ## Files
 
-**Migration:**
-- ALTER `clients` add: `present_address`, `permanent_address`, `photo_url`, `nid_front_url`, `nid_back_url`, `documents jsonb`
-- CREATE `client_update_requests` table + RLS
-- CREATE storage bucket `client-documents` (private) + policies
+**Edit:**
+- `src/pages/dashboard/clients/AddClient.tsx` — billing month picker fix, expire day default 10, multi-tech selector, pro-rate calc on save
+- `src/pages/dashboard/billing/ClientProfile.tsx` — new "Generated & Updated Bill/Invoices" tab with edit dialog
+- `src/lib/bandwidthBilling.ts` — add `proRateFirstMonth()` helper
+- `src/integrations/supabase/types.ts` (auto)
 
 **Create:**
-- `supabase/functions/portal-data/index.ts`
-- `src/pages/portal/PortalProfile.tsx`
-- `src/pages/dashboard/clients/UserUpdateRequests.tsx`
-
-**Edit:**
-- `src/pages/portal/PortalDashboard.tsx` — call `portal-data` instead of direct queries
-- `src/pages/portal/PortalBills.tsx`, `PortalLedger.tsx`, `PortalNotices.tsx`, `PortalLiveUsage.tsx` — same edge fn
-- `src/components/PortalLayout.tsx` (sidebar) — "My Profile" link
-- `src/components/TopBar.tsx` — update-request bell badge
-- `src/components/AppSidebar.tsx` + `src/App.tsx` — admin update-requests route
-
-## Security
-
-- Portal token signature verify (HMAC) — currently base64 only; will add HMAC with `PORTAL_JWT_SECRET` for future-proof, fallback compatible এই round-এ
-- Edge function: service role used **only after** JWT validation + ownership check (user can only access own data)
-- Document upload → signed URL with size/type limit (max 5MB, image/pdf only)
-- Admin approval required for sensitive changes (NID, photo); plain address/contact auto-apply
-- Audit trail in `client_update_requests` — who changed what, when
+- `src/components/billing/BillEditDialog.tsx` — edit package/amount/remarks
+- Migration: alter clients + create billing_history table + RLS
+- `supabase/functions/generate-monthly-billing/index.ts` update — skip first month if prorated already exists
 
 ## ফলাফল
 
-- naeem-এর dashboard-এ সব data দেখাবে (mobile/email blank থাকলে user নিজেই profile page থেকে fill করতে পারবে)
-- Billing/invoices দেখাবে, monthly due correctly calculate হবে
-- User photo, NID, document upload করতে পারবে → admin notification → approve/reject workflow
-- Portal-এর সব read RLS-bypass কিন্তু **secure** (server-side JWT validation)
+- নতুন client form-এ billing month/expire day stable থাকবে (default ১০)
+- Mid-month join হলে শুধু সেই কয়দিনের bill auto-generate, পরের মাস থেকে normal monthly
+- "সংযোগ দিয়েছেন" multiple technician select বা request থেকে auto-fill
+- Profile থেকে যেকোনো মাসের invoice edit করা যাবে — full audit trail সহ
 
