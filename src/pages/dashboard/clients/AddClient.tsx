@@ -82,6 +82,61 @@ export default function AddClient() {
         package_id: prefill.package_id || prev.package_id,
         monthly_bill: prefill.monthly_bill || prev.monthly_bill,
         client_type: prefill.customer_type || prev.client_type,
+        username: prefill.username || prev.username,
+        password: prefill.password || prev.password,
+        profile: prefill.profile || prev.profile,
+        mikrotik_id: prefill.mikrotik_id || prev.mikrotik_id,
+        remote_address: prefill.remote_address || prev.remote_address,
+        server_name: prefill.server_name || prev.server_name,
+        mac_address: prefill.mac_address || prev.mac_address,
+        client_id: prefill.client_id || prev.client_id,
+        expire_day: prefill.expire_date ? String(new Date(prefill.expire_date).getDate()) : (prev.expire_day || "10"),
+        installed_by_ids: prefill.installed_by_ids || prev.installed_by_ids,
+        billing_start_month: prefill.billing_start_month || prev.billing_start_month,
+      }));
+
+      if (prefill.mikrotik_id) {
+        setLoadingProfiles(true);
+        supabase.functions.invoke("fetch-mikrotik-profiles", { body: { device_id: prefill.mikrotik_id } })
+          .then(({ data }) => {
+            if (data?.profiles) setMikrotikProfiles(data.profiles);
+            else setMikrotikProfiles([]);
+          })
+          .catch(() => setMikrotikProfiles([]))
+          .finally(() => setLoadingProfiles(false));
+      }
+    }
+
+    // If we came from a request, try to auto-fill assigned technicians
+    if (requestId) {
+      supabase
+        .from("client_requests" as any)
+        .select("assigned_to, assigned_employee_ids")
+        .eq("id", requestId)
+        .maybeSingle()
+        .then(({ data }: any) => {
+          if (!data) return;
+          const ids: string[] = Array.isArray(data.assigned_employee_ids)
+            ? data.assigned_employee_ids
+            : (data.assigned_to ? [data.assigned_to] : []);
+          if (ids.length > 0) {
+            setForm(prev => ({ ...prev, installed_by_ids: ids }));
+          }
+        });
+    }
+  }, []);
+      setForm(prev => ({
+        ...prev,
+        name: prefill.name || prev.name,
+        contact: prefill.contact || prev.contact,
+        email: prefill.email || prev.email,
+        address: prefill.address || prev.address,
+        zone_id: prefill.zone_id || prev.zone_id,
+        sub_zone_id: prefill.sub_zone_id || prev.sub_zone_id,
+        connection_type: prefill.connection_type || prev.connection_type,
+        package_id: prefill.package_id || prev.package_id,
+        monthly_bill: prefill.monthly_bill || prev.monthly_bill,
+        client_type: prefill.customer_type || prev.client_type,
         // MikroTik fields
         username: prefill.username || prev.username,
         password: prefill.password || prev.password,
