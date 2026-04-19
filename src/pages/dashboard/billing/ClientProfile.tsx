@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -513,7 +513,7 @@ export default function ClientProfile() {
                                 </TableCell>
                               </TableRow>
                             )}
-                          </>
+                          </React.Fragment>
                         );
                       })}
                     </TableBody>
