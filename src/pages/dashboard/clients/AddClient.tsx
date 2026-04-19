@@ -656,14 +656,31 @@ export default function AddClient() {
             <Label>VIP ক্লায়েন্ট?</Label>
             <Switch checked={form.is_vip} onCheckedChange={v => setField("is_vip", v)} />
           </div>
-          <div>
-            <Label>সংযোগ দিয়েছেন</Label>
-            <Select value={form.connected_by} onValueChange={v => setField("connected_by", v)}>
-              <SelectTrigger><SelectValue placeholder="কর্মচারী নির্বাচন করুন" /></SelectTrigger>
-              <SelectContent>
-                {employees?.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="md:col-span-2">
+            <Label>সংযোগ দিয়েছেন (একাধিক টেকনিশিয়ান নির্বাচন করুন)</Label>
+            <div className="border rounded-md p-2 max-h-32 overflow-y-auto space-y-1 bg-background">
+              {(employees as any[])?.length ? (employees as any[]).map((e: any) => {
+                const checked = (form.installed_by_ids as string[])?.includes(e.id);
+                return (
+                  <label key={e.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 px-2 py-1 rounded">
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={(v) => {
+                        const cur = (form.installed_by_ids as string[]) || [];
+                        const next = v ? [...cur, e.id] : cur.filter((x) => x !== e.id);
+                        setField("installed_by_ids", next);
+                      }}
+                    />
+                    <span>{e.name}</span>
+                  </label>
+                );
+              }) : <span className="text-xs text-muted-foreground px-2">কোনো কর্মচারী নেই</span>}
+            </div>
+            {(form.installed_by_ids as string[])?.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {(form.installed_by_ids as string[]).length} জন নির্বাচিত
+              </p>
+            )}
           </div>
         </div>
       </div>
