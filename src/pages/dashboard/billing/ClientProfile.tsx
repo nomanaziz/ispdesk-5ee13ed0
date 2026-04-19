@@ -446,6 +446,81 @@ export default function ClientProfile() {
                 </div>
               </TabsContent>
 
+              {/* Generated & Updated Bill/Invoices Tab */}
+              <TabsContent value="generated">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8"></TableHead>
+                        <TableHead>তারিখ</TableHead>
+                        <TableHead>বিলিং মাস</TableHead>
+                        <TableHead>প্যাকেজ</TableHead>
+                        <TableHead>স্পিড</TableHead>
+                        <TableHead className="text-right">বিল পরিমাণ</TableHead>
+                        <TableHead className="text-right">পরিশোধ</TableHead>
+                        <TableHead className="text-right">বকেয়া</TableHead>
+                        <TableHead className="text-center">অ্যাকশন</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {billings.length === 0 ? (
+                        <TableRow><TableCell colSpan={9} className="text-center py-4 text-muted-foreground">কোনো ইনভয়েস নেই</TableCell></TableRow>
+                      ) : billings.map((b: any) => {
+                        const histForBill = (billHistory as any[]).filter((h) => h.billing_id === b.id);
+                        const expanded = expandedBillId === b.id;
+                        return (
+                          <>
+                            <TableRow key={b.id}>
+                              <TableCell>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setExpandedBillId(expanded ? null : b.id)}>
+                                  {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                </Button>
+                              </TableCell>
+                              <TableCell className="text-xs">{b.created_at ? new Date(b.created_at).toLocaleDateString("bn-BD") : "-"}</TableCell>
+                              <TableCell className="font-medium">{b.month}</TableCell>
+                              <TableCell>{c.package?.name || "-"}</TableCell>
+                              <TableCell className="text-xs">{c.profile || c.speed || "-"}</TableCell>
+                              <TableCell className="text-right font-semibold">৳{Number(b.amount).toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-green-600">৳{Number(b.paid || 0).toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-red-600">৳{Number(b.due || 0).toLocaleString()}</TableCell>
+                              <TableCell className="text-center">
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingBill(b)}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                            {expanded && (
+                              <TableRow key={`${b.id}-h`}>
+                                <TableCell colSpan={9} className="bg-muted/40 p-3">
+                                  <div className="text-xs font-semibold mb-2">পরিবর্তন ইতিহাস</div>
+                                  {histForBill.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">কোনো ইতিহাস নেই</p>
+                                  ) : (
+                                    <ul className="space-y-1.5">
+                                      {histForBill.map((h: any) => (
+                                        <li key={h.id} className="text-xs flex flex-wrap gap-x-3">
+                                          <Badge variant="outline" className="text-[10px] capitalize">{h.action}</Badge>
+                                          <span className="text-muted-foreground">{new Date(h.changed_at).toLocaleString("bn-BD")}</span>
+                                          {h.old_value?.amount !== undefined && (
+                                            <span>৳{h.old_value.amount} → ৳{h.new_value?.amount}</span>
+                                          )}
+                                          {h.remarks && <span className="italic">— {h.remarks}</span>}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+
               {/* Collections Tab */}
               <TabsContent value="collections">
                 <div className="overflow-x-auto">
