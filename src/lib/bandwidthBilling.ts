@@ -138,6 +138,33 @@ export function totalBill(segments: BillingSegment[]): number {
  * One-shot helper: given a list of subscriptions and a "YYYY-MM" month,
  * return billing segments for that calendar month.
  */
+/**
+ * Pro-rate the first month's bill for a mid-month join.
+ * Formula: (monthly_price / total_days_in_month) × days_remaining
+ * Returns the prorated amount + helper info.
+ */
+export function proRateFirstMonth(
+  joinDateStr: string, // YYYY-MM-DD
+  monthlyPrice: number,
+): { amount: number; days: number; total_days_in_month: number; period_start: string; period_end: string; month: string } {
+  const join = toDate(joinDateStr);
+  const y = join.getFullYear();
+  const m = join.getMonth() + 1;
+  const total = daysInMonth(y, m);
+  const joinDay = join.getDate();
+  const daysRemaining = total - joinDay + 1;
+  const amount = Math.round(((Number(monthlyPrice) / total) * daysRemaining) * 100) / 100;
+  const monthStr = `${y}-${String(m).padStart(2, "0")}`;
+  return {
+    amount,
+    days: daysRemaining,
+    total_days_in_month: total,
+    period_start: joinDateStr,
+    period_end: `${monthStr}-${String(total).padStart(2, "0")}`,
+    month: `${monthStr}-01`,
+  };
+}
+
 export function buildMonthlySegments(
   subscriptions: SubscriptionLike[],
   month: string,

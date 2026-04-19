@@ -34,8 +34,8 @@ export default function AddClient() {
     core_color: "", device_type: "", device_serial: "", vendor: "", purchase_date: "",
     client_id: "", package_id: "", profile: "", client_type: "Home", billing_status: "Active",
     username: "", remote_address: "", password: "", joining_date: format(new Date(), "yyyy-MM-dd"),
-    monthly_bill: 0, billing_start_month: "", expire_day: "",
-    reference_by: "", is_vip: false, connected_by: "",
+    monthly_bill: 0, billing_start_month: format(new Date(), "yyyy-MM"), expire_day: "10",
+    reference_by: "", is_vip: false, connected_by: "", installed_by_ids: [] as string[],
     same_address: false,
   });
 
@@ -82,7 +82,6 @@ export default function AddClient() {
         package_id: prefill.package_id || prev.package_id,
         monthly_bill: prefill.monthly_bill || prev.monthly_bill,
         client_type: prefill.customer_type || prev.client_type,
-        // MikroTik fields
         username: prefill.username || prev.username,
         password: prefill.password || prev.password,
         profile: prefill.profile || prev.profile,
@@ -91,10 +90,11 @@ export default function AddClient() {
         server_name: prefill.server_name || prev.server_name,
         mac_address: prefill.mac_address || prev.mac_address,
         client_id: prefill.client_id || prev.client_id,
-        expire_day: prefill.expire_date ? String(new Date(prefill.expire_date).getDate()) : prev.expire_day,
+        expire_day: prefill.expire_date ? String(new Date(prefill.expire_date).getDate()) : (prev.expire_day || "10"),
+        installed_by_ids: prefill.installed_by_ids || prev.installed_by_ids,
+        billing_start_month: prefill.billing_start_month || prev.billing_start_month,
       }));
 
-      // Auto-fetch MikroTik profiles if mikrotik_id is prefilled
       if (prefill.mikrotik_id) {
         setLoadingProfiles(true);
         supabase.functions.invoke("fetch-mikrotik-profiles", { body: { device_id: prefill.mikrotik_id } })
@@ -105,6 +105,24 @@ export default function AddClient() {
           .catch(() => setMikrotikProfiles([]))
           .finally(() => setLoadingProfiles(false));
       }
+    }
+
+    // If we came from a request, try to auto-fill assigned technicians
+    if (requestId) {
+      supabase
+        .from("client_requests" as any)
+        .select("assigned_to, assigned_employee_ids")
+        .eq("id", requestId)
+        .maybeSingle()
+        .then(({ data }: any) => {
+          if (!data) return;
+          const ids: string[] = Array.isArray(data.assigned_employee_ids)
+            ? data.assigned_employee_ids
+            : (data.assigned_to ? [data.assigned_to] : []);
+          if (ids.length > 0) {
+            setForm(prev => ({ ...prev, installed_by_ids: ids }));
+          }
+        });
     }
   }, []);
 
@@ -151,6 +169,8 @@ export default function AddClient() {
         joining_date: form.joining_date || null, billing_start_month: form.billing_status === "Active" ? (form.billing_start_month || null) : null,
         reference_by: form.reference_by || null, is_vip: form.is_vip || false,
         connected_by: form.connected_by || null,
+        installed_by_ids: form.installed_by_ids && form.installed_by_ids.length > 0 ? form.installed_by_ids : null,
+        expire_day: form.billing_status === "Active" ? Number(form.expire_day || 10) : null,
         mikrotik_status: mikrotikStatus,
       };
       if (editMode && editClientId) {
@@ -209,20 +229,45 @@ export default function AddClient() {
         const { data: insertedClient, error } = await supabase.from("clients").insert(payload).select("id").single();
         if (error) throw error;
 
-        // Auto-generate billing record for current month
-        if (insertedClient?.id) {
-          const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`;
-          const billId = `BILL-${form.client_id}-${currentMonth.slice(0, 7)}`;
-          await supabase.from("billing").insert({
+        // Auto-generate billing record — prorated for first month if mid-month join
+        if (insertedClient?.id && form.billing_status === "Active") {
+          const joinStr = form.joining_date || format(new Date(), "yyyy-MM-dd");
+          const join = new Date(joinStr + "T00:00:00");
+          const y = join.getFullYear();
+          const m = join.getMonth() + 1;
+          const totalDays = new Date(y, m, 0).getDate();
+          const joinDay = join.getDate();
+          const daysRemaining = totalDays - joinDay + 1;
+          const monthly = Number(form.monthly_bill || 0);
+          const isProrated = joinDay > 1;
+          const amount = isProrated
+            ? Math.round((monthly / totalDays) * daysRemaining * 100) / 100
+            : monthly;
+          const monthKey = `${y}-${String(m).padStart(2, "0")}`;
+          const currentMonth = `${monthKey}-01`;
+          const billId = `BILL-${form.client_id}-${monthKey}`;
+          const { data: insertedBill } = await supabase.from("billing").insert({
             bill_id: billId,
             client_id: insertedClient.id,
             month: currentMonth,
-            amount: form.monthly_bill || 0,
-            due: form.monthly_bill || 0,
+            amount,
+            due: amount,
             status: "unpaid",
             generated: true,
             branch_id: form.branch_id || null,
-          });
+          }).select("id").maybeSingle();
+
+          if (insertedBill?.id) {
+            await supabase.from("billing_history").insert({
+              billing_id: insertedBill.id,
+              client_id: insertedClient.id,
+              action: isProrated ? "prorated" : "generated",
+              new_value: { amount, days: daysRemaining, total_days_in_month: totalDays, monthly },
+              remarks: isProrated
+                ? `Pro-rated: ${joinDay}-${totalDays} (${daysRemaining} দিন × ৳${monthly}/${totalDays})`
+                : `Full month bill ৳${monthly}`,
+            });
+          }
         }
       }
     },
@@ -611,14 +656,31 @@ export default function AddClient() {
             <Label>VIP ক্লায়েন্ট?</Label>
             <Switch checked={form.is_vip} onCheckedChange={v => setField("is_vip", v)} />
           </div>
-          <div>
-            <Label>সংযোগ দিয়েছেন</Label>
-            <Select value={form.connected_by} onValueChange={v => setField("connected_by", v)}>
-              <SelectTrigger><SelectValue placeholder="কর্মচারী নির্বাচন করুন" /></SelectTrigger>
-              <SelectContent>
-                {employees?.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="md:col-span-2">
+            <Label>সংযোগ দিয়েছেন (একাধিক টেকনিশিয়ান নির্বাচন করুন)</Label>
+            <div className="border rounded-md p-2 max-h-32 overflow-y-auto space-y-1 bg-background">
+              {(employees as any[])?.length ? (employees as any[]).map((e: any) => {
+                const checked = (form.installed_by_ids as string[])?.includes(e.id);
+                return (
+                  <label key={e.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 px-2 py-1 rounded">
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={(v) => {
+                        const cur = (form.installed_by_ids as string[]) || [];
+                        const next = v ? [...cur, e.id] : cur.filter((x) => x !== e.id);
+                        setField("installed_by_ids", next);
+                      }}
+                    />
+                    <span>{e.name}</span>
+                  </label>
+                );
+              }) : <span className="text-xs text-muted-foreground px-2">কোনো কর্মচারী নেই</span>}
+            </div>
+            {(form.installed_by_ids as string[])?.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {(form.installed_by_ids as string[]).length} জন নির্বাচিত
+              </p>
+            )}
           </div>
         </div>
       </div>
