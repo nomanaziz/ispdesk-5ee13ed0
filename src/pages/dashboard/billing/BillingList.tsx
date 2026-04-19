@@ -95,8 +95,13 @@ export default function BillingList() {
         }
       }
 
+      const monthKey = filters.month; // YYYY-MM
       return (data || []).map((c: any) => {
-        const bill = (c.billing || []).find((b: any) => b.month === filters.month);
+        const bill = (c.billing || []).find((b: any) => {
+          if (!b?.month) return false;
+          const m = String(b.month).slice(0, 7); // normalize YYYY-MM-01 -> YYYY-MM
+          return m === monthKey;
+        });
         return {
           ...c,
           currentBill: bill || null,
@@ -387,8 +392,11 @@ export default function BillingList() {
                   <TableRow><TableCell colSpan={19} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
                 ) : paginated.map((c: any, i: number) => {
                   const b = c.currentBill;
-                  const bs = b?.status || "unpaid";
-                  const isDue = bs !== "paid";
+                  const bs = (b?.status || "unpaid").toLowerCase();
+                  const paidAmt = Number(b?.paid || 0);
+                  const dueAmt = Number(b?.due || 0);
+                  const isPaid = bs === "paid" || (b && dueAmt <= 0 && paidAmt > 0);
+                  const isPartial = !isPaid && paidAmt > 0;
                   return (
                     <TableRow key={c.id} data-state={selectedIds.has(c.id) ? "selected" : undefined}>
                       <TableCell>
@@ -416,20 +424,27 @@ export default function BillingList() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">{Number(c.monthly_bill || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-right">{Number(b?.paid || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-right">{Number(b?.due || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{paidAmt.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{dueAmt.toLocaleString()}</TableCell>
                       <TableCell className="text-right">{Number(b?.advance || 0).toLocaleString()}</TableCell>
                       <TableCell className="text-xs">{b?.pay_date || "-"}</TableCell>
                       <TableCell>
-                        {isDue ? (
+                        {isPaid ? (
+                          <Badge className="text-[10px] h-6 flex items-center bg-emerald-500/20 text-emerald-600 border-emerald-500/30" variant="outline">পরিশোধিত</Badge>
+                        ) : isPartial ? (
+                          <div className="flex items-center gap-1">
+                            <Badge className="text-[10px] h-6 flex items-center bg-amber-500/20 text-amber-600 border-amber-500/30" variant="outline">আংশিক ৳{paidAmt}</Badge>
+                            <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
+                              পরিশোধ
+                            </Button>
+                          </div>
+                        ) : (
                           <div className="flex items-center gap-1">
                             <Badge variant="destructive" className="text-[10px] h-6 flex items-center">বকেয়া</Badge>
                             <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
                               পরিশোধ
                             </Button>
                           </div>
-                        ) : (
-                          <Badge className="text-[10px] h-6 flex items-center bg-emerald-500/20 text-emerald-600 border-emerald-500/30" variant="outline">পরিশোধিত</Badge>
                         )}
                       </TableCell>
                       <TableCell>
