@@ -26,6 +26,8 @@ export default function ClientProfile() {
   const [inlineSearch, setInlineSearch] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [editingBill, setEditingBill] = useState<any>(null);
+  const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
 
   const { data: client, isLoading } = useQuery({
     queryKey: ["client-profile", id],
