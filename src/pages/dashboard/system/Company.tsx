@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
-import { Building2, Save, Mail, Phone, Globe, MapPin, FileText, Image, Home } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Building2, Save, Mail, Phone, Globe, MapPin, FileText, Image as ImageIcon, Upload, X, Loader2 } from "lucide-react";
 
 interface CompanyInfo {
   name: string;
