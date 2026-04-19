@@ -66,7 +66,7 @@ export default function BwSaleInvoiceForm() {
       if (inv) {
         setCustomerId(inv.customer_id || "");
         setContactPerson(inv.contact_person || "");
-        setMonth(inv.billing_month || inv.month || new Date().toISOString().slice(0, 7));
+        setMonth(((inv.billing_month || inv.month) ? String(inv.billing_month || inv.month).slice(0, 7) : new Date().toISOString().slice(0, 7)));
         setInvoiceNo(inv.invoice_no);
         setPaymentDue(inv.payment_due_date || "");
         setSpecialNote(inv.special_note || "");
