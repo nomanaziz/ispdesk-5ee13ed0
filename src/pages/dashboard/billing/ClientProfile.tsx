@@ -669,6 +669,13 @@ export default function ClientProfile() {
           </CardContent>
         </Card>
       </div>
+
+      <BillEditDialog
+        open={!!editingBill}
+        onOpenChange={(v) => { if (!v) setEditingBill(null); }}
+        bill={editingBill}
+        clientId={id!}
+      />
     </div>
   );
 }
