@@ -184,7 +184,7 @@ export default function Servers() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2"><Server className="h-6 w-6" /> মাইক্রোটিক সার্ভার</h1>
-        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-1" /> সার্ভার যোগ করুন</Button>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-1" /> সার্ভার যোগ করুন</Button>
       </div>
 
       <Card>
@@ -200,6 +200,7 @@ export default function Servers() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">#</TableHead>
+                  <TableHead className="w-16">অর্ডার</TableHead>
                   <TableHead>সার্ভার নাম</TableHead>
                   <TableHead>সার্ভার IP</TableHead>
                   <TableHead>ইউজারনেম</TableHead>
@@ -214,14 +215,15 @@ export default function Servers() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={11} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={12} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={11} className="text-center py-8">কোনো সার্ভার পাওয়া যায়নি</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={12} className="text-center py-8">কোনো সার্ভার পাওয়া যায়নি</TableCell></TableRow>
                 ) : filtered.map((d, i) => {
                   const statusInfo = getStatusDisplay(d);
                   return (
                     <TableRow key={d.id}>
                       <TableCell>{i + 1}</TableCell>
+                      <TableCell><Badge variant="secondary" className="font-mono">{d.order_no ?? "—"}</Badge></TableCell>
                       <TableCell className="font-medium">{d.name}</TableCell>
                       <TableCell>{d.ip_address}</TableCell>
                       <TableCell>{d.username}</TableCell>
@@ -299,6 +301,18 @@ export default function Servers() {
                 </Select>
               </div>
               <div className="space-y-2"><Label>টাইমআউট (সেকেন্ড)</Label><Input type="number" value={form.timeout} onChange={(e) => setForm({ ...form, timeout: Number(e.target.value) })} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>অর্ডার নং *</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={form.order_no}
+                  onChange={(e) => setForm({ ...form, order_no: Number(e.target.value) })}
+                />
+                <p className="text-xs text-muted-foreground">Online Monitoring-এ এই অর্ডারে দেখাবে</p>
+              </div>
             </div>
           </div>
           <DialogFooter>
