@@ -365,6 +365,7 @@ const menuGroups: MenuGroup[] = [
       { title: "অ্যাপ ইউজার", url: "/dashboard/system/users", icon: Users },
       { title: "রোল", url: "/dashboard/system/roles", icon: Shield },
       { title: "OLT পারমিশন", url: "/dashboard/system/olt-permissions", icon: Cpu },
+      { title: "Device Permissions", url: "/dashboard/system/device-permissions", icon: Shield },
       { title: "কোম্পানি সেটআপ", url: "/dashboard/system/company", icon: Building },
       { title: "ইনভয়েস সেটআপ", url: "/dashboard/system/invoice", icon: FileText },
       { title: "পিরিয়ড সেটআপ", url: "/dashboard/system/periods", icon: Calendar },
