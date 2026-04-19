@@ -4896,6 +4896,7 @@ export type Database = {
           snmp_port: number | null
           snmp_version: string | null
           status: Database["public"]["Enums"]["device_status"]
+          telnet_port: number | null
           total_onus: number | null
           updated_at: string
           uptime: string | null
@@ -4930,6 +4931,7 @@ export type Database = {
           snmp_port?: number | null
           snmp_version?: string | null
           status?: Database["public"]["Enums"]["device_status"]
+          telnet_port?: number | null
           total_onus?: number | null
           updated_at?: string
           uptime?: string | null
@@ -4964,6 +4966,7 @@ export type Database = {
           snmp_port?: number | null
           snmp_version?: string | null
           status?: Database["public"]["Enums"]["device_status"]
+          telnet_port?: number | null
           total_onus?: number | null
           updated_at?: string
           uptime?: string | null
