@@ -1,4 +1,4 @@
-import { X, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
@@ -73,12 +73,7 @@ export function QuickSettings({ open, onOpenChange }: QuickSettingsProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[340px] sm:w-[400px] p-0 overflow-y-auto">
         <SheetHeader className="px-5 pt-5 pb-3">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="text-base font-semibold tracking-wide">QUICK SETTING</SheetTitle>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenChange(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <SheetTitle className="text-base font-semibold tracking-wide">QUICK SETTING</SheetTitle>
           <p className="text-xs text-muted-foreground">দ্রুত সিস্টেম সেটিংস</p>
         </SheetHeader>
         <Separator />

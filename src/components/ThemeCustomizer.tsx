@@ -1,4 +1,4 @@
-import { Sun, Moon, Monitor, X, RotateCcw, LayoutGrid, Maximize2 } from "lucide-react";
+import { Sun, Moon, Monitor, RotateCcw, LayoutGrid, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useTheme, primaryColors, ThemeMode, ThemeSkin } from "@/contexts/ThemeContext";
@@ -23,12 +23,7 @@ export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[300px] sm:w-[340px] p-0 overflow-y-auto">
         <SheetHeader className="px-5 pt-5 pb-3">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="text-base font-semibold">থিম কাস্টমাইজার</SheetTitle>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenChange(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <SheetTitle className="text-base font-semibold">থিম কাস্টমাইজার</SheetTitle>
           <p className="text-xs text-muted-foreground">রিয়েল-টাইমে কাস্টমাইজ করুন</p>
         </SheetHeader>
 
