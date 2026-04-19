@@ -14,8 +14,9 @@ import {
   ArrowLeft, Edit, Calendar, Mail, Package, Download,
   User, Globe, Wifi, HardDrive, Search, WifiOff,
   Power, PowerOff, MessageSquare, RefreshCw, History,
-  CreditCard, FileText, Activity, Shield
+  CreditCard, FileText, Activity, Shield, ChevronDown, ChevronRight
 } from "lucide-react";
+import BillEditDialog from "@/components/billing/BillEditDialog";
 
 export default function ClientProfile() {
   const { id } = useParams<{ id: string }>();
