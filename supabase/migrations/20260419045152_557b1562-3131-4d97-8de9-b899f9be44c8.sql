@@ -1,0 +1,1 @@
+ALTER TABLE public.olt_devices ADD COLUMN IF NOT EXISTS telnet_port INT DEFAULT 23;
