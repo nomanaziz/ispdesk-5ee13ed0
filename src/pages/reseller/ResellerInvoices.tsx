@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
+import { getBillingCustomerId } from "@/lib/portalIdentity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import PayBillDialog from "@/components/reseller/PayBillDialog";
 
 const ResellerInvoices = () => {
   const { customer } = usePortalAuth();
-  const resellerId = customer?.parent_reseller_id || customer?.sub;
+  const resellerId = getBillingCustomerId(customer);
   const [payOpen, setPayOpen] = useState(false);
   const [activeInv, setActiveInv] = useState<any>(null);
 

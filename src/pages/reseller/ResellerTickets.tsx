@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
+import { getBillingCustomerId } from "@/lib/portalIdentity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import { toast } from "sonner";
 
 const ResellerTickets = () => {
   const { customer } = usePortalAuth();
-  const resellerId = customer?.parent_reseller_id || customer?.sub;
+  const resellerId = getBillingCustomerId(customer);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ subject: "", description: "", priority: "medium" });
@@ -39,6 +40,7 @@ const ResellerTickets = () => {
   const create = useMutation({
     mutationFn: async () => {
       if (!form.subject.trim()) throw new Error("Subject required");
+      if (!resellerId) throw new Error("Account not loaded");
       const ticketNo = `TKT-${Date.now().toString().slice(-6)}`;
       const { error } = await supabase.from("support_tickets").insert({
         ticket_no: ticketNo,
@@ -47,7 +49,7 @@ const ResellerTickets = () => {
         priority: form.priority,
         status: "pending",
         source: "bw_reseller",
-        complain_no: resellerId!, // store reseller id as identifier (no FK required)
+        complain_no: resellerId, // identifier for filtering by reseller
       });
       if (error) throw error;
     },
@@ -57,7 +59,7 @@ const ResellerTickets = () => {
       setOpen(false);
       setForm({ subject: "", description: "", priority: "medium" });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(e.message || "Failed to create ticket"),
   });
 
   return (
