@@ -944,7 +944,42 @@ export default function OnlineClientMonitoring() {
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* MikroTik Device Switcher — only one device's clients are loaded at a time */}
+      <Card>
+        <CardContent className="p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Server className="h-4 w-4 text-primary" />
+            <p className="text-xs font-semibold uppercase text-muted-foreground">MikroTik Server (একটি করে লোড হবে)</p>
+          </div>
+          {servers.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2">কোনো enabled MikroTik সার্ভার পাওয়া যায়নি</p>
+          ) : (
+            <div className="flex flex-wrap gap-2 overflow-x-auto">
+              {servers.map((s) => {
+                const active = filterServer === s.id;
+                return (
+                  <Button
+                    key={s.id}
+                    size="sm"
+                    variant={active ? "default" : "outline"}
+                    onClick={() => { setFilterServer(s.id); setSelectedIds(new Set()); }}
+                    className="h-8"
+                    disabled={loading && active}
+                  >
+                    <Badge variant="secondary" className="mr-1.5 h-5 min-w-5 px-1 font-mono text-[10px]">
+                      {s.order_no ?? "?"}
+                    </Badge>
+                    {s.name}
+                    {active && loading && <RefreshCw className="h-3 w-3 ml-1.5 animate-spin" />}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Summary Cards (scoped to active device) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
