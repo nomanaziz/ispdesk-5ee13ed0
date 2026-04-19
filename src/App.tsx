@@ -47,6 +47,7 @@ import ResetPassword from "./pages/ResetPassword";
 
 // Dashboard pages
 import Dashboard from "./pages/Dashboard";
+import CompanyOverview from "./pages/dashboard/CompanyOverview";
 import OltOverview from "./pages/dashboard/OltOverview";
 import NotFound from "./pages/NotFound";
 
@@ -376,7 +377,8 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Dashboard */}
-              <Route path="/dashboard" element={<P><Dashboard /></P>} />
+              <Route path="/dashboard" element={<P><CompanyOverview /></P>} />
+              <Route path="/dashboard/billing-overview" element={<P><Dashboard /></P>} />
               <Route path="/dashboard/olt-overview" element={<P><OltOverview /></P>} />
 
               {/* Config */}
