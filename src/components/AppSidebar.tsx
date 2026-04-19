@@ -95,6 +95,7 @@ const menuGroups: MenuGroup[] = [
       { title: "শিডিউলার", url: "/dashboard/clients/scheduler", icon: Clock },
       { title: "পরিবর্তন রিকোয়েস্ট", url: "/dashboard/clients/change-request", icon: RefreshCw },
       { title: "পোর্টাল ম্যানেজ", url: "/dashboard/clients/portal-manage", icon: Monitor },
+      { title: "আপডেট রিকোয়েস্ট", url: "/dashboard/clients/update-requests", icon: ShieldCheck },
     ],
   },
   {

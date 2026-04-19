@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { callPortal } from "@/lib/portalApi";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,12 +19,8 @@ const PortalBills = () => {
   const { data: bills, isLoading } = useQuery({
     queryKey: ["portal-bills", customer?.sub],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("billing")
-        .select("*")
-        .eq("client_id", customer!.sub)
-        .order("month", { ascending: false });
-      return data || [];
+      const res = await callPortal<any>("get_bills");
+      return (res.bills || []) as any[];
     },
     enabled: !!customer?.sub && customer?.type === "client",
   });

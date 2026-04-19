@@ -2590,6 +2590,53 @@ export type Database = {
         }
         Relationships: []
       }
+      client_update_requests: {
+        Row: {
+          changes: Json
+          client_id: string
+          created_at: string
+          id: string
+          note: string | null
+          request_type: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          changes?: Json
+          client_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          request_type: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          changes?: Json
+          client_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          request_type?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_update_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -2611,6 +2658,7 @@ export type Database = {
           date_of_birth: string | null
           device_serial: string | null
           device_type: string | null
+          documents: Json
           email: string | null
           expire_date: string | null
           father_name: string | null
@@ -2631,6 +2679,8 @@ export type Database = {
           monthly_bill: number | null
           mother_name: string | null
           name: string
+          nid_back_url: string | null
+          nid_front_url: string | null
           nid_number: string | null
           occupation: string | null
           onu_id: string | null
@@ -2638,6 +2688,8 @@ export type Database = {
           password: string | null
           permanent_address: string | null
           phone_number: string | null
+          photo_url: string | null
+          present_address: string | null
           profile: string | null
           protocol_type: string | null
           purchase_date: string | null
@@ -2677,6 +2729,7 @@ export type Database = {
           date_of_birth?: string | null
           device_serial?: string | null
           device_type?: string | null
+          documents?: Json
           email?: string | null
           expire_date?: string | null
           father_name?: string | null
@@ -2697,6 +2750,8 @@ export type Database = {
           monthly_bill?: number | null
           mother_name?: string | null
           name: string
+          nid_back_url?: string | null
+          nid_front_url?: string | null
           nid_number?: string | null
           occupation?: string | null
           onu_id?: string | null
@@ -2704,6 +2759,8 @@ export type Database = {
           password?: string | null
           permanent_address?: string | null
           phone_number?: string | null
+          photo_url?: string | null
+          present_address?: string | null
           profile?: string | null
           protocol_type?: string | null
           purchase_date?: string | null
@@ -2743,6 +2800,7 @@ export type Database = {
           date_of_birth?: string | null
           device_serial?: string | null
           device_type?: string | null
+          documents?: Json
           email?: string | null
           expire_date?: string | null
           father_name?: string | null
@@ -2763,6 +2821,8 @@ export type Database = {
           monthly_bill?: number | null
           mother_name?: string | null
           name?: string
+          nid_back_url?: string | null
+          nid_front_url?: string | null
           nid_number?: string | null
           occupation?: string | null
           onu_id?: string | null
@@ -2770,6 +2830,8 @@ export type Database = {
           password?: string | null
           permanent_address?: string | null
           phone_number?: string | null
+          photo_url?: string | null
+          present_address?: string | null
           profile?: string | null
           protocol_type?: string | null
           purchase_date?: string | null
