@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -176,6 +177,9 @@ export default function OnuList() {
                     <TableCell>{o.distance != null ? `${o.distance}m` : "—"}</TableCell>
                     <TableCell className="text-xs">{o.last_seen ? new Date(o.last_seen).toLocaleString("bn-BD") : "—"}</TableCell>
                     <TableCell>
+                      <Button variant="ghost" size="icon" asChild title="বিস্তারিত">
+                        <Link to={`/dashboard/olt/onu/${o.id}`}><Cpu className="h-4 w-4" /></Link>
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => setHistoryOnuId(o.id)} title="ইতিহাস"><History className="h-4 w-4" /></Button>
                     </TableCell>
                   </TableRow>
