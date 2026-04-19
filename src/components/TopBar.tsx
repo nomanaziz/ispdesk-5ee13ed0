@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Globe, Search, Bell } from "lucide-react";
+import { LogOut, User, Globe, Search, Bell, Palette, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { ThemeCustomizer } from "@/components/ThemeCustomizer";
+import { QuickSettings } from "@/components/QuickSettings";
 import { GlobalClientSearch } from "@/components/GlobalClientSearch";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
@@ -15,6 +17,8 @@ export function TopBar() {
   const navigate = useNavigate();
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const [searchOpen, setSearchOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -55,6 +59,24 @@ export function TopBar() {
             </Button>
           </Link>
           <ThemeSwitcher />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
+            title="থিম কাস্টমাইজার"
+            onClick={() => setThemeOpen(true)}
+          >
+            <Palette className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
+            title="কুইক সেটিংস"
+            onClick={() => setQuickOpen(true)}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground relative">
             <Bell className="h-4 w-4" />
             <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
@@ -86,6 +108,8 @@ export function TopBar() {
         </div>
       </header>
       <GlobalClientSearch open={searchOpen} onOpenChange={setSearchOpen} />
+      <ThemeCustomizer open={themeOpen} onOpenChange={setThemeOpen} />
+      <QuickSettings open={quickOpen} onOpenChange={setQuickOpen} />
     </>
   );
 }
