@@ -20,27 +20,17 @@ export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
   ];
 
   return (
-    <>
-      {/* Floating button */}
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed right-0 top-1/2 -translate-y-1/2 z-50 bg-primary text-primary-foreground p-2.5 rounded-l-lg shadow-lg hover:shadow-xl transition-all"
-        title="থিম সেটিংস"
-      >
-        <Settings className="h-5 w-5 animate-spin" style={{ animationDuration: "4s" }} />
-      </button>
-
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent className="w-[300px] sm:w-[340px] p-0 overflow-y-auto">
-          <SheetHeader className="px-5 pt-5 pb-3">
-            <div className="flex items-center justify-between">
-              <SheetTitle className="text-base font-semibold">থিম কাস্টমাইজার</SheetTitle>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setOpen(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">রিয়েল-টাইমে কাস্টমাইজ করুন</p>
-          </SheetHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-[300px] sm:w-[340px] p-0 overflow-y-auto">
+        <SheetHeader className="px-5 pt-5 pb-3">
+          <div className="flex items-center justify-between">
+            <SheetTitle className="text-base font-semibold">থিম কাস্টমাইজার</SheetTitle>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenChange(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">রিয়েল-টাইমে কাস্টমাইজ করুন</p>
+        </SheetHeader>
 
           <Separator />
 
