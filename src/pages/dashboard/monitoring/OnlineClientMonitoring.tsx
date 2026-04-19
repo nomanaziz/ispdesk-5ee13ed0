@@ -107,13 +107,13 @@ export default function OnlineClientMonitoring() {
     setSortBy(null); setSortDir("asc");
   };
 
-  // Filters
-  const [filterServer, setFilterServer] = useState("all");
+  // Filters — filterServer is the *active* MikroTik device (mandatory; never "all")
+  const [filterServer, setFilterServer] = useState<string>("");
   const [filterZone, setFilterZone] = useState("all");
   const [filterConnectionType, setFilterConnectionType] = useState("all");
 
   // Filter options
-  const [servers, setServers] = useState<{ id: string; name: string }[]>([]);
+  const [servers, setServers] = useState<{ id: string; name: string; order_no: number | null }[]>([]);
   const [zones, setZones] = useState<{ id: string; name: string }[]>([]);
   const [connectionTypes, setConnectionTypes] = useState<{ id: string; name: string }[]>([]);
 
@@ -159,14 +159,25 @@ export default function OnlineClientMonitoring() {
 
   const loadFilterOptions = useCallback(async () => {
     const [devRes, zoneRes, connRes] = await Promise.all([
-      supabase.from("mikrotik_devices").select("id, name").eq("enabled", true),
+      supabase
+        .from("mikrotik_devices")
+        .select("id, name, order_no")
+        .eq("enabled", true)
+        .order("order_no", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true }),
       supabase.from("zones").select("id, name").eq("status", "active"),
       supabase.from("connection_types_config").select("id, name").eq("status", "active"),
     ]);
-    if (devRes.data) setServers(devRes.data);
+    if (devRes.data) {
+      setServers(devRes.data as any);
+      // Auto-select first device on mount if none selected
+      if (!filterServer && devRes.data.length > 0) {
+        setFilterServer((devRes.data[0] as any).id);
+      }
+    }
     if (zoneRes.data) setZones(zoneRes.data);
     if (connRes.data) setConnectionTypes(connRes.data);
-  }, []);
+  }, [filterServer]);
 
   const loadActiveSessions = useCallback(async () => {
     setLoading(true);
