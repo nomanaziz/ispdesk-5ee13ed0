@@ -3419,6 +3419,72 @@ export type Database = {
         }
         Relationships: []
       }
+      device_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          device_id: string | null
+          device_kind: string
+          id: string
+          payload: Json | null
+          result: string | null
+          target: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          device_id?: string | null
+          device_kind: string
+          id?: string
+          payload?: Json | null
+          result?: string | null
+          target?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          device_id?: string | null
+          device_kind?: string
+          id?: string
+          payload?: Json | null
+          result?: string | null
+          target?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      device_permissions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          permission_key: string
+          scope: string
+          scope_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permission_key: string
+          scope?: string
+          scope_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permission_key?: string
+          scope?: string
+          scope_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       districts: {
         Row: {
           code: string | null
@@ -7616,36 +7682,234 @@ export type Database = {
           },
         ]
       }
+      switch_ports: {
+        Row: {
+          admin_status: string | null
+          bias_current: number | null
+          description: string | null
+          duplex: string | null
+          enabled: boolean
+          flow_control: string | null
+          id: string
+          if_index: number | null
+          in_octets: number | null
+          in_rate_bps: number | null
+          interface: string
+          last_synced: string
+          mac_address: string | null
+          oper_status: string | null
+          out_octets: number | null
+          out_rate_bps: number | null
+          rx_power: number | null
+          sfp_temp: number | null
+          sfp_voltage: number | null
+          speed_mbps: number | null
+          switch_id: string
+          tx_power: number | null
+          vlan_id: number | null
+        }
+        Insert: {
+          admin_status?: string | null
+          bias_current?: number | null
+          description?: string | null
+          duplex?: string | null
+          enabled?: boolean
+          flow_control?: string | null
+          id?: string
+          if_index?: number | null
+          in_octets?: number | null
+          in_rate_bps?: number | null
+          interface: string
+          last_synced?: string
+          mac_address?: string | null
+          oper_status?: string | null
+          out_octets?: number | null
+          out_rate_bps?: number | null
+          rx_power?: number | null
+          sfp_temp?: number | null
+          sfp_voltage?: number | null
+          speed_mbps?: number | null
+          switch_id: string
+          tx_power?: number | null
+          vlan_id?: number | null
+        }
+        Update: {
+          admin_status?: string | null
+          bias_current?: number | null
+          description?: string | null
+          duplex?: string | null
+          enabled?: boolean
+          flow_control?: string | null
+          id?: string
+          if_index?: number | null
+          in_octets?: number | null
+          in_rate_bps?: number | null
+          interface?: string
+          last_synced?: string
+          mac_address?: string | null
+          oper_status?: string | null
+          out_octets?: number | null
+          out_rate_bps?: number | null
+          rx_power?: number | null
+          sfp_temp?: number | null
+          sfp_voltage?: number | null
+          speed_mbps?: number | null
+          switch_id?: string
+          tx_power?: number | null
+          vlan_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "switch_ports_switch_id_fkey"
+            columns: ["switch_id"]
+            isOneToOne: false
+            referencedRelation: "switches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      switch_traffic_samples: {
+        Row: {
+          id: number
+          in_bps: number | null
+          interface: string
+          out_bps: number | null
+          recorded_at: string
+          switch_id: string
+        }
+        Insert: {
+          id?: number
+          in_bps?: number | null
+          interface: string
+          out_bps?: number | null
+          recorded_at?: string
+          switch_id: string
+        }
+        Update: {
+          id?: number
+          in_bps?: number | null
+          interface?: string
+          out_bps?: number | null
+          recorded_at?: string
+          switch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "switch_traffic_samples_switch_id_fkey"
+            columns: ["switch_id"]
+            isOneToOne: false
+            referencedRelation: "switches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      switch_vlans: {
+        Row: {
+          created_at: string
+          id: string
+          name: string | null
+          switch_id: string
+          tagged_ports: string[] | null
+          untagged_ports: string[] | null
+          vlan_id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          switch_id: string
+          tagged_ports?: string[] | null
+          untagged_ports?: string[] | null
+          vlan_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          switch_id?: string
+          tagged_ports?: string[] | null
+          untagged_ports?: string[] | null
+          vlan_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "switch_vlans_switch_id_fkey"
+            columns: ["switch_id"]
+            isOneToOne: false
+            referencedRelation: "switches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       switches: {
         Row: {
           branch_id: string | null
+          cpu_usage: number | null
           created_at: string
+          description: string | null
+          firmware: string | null
           id: string
           ip_address: string
+          last_synced: string | null
+          memory_usage: number | null
+          model: string | null
           name: string
+          password_encrypted: string | null
           port: number
+          snmp_community: string | null
+          snmp_port: number | null
+          snmp_version: string | null
           status: Database["public"]["Enums"]["device_status"]
           updated_at: string
+          uptime: string | null
+          username: string | null
+          vendor: string | null
         }
         Insert: {
           branch_id?: string | null
+          cpu_usage?: number | null
           created_at?: string
+          description?: string | null
+          firmware?: string | null
           id?: string
           ip_address: string
+          last_synced?: string | null
+          memory_usage?: number | null
+          model?: string | null
           name: string
+          password_encrypted?: string | null
           port?: number
+          snmp_community?: string | null
+          snmp_port?: number | null
+          snmp_version?: string | null
           status?: Database["public"]["Enums"]["device_status"]
           updated_at?: string
+          uptime?: string | null
+          username?: string | null
+          vendor?: string | null
         }
         Update: {
           branch_id?: string | null
+          cpu_usage?: number | null
           created_at?: string
+          description?: string | null
+          firmware?: string | null
           id?: string
           ip_address?: string
+          last_synced?: string | null
+          memory_usage?: number | null
+          model?: string | null
           name?: string
+          password_encrypted?: string | null
           port?: number
+          snmp_community?: string | null
+          snmp_port?: number | null
+          snmp_version?: string | null
           status?: Database["public"]["Enums"]["device_status"]
           updated_at?: string
+          uptime?: string | null
+          username?: string | null
+          vendor?: string | null
         }
         Relationships: [
           {
@@ -8658,6 +8922,15 @@ export type Database = {
     }
     Functions: {
       get_user_branch: { Args: { _user_id: string }; Returns: string }
+      has_device_permission: {
+        Args: {
+          _branch_id?: string
+          _device_id?: string
+          _key: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
