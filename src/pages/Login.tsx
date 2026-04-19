@@ -69,14 +69,49 @@ const LoginInner = () => {
       <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
       <div className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-primary/8 blur-3xl" />
 
-      <div className="w-full max-w-[420px] relative z-10">
+      <div className={`w-full ${showCompany ? "max-w-[860px] grid md:grid-cols-2 gap-6 items-stretch" : "max-w-[420px]"} relative z-10`}>
+        {showCompany && (
+          <Card className="shadow-xl border-border/50 hidden md:flex flex-col bg-gradient-to-br from-primary/5 to-primary/10">
+            <CardContent className="p-8 flex flex-col h-full">
+              {company?.logo_url && (
+                <img src={company.logo_url} alt={company.name || "logo"} className="h-20 w-auto object-contain mb-5" />
+              )}
+              <h3 className="text-2xl font-bold text-foreground mb-2">{company?.name || "Company"}</h3>
+              <div className="space-y-2.5 text-sm text-muted-foreground mt-4">
+                {(company?.address1 || company?.address2) && (
+                  <div className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-primary shrink-0" /><span>{[company.address1, company.address2].filter(Boolean).join(", ")}</span></div>
+                )}
+                {(company?.mobile1 || company?.phone1) && (
+                  <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-primary shrink-0" /><span>{[company.mobile1, company.mobile2, company.phone1, company.phone2].filter(Boolean).join(" / ")}</span></div>
+                )}
+                {company?.email && (
+                  <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-primary shrink-0" /><span>{company.email}</span></div>
+                )}
+                {company?.website && (
+                  <div className="flex items-center gap-2"><Globe className="h-4 w-4 text-primary shrink-0" /><a href={company.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary">{company.website}</a></div>
+                )}
+              </div>
+              {(company?.tin || company?.bin) && (
+                <div className="mt-auto pt-6 text-xs text-muted-foreground border-t flex flex-wrap gap-x-4 gap-y-1">
+                  {company.tin && <span>TIN: {company.tin}</span>}
+                  {company.bin && <span>BIN: {company.bin}</span>}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="shadow-xl border-border/50">
           <CardHeader className="text-center pb-2 pt-8">
             <div className="flex items-center justify-center gap-2.5 mb-5">
-              <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
-                <Activity className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="text-xl font-bold text-foreground">ISP Desk</span>
+              {showCompany && company?.logo_url ? (
+                <img src={company.logo_url} alt="logo" className="h-10 w-auto object-contain" />
+              ) : (
+                <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
+                  <Activity className="h-5 w-5 text-primary-foreground" />
+                </div>
+              )}
+              <span className="text-xl font-bold text-foreground">{showCompany && company?.name ? company.name : "ISP Desk"}</span>
             </div>
             <h2 className="text-lg font-semibold text-foreground">{t("স্বাগতম! 👋", "Welcome! 👋")}</h2>
             <p className="text-sm text-muted-foreground mt-1">
