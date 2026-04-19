@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Eye, Pencil, Trash2, Search, FileText, CheckCircle, AlertCircle, DollarSign } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Search, FileText, CheckCircle, AlertCircle, DollarSign, Wallet } from "lucide-react";
+import { ReceiveBillDialog } from "@/components/bw-sale/ReceiveBillDialog";
 
 export default function Invoices() {
   const nav = useNavigate();
@@ -15,6 +16,7 @@ export default function Invoices() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [payOpen, setPayOpen] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -96,7 +98,7 @@ export default function Invoices() {
                   <TableHead className="text-right">Discount</TableHead>
                   <TableHead className="text-right">Due</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-32 text-center">Action</TableHead>
+                  <TableHead className="w-40 text-center">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -106,7 +108,9 @@ export default function Invoices() {
                   <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No invoices found</TableCell></TableRow>
                 ) : filtered.map((inv) => {
                   const amount = Number(inv.total_amount || inv.amount || 0);
-                  const due = Math.max(0, amount - Number(inv.paid_amount || 0));
+                  const paid = Number(inv.paid_amount || 0);
+                  const due = Math.max(0, amount - paid);
+                  const status = due <= 0 ? "paid" : (paid > 0 ? "partial" : "due");
                   return (
                     <TableRow key={inv.id}>
                       <TableCell><Link to={`/dashboard/bw-sale/invoices/${inv.id}`} className="text-primary hover:underline font-mono">{inv.invoice_no}</Link></TableCell>
@@ -114,12 +118,21 @@ export default function Invoices() {
                       <TableCell>{inv.billing_month || inv.month || "—"}</TableCell>
                       <TableCell>{inv.payment_due_date || "—"}</TableCell>
                       <TableCell className="text-right">৳{Math.round(amount).toLocaleString()}</TableCell>
-                      <TableCell className="text-right">৳{Math.round(Number(inv.paid_amount || 0)).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">৳{Math.round(paid).toLocaleString()}</TableCell>
                       <TableCell className="text-right">৳{Math.round(Number(inv.discount || 0)).toLocaleString()}</TableCell>
                       <TableCell className="text-right font-semibold">৳{Math.round(due).toLocaleString()}</TableCell>
-                      <TableCell><Badge variant={due > 0 ? "destructive" : "default"}>{due > 0 ? "Due" : "Paid"}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant={status === "paid" ? "default" : status === "partial" ? "secondary" : "destructive"}>
+                          {status === "paid" ? "Paid" : status === "partial" ? "Partial" : "Due"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-center gap-1">
+                          {due > 0 && (
+                            <Button variant="default" size="sm" className="h-7 px-2 text-xs" onClick={() => setPayOpen(true)}>
+                              <Wallet className="h-3.5 w-3.5 mr-1" /> Pay
+                            </Button>
+                          )}
                           <Button asChild variant="ghost" size="icon" className="h-7 w-7"><Link to={`/dashboard/bw-sale/invoices/${inv.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
                           <Button asChild variant="ghost" size="icon" className="h-7 w-7"><Link to={`/dashboard/bw-sale/invoices/${inv.id}/edit`}><Pencil className="h-3.5 w-3.5" /></Link></Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(inv.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
@@ -133,6 +146,7 @@ export default function Invoices() {
           </div>
         </CardContent>
       </Card>
+      <ReceiveBillDialog open={payOpen} onOpenChange={setPayOpen} onSaved={fetchData} />
     </div>
   );
 }

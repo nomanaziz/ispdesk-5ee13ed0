@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
 
     if (bwCustomer) {
       if (bwCustomer.password !== password) return json({ error: "Invalid username or password" }, 401);
-      if (bwCustomer.activity_status !== "Active") {
+      if ((bwCustomer.activity_status || "").toLowerCase() !== "active") {
         return json({ error: "Account is inactive. Please contact support." }, 403);
       }
       const { token, customer, sid } = issueToken({

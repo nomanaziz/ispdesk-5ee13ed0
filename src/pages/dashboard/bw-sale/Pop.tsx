@@ -1,16 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Eye, Pencil, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Search, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Customer {
@@ -40,23 +40,35 @@ interface Customer {
   created_at: string;
 }
 
-interface Pop {
-  id: string;
-  name: string;
-  status: string;
-}
-
 const emptyForm = {
   customer_name: "", customer_code: "", contact_person: "", email: "", mobile: "", phone: "",
-  pop_id: "", reference_by: "", address: "", remarks: "", facebook_url: "", skype_id: "", website: "",
+  reference_by: "", address: "", remarks: "", facebook_url: "", skype_id: "", website: "",
   nttn_info: "", vlan_info: [{ vlan: "", info: "" }], scr_link_id: "", activation_date: "",
   ip_addresses: [""], pop_name_last_mile: "", username: "", password: "", confirm_password: "", activity_status: "active",
 };
 
+function generateCode(name: string, existingCodes: Set<string>): string {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .map(w => w[0])
+    .filter(Boolean)
+    .join("")
+    .toUpperCase()
+    .slice(0, 4) || "CUS";
+  let n = 1;
+  let code = `${initials}-${String(n).padStart(3, "0")}`;
+  while (existingCodes.has(code)) {
+    n++;
+    code = `${initials}-${String(n).padStart(3, "0")}`;
+  }
+  return code;
+}
+
 export default function Pop() {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [pops, setPops] = useState<Pop[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [perPage, setPerPage] = useState(10);
@@ -70,14 +82,26 @@ export default function Pop() {
 
   async function fetchData() {
     setLoading(true);
-    const [cRes, pRes] = await Promise.all([
+    const [cRes, iRes] = await Promise.all([
       supabase.from("bw_sale_customers").select("*").order("created_at", { ascending: false }),
-      supabase.from("bw_sale_pops").select("*").order("name"),
+      supabase.from("bw_sales_invoices").select("customer_id, total_amount, amount, paid_amount, discount"),
     ]);
     if (cRes.data) setCustomers(cRes.data);
-    if (pRes.data) setPops(pRes.data);
+    if (iRes.data) setInvoices(iRes.data);
     setLoading(false);
   }
+
+  const dueByCustomer = useMemo(() => {
+    const map = new Map<string, number>();
+    invoices.forEach(i => {
+      const amt = Number(i.total_amount || i.amount || 0);
+      const paid = Number(i.paid_amount || 0);
+      const disc = Number(i.discount || 0);
+      const due = Math.max(0, amt - paid - disc);
+      map.set(i.customer_id, (map.get(i.customer_id) || 0) + due);
+    });
+    return map;
+  }, [invoices]);
 
   const filtered = customers.filter(c =>
     c.customer_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -86,6 +110,7 @@ export default function Pop() {
   );
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+  const totalDue = filtered.reduce((s, c) => s + (dueByCustomer.get(c.id) || 0), 0);
 
   function openAdd() {
     setEditId(null);
@@ -98,7 +123,7 @@ export default function Pop() {
     setEditId(c.id);
     setForm({
       customer_name: c.customer_name, customer_code: c.customer_code || "", contact_person: c.contact_person || "",
-      email: c.email || "", mobile: c.mobile || "", phone: c.phone || "", pop_id: c.pop_id || "",
+      email: c.email || "", mobile: c.mobile || "", phone: c.phone || "",
       reference_by: c.reference_by || "", address: c.address || "", remarks: c.remarks || "",
       facebook_url: c.facebook_url || "", skype_id: c.skype_id || "", website: c.website || "",
       nttn_info: c.nttn_info || "",
@@ -113,13 +138,29 @@ export default function Pop() {
     setDialogOpen(true);
   }
 
+  function regenCode() {
+    const existing = new Set(customers.filter(c => c.id !== editId).map(c => (c.customer_code || "").toUpperCase()).filter(Boolean));
+    const code = generateCode(form.customer_name || "Customer", existing);
+    setForm(f => ({ ...f, customer_code: code }));
+  }
+
+  // Auto-generate code when typing name in Add mode and code is empty
+  useEffect(() => {
+    if (!dialogOpen || editId) return;
+    if (form.customer_code) return;
+    if (!form.customer_name.trim()) return;
+    const existing = new Set(customers.map(c => (c.customer_code || "").toUpperCase()).filter(Boolean));
+    const code = generateCode(form.customer_name, existing);
+    setForm(f => ({ ...f, customer_code: code }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.customer_name, dialogOpen, editId]);
+
   async function handleSave() {
     if (!form.customer_name.trim()) { toast.error("Customer name is required"); return; }
     if (step === 3 && form.password !== form.confirm_password) { toast.error("Passwords do not match"); return; }
 
     const payload: any = { ...form };
     delete payload.confirm_password;
-    if (!payload.pop_id) payload.pop_id = null;
     if (!payload.activation_date) payload.activation_date = null;
 
     if (editId) {
@@ -176,7 +217,7 @@ export default function Pop() {
                   <TableHead>Code</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Mobile</TableHead>
-                  <TableHead>POP</TableHead>
+                  <TableHead className="text-right">Balance Due</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-28 text-center">Action</TableHead>
                 </TableRow>
@@ -186,29 +227,41 @@ export default function Pop() {
                   <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
                 ) : paginated.length === 0 ? (
                   <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No customers found</TableCell></TableRow>
-                ) : paginated.map((c, i) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="text-muted-foreground">{(page - 1) * perPage + i + 1}</TableCell>
-                    <TableCell className="font-medium">{c.customer_name}</TableCell>
-                    <TableCell>{c.customer_code || "—"}</TableCell>
-                    <TableCell>{c.contact_person || "—"}</TableCell>
-                    <TableCell>{c.mobile || "—"}</TableCell>
-                    <TableCell>{pops.find(p => p.id === c.pop_id)?.name || "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant={c.activity_status === "active" ? "default" : "secondary"}>
-                        {c.activity_status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/dashboard/bw-sale/pop/${c.id}`)}><Eye className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(c.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                ) : paginated.map((c, i) => {
+                  const due = dueByCustomer.get(c.id) || 0;
+                  return (
+                    <TableRow key={c.id}>
+                      <TableCell className="text-muted-foreground">{(page - 1) * perPage + i + 1}</TableCell>
+                      <TableCell className="font-medium">{c.customer_name}</TableCell>
+                      <TableCell className="font-mono text-xs">{c.customer_code || "—"}</TableCell>
+                      <TableCell>{c.contact_person || "—"}</TableCell>
+                      <TableCell>{c.mobile || "—"}</TableCell>
+                      <TableCell className={`text-right font-semibold ${due > 0 ? "text-destructive" : ""}`}>৳{Math.round(due).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <Badge variant={(c.activity_status || "").toLowerCase() === "active" ? "default" : "secondary"}>
+                          {c.activity_status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/dashboard/bw-sale/pop/${c.id}`)}><Eye className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(c.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
+              {!loading && filtered.length > 0 && (
+                <TableFooter>
+                  <TableRow className="bg-muted/40">
+                    <TableCell colSpan={5} className="text-right font-semibold">Total Due</TableCell>
+                    <TableCell className="text-right font-bold text-destructive">৳{Math.round(totalDue).toLocaleString()}</TableCell>
+                    <TableCell colSpan={2}></TableCell>
+                  </TableRow>
+                </TableFooter>
+              )}
             </Table>
           </div>
 
@@ -225,7 +278,6 @@ export default function Pop() {
         </CardContent>
       </Card>
 
-      {/* Add/Edit Customer Dialog — 3-step wizard */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -235,18 +287,17 @@ export default function Pop() {
           {step === 1 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><Label>Customer Name *</Label><Input value={form.customer_name} onChange={e => set("customer_name", e.target.value)} /></div>
-              <div><Label>Customer Code</Label><Input value={form.customer_code} onChange={e => set("customer_code", e.target.value)} /></div>
+              <div>
+                <Label>Customer Code <span className="text-xs text-muted-foreground">(auto, used for bKash payment ref)</span></Label>
+                <div className="flex gap-2">
+                  <Input value={form.customer_code} onChange={e => set("customer_code", e.target.value.toUpperCase())} className="font-mono" />
+                  <Button type="button" variant="outline" size="icon" onClick={regenCode} title="Regenerate"><RefreshCw className="h-4 w-4" /></Button>
+                </div>
+              </div>
               <div><Label>Contact Person</Label><Input value={form.contact_person} onChange={e => set("contact_person", e.target.value)} /></div>
               <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => set("email", e.target.value)} /></div>
               <div><Label>Mobile</Label><Input value={form.mobile} onChange={e => set("mobile", e.target.value)} /></div>
               <div><Label>Phone</Label><Input value={form.phone} onChange={e => set("phone", e.target.value)} /></div>
-              <div>
-                <Label>POP</Label>
-                <Select value={form.pop_id} onValueChange={v => set("pop_id", v)}>
-                  <SelectTrigger><SelectValue placeholder="Select POP" /></SelectTrigger>
-                  <SelectContent>{pops.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
               <div><Label>Reference By</Label><Input value={form.reference_by} onChange={e => set("reference_by", e.target.value)} /></div>
               <div className="sm:col-span-2"><Label>Address</Label><Textarea rows={2} value={form.address} onChange={e => set("address", e.target.value)} /></div>
               <div className="sm:col-span-2"><Label>Remarks</Label><Textarea rows={2} value={form.remarks} onChange={e => set("remarks", e.target.value)} /></div>
