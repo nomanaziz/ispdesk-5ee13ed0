@@ -315,6 +315,7 @@ export default function ClientProfile() {
                 <TabsTrigger value="network" className="text-xs gap-1"><Wifi className="h-3 w-3" /> নেটওয়ার্ক</TabsTrigger>
                 <TabsTrigger value="personal" className="text-xs gap-1"><User className="h-3 w-3" /> ব্যক্তিগত</TabsTrigger>
                 <TabsTrigger value="invoices" className="text-xs gap-1"><FileText className="h-3 w-3" /> বিল</TabsTrigger>
+                <TabsTrigger value="generated" className="text-xs gap-1"><Edit className="h-3 w-3" /> Generated & Updated</TabsTrigger>
                 <TabsTrigger value="collections" className="text-xs gap-1"><CreditCard className="h-3 w-3" /> কালেকশন</TabsTrigger>
                 <TabsTrigger value="traffic" className="text-xs gap-1"><Activity className="h-3 w-3" /> ট্রাফিক</TabsTrigger>
                 <TabsTrigger value="complain" className="text-xs gap-1"><MessageSquare className="h-3 w-3" /> অভিযোগ</TabsTrigger>
