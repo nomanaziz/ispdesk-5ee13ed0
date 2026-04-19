@@ -123,11 +123,32 @@ export default function Company() {
                 <Input value={form.address2} onChange={e => set("address2", e.target.value)} className="pl-9" placeholder="বিকল্প ঠিকানা" />
               </div>
             </div>
-            <div>
-              <Label className="text-xs mb-1 block">লোগো URL</Label>
-              <div className="relative">
-                <Image className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input value={form.logo_url} onChange={e => set("logo_url", e.target.value)} className="pl-9" placeholder="https://..." />
+            <div className="md:col-span-3">
+              <Label className="text-xs mb-1 block">কোম্পানি লোগো</Label>
+              <div className="flex items-center gap-4 p-3 border rounded-md bg-muted/30">
+                <div className="h-20 w-20 rounded-md border bg-background flex items-center justify-center overflow-hidden shrink-0">
+                  {form.logo_url ? (
+                    <img src={form.logo_url} alt="logo" className="h-full w-full object-contain" />
+                  ) : (
+                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleUpload(e.target.files[0])} />
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-2">
+                      {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                      {uploading ? "আপলোড হচ্ছে..." : "লোগো আপলোড করুন"}
+                    </Button>
+                    {form.logo_url && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => set("logo_url", "")} className="gap-1 text-destructive">
+                        <X className="h-3.5 w-3.5" /> মুছে ফেলুন
+                      </Button>
+                    )}
+                  </div>
+                  <Input value={form.logo_url} onChange={e => set("logo_url", e.target.value)} placeholder="অথবা লোগো URL পেস্ট করুন" className="text-xs" />
+                  <p className="text-[11px] text-muted-foreground">PNG/JPG, সর্বোচ্চ ২MB। স্বচ্ছ পটভূমি (PNG) সবচেয়ে ভালো দেখায়।</p>
+                </div>
               </div>
             </div>
             <div>
