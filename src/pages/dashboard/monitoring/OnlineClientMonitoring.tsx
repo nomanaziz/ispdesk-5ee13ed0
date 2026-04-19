@@ -16,7 +16,7 @@ import {
   RefreshCw, Users, Wifi, WifiOff, Search, Filter, ChevronDown, ChevronUp,
   AlertTriangle, ShieldAlert, ShieldCheck, Activity, Radio, RotateCcw,
   MessageSquare, Send, ArrowUpFromLine, ArrowDownToLine, History,
-  ArrowUp, ArrowDown, ArrowUpDown,
+  ArrowUp, ArrowDown, ArrowUpDown, Server,
 } from "lucide-react";
 
 interface ActiveSession {
