@@ -106,7 +106,19 @@ function normalizeMikrotikStatus(value?: string): "enabled" | "disabled" {
 }
 
 async function getActiveSessions(conn: Deno.TcpConn, username: string) {
-  return await mikrotikCommand(conn, "/ppp/active/print", { "?name": username });
+  // First try server-side filter (fast). If empty, fall back to full list + client-side
+  // case-insensitive match — some RouterOS versions don't honor ?name on /ppp/active.
+  const target = (username || "").toLowerCase();
+  try {
+    const filtered = await mikrotikCommand(conn, "/ppp/active/print", { "?name": username });
+    if (filtered.length > 0) return filtered;
+  } catch (_) { /* ignore, fall through */ }
+  try {
+    const all = await mikrotikCommand(conn, "/ppp/active/print");
+    return all.filter((s) => (s.name || "").toLowerCase() === target);
+  } catch (_) {
+    return [];
+  }
 }
 
 async function getLiveTraffic(conn: Deno.TcpConn, interfaceName?: string) {
