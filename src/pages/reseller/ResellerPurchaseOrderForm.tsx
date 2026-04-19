@@ -142,12 +142,12 @@ const ResellerPackageRequest = () => {
                 Rate: ৳ {Number(target.default_rate || 0).toLocaleString()} / {target.unit || "Mbps"}
               </div>
               {requestType === "upgrade" && current && (
-                <div className="text-emerald-600">
+                <div className="text-primary">
                   Upgrading from <span className="font-medium">{current.name}</span>
                 </div>
               )}
               {requestType === "downgrade" && current && (
-                <div className="text-orange-600">
+                <div className="text-muted-foreground">
                   Downgrading from <span className="font-medium">{current.name}</span>
                 </div>
               )}
