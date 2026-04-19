@@ -405,6 +405,7 @@ const App = () => (
               <Route path="/dashboard/clients/scheduler" element={<P><ClientScheduler /></P>} />
               <Route path="/dashboard/clients/change-request" element={<P><ClientChangeRequest /></P>} />
               <Route path="/dashboard/clients/portal-manage" element={<P><ClientPortalManage /></P>} />
+              <Route path="/dashboard/clients/update-requests" element={<P><UserUpdateRequests /></P>} />
 
               {/* Billing */}
               <Route path="/dashboard/billing" element={<P><BillingList /></P>} />
