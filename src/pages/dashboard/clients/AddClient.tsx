@@ -229,20 +229,45 @@ export default function AddClient() {
         const { data: insertedClient, error } = await supabase.from("clients").insert(payload).select("id").single();
         if (error) throw error;
 
-        // Auto-generate billing record for current month
-        if (insertedClient?.id) {
-          const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`;
-          const billId = `BILL-${form.client_id}-${currentMonth.slice(0, 7)}`;
-          await supabase.from("billing").insert({
+        // Auto-generate billing record — prorated for first month if mid-month join
+        if (insertedClient?.id && form.billing_status === "Active") {
+          const joinStr = form.joining_date || format(new Date(), "yyyy-MM-dd");
+          const join = new Date(joinStr + "T00:00:00");
+          const y = join.getFullYear();
+          const m = join.getMonth() + 1;
+          const totalDays = new Date(y, m, 0).getDate();
+          const joinDay = join.getDate();
+          const daysRemaining = totalDays - joinDay + 1;
+          const monthly = Number(form.monthly_bill || 0);
+          const isProrated = joinDay > 1;
+          const amount = isProrated
+            ? Math.round((monthly / totalDays) * daysRemaining * 100) / 100
+            : monthly;
+          const monthKey = `${y}-${String(m).padStart(2, "0")}`;
+          const currentMonth = `${monthKey}-01`;
+          const billId = `BILL-${form.client_id}-${monthKey}`;
+          const { data: insertedBill } = await supabase.from("billing").insert({
             bill_id: billId,
             client_id: insertedClient.id,
             month: currentMonth,
-            amount: form.monthly_bill || 0,
-            due: form.monthly_bill || 0,
+            amount,
+            due: amount,
             status: "unpaid",
             generated: true,
             branch_id: form.branch_id || null,
-          });
+          }).select("id").maybeSingle();
+
+          if (insertedBill?.id) {
+            await supabase.from("billing_history").insert({
+              billing_id: insertedBill.id,
+              client_id: insertedClient.id,
+              action: isProrated ? "prorated" : "generated",
+              new_value: { amount, days: daysRemaining, total_days_in_month: totalDays, monthly },
+              remarks: isProrated
+                ? `Pro-rated: ${joinDay}-${totalDays} (${daysRemaining} দিন × ৳${monthly}/${totalDays})`
+                : `Full month bill ৳${monthly}`,
+            });
+          }
         }
       }
     },
