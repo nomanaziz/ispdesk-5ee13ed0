@@ -1,50 +1,48 @@
 
 
-User wants 3 accounting pages redesigned to match the legacy app screenshots:
+User wants 3 changes to the dashboard top-right area:
 
-### 1. CashBook (`src/pages/dashboard/accounting/CashBook.tsx`)
-Replace month-only view with **From/To date range** + Update/Clear filters. Layout = single table with two side-by-side sections:
+1. **Remove the floating gear/settings button** (right edge, vertically centered) that currently opens the theme customizer — it shows the small "××" double-cross artifact in image-133.
+2. **Split topbar icons into two separate buttons**:
+   - **Theme icon** (palette/paintbrush) → opens the existing theme customizer (colors, mode, skin, content width)
+   - **Quick Settings icon** (gear/settings) → opens a NEW Quick Settings panel matching the reference screenshot
+3. The current `ThemeSwitcher` (sun/moon toggle) is fine to keep OR replace — user says "theme এর icon দিবা" so I'll replace the floating gear's role with a palette icon in the topbar that opens the customizer, and keep the sun/moon toggle.
 
-```
-| Debit                    | Credit                       |
-| Particular | Taka        | Particular        | Taka     |
-| Collected Bill | xxxx    | Paid Salary       | xxxx     |
-| Installation Charge      | Expense                      |
-| Other Service Sales      | Bandwidth Provider Bill      |
-| Product Sales            | Withdraw                     |
-| POP Bill                 | Purchase Paid Amount         |
-| Bandwidth POP Bill       | Total                        |
-| Income                   |                              |
-| Total                    |                              |
-| Cash on Hand (Debit Total - Credit Total, full-width row) |
-```
+### Quick Settings panel content (from reference image)
+A right-side Sheet titled "QUICK SETTING" with these sections, each with radio options + Save button:
+- Bill generate period (Start of month / Date to date)
+- Allow inactive process at last day of month (Yes / No)
+- Allow bandwidth POP invoice daily basis (Yes / No)
+- Payment status wise client enable/disable (Yes / No)
+- Show company name in invoice (Yes / No)
+- Client code automatic or customizable (Customizable / Automatic)
+- Send SMS to unpaid client before (1/2/3/5 days)
+- Outside bill payment link enable/disable (Yes / No)
+- Outside bill payment verification code (Yes / No)
 
-Data sources (aggregate sums in date range):
-- Debit: `bw_sales_invoices.paid` (Bandwidth POP Bill), `pop_bills.paid` (POP Bill), `customer_bills.paid` (Collected Bill), `installation_fees`, `service_invoices`, `product_invoices`, `income_entries` (Income)
-- Credit: `salary_payments` / payroll, `expense_entries`, `bw_purchase_bills.paid`, withdrawals, purchase paid
+Settings persist to existing `system_settings` table (already used by `useSystemSetting` hook). Each row keyed by setting name.
 
-### 2. TrialBalance (`src/pages/dashboard/accounting/TrialBalance.tsx`)
-Replace simple summary with **Till Date** filter + grouped sections by account type:
-- Asset / Expense / Income / Liabilities / Owner's Equity (each with header bar, rows, Total row, full-width totals row at bottom)
-- Generate PDF / Generate CSV buttons (top-right) using existing `src/lib/reportExport.ts`
-- Show negative balances as-is, account names clickable styled
+### Files to change
 
-### 3. ComparePL (`src/pages/dashboard/accounting/ComparePL.tsx`)
-Replace month dropdowns with **4 date pickers**: From/To Date + Compare From/To Date.
-Top: 3 summary cards (Net Profit For Date | Net Profit For Compare Date | Change In Net Profit with %).
-Table: grouped by Income / Cost of Goods Sold / Gross Profit / Expense / Net Profit, each showing both period totals + Change amount + Change %. Per-account rows from `chart_of_accounts` joined with `income_entries` / `expense_entries` per account.
-Generate PDF / CSV buttons.
+**`src/components/ThemeCustomizer.tsx`**
+- Remove the floating `<button>` (fixed right edge gear) — that's the source of the "××" artifact
+- Export the Sheet as a controlled component: accept `open` / `onOpenChange` props so TopBar can trigger it
 
-### Shared
-- Use existing `ReportLayout` pattern (`src/components/reports/ReportLayout.tsx`) where suitable for filter bar.
-- Use `exportPDF` / `exportCSV` from `src/lib/reportExport.ts`.
-- Bangla labels kept; numeric format `toLocaleString` with 2 decimals like screenshots.
-- Table header uses dark navy bg (`bg-[#2c5f6e]` or `bg-primary`) white text matching screenshots.
+**`src/components/QuickSettings.tsx`** (new)
+- New Sheet component matching reference layout
+- Reads/writes via `system_settings` table (use existing `useSystemSetting` hook pattern)
+- Each section: label + info icon + radio options + Save button per section
 
-### Files to edit
-- `src/pages/dashboard/accounting/CashBook.tsx`
-- `src/pages/dashboard/accounting/TrialBalance.tsx`
-- `src/pages/dashboard/accounting/ComparePL.tsx`
+**`src/components/TopBar.tsx`**
+- Add two new icon buttons next to ThemeSwitcher:
+  - `<Palette/>` → opens ThemeCustomizer
+  - `<Settings/>` → opens QuickSettings
+- Manage open state for both panels
 
-No DB migration needed — all required tables exist (`income_entries`, `expense_entries`, `chart_of_accounts`, `bw_sales_invoices`, `pop_bills`, `customer_bills`, etc.). If a referenced table is missing during implementation, I'll fall back to whatever's available and note it.
+**`src/components/DashboardLayout.tsx`**
+- Remove standalone `<ThemeCustomizer />` mount (it now lives inside TopBar as controlled)
+
+### Notes
+- The "××" artifact in image-133 is the rotating gear icon from the floating button overlapping itself — removing the floating button fixes it.
+- All Quick Settings are global (admin-level), stored in `system_settings`. RLS already restricts writes to admins.
 
