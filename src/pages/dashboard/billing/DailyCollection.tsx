@@ -88,48 +88,74 @@ export default function DailyCollection() {
     mutationFn: async () => {
       if (!selectedClient) throw new Error("ক্লায়েন্ট নির্বাচন করুন");
       const amount = Number(collectForm.amount);
+      const discount = Number(collectForm.discount || 0);
       if (!amount || amount <= 0) throw new Error("সঠিক পরিমাণ দিন");
 
-      // Get current month billing
-      const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+      // Get current month billing — month stored as YYYY-MM-01 date
+      const now = new Date();
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10);
       const { data: billingRows } = await supabase
         .from("billing")
-        .select("id, amount, paid, due")
+        .select("id, amount, paid, due, discount")
         .eq("client_id", selectedClient.id)
-        .eq("month", currentMonth)
+        .gte("month", monthStart)
+        .lt("month", nextMonth)
+        .order("month", { ascending: false })
         .limit(1);
 
       const billing = billingRows?.[0];
 
-      // Insert collection
+      // Update billing FIRST so we have valid billing_id
+      let billingId = billing?.id || null;
+      if (billing) {
+        const newPaid = Number(billing.paid || 0) + amount;
+        const totalDiscount = Number(billing.discount || 0) + discount;
+        const newDue = Math.max(0, Number(billing.amount || 0) - newPaid - totalDiscount);
+        const newStatus = newDue <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
+        const { error: updErr } = await supabase.from("billing").update({
+          paid: newPaid,
+          due: newDue,
+          discount: totalDiscount,
+          status: newStatus,
+          pay_date: today(),
+          payment_method: collectForm.payment_method,
+        }).eq("id", billing.id);
+        if (updErr) throw updErr;
+      }
+
+      // Insert collection (linked to billing)
       const { error: insertErr } = await supabase.from("bill_collections").insert({
-        billing_id: billing?.id || null,
+        billing_id: billingId,
         client_id: selectedClient.id,
         amount,
-        discount: Number(collectForm.discount || 0),
+        discount,
         payment_method: collectForm.payment_method,
         note: collectForm.note,
         status: "approved",
       });
       if (insertErr) throw insertErr;
 
-      // Update billing if exists
-      if (billing) {
-        const newPaid = Number(billing.paid || 0) + amount;
-        const newDue = Number(billing.amount || 0) - newPaid - Number(collectForm.discount || 0);
-        const newStatus = newDue <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
-        await supabase.from("billing").update({
-          paid: newPaid,
-          due: Math.max(0, newDue),
-          discount: Number(collectForm.discount || 0),
-          status: newStatus,
-          pay_date: today(),
-        }).eq("id", billing.id);
-      }
+      // Insert income entry for accounting
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      await supabase.from("income_entries").insert({
+        amount,
+        source: "bill_collection",
+        description: `বিল কালেকশন — ${selectedClient.name} (${selectedClient.client_id || ""})`,
+        income_date: today(),
+        month: monthStart.slice(0, 7),
+        client_id: selectedClient.id,
+        payment_method: collectForm.payment_method,
+        reference: billingId || null,
+        received_by: userId || null,
+        status: "approved",
+      });
     },
     onSuccess: () => {
-      toast({ title: "সফল", description: "বিল রিসিভ হয়েছে" });
+      toast({ title: "সফল", description: "বিল রিসিভ হয়েছে এবং আয়ে যোগ হয়েছে" });
       queryClient.invalidateQueries({ queryKey: ["bill-collections"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats-v3"] });
+      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
       setReceiveOpen(false);
       setSelectedClient(null);
       setCollectForm({ amount: "", discount: "0", payment_method: "Cash", note: "" });

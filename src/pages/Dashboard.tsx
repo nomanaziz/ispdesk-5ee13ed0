@@ -97,8 +97,9 @@ function useStats() {
         supabase.from("clients").select("id", { count: "exact", head: true }).eq("connection_type", "Home").eq("status", "expired"),
         supabase.from("billing").select("amount, paid, status").gte("month", monthStart),
         supabase.from("billing").select("amount, paid, status").gte("month", lastMonthStart).lte("month", lastMonthEnd),
-        supabase.from("billing").select("paid").eq("status", "paid").gte("pay_date", today),
-        supabase.from("billing").select("paid").eq("status", "paid").gte("pay_date", yesterday).lt("pay_date", today),
+        // Today/yesterday sales: read from bill_collections (source of truth — works regardless of billing.status flip)
+        supabase.from("bill_collections").select("amount").eq("status", "approved").gte("created_at", `${today}T00:00:00`).lte("created_at", `${today}T23:59:59`),
+        supabase.from("bill_collections").select("amount").eq("status", "approved").gte("created_at", `${yesterday}T00:00:00`).lte("created_at", `${yesterday}T23:59:59`),
         supabase.from("income_entries").select("amount").gte("income_date", monthStart),
         supabase.from("expense_entries").select("amount").gte("expense_date", monthStart),
         supabase.from("income_entries").select("amount").gte("income_date", lastMonthStart).lte("income_date", lastMonthEnd),
