@@ -93,6 +93,19 @@ export default function ClientProfile() {
     enabled: !!id,
   });
 
+  const { data: billHistory = [] } = useQuery({
+    queryKey: ["bill-history", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("billing_history" as any)
+        .select("*")
+        .eq("client_id", id!)
+        .order("changed_at", { ascending: false });
+      return (data as any[]) || [];
+    },
+    enabled: !!id,
+  });
+
   const handleInlineSearch = useCallback(async (q: string) => {
     setInlineSearch(q);
     if (q.length < 2) { setSearchResults([]); setShowSearchResults(false); return; }
