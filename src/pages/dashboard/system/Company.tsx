@@ -36,10 +36,33 @@ const defaults: CompanyInfo = {
 export default function Company() {
   const { value, isLoading, save, isSaving } = useSystemSetting<CompanyInfo>("company_info", defaults);
   const [form, setForm] = useState<CompanyInfo>(defaults);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setForm(value); }, [value]);
 
   const set = (k: keyof CompanyInfo, v: any) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleUpload = async (file: File) => {
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error("লোগো ফাইল ২MB এর বেশি হতে পারবে না"); return; }
+    if (!file.type.startsWith("image/")) { toast.error("শুধুমাত্র ছবি আপলোড করুন"); return; }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const path = `company-logo-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("pop-logos").upload(path, file, { upsert: true, contentType: file.type });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from("pop-logos").getPublicUrl(path);
+      set("logo_url", publicUrl);
+      toast.success("লোগো আপলোড হয়েছে — সংরক্ষণ করতে আপডেট চাপুন");
+    } catch (e: any) {
+      toast.error(e.message || "আপলোড ব্যর্থ");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">লোড হচ্ছে...</div>;
 
