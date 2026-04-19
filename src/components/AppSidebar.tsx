@@ -34,7 +34,7 @@ const menuGroups: MenuGroup[] = [
     icon: LayoutDashboard,
     defaultOpen: true,
     items: [
-      { title: "বিলিং ওভারভিউ", url: "/dashboard", icon: CreditCard },
+      { title: "মূল ড্যাশবোর্ড", url: "/dashboard", icon: LayoutDashboard },
       { title: "OLT / ONU ওভারভিউ", url: "/dashboard/olt-overview", icon: Cpu },
       { title: "ওয়েবসাইট ড্যাশবোর্ড", url: "/dashboard/website", icon: Globe },
     ],
@@ -92,6 +92,7 @@ const menuGroups: MenuGroup[] = [
       { title: "নতুন রিকোয়েস্ট", url: "/dashboard/clients/new-request", icon: MessageSquare },
       { title: "নতুন যোগ করুন", url: "/dashboard/clients/add", icon: UserPlus },
       { title: "ক্লায়েন্ট তালিকা", url: "/dashboard/clients", icon: List },
+      { title: "বিলিং ওভারভিউ", url: "/dashboard/billing-overview", icon: BarChart3 },
       { title: "বিলিং তালিকা", url: "/dashboard/billing", icon: CreditCard },
       { title: "দৈনিক বিল কালেকশন", url: "/dashboard/billing/daily-collection", icon: Wallet },
       { title: "বিলিং সাইকেল সেটিংস", url: "/dashboard/billing/cycle-settings", icon: Cog },
