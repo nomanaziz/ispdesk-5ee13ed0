@@ -91,6 +91,10 @@ const menuGroups: MenuGroup[] = [
       { title: "নতুন রিকোয়েস্ট", url: "/dashboard/clients/new-request", icon: MessageSquare },
       { title: "নতুন যোগ করুন", url: "/dashboard/clients/add", icon: UserPlus },
       { title: "ক্লায়েন্ট তালিকা", url: "/dashboard/clients", icon: List },
+      { title: "বিলিং তালিকা", url: "/dashboard/billing", icon: CreditCard },
+      { title: "দৈনিক বিল কালেকশন", url: "/dashboard/billing/daily-collection", icon: Wallet },
+      { title: "বিলিং সাইকেল সেটিংস", url: "/dashboard/billing/cycle-settings", icon: Cog },
+      { title: "ইনস্টলেশন ফি", url: "/dashboard/sales/installation-fee", icon: DollarSign },
       { title: "চলে যাওয়া ক্লায়েন্ট", url: "/dashboard/clients/left", icon: UserX },
       { title: "শিডিউলার", url: "/dashboard/clients/scheduler", icon: Clock },
       { title: "পরিবর্তন রিকোয়েস্ট", url: "/dashboard/clients/change-request", icon: RefreshCw },
@@ -120,16 +124,6 @@ const menuGroups: MenuGroup[] = [
       { title: "বিক্রয় ইনভয়েস", url: "/dashboard/bw-sale/invoices", icon: FileText },
       { title: "বিল কালেকশন", url: "/dashboard/bw-sale/collection", icon: Wallet },
       { title: "রিকারিং ইনভয়েস", url: "/dashboard/bw-sale/recurring", icon: RefreshCw },
-    ],
-  },
-  {
-    label: "বিলিং",
-    icon: CreditCard,
-    items: [
-      { title: "বিলিং তালিকা", url: "/dashboard/billing", icon: CreditCard },
-      { title: "দৈনিক বিল কালেকশন", url: "/dashboard/billing/daily-collection", icon: Wallet },
-      { title: "বিলিং সাইকেল সেটিংস", url: "/dashboard/billing/cycle-settings", icon: Cog },
-      { title: "ইনস্টলেশন ফি", url: "/dashboard/sales/installation-fee", icon: DollarSign },
     ],
   },
   {
