@@ -24,6 +24,7 @@ interface MikrotikDevice {
   timeout: number;
   status: "online" | "offline" | "unknown";
   enabled: boolean;
+  order_no: number | null;
   created_at: string;
 }
 
@@ -35,6 +36,7 @@ const defaultForm = {
   api_port: 8728,
   version: "6.43_or_older",
   timeout: 10,
+  order_no: 1,
 };
 
 const isValidIpOrDomain = (value: string): boolean => {
