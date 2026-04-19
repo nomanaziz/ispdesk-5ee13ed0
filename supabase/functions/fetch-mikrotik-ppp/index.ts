@@ -295,15 +295,27 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Fetch clients from DB with zone/subzone/box names
-      const { data: clients } = await supabase
+      // Fetch clients from DB with zone/subzone/box names — scoped to selected device(s),
+      // exclude left clients, only include those whose MikroTik PPPoE secret is ENABLED.
+      const deviceIds = devices.map((d: any) => d.id);
+      let clientQuery = supabase
         .from("clients")
         .select(`
-          id, client_id, username, name, contact, status, profile, connection_type, mikrotik_id, is_online,
+          id, client_id, username, name, contact, status, profile, connection_type, mikrotik_id, is_online, mikrotik_status,
           zones:zone_id(name),
           sub_zones:sub_zone_id(name),
           boxes:box_id(name)
-        `);
+        `)
+        .neq("status", "left")
+        .in("mikrotik_id", deviceIds);
+      const { data: clientsRaw } = await clientQuery;
+
+      // Filter: only clients whose MikroTik secret exists AND is enabled (not disabled in MK).
+      const clients = (clientsRaw || []).filter((c: any) => {
+        if (!c.username || !c.mikrotik_id) return false;
+        const mk = allSecrets.get(`${c.username.toLowerCase()}::${c.mikrotik_id}`);
+        return mk && !mk.disabled;
+      });
 
       const clientMap = new Map<string, any>();
       if (clients) {
