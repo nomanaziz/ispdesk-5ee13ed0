@@ -80,6 +80,7 @@ function useStats() {
         popCount,
         salaryThisMonth,
         smsBalance,
+        billingActiveClients, freeClients, personalClients, vipClients,
       ] = await Promise.all([
         supabase.from("clients").select("id", { count: "exact", head: true }),
         supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "active"),
