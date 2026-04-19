@@ -470,7 +470,7 @@ export default function ClientProfile() {
                         const histForBill = (billHistory as any[]).filter((h) => h.billing_id === b.id);
                         const expanded = expandedBillId === b.id;
                         return (
-                          <>
+                          <React.Fragment key={b.id}>
                             <TableRow key={b.id}>
                               <TableCell>
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setExpandedBillId(expanded ? null : b.id)}>
