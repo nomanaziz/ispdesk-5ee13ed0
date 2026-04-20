@@ -1,79 +1,58 @@
 
 
 ## লক্ষ্য
-Tariff system-কে সম্পূর্ণ পুনর্গঠন: এক tariff-এ **multiple packages**, **multiple servers/profiles**, এবং buy/sell price tracking। Server change করলে user-দের auto-sync।
+Admin homepage (`src/pages/Dashboard.tsx`)-এ:
+1. **নতুন information section যোগ** — POP/BW breakdown + BW reseller portal stats
+2. **Section-wise colorful background** — প্রতিটা section আলাদা soft color background-এ গ্রুপ, eye-catching ও easy-to-scan
 
-## নতুন Data Model
+## নতুন Data যোগ হবে
 
-বর্তমানে `reseller_tariffs`-এ এক row = এক package + এক server। নতুন structure:
+### A. POP & BW Pop ব্রেকডাউন
+- মোট POP ম্যানেজার (`branch_managers` count)
+- POP type = `bandwidth` কতজন (BW reseller)
+- POP type ≠ `bandwidth` কতজন (regular POP)
+- POP-এর under active client (clients যাদের `branch_id` কোনো POP-এ আছে এবং status=active)
+- POP-এর under inactive client
+- POP-এর under total client
 
-**`reseller_tariffs`** (parent — শুধু tariff নাম + assigned POPs দেখায়):
-- `id`, `name`, `tariff_type` ('custom' | 'date_to_date'), `status`, `created_at`, `created_by`
-- পুরাতন `package_id`, `selling_rate`, `mikrotik_server_id`, `mikrotik_profile`, `protocol_type`, `activation_days`, `min_activation_days` কলাম **deprecated** কিন্তু backward-compat-এর জন্য রাখব (nullable)।
+### B. BW Reseller Portal Stats (যেসব BW reseller আমাদের portal নিয়েছে)
+- মোট `bw_reseller_users` (sub-user count)
+- Active sub-users (status=active)
+- Inactive sub-users
+- কতজন BW reseller নিজে আবার sub-reseller দিচ্ছে — `bw_reseller_users` যেখানে role/type='reseller' (যদি column থাকে; না থাকলে portal-এ যাদের নিজস্ব sub আছে তাদের distinct count)
+- BW reseller মোট bandwidth sale (যদি data থাকে — current month)
 
-**`reseller_tariff_packages`** (নতুন child table — এক tariff-এ বহু package):
-- `id`, `tariff_id` (FK), `package_id` (FK isp_packages)
-- `mikrotik_server_id` (FK mikrotik_devices), `mikrotik_profile` (text)
-- `protocol_type` ('PPPoE' | 'IPoE' | 'Static')
-- `buy_rate` (numeric — base/buy price), `selling_rate` (numeric)
-- `validity_days` (int, default 30), `min_activation_days` (int, default 1)
-- `created_at`, `updated_at`
-- Unique: (`tariff_id`, `package_id`, `mikrotik_server_id`) — same package different server allowed।
+## Section-wise Color Grouping (Vuexy/Notion style)
 
-**Migration ও sync trigger**: পুরাতন row থেকে data move করে নতুন child table-এ এক row তৈরি করব (data preserved)।
+প্রতিটা section কে একটা soft tinted card-এ wrap করব, যাতে visual grouping পরিষ্কার হয়:
 
-## UI পুনর্গঠন (`Tariff.tsx` rewrite + Edit Dialog)
+| Section | Background tint |
+|---|---|
+| **Client Overview** (total/home/new join) | `bg-blue-500/5` border `border-blue-500/20` |
+| **Client Status** (active/inactive/expired/suspended/grace/extended) | `bg-emerald-500/5` border `border-emerald-500/20` |
+| **Billing Status** (paid/due/partial/free/personal/vip) | `bg-amber-500/5` border `border-amber-500/20` |
+| **Sales & Finance** (today/yesterday/month/profit) | `bg-violet-500/5` border `border-violet-500/20` |
+| **POP & BW Network** (নতুন) | `bg-cyan-500/5` border `border-cyan-500/20` |
+| **BW Reseller Portal** (নতুন) | `bg-pink-500/5` border `border-pink-500/20` |
+| **Operations** (tickets/tasks/SMS) | `bg-orange-500/5` border `border-orange-500/20` |
 
-uploaded screenshot-এর মতো dialog:
-- **Tariff Type**: Custom / Date To Date (radio)
-- **Tariff Name**: text + Edit button
-- **Package Add section** (form fields):
-  - Package Name (Select from `isp_packages`)
-  - Buy Rate (auto-fill from package.price, editable)
-  - Selling Rate (input)
-  - Validity Days (default 30)
-  - Minimum Activation Days (default 1)
-  - Server Name (Select from `mikrotik_devices`)
-  - Protocol (PPPoE/IPoE/Static)
-  - MikroTik Profile (auto-load via `fetch-mikrotik-profiles`)
-  - **[Add Package] button** — adds row to inner table
-- **Inner table**: Sr, Package, Server, Protocol, Profile, Buy, Sell, Validity, Min Days, Action (edit/delete)
-- **Cancel / Update** buttons
+প্রতিটা section-এর header-এ একটা matching color icon + title যাতে সহজেই চোখে পড়ে। ভেতরের individual stat card গুলোয় বর্তমান rainbow palette (`CARD_STYLES`) থাকবে — তাহলে section-এর soft tint background-এর উপর colorful cards "pop" করবে।
 
-### Tariff List Table (main page)
-Screenshot-এর কলাম অনুযায়ী:
-| S/N | Tariff Name | Assigned POPs | Packages (comma list) | Servers (comma list) | Profiles (comma list) | CreatedOn | CreatedBy | Action |
-
-- **Assigned POPs**: `branch_managers` যাদের `tariff_id` = এই tariff
-- **Packages**: child table থেকে aggregated names
-- **Action**: Sync (refresh icon), Toggle status, Edit, View, Delete
-
-## Server Change → Auto-Sync
-
-যখন user কোনো `reseller_tariff_packages` row-এর `mikrotik_server_id` বা `mikrotik_profile` change করে save করে:
-1. সেই tariff-এর সব assigned POP-এর সব client খুঁজে বের করব যাদের package = এই row-এর `package_id`।
-2. প্রতিটা client-এর জন্য নতুন server-এ PPP user create + পুরানো server থেকে remove।
-3. এটা **edge function** `sync-tariff-package-change`-এর মাধ্যমে করব (existing `create-mikrotik-ppp` ও `manage-mikrotik-ppp` function reuse)।
-4. UI-তে confirmation dialog: "X client নতুন server-এ migrate হবে — চালিয়ে যান?"
+```text
+┌─────────────────────────────────────────────────┐
+│ 🌐 POP & BW Network          (cyan tint bg)     │
+│ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐       │
+│ │ POP│ │ BW │ │Reg │ │Act │ │Inac│ │Total       │
+│ └────┘ └────┘ └────┘ └────┘ └────┘ └────┘       │
+└─────────────────────────────────────────────────┘
+```
 
 ## Files
-
-### Migration
-- ➕ `reseller_tariff_packages` table create + RLS + indexes
-- ➕ Data migration: existing `reseller_tariffs` rows → child rows
-- ➕ `created_by uuid` column-এ যোগ `reseller_tariffs`-এ
-- ➕ `tariff_type text default 'custom'` যোগ
-
-### Code
-- ✏️ `src/pages/dashboard/branches/Tariff.tsx` — সম্পূর্ণ rewrite (multi-package dialog + new list)
-- ➕ `supabase/functions/sync-tariff-package-change/index.ts` — server migration handler
-- ✏️ `src/pages/dashboard/branches/Managers.tsx` — assigned POPs display ঠিক রাখা (no breaking)
-- ✏️ `src/pages/dashboard/branches/PopProfile.tsx` — multi-package display
-- ✏️ `src/pages/dashboard/branches/PgwPayments.tsx` — selling_rate পরিবর্তে first package-এর rate বা mapping logic update
-- ✏️ `src/integrations/supabase/types.ts` — auto-regenerated
+- ✏️ `src/pages/Dashboard.tsx` — query expand (POP/BW counts + BW reseller stats), নতুন 2টা section যোগ, সব section-কে colored wrapper-এ wrap
+- ✏️ একটা ছোট `<SectionCard>` helper component inline তৈরি করব (tint bg + border + header) — বাইরে export করব না
 
 ## কী **হবে না**
-- পুরাতন `reseller_tariffs` row delete হবে না — শুধু expanded
-- `branch_managers.tariff_id` foreign key অপরিবর্তিত (এক POP-এ এক tariff, কিন্তু সেই tariff-এ multiple packages)
-- AddManager flow অপরিবর্তিত
+- কোনো DB schema change নেই — সব data বিদ্যমান table থেকে আসবে (`branch_managers`, `bw_reseller_users`, `clients`)
+- `CompanyOverview.tsx` (billing-overview route) touch হবে না
+- বিদ্যমান chart, latest invoices table, top downloaders ইত্যাদি অপরিবর্তিত — শুধু color wrapper-এ ঢাকা পড়বে
 
