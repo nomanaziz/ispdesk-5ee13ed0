@@ -814,6 +814,7 @@ export default function Tariff() {
                     <TableHead>Servers</TableHead>
                     <TableHead>Profiles</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Created By</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Action</TableHead>
                   </TableRow>
