@@ -14,7 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, MessageSquare, Pencil, Trash2, Users, TicketCheck, Clock, CheckCircle2, AlertTriangle, Send } from "lucide-react";
+import { Plus, Search, MessageSquare, Pencil, Trash2, Users, TicketCheck, Clock, CheckCircle2, AlertTriangle, Send, FolderOpen } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -264,7 +265,10 @@ export default function Tickets() {
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-bold">ক্লায়েন্ট সাপোর্ট</h1>
-        <Button onClick={() => setNewTicketOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />নতুন টিকেট খুলুন</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" asChild><Link to="/dashboard/support/categories"><FolderOpen className="h-4 w-4 mr-1" />ক্যাটাগরি ম্যানেজ</Link></Button>
+          <Button onClick={() => setNewTicketOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />নতুন টিকেট খুলুন</Button>
+        </div>
       </div>
 
       {/* Summary Cards */}

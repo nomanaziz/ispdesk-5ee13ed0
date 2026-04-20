@@ -63,6 +63,7 @@ import ConfigPackages from "@/pages/dashboard/config/Packages";
 import ConfigDivisions from "@/pages/dashboard/config/Divisions";
 import ConfigDistricts from "@/pages/dashboard/config/Districts";
 import ConfigUpazilas from "@/pages/dashboard/config/Upazilas";
+import ConfigLocations from "@/pages/dashboard/config/Locations";
 
 // VAS
 import VasConfig from "@/pages/dashboard/vas/VasConfig";
@@ -394,6 +395,7 @@ const App = () => (
               <Route path="/dashboard/config/divisions" element={<P><ConfigDivisions /></P>} />
               <Route path="/dashboard/config/districts" element={<P><ConfigDistricts /></P>} />
               <Route path="/dashboard/config/upazilas" element={<P><ConfigUpazilas /></P>} />
+              <Route path="/dashboard/config/locations" element={<P><ConfigLocations /></P>} />
 
               {/* VAS */}
               <Route path="/dashboard/vas/config" element={<P><VasConfig /></P>} />
