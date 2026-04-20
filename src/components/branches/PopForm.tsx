@@ -150,24 +150,31 @@ export default function PopForm({ mode, pop }: Props) {
   }, [form.pop_type]);
 
   const validate = (): string | null => {
-    if (!form.name.trim()) return "Contact Person Name আবশ্যক";
-    if (!form.email.trim()) return "Email আবশ্যক";
-    if (!form.contact.trim()) return "Mobile আবশ্যক";
-    if (!form.district_id) return "District আবশ্যক";
-    if (!form.upazila_id) return "Upazila আবশ্যক";
-    if (!form.address.trim()) return "Address আবশ্যক";
-    if (!form.company_name.trim()) return "POP / Business Name আবশ্যক";
-    if (!form.pop_prefix.trim()) return "POP Prefix আবশ্যক";
-    if (!form.pop_type) return "POP Type আবশ্যক";
-    if (Number(form.min_recharge) < 1) return "Min Recharge আবশ্যক (সর্বনিম্ন 1)";
+    const e: Record<string, string> = {};
+    if (!form.name.trim()) e.name = "আবশ্যক";
+    if (!form.email.trim()) e.email = "আবশ্যক";
+    if (!form.contact.trim()) e.contact = "আবশ্যক";
+    if (!division_id) e.division_id = "আবশ্যক";
+    if (!form.district_id) e.district_id = "আবশ্যক";
+    if (!form.upazila_id) e.upazila_id = "আবশ্যক";
+    if (!form.address.trim()) e.address = "আবশ্যক";
+    if (!form.company_name.trim()) e.company_name = "আবশ্যক";
+    if (!form.pop_prefix.trim()) e.pop_prefix = "আবশ্যক";
+    else if (prefixCheck.available === false) e.pop_prefix = "এই Prefix অন্যজন ব্যবহার করছে";
+    if (!form.pop_type) e.pop_type = "আবশ্যক";
+    if (Number(form.min_recharge) < 100) e.min_recharge = "সর্বনিম্ন 100";
     if (mode === "create") {
-      if (!form.tariff_id) return "Tariff আবশ্যক";
-      if (!form.username.trim()) return "Username আবশ্যক";
-      if (!form.password) return "Password আবশ্যক";
-      if (form.password !== form.confirm_password) return "Password মেলেনি";
+      if (!form.tariff_id) e.tariff_id = "আবশ্যক";
+      if (!form.username.trim()) e.username = "আবশ্যক";
+      if (!form.password) e.password = "আবশ্যক";
+      if (form.password !== form.confirm_password) e.confirm_password = "Password মেলেনি";
     }
+    setErrors(e);
+    if (Object.keys(e).length) return "অনুগ্রহ করে লাল চিহ্নিত ঘরগুলো পূরণ করুন";
     return null;
   };
+
+  const errCls = (k: string) => errors[k] ? "border-destructive ring-1 ring-destructive" : "";
 
   const save = useMutation({
     mutationFn: async () => {
@@ -191,7 +198,7 @@ export default function PopForm({ mode, pop }: Props) {
         nid_number: form.national_id || null,
         district_id: form.district_id || null,
         upazila_id: form.upazila_id || null,
-        zone_id: form.zone_id || null,
+        
         pop_prefix: form.pop_prefix || null,
         set_prefix_mikrotik: form.set_prefix_mikrotik,
         pop_type: form.pop_type,
@@ -265,15 +272,15 @@ export default function PopForm({ mode, pop }: Props) {
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label>Contact Person Name <Req /></Label>
-            <Input value={form.name} onChange={(e) => upd("name", e.target.value)} />
+            <Input className={errCls("name")} value={form.name} onChange={(e) => upd("name", e.target.value)} />
           </div>
           <div>
             <Label>Email <Req /></Label>
-            <Input type="email" value={form.email} onChange={(e) => upd("email", e.target.value)} />
+            <Input className={errCls("email")} type="email" value={form.email} onChange={(e) => upd("email", e.target.value)} />
           </div>
           <div>
             <Label>Mobile <Req /></Label>
-            <Input value={form.contact} onChange={(e) => upd("contact", e.target.value)} />
+            <Input className={errCls("contact")} value={form.contact} onChange={(e) => upd("contact", e.target.value)} />
           </div>
           <div>
             <Label>Phone</Label>
@@ -284,24 +291,24 @@ export default function PopForm({ mode, pop }: Props) {
             <Input value={form.national_id} onChange={(e) => upd("national_id", e.target.value)} />
           </div>
           <div>
-            <Label>District <Req /></Label>
-            <Select value={form.district_id} onValueChange={(v) => { upd("district_id", v); upd("upazila_id", ""); }}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন" /></SelectTrigger>
+            <Label>Division <Req /></Label>
+            <Select value={division_id} onValueChange={(v) => { setDivisionId(v); upd("district_id", ""); upd("upazila_id", ""); setErrors((er) => { const n = { ...er }; delete n.division_id; return n; }); }}>
+              <SelectTrigger className={errCls("division_id")}><SelectValue placeholder="নির্বাচন" /></SelectTrigger>
+              <SelectContent>{divisions?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>District / জেলা <Req /></Label>
+            <Select value={form.district_id} onValueChange={(v) => { upd("district_id", v); upd("upazila_id", ""); }} disabled={!division_id}>
+              <SelectTrigger className={errCls("district_id")}><SelectValue placeholder="নির্বাচন" /></SelectTrigger>
               <SelectContent>{districts?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Upazila / Thana <Req /></Label>
+            <Label>Upazila / উপজেলা <Req /></Label>
             <Select value={form.upazila_id} onValueChange={(v) => upd("upazila_id", v)} disabled={!form.district_id}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন" /></SelectTrigger>
+              <SelectTrigger className={errCls("upazila_id")}><SelectValue placeholder="নির্বাচন" /></SelectTrigger>
               <SelectContent>{upazilas?.map((u: any) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Zone</Label>
-            <Select value={form.zone_id} onValueChange={(v) => upd("zone_id", v)}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন" /></SelectTrigger>
-              <SelectContent>{zones?.map((z: any) => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
 
