@@ -120,9 +120,14 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
 
       return { createdCount, skipped };
     },
-    onSuccess: () => {
-      toast.success(`${selectedIds.length} জন ইউজার ${selectedPop?.name}-এ ট্রান্সফার হয়েছে`);
+    onSuccess: (res) => {
+      const { createdCount, skipped } = res || { createdCount: 0, skipped: 0 };
+      toast.success(
+        `${createdCount} জন নতুন client তৈরি হয়েছে ${selectedPop?.name}-এ` +
+        (skipped > 0 ? ` (${skipped} জন duplicate skip হয়েছে)` : "")
+      );
       qc.invalidateQueries({ queryKey: ["mikrotik_clients"] });
+      qc.invalidateQueries({ queryKey: ["existing_client_usernames"] });
       onTransferred();
       onOpenChange(false);
     },
