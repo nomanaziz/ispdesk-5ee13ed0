@@ -88,6 +88,17 @@ export default function Funding() {
 
   const due = Math.max(0, Number(form.funding_amount) - Number(form.received_amount) - Number(form.discount));
 
+  const totals = useMemo(() => {
+    const t = { amount: 0, received: 0, discount: 0, due: 0 };
+    (fundings ?? []).forEach((f: any) => {
+      t.amount += Number(f.amount ?? 0);
+      t.received += Number(f.received_amount ?? 0);
+      t.discount += Number(f.discount ?? 0);
+      t.due += Number(f.due_amount ?? 0);
+    });
+    return t;
+  }, [fundings]);
+
   const save = useMutation({
     mutationFn: async () => {
       if (!form.pop_id) throw new Error("POP নির্বাচন করুন");
