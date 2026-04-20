@@ -165,9 +165,8 @@ export default function AddClient() {
         if (!tariffId) return [];
         const { data } = await supabase
           .from("reseller_tariff_packages")
-          .select("id, package_id, selling_rate, package_rate, isp_packages(id, name, bandwidth_down, price)")
+          .select("id, package_id, selling_rate, package_rate, mikrotik_profile, mikrotik_server_id, isp_packages(id, name, bandwidth_down, price)")
           .eq("tariff_id", tariffId);
-        // Map to {id, name, price, bandwidth_down} using POP selling_rate
         return (data || [])
           .filter((p: any) => p.isp_packages)
           .map((p: any) => ({
@@ -175,6 +174,8 @@ export default function AddClient() {
             name: p.isp_packages.name,
             bandwidth_down: p.isp_packages.bandwidth_down,
             price: Number(p.selling_rate || p.package_rate || p.isp_packages.price || 0),
+            mikrotik_profile: p.mikrotik_profile || null,
+            mikrotik_server_id: p.mikrotik_server_id || null,
           }));
       }
       const { data } = await supabase
@@ -182,6 +183,34 @@ export default function AddClient() {
         .select("id, name, price, bandwidth_down")
         .eq("status", "active");
       return data || [];
+    },
+  });
+
+  // POP-mode metadata: branch_manager (server_id, pop_prefix), tariff (mikrotik_server_id), district/upazila names
+  const { data: popMeta } = useQuery({
+    enabled: isPopMode && !!branchId,
+    queryKey: ["pop-meta", branchId, tariffId, districtId, upazilaId],
+    queryFn: async () => {
+      const [bm, tr, dist, upa] = await Promise.all([
+        supabase.from("branch_managers").select("server_id, pop_prefix, pop_code").eq("branch_id", branchId!).maybeSingle(),
+        tariffId
+          ? supabase.from("reseller_tariffs").select("mikrotik_server_id").eq("id", tariffId).maybeSingle()
+          : Promise.resolve({ data: null } as any),
+        districtId
+          ? supabase.from("districts").select("name").eq("id", districtId).maybeSingle()
+          : Promise.resolve({ data: null } as any),
+        upazilaId
+          ? supabase.from("upazilas").select("name").eq("id", upazilaId).maybeSingle()
+          : Promise.resolve({ data: null } as any),
+      ]);
+      const defaultServerId =
+        (tr as any)?.data?.mikrotik_server_id || (bm as any)?.data?.server_id || null;
+      return {
+        defaultServerId,
+        popPrefix: (bm as any)?.data?.pop_prefix || (bm as any)?.data?.pop_code || "",
+        districtName: (dist as any)?.data?.name || "",
+        upazilaName: (upa as any)?.data?.name || "",
+      };
     },
   });
   const { data: connectionTypes } = useQuery({ queryKey: ["connection-types-active"], queryFn: async () => { const { data } = await supabase.from("connection_types_config").select("id, name").eq("status", "active"); return data || []; } });
