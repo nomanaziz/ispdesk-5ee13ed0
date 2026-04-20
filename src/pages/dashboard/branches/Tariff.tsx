@@ -345,6 +345,34 @@ export default function Tariff() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
+      // SAFE DELETE GUARD: ensure no clients are using packages of this tariff
+      const { data: pkgRowsForTariff } = await supabase
+        .from("reseller_tariff_packages")
+        .select("package_id")
+        .eq("tariff_id", id);
+      const pkgIds = Array.from(
+        new Set((pkgRowsForTariff ?? []).map((r: any) => r.package_id).filter(Boolean)),
+      );
+      if (pkgIds.length > 0) {
+        const { count } = await supabase
+          .from("clients")
+          .select("id", { count: "exact", head: true })
+          .in("package_id", pkgIds as string[]);
+        if ((count ?? 0) > 0) {
+          throw new Error(
+            `এই tariff delete করা যাবে না — ${count} জন client এই tariff-এর package ব্যবহার করছে। আগে তাদের অন্য package-এ shift করুন।`,
+          );
+        }
+      }
+      const { count: popCount } = await supabase
+        .from("branch_managers")
+        .select("id", { count: "exact", head: true })
+        .eq("tariff_id", id);
+      if ((popCount ?? 0) > 0) {
+        throw new Error(
+          `এই tariff ${popCount} টি POP-এ assigned আছে। আগে POP থেকে সরান।`,
+        );
+      }
       const { error } = await supabase.from("reseller_tariffs").delete().eq("id", id);
       if (error) throw error;
     },
@@ -354,6 +382,54 @@ export default function Tariff() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const syncPackage = async (tariffId: string) => {
+    setSyncing(tariffId + ":pkg");
+    try {
+      const { data: tpkgs } = await supabase
+        .from("reseller_tariff_packages")
+        .select("id")
+        .eq("tariff_id", tariffId);
+      let total = 0;
+      for (const tp of tpkgs ?? []) {
+        const { data, error } = await supabase.functions.invoke(
+          "sync-tariff-package-change",
+          { body: { tariff_package_id: tp.id, mode: "package_only" } },
+        );
+        if (error) throw error;
+        total += data?.affected_clients ?? 0;
+      }
+      toast.success(`Sync Package সম্পন্ন — ${total} client আপডেট`);
+    } catch (e: any) {
+      toast.error("Sync Package ব্যর্থ: " + (e.message || "Unknown"));
+    } finally {
+      setSyncing(null);
+    }
+  };
+
+  const syncProfile = async (tariffId: string) => {
+    setSyncing(tariffId + ":prof");
+    try {
+      const { data: tpkgs } = await supabase
+        .from("reseller_tariff_packages")
+        .select("id")
+        .eq("tariff_id", tariffId);
+      let total = 0;
+      for (const tp of tpkgs ?? []) {
+        const { data, error } = await supabase.functions.invoke(
+          "sync-tariff-package-change",
+          { body: { tariff_package_id: tp.id } },
+        );
+        if (error) throw error;
+        total += data?.synced ?? 0;
+      }
+      toast.success(`Sync Profile সম্পন্ন — ${total} client MikroTik-এ push হয়েছে`);
+    } catch (e: any) {
+      toast.error("Sync Profile ব্যর্থ: " + (e.message || "Unknown"));
+    } finally {
+      setSyncing(null);
+    }
+  };
 
   const toggleStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
