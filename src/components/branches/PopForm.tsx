@@ -481,7 +481,7 @@ export default function PopForm({ mode, pop }: Props) {
 
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={() => navigate("/dashboard/branches/managers")}>বাতিল</Button>
-        <Button onClick={() => save.mutate()} disabled={save.isPending}>
+        <Button onClick={() => save.mutate()} disabled={save.isPending || prefixCheck.checking || prefixCheck.available === false}>
           {save.isPending ? "সংরক্ষণ হচ্ছে..." : mode === "create" ? "POP তৈরি করুন" : "আপডেট করুন"}
         </Button>
       </div>
