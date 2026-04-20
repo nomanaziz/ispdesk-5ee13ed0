@@ -28,10 +28,10 @@ const ResellerDashboard = () => {
     queryKey: ["reseller-company", popId, billingId],
     enabled: !!popId,
     queryFn: async () => {
-      const [pop, lastInvs, sms] = await Promise.all([
+      const [pop, lastInvs] = await Promise.all([
         supabase
           .from("branch_managers")
-          .select("balance, sms_balance, monthly_bill")
+          .select("balance")
           .eq("id", popId!)
           .maybeSingle(),
         billingId
@@ -42,10 +42,6 @@ const ResellerDashboard = () => {
               .order("created_at", { ascending: false })
               .limit(20)
           : Promise.resolve({ data: [] as any[] }),
-        supabase
-          .from("sms_logs")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "sent"),
       ]);
       const monthStart = new Date();
       monthStart.setDate(1);
