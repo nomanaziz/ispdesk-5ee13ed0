@@ -472,7 +472,7 @@ export default function BillingList() {
           <Select value={String(perPage)} onValueChange={v => { setPerPage(Number(v)); setPage(1); }}>
             <SelectTrigger className="w-20 h-8"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {[10, 25, 50, 100].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+              {[10, 25, 50, 100, 250, 500, 1000].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
             </SelectContent>
           </Select>
           <span>মোট: {filtered.length} জন</span>
