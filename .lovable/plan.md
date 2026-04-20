@@ -1,105 +1,78 @@
 
 
 ## লক্ষ্য
-Branch Funding (POP-কে Fund দেওয়া) page-কে production-ready করা — searchable POP dropdown + complete Fund form + proper MAC Reseller Fund History।
+"Client PGW Payments" আর "PGW Settlement" দুই page-কে একসাথে merge করে **৩-tab UI** বানানো — image-156 অনুযায়ী। "Add Payment" button সরিয়ে দেওয়া হবে; সব entry **automatic** আসবে online recharge থেকে।
 
-## ১. Funding Form Improvements (image-152 অনুযায়ী)
+## নতুন একক page: `PgwTransactions.tsx` (route: `/dashboard/branches/pgw-transactions`)
 
-বর্তমান Funding page (`src/pages/dashboard/branches/Funding.tsx`)-এ POP dropdown plain `Select` — list বড় হলে scroll করা কঠিন। সম্পূর্ণ নতুন form:
+### Tab 1: POP PGW Transactions (default)
+POP-wise rollup। Filters: POP Status, POP Type, Search।
 
-### Searchable POP Combobox
-- Replace plain `<Select>` → `Command` + `Popover` based searchable combobox (shadcn pattern)
-- POP-এর `pop_code` (4-digit) + `name` + manager name দেখাবে
-- Search by code OR name (e.g., "0013" বা "DELPARA")
-- Display format: `[0013] DELPARA POP 2 — Md Arif`
+**Columns**: Code | POP Name | POP Type (badge: Prepaid/Postpaid) | Mobile | **Total Received** | **Settled Amount** | **Remaining Amount** | Payment Status | **Action**
 
-### Complete Form Fields (image-152)
-Current form: `branch_id, amount, type, description` — অপ্রতুল
+**Action column** per row (POP-এর remaining > 0 হলে দেখাবে):
+- 🟦 **Cash** button → "Cash Payment" dialog (image-157):  
+  POP Code, Name, Company, Mobile (auto-fill, read-only) + Payment Date, Paid Amount, Receipt/Trxn No, Remarks → submit হলে `reseller_pgw_settlements` row insert হবে method=`cash`, branch balance অপরিবর্তিত (cash বের হলো)।
+- 🟩 **Fund** button → "Fund Transactions" dialog (image-158) ২টি sub-tab:
+  - **Due Fund Invoice** — POP-এর pending `branch_funding` invoices list, একটা select করে remaining PGW amount দিয়ে adjust।
+  - **Give Fund** — Remaining PGW Payment (read-only), Funding Amount, Invoice Number (auto), Fund Date, Remarks → submit হলে `branch_funding` row (trans_type=`received`) insert; existing trigger POP balance বাড়াবে এবং `reseller_pgw_settlements` row method=`fund` লেখা হবে।
 
-**নতুন fields:**
-| Field | Type | Notes |
-|---|---|---|
-| Reseller Name (POP) | searchable combobox | required |
-| Funding Amount | number | required, min 1 |
-| Received Amount | number | required (actual cash received) |
-| Discount | number | optional, default 0 |
-| Invoice Number | text | auto-generated (`FND-{seq}t{date}{rand}PV`) but editable |
-| Received By | select (users) | required |
-| Received Date | date | default today |
-| Payment Method | select | bKash / Nagad / Cash / Bank |
-| Remarks | textarea | optional |
+Remaining = ০ হলে status badge "✓ Fully Settled", action buttons disabled।
 
-### Auto-calc Logic
-- `due = funding_amount - received_amount - discount`
-- Save করার সময় POP-এর `branch_managers.balance` += `funding_amount` (credit)
-- যদি `due > 0` → status = `pending`, নাহলে `paid`
+### Tab 2: Transaction Settlement History (image-159)
+Filters: From/To Date, Payment Settlement Status (auto/manual/all), POP।
 
-## ২. MAC Reseller Fund History Page (image-153, image-154)
+**Columns**: POP Code | POP Name | Amount | Invoice Number | Remarks | CreatedBy | CreatedOn | **Status** (Auto Settled / Cash / Fund — colored badge) | Action (👁 view detail)। Total row footer।
 
-নতুন page: `src/pages/dashboard/branches/FundingHistory.tsx`
+Source: `reseller_pgw_settlements` table।
 
-### Tabs (top)
-- **Branch Funding** (current page — manual fund add)
-- **Fund History** (নতুন — সব transaction history)
+### Tab 3: POP Transactions (image-160 — current "Client PGW Payments")
+Filters: From/To Date, POPs। Export buttons (CSV/PDF)।
 
-### Filters Row
-- MAC Reseller dropdown (searchable, multi-select optional)
-- Transaction Type: `Fund(+)` / `Refund(-)` / `Received` / `Discount` / `Advance`
-- From Date / To Date
+**Columns**: POP | ClientCode | Paid Amount | Settled Fund Amount | Remaining Amount | PaymentMethod | Remarks | CreatedBy | CreatedOn। Total row footer।
 
-### Table Columns
-`ResellerName | InvoiceNumber | ReceiptNumber | Trans.Type | Fund(+) | Refund(-) | Paid | P.Processing Fee | Vat | Discount | Due | Remarks | ReceivedOn | ReceivedBy | CreatedOn | CreatedBy | Action`
+Source: `reseller_pgw_payments` table (existing) + per-row settlement linkage।
 
-### Transaction Sources (auto-aggregated)
-১. **Manual Fund** — admin দেওয়া fund (current Funding page থেকে)
-২. **Online Recharge** — client portal payment gateway থেকে আসা টাকা যা POP-এর share হিসেবে credit হয়
-৩. **Tariff Deduction** — POP-এর client recharge-এ যে tariff rate কাটা হয় (debit)
-৪. **Credit Refund** — already implemented (`credit_refund_logs`)
+## Database changes
 
-Total row footer-এ সব column-এর sum।
+### `reseller_pgw_settlements` table — column যোগ
+- `settlement_type` text default `'manual'` — `'auto' | 'cash' | 'fund'`
+- `funding_id` uuid nullable → references `branch_funding(id)` (যখন method=fund)
+- `pgw_payment_ids` uuid[] nullable — কোন কোন PGW payment cover করল
+- `created_by` uuid nullable
 
-## ৩. Database Changes (migration)
+### `reseller_pgw_payments` table — column যোগ
+- `settled_amount` numeric default 0
+- `remaining_amount` numeric (computed via trigger: `our_share - settled_amount`)
+- `settlement_status` text default `'pending'` — `'pending'|'partial'|'settled'`
 
-### Existing `branch_funding` table-এ column যোগ
-- `received_amount` numeric default 0
-- `discount` numeric default 0
-- `due_amount` numeric generated/computed
-- `invoice_number` text unique
-- `receipt_number` text
-- `received_by` uuid (references users)
-- `payment_method` text
-- `processing_fee` numeric default 0
-- `vat` numeric default 0
-- `trans_type` text default 'fund' — `fund | refund | received | discount | advance`
-- `remarks` text
+### Trigger
+`trg_apply_settlement_to_pgw_payments` — settlement insert হলে FIFO order-এ POP-এর pending PGW payments-এ `settled_amount` বাড়াবে এবং status update করবে।
 
-### Auto invoice number trigger
-Sequence + trigger যেমন `set_pop_code` — pattern: `FND-{seq}t{YYYYMMDD}PV`
+## Auto-settlement (existing online recharge flow সহযোগিতা)
+যখন client portal payment gateway দিয়ে recharge করে → existing `payment-callback` edge function `reseller_pgw_payments` row লেখে। এটাতে শুধু **নতুন logic** যোগ:
+- যদি POP-এর `auto_settle_pgw` flag ON থাকে (নতুন `branch_managers.auto_settle_pgw boolean default false` column) → automatic একটা `reseller_pgw_settlements` row type=`auto` insert হবে।
+- নাহলে pending থাকবে যতক্ষণ admin Cash বা Fund button চাপে।
 
-## ৪. Online Recharge Flow Note (future step এর preparation)
-
-User mentioned: client online recharge হলে → tariff rate POP-এর কাছ থেকে কাটবে, বাকিটা reseller portal-এ জমা থাকবে। এটা **পরবর্তী step**, এই plan-এ শুধু:
-- Schema-তে `trans_type='received'` field রাখা হবে যাতে future-এ payment-callback edge function এই table-এ row insert করতে পারে
-- UI-তে এই type display করার ব্যবস্থা থাকবে
-
-বাস্তব auto-recharge logic পরের iteration-এ।
-
-## ৫. Files Changed
+## Files Changed
 
 **Migration**:
-- ➕ `branch_funding` table extended columns
-- ➕ Sequence + trigger for invoice number
-- ➕ Trigger to update `branch_managers.balance` on funding insert
+- `reseller_pgw_settlements`-এ ৪টা column
+- `reseller_pgw_payments`-এ ৩টা column
+- Settlement allocator trigger
+- `branch_managers.auto_settle_pgw` column
 
 **Code**:
-- ✏️ `src/pages/dashboard/branches/Funding.tsx` — searchable POP combobox + complete form fields + auto-invoice
-- ➕ `src/pages/dashboard/branches/FundingHistory.tsx` — new history page with filters + table
-- ✏️ `src/components/AppSidebar.tsx` — "Branch Funding" sub-menu-তে "Fund History" link যোগ
-- ✏️ `src/App.tsx` — new route registration
+- ➕ `src/pages/dashboard/branches/PgwTransactions.tsx` — নতুন ৩-tab page
+- ➕ `src/components/branches/PgwCashDialog.tsx`
+- ➕ `src/components/branches/PgwFundDialog.tsx` (Due Fund Invoice + Give Fund tabs)
+- ✏️ `src/components/AppSidebar.tsx` — পুরাতন "Client PGW Payments" + "PGW Settlement" sub-menu রিমুভ, একটাই "PGW Transactions" link
+- ✏️ `src/App.tsx` — route registration; পুরাতন routes redirect
+- ✏️ `supabase/functions/payment-callback/index.ts` — auto-settle ঢোকানো
+- ❌ Old: `src/pages/dashboard/branches/PgwPayments.tsx` ও `PgwSettlement.tsx` — replace হবে নতুন page দিয়ে (ফাইল রাখা যাবে কিন্তু sidebar/route থেকে আনহুক)
 
-## কী **হবে না** (এই step-এ)
-- Online payment auto-recharge logic (পরের step)
-- Tariff-based auto-deduction logic (পরের step)
-- "Minimum activation date" enforcement on reseller-initiated client recharge (পরের step)
-- পুরাতন funding rows-এ retroactive invoice number generation
+## কী **হবে না**
+- Manual "Add Settlement" button আর থাকবে না — শুধু row-level Cash/Fund action
+- পুরাতন settlement rows-এ retroactive linkage হবে না
+- `reseller_pgw_payments`-এ existing rows-এর `settled_amount` migration-এ ০ থেকে শুরু হবে
 
