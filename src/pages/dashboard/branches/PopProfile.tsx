@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Mail, KeyRound, LogIn, Plus, ArrowLeftRight, Edit, MapPin, Phone,
+  ArrowLeft, Mail, KeyRound, LogIn, Plus, ArrowLeftRight, Edit, MapPin, Phone, RotateCcw, RefreshCw,
 } from "lucide-react";
 import FundDeductionDialog from "@/components/branches/FundDeductionDialog";
 import PasswordRegenerateDialog from "@/components/branches/PasswordRegenerateDialog";
@@ -43,8 +43,36 @@ export default function PopProfile() {
     queryFn: async () => {
       const { data } = await supabase
         .from("clients")
-        .select("id, name, client_id, billing_status, is_online, monthly_bill")
+        .select("id, name, client_id, username, billing_status, is_online, monthly_bill, mikrotik_id")
         .eq("branch_id", pop!.branch_id);
+      return data ?? [];
+    },
+  });
+
+  // Unexported = MikroTik PPP secret rows for this POP's server, but NO matching client row
+  const { data: unexported } = useQuery({
+    queryKey: ["pop-unexported", id, pop?.server_id, pop?.branch_id],
+    enabled: !!pop?.server_id && !!pop?.branch_id,
+    queryFn: async () => {
+      const { data: pppSecrets } = await supabase
+        .from("mikrotik_ppp_secrets" as any)
+        .select("id, name, profile, disabled, comment")
+        .eq("server_id", pop!.server_id);
+      const usernames = new Set((clients ?? []).map((c: any) => (c.username || "").toLowerCase()));
+      return (pppSecrets ?? []).filter((s: any) => !usernames.has((s.name || "").toLowerCase()));
+    },
+  });
+
+  const { data: refundLogs } = useQuery({
+    queryKey: ["pop-refund-logs", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("credit_refund_logs")
+        .select("*")
+        .eq("pop_id", id!)
+        .order("refunded_at", { ascending: false })
+        .limit(100);
       return data ?? [];
     },
   });
@@ -61,6 +89,25 @@ export default function PopProfile() {
         .limit(50);
       return data ?? [];
     },
+  });
+
+  const recoverMutation = useMutation({
+    mutationFn: async (pppName: string) => {
+      // Recover means: clear any portal-side mapping that may have been wrongly created
+      // (MikroTik user untouched). For now this is a safe no-op + toast since unexported
+      // means no client row exists. If a "left" client row exists with this username, reset it.
+      const { error } = await supabase
+        .from("clients")
+        .update({ branch_id: null, status: "recovered" })
+        .eq("username", pppName)
+        .eq("status", "left");
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Recovered — admin can now reassign this user");
+      qc.invalidateQueries({ queryKey: ["pop-unexported", id] });
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const update = useMutation({
@@ -126,6 +173,13 @@ export default function PopProfile() {
               <Toggle label="Set Prefix in Mikrotik" checked={pop.set_prefix_mikrotik} onChange={(v) => update.mutate({ set_prefix_mikrotik: v })} />
               <Toggle label="Fund Started" checked={pop.fund_started} onChange={(v) => update.mutate({ fund_started: v, fund_started_at: v ? new Date().toISOString() : null })} />
               <Toggle label="Is Locked" checked={pop.is_locked} onChange={(v) => update.mutate({ is_locked: v })} />
+              {pop.pop_type === "prepaid" && (
+                <Toggle
+                  label="Credit Refund Policy"
+                  checked={!!pop.credit_refund_policy}
+                  onChange={(v) => update.mutate({ credit_refund_policy: v })}
+                />
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-2 border-t">
@@ -148,8 +202,10 @@ export default function PopProfile() {
             <Tabs defaultValue="info">
               <TabsList className="flex flex-wrap h-auto">
                 <TabsTrigger value="info">POP Info</TabsTrigger>
-                <TabsTrigger value="clients">Clients ({running})</TabsTrigger>
+                <TabsTrigger value="exported">Exported ({clients?.length ?? 0})</TabsTrigger>
+                <TabsTrigger value="unexported">Unexported ({unexported?.length ?? 0})</TabsTrigger>
                 <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                <TabsTrigger value="refunds">Credit Refunds ({refundLogs?.length ?? 0})</TabsTrigger>
                 <TabsTrigger value="permissions">Permissions</TabsTrigger>
               </TabsList>
 
@@ -161,6 +217,7 @@ export default function PopProfile() {
                   <Field label="Activation Days" value={pop.reseller_tariffs?.activation_days} />
                   <Field label="Min Balance" value={`৳${pop.min_balance ?? 0}`} />
                   <Field label="Min Recharge" value={`৳${pop.min_recharge ?? 0}`} />
+                  <Field label="Credit Refund Policy" value={pop.credit_refund_policy ? "Enabled" : "Disabled"} />
                 </Section>
                 <Section title="Personal Info">
                   <Field label="Contact Person" value={pop.name} />
@@ -177,12 +234,16 @@ export default function PopProfile() {
                 </Section>
               </TabsContent>
 
-              <TabsContent value="clients" className="mt-4">
+              <TabsContent value="exported" className="mt-4">
+                <p className="text-xs text-muted-foreground mb-2">
+                  MikroTik-এ আছে এবং POP তার client portal-এ import করেছে
+                </p>
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Client ID</TableHead>
                       <TableHead>Name</TableHead>
+                      <TableHead>Username</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Online</TableHead>
                       <TableHead className="text-right">Bill</TableHead>
@@ -193,13 +254,59 @@ export default function PopProfile() {
                       <TableRow key={c.id}>
                         <TableCell className="font-mono text-xs">{c.client_id}</TableCell>
                         <TableCell>{c.name}</TableCell>
+                        <TableCell className="font-mono text-xs">{c.username || "-"}</TableCell>
                         <TableCell><Badge variant="secondary">{c.billing_status || "-"}</Badge></TableCell>
                         <TableCell>{c.is_online ? "🟢" : "⚪"}</TableCell>
                         <TableCell className="text-right">৳{c.monthly_bill ?? 0}</TableCell>
                       </TableRow>
                     ))}
                     {(!clients || clients.length === 0) && (
-                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">কোনো ক্লায়েন্ট নেই</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">কোনো ক্লায়েন্ট নেই</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TabsContent>
+
+              <TabsContent value="unexported" className="mt-4">
+                <p className="text-xs text-muted-foreground mb-2">
+                  MikroTik-এ user আছে কিন্তু POP তার client list-এ এখনো add করেনি — enabled থাকলে টাকা কাটছে।
+                  Recover করলে MikroTik untouched থাকবে, পরে অন্য POP-এ assign করা যাবে।
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Username</TableHead>
+                      <TableHead>Profile</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Comment</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {unexported?.map((s: any) => (
+                      <TableRow key={s.id}>
+                        <TableCell className="font-mono text-xs">{s.name}</TableCell>
+                        <TableCell>{s.profile || "-"}</TableCell>
+                        <TableCell>
+                          <Badge variant={s.disabled ? "destructive" : "default"}>
+                            {s.disabled ? "Disabled" : "Enabled"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{s.comment || "-"}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => recoverMutation.mutate(s.name)}
+                            disabled={recoverMutation.isPending}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" /> Recover
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {(!unexported || unexported.length === 0) && (
+                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">কোনো unexported user নেই</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -230,6 +337,42 @@ export default function PopProfile() {
                     ))}
                     {(!transactions || transactions.length === 0) && (
                       <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">কোনো লেনদেন নেই</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TabsContent>
+
+              <TabsContent value="refunds" className="mt-4">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Prepaid POP-এর client left/delete হলে unused দিনের টাকা automatic ফেরত। নিচে log:
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead className="text-right">Daily Rate</TableHead>
+                      <TableHead className="text-right">Refund Days</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Reason</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {refundLogs?.map((r: any) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="text-xs">{new Date(r.refunded_at).toLocaleString("bn-BD")}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">{r.client_name || "-"}</div>
+                          <div className="font-mono text-xs text-muted-foreground">{r.client_username || ""}</div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">৳{Number(r.daily_rate).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{r.refund_days}</TableCell>
+                        <TableCell className="text-right font-mono font-bold text-emerald-600">+৳{Number(r.refund_amount).toFixed(2)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{r.reason || "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                    {(!refundLogs || refundLogs.length === 0) && (
+                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">কোনো refund হয়নি</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
