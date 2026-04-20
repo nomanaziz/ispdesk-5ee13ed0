@@ -527,7 +527,7 @@ export default function AddClient() {
           </div>
           <div>
             <Label>জেলা</Label>
-            <Input disabled placeholder="জোন থেকে" />
+            <Input disabled value={isPopMode ? (popMeta?.districtName || "") : ""} placeholder={isPopMode ? "POP প্রোফাইল থেকে" : "জোন থেকে"} />
           </div>
           <div className="md:row-span-2">
             <Label>বর্তমান ঠিকানা</Label>
@@ -543,7 +543,7 @@ export default function AddClient() {
           </div>
           <div>
             <Label>উপজেলা/থানা</Label>
-            <Input disabled placeholder="জোন থেকে" />
+            <Input disabled value={isPopMode ? (popMeta?.upazilaName || "") : ""} placeholder={isPopMode ? "POP প্রোফাইল থেকে" : "জোন থেকে"} />
           </div>
           <div>
             <Label>ইমেইল ঠিকানা</Label>
