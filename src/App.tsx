@@ -312,7 +312,7 @@ import PortalBillInvoice from "@/pages/portal/PortalBillInvoice";
 import PortalProfile from "@/pages/portal/PortalProfile";
 import UserUpdateRequests from "@/pages/dashboard/clients/UserUpdateRequests";
 
-// Reseller
+// Reseller (POP Admin) Portal
 import ResellerProtectedRoute from "@/components/ResellerProtectedRoute";
 import { ResellerLayout } from "@/components/ResellerLayout";
 import ResellerDashboard from "@/pages/reseller/ResellerDashboard";
@@ -325,6 +325,25 @@ import ResellerTickets from "@/pages/reseller/ResellerTickets";
 import ResellerUsers from "@/pages/reseller/ResellerUsers";
 import ResellerSettings from "@/pages/reseller/ResellerSettings";
 import ResellerMikrotikUsers from "@/pages/reseller/ResellerMikrotikUsers";
+// POP-scoped Configuration
+import PopZones from "@/pages/reseller/config/PopZones";
+import PopSubZones from "@/pages/reseller/config/PopSubZones";
+import PopBoxes from "@/pages/reseller/config/PopBoxes";
+import PopPackages from "@/pages/reseller/config/PopPackages";
+import PopAllotedAreas from "@/pages/reseller/config/PopAllotedAreas";
+import PopDepartments from "@/pages/reseller/config/PopDepartments";
+import PopDesignations from "@/pages/reseller/config/PopDesignations";
+import PopDevices from "@/pages/reseller/config/PopDevices";
+// POP-scoped Employee
+import PopEmployees from "@/pages/reseller/employee/PopEmployees";
+import PopAddEmployee from "@/pages/reseller/employee/PopAddEmployee";
+// POP-scoped Client
+import PopClientList from "@/pages/reseller/clients/PopClientList";
+import PopAddClient from "@/pages/reseller/clients/PopAddClient";
+import PopBillingClient from "@/pages/reseller/clients/PopBillingClient";
+import PopLeftClients from "@/pages/reseller/clients/PopLeftClients";
+import PopScheduler from "@/pages/reseller/clients/PopScheduler";
+import PopPlaceholder from "@/pages/reseller/PopPlaceholder";
 
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({
