@@ -346,6 +346,18 @@ export default function Funding() {
                     </TableRow>
                   )}
                 </TableBody>
+                {fundings && fundings.length > 0 && (
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell colSpan={3} className="font-semibold">মোট</TableCell>
+                      <TableCell className="font-mono font-semibold">৳{totals.amount.toLocaleString("en-BD")}</TableCell>
+                      <TableCell className="font-mono font-semibold">৳{totals.received.toLocaleString("en-BD")}</TableCell>
+                      <TableCell className="font-mono font-semibold">৳{totals.discount.toLocaleString("en-BD")}</TableCell>
+                      <TableCell className="font-mono font-semibold">৳{totals.due.toLocaleString("en-BD")}</TableCell>
+                      <TableCell colSpan={3}></TableCell>
+                    </TableRow>
+                  </TableFooter>
+                )}
               </Table>
             </div>
           )}
