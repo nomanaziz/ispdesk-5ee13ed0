@@ -1,107 +1,71 @@
 
 
-## সমস্যা বিশ্লেষণ
+## লক্ষ্য — POP `AddClient`-কে আপনার logic অনুযায়ী smart auto-fill করা
 
-আপনি যা বলেছেন তিনটা মূল সমস্যা:
+বর্তমানে POP admin যখন client add করতে যায়, সব field admin-এর মতো manual। আপনি চান অনেক field POP profile থেকে auto-fill হোক, আর কিছু field hide/disable হোক যেগুলো POP-কে decide করতে হবে না।
 
-1. **Tariff/Package mismatch**: POP-এ tariff assign করা না থাকলে package পেজে কিছু আসে না। আবার `PopAddClient`-এ admin-এর global `isp_packages` সরাসরি query হচ্ছে — POP-এর tariff-এ assigned package-গুলো আসা উচিত।
-2. **District/Upazila not visible**: POP profile-এ district/upazila set করা থাকলেও `PopAllotedAreas` শুধু `pop_district_assignments` query করে — যদি admin allotment না করে, তাহলে নিজের default district/upazila-ও show হয় না।
-3. **PopAddClient simplistic**: শুধু ৯টা field — admin-এর `AddClient.tsx`-এ ৪০+ field (NID, পিতা-মাতা, MikroTik profile, expire_day, joining_date, prorated billing, etc.)। **POP admin-এর experience admin panel-এর সমান হতে হবে**।
+### পরিবর্তন ১ — জেলা/উপজেলা auto-show (Zone থেকে নয়, POP profile থেকে)
+**Field**: "জেলা" ও "উপজেলা/থানা" — এখন placeholder *"জোন থেকে"* দেখায়।
 
-## সমাধানের কৌশল: Admin module-গুলো POP scope-এ reuse
+**হবে**:
+- POP mode-এ POP profile-এর `district_id` ও `upazila_id` থেকে নাম fetch করে disabled input-এ দেখাবে: যেমন *"মাদারীপুর"* / *"মাদারীপুর সদর"*
+- Save payload-এ এগুলো auto inject (ইতিমধ্যে আছে — শুধু UI display ঠিক করতে হবে)
+- যদি POP-এ extra `pop_district_assignments` থাকে → dropdown দেখাবে (allotted areas মধ্যে select করতে পারবে)
+- Admin mode-এ ফাঁকা/manual থাকবে যেমন আছে
 
-প্রতিটা page নতুন করে না বানিয়ে, admin-এর existing component-গুলোকে **POP context-aware** করা হবে — branchId দিলে সেই branch-এ scope হবে, না দিলে admin এর মত সব দেখাবে।
+### পরিবর্তন ২ — Default Server auto-fill
+**Field**: "সার্ভার *" — এখন POP-কে dropdown থেকে বাছতে হয়।
 
-## Batch 2C: Foundation parity
+**হবে**:
+- POP mode-এ `branch_managers.server_id` (অথবা POP-এর tariff-এ assigned server) থেকে default server auto-set
+- POP-এর tariff-এ যেই server linked সেটাই priority পাবে (POP-এর monthly tariff)
+- Field টা POP mode-এ **disabled + readonly** দেখাবে server name সহ — POP change করতে পারবে না
+- Auto-fill হলেই MikroTik profiles fetch হবে
 
-### ১. `AddClient.tsx` কে POP-aware করা (single source of truth)
-**File**: `src/pages/dashboard/clients/AddClient.tsx` modify + `src/pages/reseller/clients/PopAddClient.tsx` rewrite
+### পরিবর্তন ৩ — Protocol Type default `PPPoE` + locked
+- POP mode-এ select disabled, value `PPPoE` (default) — admin চাইলে অন্যটাও পরে করতে পারে কিন্তু POP নয়
 
-- AddClient-এ একটা `popMode` prop যোগ — `usePortalAuth` থেকে detect, অথবা wrapper দিয়ে pass
-- POP mode হলে:
-  - `branch_id` auto inject (form এ hidden)
-  - **Zone, sub_zone, box** query → `.eq("branch_id", branchId)` filter
-  - **Package list** query → `isp_packages` directly noi, বরং `reseller_tariff_packages` join through POP-এর tariff:
-    ```
-    reseller_tariff_packages → isp_packages 
-    where tariff_id = (SELECT tariff_id FROM branch_managers WHERE branch_id = popBranch)
-    ```
-    Selling rate use হবে monthly_bill হিসেবে (admin-এর global price না)
-  - **District/Upazila auto-fill** disabled inputs দুটোতে POP-এর default district/upazila বসবে (allotment থাকলে dropdown, না থাকলে default)
-  - **Sidebar redirect**: `/pop-admin/clients` 
-- `PopAddClient.tsx` কে wrapper বানাব — শুধু `<AddClient popMode />` render
-- Admin mode untouched — backward compatible
+### পরিবর্তন ৪ — Profile auto-fill from Package (POP customize করতে পারবে না)
+এখন `profile` POP নিজেই dropdown থেকে বাছতে পারে — এটা security risk (পাঁচশ টাকার package দিয়ে 100MB profile)।
 
-### ২. Package sync fix — Admin tariff allotment auto-show
-**Files**:
-- `PopPackages.tsx` — already fixed; verify query শুধু POP-এর tariff-এর package দেখায়
-- `PopAddClient` package dropdown → একই tariff package source থেকে load
+**হবে**:
+- POP mode-এ Package select করলে `reseller_tariff_packages.mikrotik_profile` field থেকে profile auto-set
+- Profile field POP mode-এ **disabled** — locked from tariff configuration
+- Admin mode untouched (admin চাইলে override করতে পারবে)
 
-**Bonus**: যদি POP-এ tariff assign না থাকে → clear banner: *"Admin আপনার POP-কে এখনো tariff assign করেনি। নতুন client তৈরির জন্য admin-এর সাথে যোগাযোগ করুন।"*
+### পরিবর্তন ৫ — Package list শুধু admin-allotted (already done) + Selling rate auto-fill
+এটা already implemented। শুধু confirm করব:
+- Package select করলে `selling_rate` (admin-set) → `monthly_bill`-এ চলে আসে
+- POP চাইলে monthly_bill-এ কম-বেশি লিখতে পারবে (manual override allowed, যেমন আপনি বললেন)
 
-### ৩. PopAllotedAreas (District/Upazila) — Default fallback
-**File**: `src/pages/reseller/config/PopAllotedAreas.tsx`
+### পরিবর্তন ৬ — Client Code auto-generation + duplicate check
+এখন `client_id` empty থাকলে DB trigger `set_client_code` `<pop_code>-<6digit>` format-এ auto-generate করে।
 
-Logic update:
-- `pop_district_assignments` query করার পরে যদি empty হয়:
-  - POP profile থেকে `district_id` + `upazila_id` fetch করব
-  - এগুলোকেই virtual allotment হিসেবে show করব with badge **"Default — POP profile থেকে"**
-- ফলে কখনোই empty page দেখাবে না (যদি POP-এ district set থাকে)
+**হবে**:
+- POP mode-এ field ফাঁকা থাকলে placeholder দেখাবে: *"স্বয়ংক্রিয়: `{pop_prefix}-000001`"*
+- POP যদি custom লেখে (অথবা username field পূরণ করে) → username-কে by default `client_id`-এ copy
+- **Duplicate check**: blur event-এ পুরো `clients` table query করব (`branch_id` filter ছাড়া — global), match পেলে red error: *"এই client code অন্য POP/Admin-এ ব্যবহৃত হয়েছে"*
 
-### ৪. Module reuse plan — Phase tactic
-সব 40+ admin page POP-scope করতে হবে। এই batch-এ foundation:
+### পরিবর্তন ৭ — Heading clean
+- `POP — {popName}` heading-এর সাথে subtitle যোগ: *"নতুন ক্লায়েন্ট — Server, Profile ও জেলা স্বয়ংক্রিয় POP profile থেকে"*
 
-**Pattern**: প্রতিটা admin page-এ একটা optional `popMode` detect (via `usePortalAuth().customer.branch_id` exists) → সব Supabase query auto-filter `.eq("branch_id", branchId)`। Top heading admin-এর জন্য full title, POP-এর জন্য "POP - [name]" prefix।
+## File changes
 
-এই batch-এ wire করব **ক্লায়েন্ট module-এর ৫টা page**:
-1. `AddClient` → `/pop-admin/clients/add` ✓
-2. `ClientList` → `/pop-admin/clients` (admin-এর full table reuse, branch filter)
-3. `BillingList` → `/pop-admin/clients/billing`
-4. `LeftClients` → `/pop-admin/clients/left`
-5. `Scheduler` → `/pop-admin/clients/scheduler`
+**Modify (1):**
+- `src/pages/dashboard/clients/AddClient.tsx`
+  - District/Upazila names fetch (one new query) + disabled display
+  - Server auto-fill from POP profile/tariff + disabled in POP mode
+  - Protocol Type disabled+default in POP mode
+  - Profile auto-fill from selected package's `mikrotik_profile` + disabled in POP mode
+  - Client Code: placeholder hint + onBlur duplicate check
+  - Tariff package query expanded to include `mikrotik_profile`, `mikrotik_server_id`
 
-`App.tsx`-এর routes update — `Pop*` simple wrappers-এর বদলে admin component সরাসরি use।
+**No DB migration needed** — সব field already আছে (`branch_managers.server_id`, `reseller_tariff_packages.mikrotik_profile`, `pop_district_assignments`)।
 
-### ৫. Helper hook
-**New file**: `src/hooks/usePopScope.ts`
-```
-export function usePopScope() {
-  const { customer } = usePortalAuth();
-  const branchId = customer?.branch_id;
-  const isPopMode = !!branchId;
-  return { isPopMode, branchId, popName: customer?.name };
-}
-```
-সব admin component-এ এটা import → query গুলো conditional filter করবে।
+## যা হবে না
+- Admin mode-এর behavior অপরিবর্তিত
+- POP mode-এ profile/server লুকানো (hide) হবে না — শুধু **disabled + auto-filled** দেখাবে যাতে POP বুঝতে পারে কী চলছে
+- Zone/Sub-zone/Box auto-fill হবে না — এগুলো POP নিজে বানায় (যেমন আপনি বললেন)
 
-## File changes এই batch-এ
-
-**Modify (5):**
-- `src/pages/dashboard/clients/AddClient.tsx` — POP-aware queries (branch_id filter, tariff package source)
-- `src/pages/dashboard/clients/ClientList.tsx` — branch filter when POP mode
-- `src/pages/dashboard/billing/BillingList.tsx` — branch filter
-- `src/pages/dashboard/clients/LeftClients.tsx` — branch filter
-- `src/pages/dashboard/clients/Scheduler.tsx` — branch filter
-- `src/pages/reseller/config/PopAllotedAreas.tsx` — default fallback fix
-- `src/App.tsx` — wire admin pages to `/pop-admin/clients/*` routes
-- `src/contexts/PortalAuthContext.tsx` — verify branch_id exposed properly
-
-**New (1):**
-- `src/hooks/usePopScope.ts` — shared scope hook
-
-**Replace (1):**
-- `src/pages/reseller/clients/PopAddClient.tsx` — thin wrapper around AddClient
-
-## যা **হবে না**
-- DB schema change নেই
-- Admin panel functionality untouched
-- Public/portal client module untouched
-- পরের batch-এ: Employee, SMS, Reports, Monitoring, System modules একই pattern
-
-## Next batches (preview)
-- **2D**: Employee module (5 pages) + Department/Designation POP-scoped CRUD
-- **2E**: Billing actions (Invoice, Daily Collection, Bill Profile) + SMS module
-- **2F**: Reports (6 pages) + Monitoring + System
-
-approve করলে Batch 2C শুরু করি।
+approve করলে implement শুরু করি।
 
