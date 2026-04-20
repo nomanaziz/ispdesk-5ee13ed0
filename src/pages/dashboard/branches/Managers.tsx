@@ -110,7 +110,9 @@ export default function Managers() {
     let totalClients = 0;
     let totalOnline = 0;
     for (const m of managers ?? []) {
-      const c = clientCounts?.[(m as any).branch_id || "_none"];
+      const bid = (m as any).branch_id;
+      if (!bid) continue;
+      const c = clientCounts?.[bid];
       if (c) { totalClients += c.running; totalOnline += c.online; }
     }
     return { total, totalClients, totalOnline };
