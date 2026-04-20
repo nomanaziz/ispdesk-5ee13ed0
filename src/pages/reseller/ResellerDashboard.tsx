@@ -55,7 +55,7 @@ const ResellerDashboard = () => {
       const totalDue = (lastInvs.data || []).reduce((s: number, r: any) => s + Number(r.due || 0), 0);
       return {
         balance: Number(pop.data?.balance || 0),
-        smsBalance: Number((pop.data as any)?.sms_balance || 0),
+        smsBalance: 0,
         monthlyCharged,
         monthlyPaid,
         monthlyDiscount,
@@ -74,7 +74,7 @@ const ResellerDashboard = () => {
       monthStart.setHours(0, 0, 0, 0);
       const monthIso = monthStart.toISOString();
 
-      const [allClients, billing, collections, payroll, zonesQ, newClients, tickets, notices] =
+      const [allClients, billing, collections, zonesQ, newClients, tickets, notices] =
         await Promise.all([
           supabase.from("clients").select("id, status, billing_status, monthly_bill, zone_id, name, expire_date, last_login")
             .eq("branch_id", branchId!),
@@ -82,7 +82,6 @@ const ResellerDashboard = () => {
             .eq("branch_id", branchId!).gte("created_at", monthIso),
           supabase.from("bill_collections").select("amount, created_at, client_id")
             .gte("created_at", monthIso),
-          supabase.from("salary_records").select("net_salary, paid_amount").maybeSingle().then(r => r).catch(() => ({ data: null })),
           supabase.from("zones").select("id, name").eq("status", "active"),
           supabase.from("clients").select("created_at, status").eq("branch_id", branchId!)
             .gte("created_at", new Date(Date.now() - 1000 * 60 * 60 * 24 * 180).toISOString()),
