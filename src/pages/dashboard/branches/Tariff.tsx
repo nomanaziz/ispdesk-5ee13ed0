@@ -279,7 +279,7 @@ export default function Tariff() {
             tariff_type: tariffType,
             created_by: uid,
             // legacy columns satisfied via defaults / nullables
-            activation_days: pkgRows[0].validity_days,
+            activation_days: tariffType === "date_to_date" ? 0 : pkgRows[0].validity_days,
             selling_rate: pkgRows[0].selling_rate,
             package_id: pkgRows[0].package_id,
           })
