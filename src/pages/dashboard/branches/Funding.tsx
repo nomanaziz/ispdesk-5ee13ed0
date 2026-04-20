@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Banknote, Plus, Check, ChevronsUpDown, History, Filter, X, Eye, Trash2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import FundingPayDialog from "@/components/branches/FundingPayDialog";
+import FundingDetailDialog from "@/components/branches/FundingDetailDialog";
 
 type PopRow = {
   id: string;
