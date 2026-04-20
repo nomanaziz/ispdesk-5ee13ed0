@@ -128,32 +128,6 @@ export default function AddClient() {
         });
     }
   }, []);
-
-  // POP mode: auto-fill default server, lock protocol to PPPoE
-  useEffect(() => {
-    if (!isPopMode) return;
-    if (popMeta?.defaultServerId && !form.mikrotik_id) {
-      setForm(prev => ({ ...prev, mikrotik_id: popMeta.defaultServerId, protocol_type: "PPPoE" }));
-      setLoadingProfiles(true);
-      supabase.functions.invoke("fetch-mikrotik-profiles", { body: { device_id: popMeta.defaultServerId } })
-        .then(({ data }) => setMikrotikProfiles(data?.profiles || []))
-        .catch(() => setMikrotikProfiles([]))
-        .finally(() => setLoadingProfiles(false));
-    }
-  }, [isPopMode, popMeta?.defaultServerId]);
-
-  // Duplicate client_id check (global)
-  const checkClientCodeUnique = async () => {
-    setClientCodeError("");
-    const code = (form.client_id || "").trim();
-    if (!code) return;
-    const q: any = supabase.from("clients").select("id, branch_id").eq("client_id", code).limit(1);
-    const { data } = await q;
-    if (data && data.length > 0 && (!editMode || data[0].id !== editClientId)) {
-      setClientCodeError("এই client code ইতিমধ্যে অন্য POP/Admin-এ ব্যবহৃত হয়েছে");
-    }
-  };
-
   const { data: zones } = useQuery({
     queryKey: ["zones-active", branchId || "all"],
     queryFn: async () => {
