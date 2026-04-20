@@ -753,6 +753,7 @@ export type Database = {
           company_name: string | null
           contact: string | null
           created_at: string
+          credit_refund_policy: boolean
           disable_clients: boolean
           district_id: string | null
           email: string | null
@@ -795,6 +796,7 @@ export type Database = {
           company_name?: string | null
           contact?: string | null
           created_at?: string
+          credit_refund_policy?: boolean
           disable_clients?: boolean
           district_id?: string | null
           email?: string | null
@@ -837,6 +839,7 @@ export type Database = {
           company_name?: string | null
           contact?: string | null
           created_at?: string
+          credit_refund_policy?: boolean
           disable_clients?: boolean
           district_id?: string | null
           email?: string | null
@@ -3100,6 +3103,69 @@ export type Database = {
           id?: string
           name?: string
           status?: string
+        }
+        Relationships: []
+      }
+      credit_refund_logs: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          client_username: string | null
+          created_at: string
+          daily_rate: number
+          id: string
+          package_id: string | null
+          package_name: string | null
+          paid_days: number
+          pop_balance_after: number | null
+          pop_balance_before: number | null
+          pop_id: string
+          reason: string | null
+          refund_amount: number
+          refund_days: number
+          refunded_at: string
+          status: string
+          used_days: number
+        }
+        Insert: {
+          client_id?: string | null
+          client_name?: string | null
+          client_username?: string | null
+          created_at?: string
+          daily_rate?: number
+          id?: string
+          package_id?: string | null
+          package_name?: string | null
+          paid_days?: number
+          pop_balance_after?: number | null
+          pop_balance_before?: number | null
+          pop_id: string
+          reason?: string | null
+          refund_amount?: number
+          refund_days?: number
+          refunded_at?: string
+          status?: string
+          used_days?: number
+        }
+        Update: {
+          client_id?: string | null
+          client_name?: string | null
+          client_username?: string | null
+          created_at?: string
+          daily_rate?: number
+          id?: string
+          package_id?: string | null
+          package_name?: string | null
+          paid_days?: number
+          pop_balance_after?: number | null
+          pop_balance_before?: number | null
+          pop_id?: string
+          reason?: string | null
+          refund_amount?: number
+          refund_days?: number
+          refunded_at?: string
+          status?: string
+          used_days?: number
         }
         Relationships: []
       }
