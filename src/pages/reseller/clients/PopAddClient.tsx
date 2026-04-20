@@ -26,11 +26,11 @@ export default function PopAddClient() {
   });
   const { data: subZones } = useQuery({
     queryKey: ["pop-sub-zones-add", branchId], enabled: !!branchId,
-    queryFn: async () => (await supabase.from("sub_zones").select("id,name,zone_id").eq("branch_id", branchId!)).data || [],
+    queryFn: async () => (await (supabase.from("sub_zones") as any).select("id,name,zone_id").eq("branch_id", branchId!)).data || [],
   });
   const { data: boxes } = useQuery({
     queryKey: ["pop-boxes-add", branchId], enabled: !!branchId,
-    queryFn: async () => (await supabase.from("boxes").select("id,name").eq("branch_id", branchId!)).data || [],
+    queryFn: async () => (await (supabase.from("boxes") as any).select("id,name").eq("branch_id", branchId!)).data || [],
   });
   const { data: packages } = useQuery({
     queryKey: ["pop-packages-add", branchId], enabled: !!branchId,
