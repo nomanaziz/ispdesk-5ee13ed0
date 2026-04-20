@@ -28,100 +28,100 @@ interface NavGroup {
 const groups: NavGroup[] = [
   {
     key: "dashboard", label: "Dashboard", icon: LayoutDashboard,
-    items: [{ to: "/reseller/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+    items: [{ to: "/pop-admin/dashboard", label: "Dashboard", icon: LayoutDashboard }],
   },
   {
     key: "configuration", label: "Configuration", icon: Cog,
     items: [
-      { to: "/reseller/config/zones", label: "Zone", icon: MapPin },
-      { to: "/reseller/config/sub-zones", label: "Sub Zone", icon: Layers },
-      { to: "/reseller/config/boxes", label: "Box", icon: Box },
-      { to: "/reseller/config/packages", label: "Package", icon: Package },
-      { to: "/reseller/config/districts", label: "District", icon: MapPin },
-      { to: "/reseller/config/upazilas", label: "Upazila", icon: MapPin },
-      { to: "/reseller/config/departments", label: "Department", icon: Briefcase },
-      { to: "/reseller/config/designations", label: "Designation", icon: BadgeCheck },
-      { to: "/reseller/config/devices", label: "Device", icon: Cpu },
+      { to: "/pop-admin/config/zones", label: "Zone", icon: MapPin },
+      { to: "/pop-admin/config/sub-zones", label: "Sub Zone", icon: Layers },
+      { to: "/pop-admin/config/boxes", label: "Box", icon: Box },
+      { to: "/pop-admin/config/packages", label: "Package", icon: Package },
+      { to: "/pop-admin/config/districts", label: "District", icon: MapPin },
+      { to: "/pop-admin/config/upazilas", label: "Upazila", icon: MapPin },
+      { to: "/pop-admin/config/departments", label: "Department", icon: Briefcase },
+      { to: "/pop-admin/config/designations", label: "Designation", icon: BadgeCheck },
+      { to: "/pop-admin/config/devices", label: "Device", icon: Cpu },
     ],
   },
   {
     key: "mikrotik", label: "MikroTik Client", icon: Server,
-    items: [{ to: "/reseller/mikrotik-users", label: "MikroTik Users", icon: Server }],
+    items: [{ to: "/pop-admin/mikrotik-users", label: "MikroTik Users", icon: Server }],
   },
   {
     key: "employee", label: "Employee", icon: Users,
     items: [
-      { to: "/reseller/employees/add", label: "Add Employee", icon: UserPlus },
-      { to: "/reseller/employees", label: "Employee List", icon: Users },
-      { to: "/reseller/employees/salary-sheet", label: "Salary Sheet", icon: FileText },
-      { to: "/reseller/employees/payroll", label: "Payroll", icon: Wallet },
-      { to: "/reseller/employees/attendance", label: "Attendance", icon: Calendar },
+      { to: "/pop-admin/employees/add", label: "Add Employee", icon: UserPlus },
+      { to: "/pop-admin/employees", label: "Employee List", icon: Users },
+      { to: "/pop-admin/employees/salary-sheet", label: "Salary Sheet", icon: FileText },
+      { to: "/pop-admin/employees/payroll", label: "Payroll", icon: Wallet },
+      { to: "/pop-admin/employees/attendance", label: "Attendance", icon: Calendar },
     ],
   },
   {
     key: "client", label: "Client", icon: Users,
     items: [
-      { to: "/reseller/clients/add", label: "Add Client", icon: UserPlus },
-      { to: "/reseller/clients", label: "Client List", icon: Users },
-      { to: "/reseller/clients/billing", label: "Billing Client", icon: Receipt },
-      { to: "/reseller/clients/left", label: "Left Clients", icon: Users },
-      { to: "/reseller/clients/scheduler", label: "Scheduler", icon: Calendar },
+      { to: "/pop-admin/clients/add", label: "Add Client", icon: UserPlus },
+      { to: "/pop-admin/clients", label: "Client List", icon: Users },
+      { to: "/pop-admin/clients/billing", label: "Billing Client", icon: Receipt },
+      { to: "/pop-admin/clients/left", label: "Left Clients", icon: Users },
+      { to: "/pop-admin/clients/scheduler", label: "Scheduler", icon: Calendar },
     ],
   },
   {
     key: "billing", label: "Billing", icon: Receipt,
     items: [
-      { to: "/reseller/billing/list", label: "Billing List", icon: Receipt },
-      { to: "/reseller/billing/invoice", label: "Invoice", icon: FileText },
-      { to: "/reseller/billing/daily-collection", label: "Daily Collection", icon: Wallet },
-      { to: "/reseller/billing/profile", label: "Client Bill Profile", icon: ListChecks },
+      { to: "/pop-admin/billing/list", label: "Billing List", icon: Receipt },
+      { to: "/pop-admin/billing/invoice", label: "Invoice", icon: FileText },
+      { to: "/pop-admin/billing/daily-collection", label: "Daily Collection", icon: Wallet },
+      { to: "/pop-admin/billing/profile", label: "Client Bill Profile", icon: ListChecks },
     ],
   },
   {
     key: "monitoring", label: "Monitoring", icon: Antenna,
     items: [
-      { to: "/reseller/monitoring/online", label: "Online Clients", icon: Wifi },
-      { to: "/reseller/tickets", label: "Client Support", icon: LifeBuoy },
-      { to: "/reseller/monitoring/ping", label: "Ping Tools", icon: Radar },
+      { to: "/pop-admin/monitoring/online", label: "Online Clients", icon: Wifi },
+      { to: "/pop-admin/tickets", label: "Client Support", icon: LifeBuoy },
+      { to: "/pop-admin/monitoring/ping", label: "Ping Tools", icon: Radar },
     ],
   },
   {
     key: "sms", label: "SMS Service", icon: MessageSquare,
     items: [
-      { to: "/reseller/sms/templates", label: "Templates", icon: FileText },
-      { to: "/reseller/sms/individual", label: "Individual / Group", icon: Users },
-      { to: "/reseller/sms/send", label: "Send SMS", icon: Send },
-      { to: "/reseller/sms/gateway", label: "Gateway", icon: Server },
+      { to: "/pop-admin/sms/templates", label: "Templates", icon: FileText },
+      { to: "/pop-admin/sms/individual", label: "Individual / Group", icon: Users },
+      { to: "/pop-admin/sms/send", label: "Send SMS", icon: Send },
+      { to: "/pop-admin/sms/gateway", label: "Gateway", icon: Server },
     ],
   },
   {
     key: "reports", label: "Reports", icon: BarChart3,
     items: [
-      { to: "/reseller/reports/bill-collection", label: "Bill Collection", icon: BarChart3 },
-      { to: "/reseller/reports/enable-disable", label: "Enable/Disable", icon: BarChart3 },
-      { to: "/reseller/reports/messages", label: "Messages", icon: BarChart3 },
-      { to: "/reseller/reports/processing-fee", label: "Processing Fee", icon: BarChart3 },
-      { to: "/reseller/reports/discount", label: "Discount", icon: BarChart3 },
-      { to: "/reseller/reports/due-sms", label: "Due SMS", icon: BarChart3 },
+      { to: "/pop-admin/reports/bill-collection", label: "Bill Collection", icon: BarChart3 },
+      { to: "/pop-admin/reports/enable-disable", label: "Enable/Disable", icon: BarChart3 },
+      { to: "/pop-admin/reports/messages", label: "Messages", icon: BarChart3 },
+      { to: "/pop-admin/reports/processing-fee", label: "Processing Fee", icon: BarChart3 },
+      { to: "/pop-admin/reports/discount", label: "Discount", icon: BarChart3 },
+      { to: "/pop-admin/reports/due-sms", label: "Due SMS", icon: BarChart3 },
     ],
   },
   {
     key: "purchases", label: "Purchase Orders", icon: ShoppingCart,
-    items: [{ to: "/reseller/purchases", label: "Purchase Orders", icon: ShoppingCart }],
+    items: [{ to: "/pop-admin/purchases", label: "Purchase Orders", icon: ShoppingCart }],
   },
   {
     key: "system", label: "System", icon: Settings,
     items: [
-      { to: "/reseller/settings", label: "Company Settings", icon: Settings },
-      { to: "/reseller/system/period", label: "Period", icon: Calendar },
-      { to: "/reseller/users", label: "Users", icon: Users },
+      { to: "/pop-admin/settings", label: "Company Settings", icon: Settings },
+      { to: "/pop-admin/system/period", label: "Period", icon: Calendar },
+      { to: "/pop-admin/users", label: "Users", icon: Users },
     ],
   },
   {
     key: "fund_history", label: "Fund History", icon: History,
     items: [
-      { to: "/reseller/fund-history/credit", label: "Credit History", icon: History },
-      { to: "/reseller/fund-history/debit", label: "Debit History", icon: History },
+      { to: "/pop-admin/fund-history/credit", label: "Credit History", icon: History },
+      { to: "/pop-admin/fund-history/debit", label: "Debit History", icon: History },
     ],
   },
 ];
@@ -283,7 +283,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                     {g.items.map((item) => {
                       const ItemIcon = item.icon;
                       const active = location.pathname === item.to ||
-                        (item.to !== "/reseller/dashboard" && location.pathname.startsWith(item.to));
+                        (item.to !== "/pop-admin/dashboard" && location.pathname.startsWith(item.to));
                       return (
                         <Link
                           key={item.to}
