@@ -528,7 +528,7 @@ export default function Funding() {
                         <TableCell>
                           <div className="flex gap-1">
                             {isRefund ? (
-                              <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">Refund</Badge>
+                              <Badge variant="outline" className="border-destructive/50 text-destructive">Refund</Badge>
                             ) : (
                               <>
                                 {dueAmt > 0 && (
