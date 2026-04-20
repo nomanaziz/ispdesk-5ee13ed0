@@ -227,6 +227,30 @@ export default function AddClient() {
   });
   const { data: billingStatuses } = useQuery({ queryKey: ["billing-statuses"], queryFn: async () => { const { data } = await supabase.from("billing_statuses").select("id, name").eq("status", "active"); return data || []; } });
 
+  // POP mode: auto-fill default server, lock protocol to PPPoE
+  useEffect(() => {
+    if (!isPopMode) return;
+    if (popMeta?.defaultServerId && !form.mikrotik_id) {
+      setForm(prev => ({ ...prev, mikrotik_id: popMeta.defaultServerId, protocol_type: "PPPoE" }));
+      setLoadingProfiles(true);
+      supabase.functions.invoke("fetch-mikrotik-profiles", { body: { device_id: popMeta.defaultServerId } })
+        .then(({ data }) => setMikrotikProfiles(data?.profiles || []))
+        .catch(() => setMikrotikProfiles([]))
+        .finally(() => setLoadingProfiles(false));
+    }
+  }, [isPopMode, popMeta?.defaultServerId]);
+
+  // Duplicate client_id check (global across all POPs/Admin)
+  const checkClientCodeUnique = async () => {
+    setClientCodeError("");
+    const code = (form.client_id || "").trim();
+    if (!code) return;
+    const { data } = await supabase.from("clients").select("id").eq("client_id", code).limit(1);
+    if (data && data.length > 0 && (!editMode || data[0].id !== editClientId)) {
+      setClientCodeError("এই client code ইতিমধ্যে অন্য POP/Admin-এ ব্যবহৃত হয়েছে");
+    }
+  };
+
   const filteredSubZones = useMemo(() => form.zone_id ? subZones?.filter((s: any) => s.zone_id === form.zone_id) : subZones, [form.zone_id, subZones]);
   const filteredBoxes = useMemo(() => form.zone_id ? boxes?.filter((b: any) => b.zone_id === form.zone_id) : boxes, [form.zone_id, boxes]);
 
