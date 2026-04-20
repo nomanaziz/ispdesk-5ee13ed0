@@ -461,7 +461,7 @@ export default function PopForm({ mode, pop }: Props) {
                   মাসের কত তারিখের মধ্যে আগের মাসের পাওনা মিটানো must
                 </p>
               </div>
-              <div className="md:col-span-2 rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 p-3 text-[12px] text-amber-800 dark:text-amber-300">
+              <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning/10 p-3 text-[12px] text-foreground">
                 <strong>Postpaid নিয়ম:</strong> Postpaid POP-ও daily-rate এ deduct হবে। Auto-disable তারিখের মধ্যে balance এর পাওনা না মিটালে সব client off হবে। Admin fund দিতে পারে (ধার), POP নিজেও recharge করতে পারে।
               </div>
             </>
