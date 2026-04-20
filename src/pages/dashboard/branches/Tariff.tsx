@@ -2,48 +2,126 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Settings, Pencil, Trash2, RefreshCw } from "lucide-react";
+import {
+  Plus,
+  Settings,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  Eye,
+  X as XIcon,
+} from "lucide-react";
+import { format } from "date-fns";
 
-interface TariffForm {
-  name: string;
+interface PackageRow {
+  id?: string; // db id if existing
+  tempId: string; // for client-side tracking
   package_id: string;
+  buy_rate: number;
   selling_rate: number;
-  activation_days: number;
+  validity_days: number;
   min_activation_days: number;
-  protocol_type: string;
   mikrotik_server_id: string;
   mikrotik_profile: string;
+  protocol_type: string;
+  _serverChanged?: boolean; // mark for sync after save
 }
 
-const defaultForm: TariffForm = {
-  name: "", package_id: "", selling_rate: 0, activation_days: 30,
-  min_activation_days: 1, protocol_type: "PPPoE", mikrotik_server_id: "", mikrotik_profile: "",
-};
+interface MikroProfile {
+  name: string;
+  "rate-limit"?: string;
+}
+
+const emptyPkgForm = (): PackageRow => ({
+  tempId: crypto.randomUUID(),
+  package_id: "",
+  buy_rate: 0,
+  selling_rate: 0,
+  validity_days: 30,
+  min_activation_days: 1,
+  mikrotik_server_id: "",
+  mikrotik_profile: "",
+  protocol_type: "PPPoE",
+});
 
 export default function Tariff() {
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<TariffForm>(defaultForm);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewTariff, setViewTariff] = useState<any>(null);
+
+  const [tariffName, setTariffName] = useState("");
+  const [tariffType, setTariffType] = useState<"custom" | "date_to_date">("custom");
   const [editId, setEditId] = useState<string | null>(null);
-  const [profiles, setProfiles] = useState<{ name: string; "rate-limit": string }[]>([]);
+
+  const [pkgRows, setPkgRows] = useState<PackageRow[]>([]);
+  const [pkgForm, setPkgForm] = useState<PackageRow>(emptyPkgForm());
+  const [editingPkgIdx, setEditingPkgIdx] = useState<number | null>(null);
+
+  const [profileCache, setProfileCache] = useState<Record<string, MikroProfile[]>>({});
   const [loadingProfiles, setLoadingProfiles] = useState(false);
 
+  // ----- Queries -----
   const { data: tariffs, isLoading } = useQuery({
-    queryKey: ["reseller-tariffs"],
+    queryKey: ["reseller-tariffs-v2"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("reseller_tariffs")
-        .select("*, isp_packages(name, price), mikrotik_devices(name)")
+        .select(
+          "id, name, tariff_type, status, created_at, created_by, " +
+            "reseller_tariff_packages(id, package_id, mikrotik_server_id, mikrotik_profile, protocol_type, buy_rate, selling_rate, validity_days, min_activation_days, " +
+            "isp_packages(name, price), mikrotik_devices(name))",
+        )
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return data ?? [];
+    },
+  });
+
+  const { data: assignedPopsByTariff } = useQuery({
+    queryKey: ["tariff-assigned-pops"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("branch_managers")
+        .select("id, name, tariff_id")
+        .not("tariff_id", "is", null);
+      if (error) throw error;
+      const map: Record<string, { id: string; name: string }[]> = {};
+      (data ?? []).forEach((p: any) => {
+        if (!p.tariff_id) return;
+        if (!map[p.tariff_id]) map[p.tariff_id] = [];
+        map[p.tariff_id].push({ id: p.id, name: p.name });
+      });
+      return map;
     },
   });
 
@@ -68,73 +146,173 @@ export default function Tariff() {
     },
   });
 
-  // Fetch MikroTik profiles when server changes
+  // ----- Helpers -----
   const fetchProfiles = async (deviceId: string) => {
-    if (!deviceId) {
-      setProfiles([]);
-      return;
-    }
+    if (!deviceId) return;
+    if (profileCache[deviceId]) return;
     setLoadingProfiles(true);
     try {
-      const { data, error } = await supabase.functions.invoke("fetch-mikrotik-profiles", {
-        body: { device_id: deviceId },
-      });
+      const { data, error } = await supabase.functions.invoke(
+        "fetch-mikrotik-profiles",
+        { body: { device_id: deviceId } },
+      );
       if (error) throw error;
-      if (data?.profiles) {
-        setProfiles(data.profiles);
-      } else {
-        setProfiles([]);
-        if (data?.error) toast.error(data.error);
-      }
+      setProfileCache((c) => ({ ...c, [deviceId]: data?.profiles ?? [] }));
     } catch (e: any) {
-      toast.error("প্রোফাইল লোড ব্যর্থ: " + (e.message || "Unknown error"));
-      setProfiles([]);
+      toast.error("প্রোফাইল লোড ব্যর্থ: " + (e.message || "Unknown"));
     } finally {
       setLoadingProfiles(false);
     }
   };
 
-  // When server selection changes in form
-  const handleServerChange = (serverId: string) => {
-    setForm({ ...form, mikrotik_server_id: serverId, mikrotik_profile: "" });
+  const onPackageSelect = (packageId: string) => {
+    const pkg = packages?.find((p) => p.id === packageId);
+    setPkgForm((f) => ({
+      ...f,
+      package_id: packageId,
+      buy_rate: pkg?.price ?? 0,
+    }));
+  };
+
+  const onServerSelect = (serverId: string) => {
+    setPkgForm((f) => ({ ...f, mikrotik_server_id: serverId, mikrotik_profile: "" }));
     fetchProfiles(serverId);
   };
 
-  // Load profiles when editing an existing tariff
-  useEffect(() => {
-    if (open && form.mikrotik_server_id) {
-      fetchProfiles(form.mikrotik_server_id);
-    }
-  }, [open]);
+  const addOrUpdatePkgRow = () => {
+    if (!pkgForm.package_id) return toast.error("Package সিলেক্ট করুন");
+    if (!pkgForm.mikrotik_server_id) return toast.error("Server সিলেক্ট করুন");
+    if (!pkgForm.mikrotik_profile) return toast.error("Profile সিলেক্ট করুন");
 
+    if (editingPkgIdx !== null) {
+      const old = pkgRows[editingPkgIdx];
+      const serverChanged =
+        old.mikrotik_server_id !== pkgForm.mikrotik_server_id ||
+        old.mikrotik_profile !== pkgForm.mikrotik_profile;
+      const next = [...pkgRows];
+      next[editingPkgIdx] = { ...pkgForm, _serverChanged: serverChanged || old._serverChanged };
+      setPkgRows(next);
+      setEditingPkgIdx(null);
+    } else {
+      // duplicate guard
+      const dup = pkgRows.find(
+        (r) =>
+          r.package_id === pkgForm.package_id &&
+          r.mikrotik_server_id === pkgForm.mikrotik_server_id,
+      );
+      if (dup) return toast.error("এই package + server combination ইতিমধ্যে আছে");
+      setPkgRows([...pkgRows, pkgForm]);
+    }
+    setPkgForm(emptyPkgForm());
+  };
+
+  const editPkgRow = (idx: number) => {
+    setPkgForm({ ...pkgRows[idx] });
+    setEditingPkgIdx(idx);
+    if (pkgRows[idx].mikrotik_server_id) fetchProfiles(pkgRows[idx].mikrotik_server_id);
+  };
+
+  const deletePkgRow = (idx: number) => {
+    setPkgRows(pkgRows.filter((_, i) => i !== idx));
+    if (editingPkgIdx === idx) {
+      setEditingPkgIdx(null);
+      setPkgForm(emptyPkgForm());
+    }
+  };
+
+  const resetDialog = () => {
+    setTariffName("");
+    setTariffType("custom");
+    setEditId(null);
+    setPkgRows([]);
+    setPkgForm(emptyPkgForm());
+    setEditingPkgIdx(null);
+  };
+
+  // ----- Save -----
   const save = useMutation({
     mutationFn: async () => {
-      const payload = {
-        name: form.name,
-        package_id: form.package_id || null,
-        selling_rate: form.selling_rate,
-        activation_days: form.activation_days,
-        min_activation_days: form.min_activation_days,
-        is_daily_recharge: false,
-        protocol_type: form.protocol_type,
-        mikrotik_server_id: form.mikrotik_server_id || null,
-        mikrotik_profile: form.mikrotik_profile || null,
-      };
+      if (!tariffName.trim()) throw new Error("Tariff নাম দিন");
+      if (pkgRows.length === 0) throw new Error("কমপক্ষে একটি package যোগ করুন");
+
+      const userRes = await supabase.auth.getUser();
+      const uid = userRes.data.user?.id ?? null;
+
+      let tariffId = editId;
       if (editId) {
-        const { error } = await supabase.from("reseller_tariffs").update(payload).eq("id", editId);
+        const { error } = await supabase
+          .from("reseller_tariffs")
+          .update({ name: tariffName, tariff_type: tariffType })
+          .eq("id", editId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("reseller_tariffs").insert(payload);
+        const { data, error } = await supabase
+          .from("reseller_tariffs")
+          .insert({
+            name: tariffName,
+            tariff_type: tariffType,
+            created_by: uid,
+            // legacy columns satisfied via defaults / nullables
+            activation_days: pkgRows[0].validity_days,
+            selling_rate: pkgRows[0].selling_rate,
+            package_id: pkgRows[0].package_id,
+          })
+          .select("id")
+          .single();
         if (error) throw error;
+        tariffId = data.id;
       }
+      if (!tariffId) throw new Error("Tariff id missing");
+
+      // Replace all package rows: delete existing then insert
+      const { error: delErr } = await supabase
+        .from("reseller_tariff_packages")
+        .delete()
+        .eq("tariff_id", tariffId);
+      if (delErr) throw delErr;
+
+      const rowsToInsert = pkgRows.map((r) => ({
+        tariff_id: tariffId!,
+        package_id: r.package_id,
+        mikrotik_server_id: r.mikrotik_server_id || null,
+        mikrotik_profile: r.mikrotik_profile || null,
+        protocol_type: r.protocol_type,
+        buy_rate: r.buy_rate,
+        selling_rate: r.selling_rate,
+        validity_days: r.validity_days,
+        min_activation_days: r.min_activation_days,
+      }));
+      const { data: inserted, error: insErr } = await supabase
+        .from("reseller_tariff_packages")
+        .insert(rowsToInsert)
+        .select("id, package_id, mikrotik_server_id");
+      if (insErr) throw insErr;
+
+      // Trigger sync for any rows that had server change
+      const changedRows = pkgRows
+        .map((r, i) => ({ ...r, dbId: inserted?.[i]?.id }))
+        .filter((r) => r._serverChanged && r.dbId);
+
+      for (const r of changedRows) {
+        await supabase.functions
+          .invoke("sync-tariff-package-change", {
+            body: { tariff_package_id: r.dbId },
+          })
+          .catch((e) => console.error("sync failed", e));
+      }
+      return { changedCount: changedRows.length };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reseller-tariffs"] });
-      toast.success(editId ? "ট্যারিফ আপডেট হয়েছে" : "ট্যারিফ যোগ হয়েছে");
-      setOpen(false);
-      setForm(defaultForm);
-      setEditId(null);
-      setProfiles([]);
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["reseller-tariffs-v2"] });
+      qc.invalidateQueries({ queryKey: ["tariff-assigned-pops"] });
+      toast.success(
+        editId ? "Tariff আপডেট হয়েছে" : "Tariff তৈরি হয়েছে",
+      );
+      if (res.changedCount > 0) {
+        toast.info(`${res.changedCount} package সার্ভার পরিবর্তনের জন্য sync ট্রিগার হয়েছে`);
+      }
+      setDialogOpen(false);
+      resetDialog();
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -145,151 +323,378 @@ export default function Tariff() {
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reseller-tariffs"] });
-      toast.success("ট্যারিফ মুছে ফেলা হয়েছে");
+      qc.invalidateQueries({ queryKey: ["reseller-tariffs-v2"] });
+      toast.success("Tariff মুছে ফেলা হয়েছে");
     },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const toggleStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const next = status === "active" ? "inactive" : "active";
+      const { error } = await supabase
+        .from("reseller_tariffs")
+        .update({ status: next })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reseller-tariffs-v2"] }),
   });
 
   const openEdit = (t: any) => {
-    setForm({
-      name: t.name, package_id: t.package_id || "", selling_rate: t.selling_rate,
-      activation_days: t.activation_days, min_activation_days: t.min_activation_days ?? 1,
-      protocol_type: t.protocol_type || "PPPoE", mikrotik_server_id: t.mikrotik_server_id || "",
-      mikrotik_profile: t.mikrotik_profile || "",
-    });
     setEditId(t.id);
-    setOpen(true);
+    setTariffName(t.name);
+    setTariffType(t.tariff_type === "date_to_date" ? "date_to_date" : "custom");
+    const rows: PackageRow[] = (t.reseller_tariff_packages ?? []).map((p: any) => ({
+      tempId: crypto.randomUUID(),
+      id: p.id,
+      package_id: p.package_id,
+      buy_rate: Number(p.buy_rate ?? 0),
+      selling_rate: Number(p.selling_rate ?? 0),
+      validity_days: p.validity_days ?? 30,
+      min_activation_days: p.min_activation_days ?? 1,
+      mikrotik_server_id: p.mikrotik_server_id ?? "",
+      mikrotik_profile: p.mikrotik_profile ?? "",
+      protocol_type: p.protocol_type ?? "PPPoE",
+    }));
+    setPkgRows(rows);
+    rows.forEach((r) => r.mikrotik_server_id && fetchProfiles(r.mikrotik_server_id));
+    setDialogOpen(true);
   };
+
+  const openView = (t: any) => {
+    setViewTariff(t);
+    setViewOpen(true);
+  };
+
+  const profilesForCurrentServer = pkgForm.mikrotik_server_id
+    ? profileCache[pkgForm.mikrotik_server_id] ?? []
+    : [];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">ট্যারিফ কনফিগারেশন</h1>
-          <p className="text-sm text-muted-foreground">POP-এর জন্য প্যাকেজ রেট ও সেটিংস</p>
+          <p className="text-sm text-muted-foreground">
+            POP-এর জন্য Multi-package tariff (Buy/Sell rate, Multiple servers)
+          </p>
         </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setForm(defaultForm); setEditId(null); setProfiles([]); } }}>
+        <Dialog
+          open={dialogOpen}
+          onOpenChange={(v) => {
+            setDialogOpen(v);
+            if (!v) resetDialog();
+          }}
+        >
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-1" /> ট্যারিফ যোগ করুন</Button>
+            <Button>
+              <Plus className="h-4 w-4 mr-1" /> ট্যারিফ যোগ করুন
+            </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editId ? "ট্যারিফ এডিট" : "নতুন ট্যারিফ"}</DialogTitle>
+              <DialogTitle>
+                {editId ? "Edit Tariff" : "New Tariff"}
+              </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>ট্যারিফের নাম *</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. XYZ POP" />
-              </div>
-              <div>
-                <Label>প্যাকেজ সিলেক্ট</Label>
-                <Select value={form.package_id} onValueChange={(v) => setForm({ ...form, package_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="প্যাকেজ বাছাই করুন" /></SelectTrigger>
-                  <SelectContent>
-                    {packages?.length === 0 && (
-                      <div className="px-2 py-3 text-xs text-muted-foreground text-center">
-                        কোনো sellable প্যাকেজ পাওয়া যায়নি। Config → Packages থেকে যোগ করুন।
-                      </div>
-                    )}
-                    {packages?.map((p: any) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name} — ৳{p.price} {p.package_type ? `(${p.package_type})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>সেলিং রেট (৳)</Label>
-                <Input type="number" value={form.selling_rate} onChange={(e) => setForm({ ...form, selling_rate: Number(e.target.value) })} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>অ্যাক্টিভেশন দিন</Label>
-                  <Input type="number" value={form.activation_days} onChange={(e) => {
-                    const val = Number(e.target.value);
-                    setForm({ ...form, activation_days: val, min_activation_days: Math.min(form.min_activation_days, val) });
-                  }} />
+
+            {/* Tariff Type */}
+            <div className="space-y-2">
+              <Label>Tariff Type</Label>
+              <RadioGroup
+                value={tariffType}
+                onValueChange={(v) => setTariffType(v as any)}
+                className="flex gap-6"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="custom" id="t-custom" />
+                  <Label htmlFor="t-custom" className="cursor-pointer">Custom</Label>
                 </div>
-                <div>
-                  <Label>মিনিমাম অ্যাক্টিভেশন দিন</Label>
-                  <Input type="number" value={form.min_activation_days} min={1} max={form.activation_days} onChange={(e) => {
-                    const val = Math.min(Number(e.target.value), form.activation_days);
-                    setForm({ ...form, min_activation_days: Math.max(1, val) });
-                  }} />
-                  <p className="text-xs text-muted-foreground mt-1">POP অ্যাডমিন ম্যানুয়াল রিচার্জে ন্যূনতম দিন</p>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="date_to_date" id="t-d2d" />
+                  <Label htmlFor="t-d2d" className="cursor-pointer">Date To Date</Label>
                 </div>
+              </RadioGroup>
+            </div>
+
+            {/* Tariff Name */}
+            <div>
+              <Label>Tariff Name *</Label>
+              <Input
+                value={tariffName}
+                onChange={(e) => setTariffName(e.target.value)}
+                placeholder="e.g. Reseller Standard"
+              />
+            </div>
+
+            {/* Package Form */}
+            <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+              <div className="font-semibold text-sm">
+                {editingPkgIdx !== null ? "Edit Package Row" : "Add Package"}
               </div>
-              <div>
-                <Label>MikroTik সার্ভার</Label>
-                <Select value={form.mikrotik_server_id} onValueChange={handleServerChange}>
-                  <SelectTrigger><SelectValue placeholder="সার্ভার বাছাই করুন" /></SelectTrigger>
-                  <SelectContent>
-                    {servers?.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>প্রোটোকল টাইপ</Label>
-                <Select value={form.protocol_type} onValueChange={(v) => setForm({ ...form, protocol_type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PPPoE">PPPoE</SelectItem>
-                    <SelectItem value="IPoE">IPoE</SelectItem>
-                    <SelectItem value="Static">Static</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="flex items-center gap-2">
-                  MikroTik প্রোফাইল
-                  {form.mikrotik_server_id && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5"
-                      onClick={() => fetchProfiles(form.mikrotik_server_id)}
-                      disabled={loadingProfiles}
-                    >
-                      <RefreshCw className={`h-3 w-3 ${loadingProfiles ? "animate-spin" : ""}`} />
-                    </Button>
-                  )}
-                </Label>
-                {profiles.length > 0 ? (
-                  <Select value={form.mikrotik_profile} onValueChange={(v) => setForm({ ...form, mikrotik_profile: v })}>
-                    <SelectTrigger><SelectValue placeholder="প্রোফাইল বাছাই করুন" /></SelectTrigger>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <Label>Package Name *</Label>
+                  <Select value={pkgForm.package_id} onValueChange={onPackageSelect}>
+                    <SelectTrigger><SelectValue placeholder="Select package" /></SelectTrigger>
                     <SelectContent>
-                      {profiles.map((p) => (
-                        <SelectItem key={p.name} value={p.name}>
-                          {p.name} {p["rate-limit"] ? `(${p["rate-limit"]})` : ""}
+                      {packages?.map((p: any) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name} — ৳{p.price}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                ) : (
+                </div>
+                <div>
+                  <Label>Buy Rate (৳)</Label>
                   <Input
-                    value={form.mikrotik_profile}
-                    onChange={(e) => setForm({ ...form, mikrotik_profile: e.target.value })}
-                    placeholder={loadingProfiles ? "লোড হচ্ছে..." : form.mikrotik_server_id ? "সার্ভার থেকে সিঙ্ক করুন" : "আগে সার্ভার সিলেক্ট করুন"}
-                    disabled={loadingProfiles}
+                    type="number"
+                    value={pkgForm.buy_rate}
+                    onChange={(e) =>
+                      setPkgForm({ ...pkgForm, buy_rate: Number(e.target.value) })
+                    }
                   />
+                </div>
+                <div>
+                  <Label>Selling Rate (৳) *</Label>
+                  <Input
+                    type="number"
+                    value={pkgForm.selling_rate}
+                    onChange={(e) =>
+                      setPkgForm({ ...pkgForm, selling_rate: Number(e.target.value) })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>Validity Days</Label>
+                  <Input
+                    type="number"
+                    value={pkgForm.validity_days}
+                    onChange={(e) =>
+                      setPkgForm({
+                        ...pkgForm,
+                        validity_days: Number(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>Min Activation Days</Label>
+                  <Input
+                    type="number"
+                    value={pkgForm.min_activation_days}
+                    min={1}
+                    onChange={(e) =>
+                      setPkgForm({
+                        ...pkgForm,
+                        min_activation_days: Math.max(1, Number(e.target.value)),
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>Protocol</Label>
+                  <Select
+                    value={pkgForm.protocol_type}
+                    onValueChange={(v) =>
+                      setPkgForm({ ...pkgForm, protocol_type: v })
+                    }
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PPPoE">PPPoE</SelectItem>
+                      <SelectItem value="IPoE">IPoE</SelectItem>
+                      <SelectItem value="Static">Static</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Server *</Label>
+                  <Select
+                    value={pkgForm.mikrotik_server_id}
+                    onValueChange={onServerSelect}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select server" /></SelectTrigger>
+                    <SelectContent>
+                      {servers?.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="flex items-center gap-2">
+                    MikroTik Profile *
+                    {pkgForm.mikrotik_server_id && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={() => {
+                          setProfileCache((c) => {
+                            const n = { ...c };
+                            delete n[pkgForm.mikrotik_server_id];
+                            return n;
+                          });
+                          fetchProfiles(pkgForm.mikrotik_server_id);
+                        }}
+                        disabled={loadingProfiles}
+                      >
+                        <RefreshCw
+                          className={`h-3 w-3 ${loadingProfiles ? "animate-spin" : ""}`}
+                        />
+                      </Button>
+                    )}
+                  </Label>
+                  {profilesForCurrentServer.length > 0 ? (
+                    <Select
+                      value={pkgForm.mikrotik_profile}
+                      onValueChange={(v) =>
+                        setPkgForm({ ...pkgForm, mikrotik_profile: v })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select profile" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {profilesForCurrentServer.map((p) => (
+                          <SelectItem key={p.name} value={p.name}>
+                            {p.name} {p["rate-limit"] ? `(${p["rate-limit"]})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={pkgForm.mikrotik_profile}
+                      onChange={(e) =>
+                        setPkgForm({ ...pkgForm, mikrotik_profile: e.target.value })
+                      }
+                      placeholder={
+                        loadingProfiles
+                          ? "Loading..."
+                          : pkgForm.mikrotik_server_id
+                            ? "Sync from server"
+                            : "Select server first"
+                      }
+                      disabled={loadingProfiles}
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" onClick={addOrUpdatePkgRow}>
+                  {editingPkgIdx !== null ? "Update Row" : "Add Package"}
+                </Button>
+                {editingPkgIdx !== null && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setEditingPkgIdx(null);
+                      setPkgForm(emptyPkgForm());
+                    }}
+                  >
+                    Cancel Edit
+                  </Button>
                 )}
               </div>
-              <Button className="w-full" onClick={() => save.mutate()} disabled={!form.name || save.isPending}>
-                {save.isPending ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
-              </Button>
             </div>
+
+            {/* Inner Table */}
+            <div className="overflow-x-auto border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>#</TableHead>
+                    <TableHead>Package</TableHead>
+                    <TableHead>Server</TableHead>
+                    <TableHead>Protocol</TableHead>
+                    <TableHead>Profile</TableHead>
+                    <TableHead>Buy</TableHead>
+                    <TableHead>Sell</TableHead>
+                    <TableHead>Validity</TableHead>
+                    <TableHead>Min Days</TableHead>
+                    <TableHead>Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pkgRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={10}
+                        className="text-center text-muted-foreground py-6"
+                      >
+                        কোনো package যোগ করা হয়নি
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    pkgRows.map((r, i) => {
+                      const pkgName =
+                        packages?.find((p) => p.id === r.package_id)?.name ?? "-";
+                      const srvName =
+                        servers?.find((s) => s.id === r.mikrotik_server_id)?.name ?? "-";
+                      return (
+                        <TableRow key={r.tempId}>
+                          <TableCell>{i + 1}</TableCell>
+                          <TableCell className="font-medium">{pkgName}</TableCell>
+                          <TableCell>{srvName}</TableCell>
+                          <TableCell>{r.protocol_type}</TableCell>
+                          <TableCell>{r.mikrotik_profile}</TableCell>
+                          <TableCell className="font-mono">৳{r.buy_rate}</TableCell>
+                          <TableCell className="font-mono">৳{r.selling_rate}</TableCell>
+                          <TableCell>{r.validity_days}</TableCell>
+                          <TableCell>{r.min_activation_days}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => editPkgRow(i)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deletePkgRow(i)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => save.mutate()} disabled={save.isPending}>
+                {save.isPending
+                  ? "Saving..."
+                  : editId
+                    ? "Update Tariff"
+                    : "Save Tariff"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
+      {/* Tariff List */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Settings className="h-5 w-5" /> ট্যারিফ তালিকা
+            <Settings className="h-5 w-5" /> Tariff List
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -300,55 +705,195 @@ export default function Tariff() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>#</TableHead>
-                    <TableHead>নাম</TableHead>
-                    <TableHead>প্যাকেজ</TableHead>
-                    <TableHead>মূল্য (৳)</TableHead>
-                    <TableHead>সেলিং রেট (৳)</TableHead>
-                    <TableHead>দিন</TableHead>
-                    <TableHead>মিনি. দিন</TableHead>
-                    <TableHead>প্রোটোকল</TableHead>
-                    <TableHead>সার্ভার</TableHead>
-                    <TableHead>অ্যাকশন</TableHead>
+                    <TableHead>S/N</TableHead>
+                    <TableHead>Tariff Name</TableHead>
+                    <TableHead>Assigned POPs</TableHead>
+                    <TableHead>Packages</TableHead>
+                    <TableHead>Servers</TableHead>
+                    <TableHead>Profiles</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tariffs?.map((t: any, i) => (
-                    <TableRow key={t.id}>
-                      <TableCell>{i + 1}</TableCell>
-                      <TableCell className="font-medium">{t.name}</TableCell>
-                      <TableCell>{t.isp_packages?.name || "-"}</TableCell>
-                      <TableCell className="font-mono">৳{t.isp_packages?.price ?? 0}</TableCell>
-                      <TableCell className="font-mono">৳{t.selling_rate}</TableCell>
-                      <TableCell>{t.activation_days}</TableCell>
-                      <TableCell>{t.min_activation_days ?? 1}</TableCell>
-                      <TableCell>{t.protocol_type}</TableCell>
-                      <TableCell>{t.mikrotik_devices?.name || "-"}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(t)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => del.mutate(t.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
                   {(!tariffs || tariffs.length === 0) && (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
-                        কোনো ট্যারিফ পাওয়া যায়নি
+                      <TableCell
+                        colSpan={9}
+                        className="text-center text-muted-foreground py-8"
+                      >
+                        কোনো tariff পাওয়া যায়নি
                       </TableCell>
                     </TableRow>
                   )}
+                  {tariffs?.map((t: any, i: number) => {
+                    const pops = assignedPopsByTariff?.[t.id] ?? [];
+                    const rows = t.reseller_tariff_packages ?? [];
+                    const pkgNames = Array.from(
+                      new Set(
+                        rows
+                          .map((r: any) => r.isp_packages?.name)
+                          .filter(Boolean),
+                      ),
+                    );
+                    const srvNames = Array.from(
+                      new Set(
+                        rows
+                          .map((r: any) => r.mikrotik_devices?.name)
+                          .filter(Boolean),
+                      ),
+                    );
+                    const profNames = Array.from(
+                      new Set(
+                        rows.map((r: any) => r.mikrotik_profile).filter(Boolean),
+                      ),
+                    );
+                    return (
+                      <TableRow key={t.id}>
+                        <TableCell>{i + 1}</TableCell>
+                        <TableCell className="font-medium">{t.name}</TableCell>
+                        <TableCell>
+                          {pops.length === 0 ? (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {pops.slice(0, 3).map((p) => (
+                                <Badge key={p.id} variant="secondary" className="text-xs">
+                                  {p.name}
+                                </Badge>
+                              ))}
+                              {pops.length > 3 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{pops.length - 3}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {pkgNames.join(", ") || "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {srvNames.join(", ") || "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {profNames.join(", ") || "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={t.status === "active" ? "default" : "outline"}
+                            className="cursor-pointer"
+                            onClick={() =>
+                              toggleStatus.mutate({ id: t.id, status: t.status })
+                            }
+                          >
+                            {t.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {t.created_at
+                            ? format(new Date(t.created_at), "dd MMM yyyy")
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="View"
+                              onClick={() => openView(t)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Edit"
+                              onClick={() => openEdit(t)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Delete"
+                              onClick={() => {
+                                if (confirm("Tariff মুছে ফেলবেন?"))
+                                  del.mutate(t.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* View Dialog */}
+      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{viewTariff?.name}</DialogTitle>
+          </DialogHeader>
+          {viewTariff && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Type:</span>{" "}
+                  <strong>{viewTariff.tariff_type}</strong>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Status:</span>{" "}
+                  <strong>{viewTariff.status}</strong>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Assigned POPs</Label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {(assignedPopsByTariff?.[viewTariff.id] ?? []).map((p) => (
+                    <Badge key={p.id} variant="secondary">{p.name}</Badge>
+                  ))}
+                  {(assignedPopsByTariff?.[viewTariff.id] ?? []).length === 0 && (
+                    <span className="text-xs text-muted-foreground">কোনো POP assigned নেই</span>
+                  )}
+                </div>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Package</TableHead>
+                    <TableHead>Server</TableHead>
+                    <TableHead>Profile</TableHead>
+                    <TableHead>Buy</TableHead>
+                    <TableHead>Sell</TableHead>
+                    <TableHead>Days</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(viewTariff.reseller_tariff_packages ?? []).map((p: any) => (
+                    <TableRow key={p.id}>
+                      <TableCell>{p.isp_packages?.name ?? "-"}</TableCell>
+                      <TableCell>{p.mikrotik_devices?.name ?? "-"}</TableCell>
+                      <TableCell>{p.mikrotik_profile ?? "-"}</TableCell>
+                      <TableCell className="font-mono">৳{p.buy_rate}</TableCell>
+                      <TableCell className="font-mono">৳{p.selling_rate}</TableCell>
+                      <TableCell>{p.validity_days}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
