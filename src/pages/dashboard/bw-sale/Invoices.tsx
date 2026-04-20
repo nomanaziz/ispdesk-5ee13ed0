@@ -142,6 +142,30 @@ export default function Invoices() {
                   );
                 })}
               </TableBody>
+              {filtered.length > 0 && (() => {
+                const t = filtered.reduce((a: any, inv: any) => {
+                  const amount = Number(inv.total_amount || inv.amount || 0);
+                  const paid = Number(inv.paid_amount || 0);
+                  return {
+                    amt: a.amt + amount,
+                    paid: a.paid + paid,
+                    disc: a.disc + Number(inv.discount || 0),
+                    due: a.due + Math.max(0, amount - paid),
+                  };
+                }, { amt: 0, paid: 0, disc: 0, due: 0 });
+                return (
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-right">মোট ({filtered.length} টি):</TableCell>
+                      <TableCell className="text-right">৳{Math.round(t.amt).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">৳{Math.round(t.paid).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">৳{Math.round(t.disc).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">৳{Math.round(t.due).toLocaleString()}</TableCell>
+                      <TableCell colSpan={2} />
+                    </TableRow>
+                  </TableFooter>
+                );
+              })()}
             </Table>
           </div>
         </CardContent>
