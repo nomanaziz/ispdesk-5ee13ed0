@@ -135,6 +135,14 @@ function useStats() {
         supabase.from("clients").select("id", { count: "exact", head: true }).ilike("billing_status", "Free"),
         supabase.from("clients").select("id", { count: "exact", head: true }).ilike("billing_status", "Personal"),
         supabase.from("clients").select("id", { count: "exact", head: true }).eq("is_vip", true),
+        // POP managers (all + by type)
+        supabase.from("branch_managers").select("id, pop_type, status, branch_id"),
+        // Clients with branch_id (POP-attached) + status
+        supabase.from("clients").select("id, status, branch_id").not("branch_id", "is", null),
+        // BW reseller portal users
+        supabase.from("bw_reseller_users").select("id, status, reseller_id"),
+        // Distinct parent reseller_ids that have sub-users (BW resellers acting as their own resellers)
+        supabase.from("bw_reseller_users").select("reseller_id"),
       ]);
 
       // Fetch client names for latest billing
