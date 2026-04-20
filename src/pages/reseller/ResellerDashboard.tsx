@@ -76,7 +76,7 @@ const ResellerDashboard = () => {
 
       const [allClients, billing, collections, zonesQ, newClients, tickets, notices] =
         await Promise.all([
-          supabase.from("clients").select("id, status, billing_status, monthly_bill, zone_id, name, expire_date, last_login")
+          supabase.from("clients").select("id, status, billing_status, monthly_bill, zone_id, name, expire_date")
             .eq("branch_id", branchId!),
           supabase.from("billing").select("amount, paid, due, discount, created_at, client_id")
             .eq("branch_id", branchId!).gte("created_at", monthIso),
@@ -94,10 +94,7 @@ const ResellerDashboard = () => {
       const clients = allClients.data || [];
       const totalClients = clients.length;
       const activeClients = clients.filter((c: any) => c.status === "Active").length;
-      const onlineClients = clients.filter((c: any) => {
-        if (!c.last_login) return false;
-        return Date.now() - new Date(c.last_login).getTime() < 1000 * 60 * 30;
-      }).length;
+      const onlineClients = clients.filter((c: any) => c.billing_status === "online").length;
       const monthlyBillSum = clients.reduce((s: number, c: any) => s + Number(c.monthly_bill || 0), 0);
 
       // Daily charge calculation
