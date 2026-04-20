@@ -1,71 +1,48 @@
 
 
-## লক্ষ্য — POP `AddClient`-কে আপনার logic অনুযায়ী smart auto-fill করা
+## লক্ষ্য — প্রতিটা POP reseller-এর জন্য default Zone/Sub-zone/Box hierarchy seed করা
 
-বর্তমানে POP admin যখন client add করতে যায়, সব field admin-এর মতো manual। আপনি চান অনেক field POP profile থেকে auto-fill হোক, আর কিছু field hide/disable হোক যেগুলো POP-কে decide করতে হবে না।
+আপনার দেওয়া hierarchy:
+```text
+Zone (4):  olt-1 pon-1, olt-1 pon-2, olt-1 pon-3, olt-1 pon-4
+  └─ Sub-zone (1 per zone): "Main Splitter 1:8"
+       └─ Box (8 per sub-zone): "sub-Splitter 1:8 1" ... "sub-Splitter 1:8 8"
+```
+প্রতিটা POP-এর জন্য মোট: **4 zones + 4 sub-zones + 32 boxes = 40 rows**।
 
-### পরিবর্তন ১ — জেলা/উপজেলা auto-show (Zone থেকে নয়, POP profile থেকে)
-**Field**: "জেলা" ও "উপজেলা/থানা" — এখন placeholder *"জোন থেকে"* দেখায়।
+বর্তমান POP reseller (২টা): **noman** (branch `041f...`) এবং **Demo POP Reseller** (branch `2697...`)।
 
-**হবে**:
-- POP mode-এ POP profile-এর `district_id` ও `upazila_id` থেকে নাম fetch করে disabled input-এ দেখাবে: যেমন *"মাদারীপুর"* / *"মাদারীপুর সদর"*
-- Save payload-এ এগুলো auto inject (ইতিমধ্যে আছে — শুধু UI display ঠিক করতে হবে)
-- যদি POP-এ extra `pop_district_assignments` থাকে → dropdown দেখাবে (allotted areas মধ্যে select করতে পারবে)
-- Admin mode-এ ফাঁকা/manual থাকবে যেমন আছে
+## কাজ
 
-### পরিবর্তন ২ — Default Server auto-fill
-**Field**: "সার্ভার *" — এখন POP-কে dropdown থেকে বাছতে হয়।
+### ১. Insert migration — দুই POP-এর জন্য seed
+প্রতিটা POP-এর `branch_id` scope-এ:
+- **4 zones** insert (`name`, `branch_id`, `status='active'`, `code='PON1'..'PON4'`)
+- প্রতিটা zone-এর জন্য **1 sub-zone** insert (`name='Main Splitter 1:8'`, `zone_id`, `branch_id`)
+- প্রতিটা sub-zone-এর জন্য **8 boxes** insert (`name='sub-Splitter 1:8 N'`, code unique per POP যেমন `<pop_code>-PON1-B1`, `branch_id`)
 
-**হবে**:
-- POP mode-এ `branch_managers.server_id` (অথবা POP-এর tariff-এ assigned server) থেকে default server auto-set
-- POP-এর tariff-এ যেই server linked সেটাই priority পাবে (POP-এর monthly tariff)
-- Field টা POP mode-এ **disabled + readonly** দেখাবে server name সহ — POP change করতে পারবে না
-- Auto-fill হলেই MikroTik profiles fetch হবে
+**Idempotency**: একই POP-এ একই zone name আগে থেকে থাকলে skip — `WHERE NOT EXISTS` clause দিয়ে নিরাপদ rerun।
 
-### পরিবর্তন ৩ — Protocol Type default `PPPoE` + locked
-- POP mode-এ select disabled, value `PPPoE` (default) — admin চাইলে অন্যটাও পরে করতে পারে কিন্তু POP নয়
+### ২. Future POPs-এর জন্য auto-seed trigger
+নতুন POP তৈরি হলে (যখন `branch_managers.branch_id` set হয়) trigger automatic এই 40 rows insert করবে। ফলে প্রত্যেক নতুন reseller default hierarchy পেয়ে যাবে।
 
-### পরিবর্তন ৪ — Profile auto-fill from Package (POP customize করতে পারবে না)
-এখন `profile` POP নিজেই dropdown থেকে বাছতে পারে — এটা security risk (পাঁচশ টাকার package দিয়ে 100MB profile)।
+**Trigger function**: `seed_default_pop_hierarchy()` — `AFTER INSERT OR UPDATE OF branch_id ON branch_managers`, যখন `NEW.branch_id IS NOT NULL` এবং সেই branch-এ এখনো কোনো zone নেই তখনই run।
 
-**হবে**:
-- POP mode-এ Package select করলে `reseller_tariff_packages.mikrotik_profile` field থেকে profile auto-set
-- Profile field POP mode-এ **disabled** — locked from tariff configuration
-- Admin mode untouched (admin চাইলে override করতে পারবে)
+POP চাইলে পরে edit/delete করতে পারবে (read-only নয়)।
 
-### পরিবর্তন ৫ — Package list শুধু admin-allotted (already done) + Selling rate auto-fill
-এটা already implemented। শুধু confirm করব:
-- Package select করলে `selling_rate` (admin-set) → `monthly_bill`-এ চলে আসে
-- POP চাইলে monthly_bill-এ কম-বেশি লিখতে পারবে (manual override allowed, যেমন আপনি বললেন)
+## Files & changes
 
-### পরিবর্তন ৬ — Client Code auto-generation + duplicate check
-এখন `client_id` empty থাকলে DB trigger `set_client_code` `<pop_code>-<6digit>` format-এ auto-generate করে।
+**Migration (1 file):**
+- 4 zones × 2 POPs = 8 zone rows
+- 4 sub-zones × 2 POPs = 8 sub-zone rows  
+- 32 boxes × 2 POPs = 64 box rows
+- 1 trigger function + trigger on `branch_managers`
 
-**হবে**:
-- POP mode-এ field ফাঁকা থাকলে placeholder দেখাবে: *"স্বয়ংক্রিয়: `{pop_prefix}-000001`"*
-- POP যদি custom লেখে (অথবা username field পূরণ করে) → username-কে by default `client_id`-এ copy
-- **Duplicate check**: blur event-এ পুরো `clients` table query করব (`branch_id` filter ছাড়া — global), match পেলে red error: *"এই client code অন্য POP/Admin-এ ব্যবহৃত হয়েছে"*
+**No frontend changes** — existing `PopZones.tsx`, `PopSubZones.tsx`, `PopBoxes.tsx` pages এই data এমনিতেই দেখাবে কারণ সব already `branch_id`-scoped।
 
-### পরিবর্তন ৭ — Heading clean
-- `POP — {popName}` heading-এর সাথে subtitle যোগ: *"নতুন ক্লায়েন্ট — Server, Profile ও জেলা স্বয়ংক্রিয় POP profile থেকে"*
+## যা **হবে না**
+- বিদ্যমান custom zone/sub-zone/box data delete হবে না
+- Admin-level (branch_id NULL) zones-এ কোনো effect নেই
+- Code/naming conflict হলে skip — কোনো POP-এর existing data নষ্ট হবে না
 
-## File changes
-
-**Modify (1):**
-- `src/pages/dashboard/clients/AddClient.tsx`
-  - District/Upazila names fetch (one new query) + disabled display
-  - Server auto-fill from POP profile/tariff + disabled in POP mode
-  - Protocol Type disabled+default in POP mode
-  - Profile auto-fill from selected package's `mikrotik_profile` + disabled in POP mode
-  - Client Code: placeholder hint + onBlur duplicate check
-  - Tariff package query expanded to include `mikrotik_profile`, `mikrotik_server_id`
-
-**No DB migration needed** — সব field already আছে (`branch_managers.server_id`, `reseller_tariff_packages.mikrotik_profile`, `pop_district_assignments`)।
-
-## যা হবে না
-- Admin mode-এর behavior অপরিবর্তিত
-- POP mode-এ profile/server লুকানো (hide) হবে না — শুধু **disabled + auto-filled** দেখাবে যাতে POP বুঝতে পারে কী চলছে
-- Zone/Sub-zone/Box auto-fill হবে না — এগুলো POP নিজে বানায় (যেমন আপনি বললেন)
-
-approve করলে implement শুরু করি।
+approve করলে migration push করি।
 
