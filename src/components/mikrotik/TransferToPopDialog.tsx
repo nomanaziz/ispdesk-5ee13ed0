@@ -59,7 +59,51 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
   const transfer = useMutation({
     mutationFn: async () => {
       if (!popId || !mikrotikId) throw new Error("POP এবং MikroTik সিলেক্ট করুন");
+      if (!selectedPop?.branch_id) throw new Error("এই POP-এর কোনো branch assign করা নেই");
       const { data: { user } } = await supabase.auth.getUser();
+
+      // Load source mikrotik_clients rows
+      const { data: mkRows, error: mkErr } = await supabase
+        .from("mikrotik_clients")
+        .select("id, name, password, profile, caller_id, remote_address, service")
+        .in("id", selectedIds);
+      if (mkErr) throw mkErr;
+
+      // Skip rows whose username already exists in clients
+      const usernames = (mkRows || []).map((r: any) => r.name).filter(Boolean);
+      const { data: existing } = await supabase
+        .from("clients")
+        .select("username")
+        .in("username", usernames);
+      const existingSet = new Set((existing || []).map((c: any) => c.username?.toLowerCase()));
+
+      const newClients = (mkRows || [])
+        .filter((r: any) => r.name && !existingSet.has(r.name.toLowerCase()))
+        .map((r: any) => ({
+          name: r.name,
+          username: r.name,
+          password: r.password || "",
+          profile: r.profile || null,
+          mac_address: r.caller_id || null,
+          remote_address: r.remote_address || null,
+          connection_type: r.service || null,
+          mikrotik_id: mikrotikId,
+          server_name: mikrotiks.find((m: any) => m.id === mikrotikId)?.name || null,
+          branch_id: selectedPop.branch_id,
+          status: "active",
+          mikrotik_status: "enabled",
+        }));
+
+      let createdCount = 0;
+      if (newClients.length > 0) {
+        const { error: insErr } = await supabase.from("clients").insert(newClients as any);
+        if (insErr) throw insErr;
+        createdCount = newClients.length;
+      }
+
+      const skipped = selectedIds.length - createdCount;
+
+      // Mark mikrotik_clients as transferred
       const { error } = await supabase
         .from("mikrotik_clients")
         .update({
@@ -73,10 +117,17 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
         })
         .in("id", selectedIds);
       if (error) throw error;
+
+      return { createdCount, skipped };
     },
-    onSuccess: () => {
-      toast.success(`${selectedIds.length} জন ইউজার ${selectedPop?.name}-এ ট্রান্সফার হয়েছে`);
+    onSuccess: (res) => {
+      const { createdCount, skipped } = res || { createdCount: 0, skipped: 0 };
+      toast.success(
+        `${createdCount} জন নতুন client তৈরি হয়েছে ${selectedPop?.name}-এ` +
+        (skipped > 0 ? ` (${skipped} জন duplicate skip হয়েছে)` : "")
+      );
       qc.invalidateQueries({ queryKey: ["mikrotik_clients"] });
+      qc.invalidateQueries({ queryKey: ["existing_client_usernames"] });
       onTransferred();
       onOpenChange(false);
     },
