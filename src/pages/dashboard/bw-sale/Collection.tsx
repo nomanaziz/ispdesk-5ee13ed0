@@ -222,15 +222,17 @@ export default function Collection() {
                     </TableRow>
                   );
                 })}
-                {filtered.length > 0 && (
-                  <TableRow className="bg-muted/30 font-semibold">
-                    <TableCell colSpan={8} className="text-right">Total:</TableCell>
+              </TableBody>
+              {filtered.length > 0 && (
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-right">মোট ({filtered.length} টি):</TableCell>
                     <TableCell className="text-right">৳{totals.received.toLocaleString()}</TableCell>
                     <TableCell className="text-right">৳{totals.discount.toLocaleString()}</TableCell>
                     <TableCell colSpan={4} />
                   </TableRow>
-                )}
-              </TableBody>
+                </TableFooter>
+              )}
             </Table>
           </div>
         </CardContent>
