@@ -90,7 +90,7 @@ export default function BulkImport() {
       // Get all mikrotik_clients not yet exported
       const { data: mkClients, error: mkErr } = await supabase
         .from("mikrotik_clients")
-        .select("*, mikrotik_devices(name)")
+        .select("*, mikrotik_devices!mikrotik_clients_mikrotik_id_fkey(name)")
         .eq("exported", false)
         .order("created_at", { ascending: false });
       if (mkErr) throw mkErr;
