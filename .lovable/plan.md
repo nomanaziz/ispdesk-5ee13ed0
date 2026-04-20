@@ -1,68 +1,107 @@
 
 
-## লক্ষ্য
-আপনার চারটা request implement করা:
+## সমস্যা বিশ্লেষণ
 
-### ১. Postpaid POP-এর জন্য "Negative Balance অনুমোদন" toggle তুলে দেওয়া
-**File**: `src/components/branches/PopForm.tsx`
+আপনি যা বলেছেন তিনটা মূল সমস্যা:
 
-- **Negative Balance switch পুরোপুরি সরাবো** (Postpaid block থেকে)
-- **Min Balance field-কে empty allow করব** (nullable):
-  - খালি = "no minimum, negative balance allowed automatically"
-  - `0` = "must stay at zero or above"
-  - কোনো সংখ্যা = সেই minimum maintain করতে হবে
-  - Helper text: *"খালি রাখলে balance negative-এ যেতে দিবে। 0 বা সংখ্যা দিলে সেই সীমা maintain করবে।"*
-- Save logic: `min_balance` empty হলে `null` save হবে; backend `allow_negative_balance` derive করবে: `min_balance IS NULL`
-- `allow_negative_balance` column এ আর touch করব না form থেকে — backend trigger/code derive করবে (later) অথবা শুধু min_balance এর ভিত্তিতে decide হবে
+1. **Tariff/Package mismatch**: POP-এ tariff assign করা না থাকলে package পেজে কিছু আসে না। আবার `PopAddClient`-এ admin-এর global `isp_packages` সরাসরি query হচ্ছে — POP-এর tariff-এ assigned package-গুলো আসা উচিত।
+2. **District/Upazila not visible**: POP profile-এ district/upazila set করা থাকলেও `PopAllotedAreas` শুধু `pop_district_assignments` query করে — যদি admin allotment না করে, তাহলে নিজের default district/upazila-ও show হয় না।
+3. **PopAddClient simplistic**: শুধু ৯টা field — admin-এর `AddClient.tsx`-এ ৪০+ field (NID, পিতা-মাতা, MikroTik profile, expire_day, joining_date, prorated billing, etc.)। **POP admin-এর experience admin panel-এর সমান হতে হবে**।
 
-### ২. POP Permission tree ↔ Sidebar sync (BTRC removal সহ)
-**Problem**: `popPermissions.ts`-এর তালিকা আর `ResellerLayout.tsx`-এর actual sidebar মিলে না। যেমন BTRC permission key আছে কিন্তু sidebar থেকে আগেই বাদ পড়েছে; আবার sidebar-এ "Sub Zone" আছে কিন্তু permission group তৈরি ভিন্ন naming-এ।
+## সমাধানের কৌশল: Admin module-গুলো POP scope-এ reuse
 
-**Action**:
-- `src/lib/popPermissions.ts`-এ permission tree-কে **ResellerLayout-এর সঠিক ১২টা group + items**-এর সাথে ১:১ mirror করব। প্রতিটা sidebar item-এর সাথে matching permission key থাকবে।
-- **BTRC report বাদ** (`report.btrc` key remove)
-- নতুন structure মিলাবে: dashboard, configuration (9 items), mikrotik, employee (5), client (5), billing (4), monitoring (3), sms (4), reports (6, no BTRC), purchases, system (3), fund_history (2)
-- `ResellerLayout.isGroupAllowed`-এ permission key match update — শুধু sub-user-এর জন্য item-level filtering যোগ (যাতে গ্রুপ open হলেও যে item-এ permission নেই সেটা hide)
-- **Two-way sync**: Permission tree update করলেই sidebar-এ reflect হবে (single source of truth)
+প্রতিটা page নতুন করে না বানিয়ে, admin-এর existing component-গুলোকে **POP context-aware** করা হবে — branchId দিলে সেই branch-এ scope হবে, না দিলে admin এর মত সব দেখাবে।
 
-### ৩. PopAllotment: Auto-prefill from POP form's Division/District/Upazila
-**File**: `src/pages/dashboard/branches/PopAllotment.tsx`
+## Batch 2C: Foundation parity
 
-আপনার বিবরণ: POP form-এ যে division/district/upazila set করা আছে সেটাই default allotment হিসেবে show করবে। Manual `pop_district_assignments` সাধারণত লাগবে না — শুধু "Add another" দিয়ে extra উপজেলা/জেলা যোগ করতে চাইলে।
+### ১. `AddClient.tsx` কে POP-aware করা (single source of truth)
+**File**: `src/pages/dashboard/clients/AddClient.tsx` modify + `src/pages/reseller/clients/PopAddClient.tsx` rewrite
 
-**Action**:
-- Component-এ `popId` props পাশাপাশি POP-এর `district_id` + `upazila_id` props নেওয়া (অথবা component নিজেই query করবে `branch_managers` থেকে)
-- **Default state**: যদি `pop_district_assignments`-এ কোনো row না থাকে এবং POP-এ district/upazila set আছে → একটা virtual row দেখাবে: POP-এর own district + own upazila pre-checked, সাথে badge "(Default — POP profile থেকে)"
-- **UI simplification**: "Add another Upazila" / "Add another District" button যোগ করব। By default শুধু own district expanded থাকবে।
-- **Auto-apply on client create**: `PopAddClient.tsx`-এ district/upazila dropdown — যদি সেই POP-এর default থাকে এবং কোনো extra allotment না থাকে, by default নিজের district/upazila pre-fill হয়ে যাবে। Extra allotment থাকলে option list-এ সব আসবে।
-- (Read-only optimization for POP portal: `PopDistricts`/`PopUpazilas` page POP-এর own + extra allotment-এর union দেখাবে।)
+- AddClient-এ একটা `popMode` prop যোগ — `usePortalAuth` থেকে detect, অথবা wrapper দিয়ে pass
+- POP mode হলে:
+  - `branch_id` auto inject (form এ hidden)
+  - **Zone, sub_zone, box** query → `.eq("branch_id", branchId)` filter
+  - **Package list** query → `isp_packages` directly noi, বরং `reseller_tariff_packages` join through POP-এর tariff:
+    ```
+    reseller_tariff_packages → isp_packages 
+    where tariff_id = (SELECT tariff_id FROM branch_managers WHERE branch_id = popBranch)
+    ```
+    Selling rate use হবে monthly_bill হিসেবে (admin-এর global price না)
+  - **District/Upazila auto-fill** disabled inputs দুটোতে POP-এর default district/upazila বসবে (allotment থাকলে dropdown, না থাকলে default)
+  - **Sidebar redirect**: `/pop-admin/clients` 
+- `PopAddClient.tsx` কে wrapper বানাব — শুধু `<AddClient popMode />` render
+- Admin mode untouched — backward compatible
 
-### ৪. Postpaid POP daily-recharge enforcement (must-have-fund rule)
-আপনার বিবরণ: Postpaid POP-এর client-ও daily-rate basis-এ চলবে — POP-এর portal balance শূন্য/negative হলে ১০-দিনের মধ্যে fund add করতে হবে, না হলে auto-disable। ৩০ দিন টানা চালানোর সুযোগ নাই।
+### ২. Package sync fix — Admin tariff allotment auto-show
+**Files**:
+- `PopPackages.tsx` — already fixed; verify query শুধু POP-এর tariff-এর package দেখায়
+- `PopAddClient` package dropdown → একই tariff package source থেকে load
 
-**Action (এই batch-এ schema + UI hint, enforcement next batch-এ)**:
-- PopForm-এর Postpaid block-এ Helper banner add করব:
-  > *"Postpaid POP-ও daily-rate এ deduct হবে। Auto-disable তারিখের মধ্যে balance negative হলে সব client off হবে। Admin fund দিতে পারে (ধার), POP নিজেও recharge করতে পারে।"*
-- Existing `auto_disable_day` field রাখব — কিন্তু label clearer: *"মাসের কত তারিখের মধ্যে আগের মাসের পাওনা মিটানো must"*
-- **Enforcement edge function** (next batch-এ pull করব):  
-  - Daily cron `enforce-billing` already exists — Postpaid POP-এর জন্য daily deduction logic যোগ করব  
-  - `auto_disable_day` cross করলে এবং balance < min_balance (or < 0 if min null) হলে সব client suspend
-- এই plan-এ শুধু **UI label + helper text update**; cron logic-এর জন্য আলাদা batch।
+**Bonus**: যদি POP-এ tariff assign না থাকে → clear banner: *"Admin আপনার POP-কে এখনো tariff assign করেনি। নতুন client তৈরির জন্য admin-এর সাথে যোগাযোগ করুন।"*
 
-## File changes এই sprint-এ
+### ৩. PopAllotedAreas (District/Upazila) — Default fallback
+**File**: `src/pages/reseller/config/PopAllotedAreas.tsx`
 
-**Modify (3):**
-- `src/components/branches/PopForm.tsx` — Negative Balance switch remove, Min Balance nullable, Postpaid helper banner update
-- `src/lib/popPermissions.ts` — Permission tree restructure to mirror sidebar (BTRC removed, all 12 groups synced)
-- `src/components/ResellerLayout.tsx` — Sub-user item-level permission filter using new keys
-- `src/pages/dashboard/branches/PopAllotment.tsx` — Auto-prefill POP's own district/upazila as default; "Add another" UX
+Logic update:
+- `pop_district_assignments` query করার পরে যদি empty হয়:
+  - POP profile থেকে `district_id` + `upazila_id` fetch করব
+  - এগুলোকেই virtual allotment হিসেবে show করব with badge **"Default — POP profile থেকে"**
+- ফলে কখনোই empty page দেখাবে না (যদি POP-এ district set থাকে)
 
-**No DB migration needed** এই batch-এ (existing columns sufficient — `min_balance` already nullable; `allow_negative_balance` rakhi for backward compat কিন্তু form থেকে edit হবে না)।
+### ৪. Module reuse plan — Phase tactic
+সব 40+ admin page POP-scope করতে হবে। এই batch-এ foundation:
+
+**Pattern**: প্রতিটা admin page-এ একটা optional `popMode` detect (via `usePortalAuth().customer.branch_id` exists) → সব Supabase query auto-filter `.eq("branch_id", branchId)`। Top heading admin-এর জন্য full title, POP-এর জন্য "POP - [name]" prefix।
+
+এই batch-এ wire করব **ক্লায়েন্ট module-এর ৫টা page**:
+1. `AddClient` → `/pop-admin/clients/add` ✓
+2. `ClientList` → `/pop-admin/clients` (admin-এর full table reuse, branch filter)
+3. `BillingList` → `/pop-admin/clients/billing`
+4. `LeftClients` → `/pop-admin/clients/left`
+5. `Scheduler` → `/pop-admin/clients/scheduler`
+
+`App.tsx`-এর routes update — `Pop*` simple wrappers-এর বদলে admin component সরাসরি use।
+
+### ৫. Helper hook
+**New file**: `src/hooks/usePopScope.ts`
+```
+export function usePopScope() {
+  const { customer } = usePortalAuth();
+  const branchId = customer?.branch_id;
+  const isPopMode = !!branchId;
+  return { isPopMode, branchId, popName: customer?.name };
+}
+```
+সব admin component-এ এটা import → query গুলো conditional filter করবে।
+
+## File changes এই batch-এ
+
+**Modify (5):**
+- `src/pages/dashboard/clients/AddClient.tsx` — POP-aware queries (branch_id filter, tariff package source)
+- `src/pages/dashboard/clients/ClientList.tsx` — branch filter when POP mode
+- `src/pages/dashboard/billing/BillingList.tsx` — branch filter
+- `src/pages/dashboard/clients/LeftClients.tsx` — branch filter
+- `src/pages/dashboard/clients/Scheduler.tsx` — branch filter
+- `src/pages/reseller/config/PopAllotedAreas.tsx` — default fallback fix
+- `src/App.tsx` — wire admin pages to `/pop-admin/clients/*` routes
+- `src/contexts/PortalAuthContext.tsx` — verify branch_id exposed properly
+
+**New (1):**
+- `src/hooks/usePopScope.ts` — shared scope hook
+
+**Replace (1):**
+- `src/pages/reseller/clients/PopAddClient.tsx` — thin wrapper around AddClient
 
 ## যা **হবে না**
-- Cron-based daily deduction enforcement (পরের batch)
-- `allow_negative_balance` column drop (backward-compat রাখব; form থেকে hide)
-- Existing POP records-এ retroactive change
+- DB schema change নেই
+- Admin panel functionality untouched
+- Public/portal client module untouched
+- পরের batch-এ: Employee, SMS, Reports, Monitoring, System modules একই pattern
 
-approve করলে implement শুরু করব।
+## Next batches (preview)
+- **2D**: Employee module (5 pages) + Department/Designation POP-scoped CRUD
+- **2E**: Billing actions (Invoice, Daily Collection, Bill Profile) + SMS module
+- **2F**: Reports (6 pages) + Monitoring + System
+
+approve করলে Batch 2C শুরু করি।
 
