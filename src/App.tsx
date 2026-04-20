@@ -698,15 +698,15 @@ const App = () => (
               <Route path="/pop-admin/settings" element={<PortalAuthProvider><ResellerProtectedRoute require="settings"><ResellerLayout><ResellerSettings /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/mikrotik-users" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><ResellerMikrotikUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
-              {/* POP Admin — Configuration */}
-              <Route path="/pop-admin/config/zones" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopZones /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/config/sub-zones" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSubZones /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/config/boxes" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopBoxes /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              {/* POP Admin — Configuration (reuses Admin pages, scoped via usePopScope) */}
+              <Route path="/pop-admin/config/zones" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ConfigZones /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/sub-zones" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ConfigSubZones /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/boxes" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ConfigBoxes /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/config/packages" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPackages /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/config/districts" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopAllotedAreas mode="district" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/config/upazilas" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopAllotedAreas mode="upazila" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/config/departments" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopDepartments /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/config/designations" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopDesignations /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/departments" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><HrDepartments /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/designations" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><HrPositions /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/config/devices" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopDevicesConfig /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
               {/* POP Admin — Employee */}
