@@ -9635,6 +9635,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_super: { Args: { _user_id: string }; Returns: boolean }
+      seed_default_pop_hierarchy_for_branch: {
+        Args: { _branch_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       alert_channel: "dashboard" | "telegram"
