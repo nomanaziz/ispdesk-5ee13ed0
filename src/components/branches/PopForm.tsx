@@ -52,6 +52,14 @@ export default function PopForm({ mode, pop }: Props) {
   );
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
+  const [division_id, setDivisionId] = useState<string>("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [prefixCheck, setPrefixCheck] = useState<{ checking: boolean; available: boolean | null; msg: string }>({
+    checking: false,
+    available: null,
+    msg: "",
+  });
+
   const [form, setForm] = useState({
     name: pop?.name || "",
     email: pop?.email || "",
@@ -60,12 +68,11 @@ export default function PopForm({ mode, pop }: Props) {
     national_id: pop?.national_id || "",
     district_id: pop?.district_id || "",
     upazila_id: pop?.upazila_id || "",
-    zone_id: pop?.zone_id || "",
     pop_code: pop?.pop_code || "",
     pop_prefix: pop?.pop_prefix || "",
     set_prefix_mikrotik: pop?.set_prefix_mikrotik ?? false,
     pop_type: (pop?.pop_type || "prepaid") as "prepaid" | "postpaid",
-    min_recharge: pop?.min_recharge ?? 500,
+    min_recharge: pop?.min_recharge ?? 100,
     address: pop?.address || "",
     company_name: pop?.company_name || "",
     tariff_id: pop?.tariff_id || "",
@@ -76,7 +83,10 @@ export default function PopForm({ mode, pop }: Props) {
     confirm_password: "",
   });
 
-  const upd = (k: string, v: any) => setForm((s) => ({ ...s, [k]: v }));
+  const upd = (k: string, v: any) => {
+    setForm((s) => ({ ...s, [k]: v }));
+    setErrors((e) => { const n = { ...e }; delete n[k]; return n; });
+  };
 
   const { data: tariffs } = useQuery({
     queryKey: ["reseller-tariffs-select"],
@@ -85,10 +95,18 @@ export default function PopForm({ mode, pop }: Props) {
       return data ?? [];
     },
   });
-  const { data: districts } = useQuery({
-    queryKey: ["districts-select"],
+  const { data: divisions } = useQuery({
+    queryKey: ["divisions-select"],
     queryFn: async () => {
-      const { data } = await supabase.from("districts").select("id, name").order("name");
+      const { data } = await supabase.from("divisions").select("id, name").eq("status", "active").order("name");
+      return data ?? [];
+    },
+  });
+  const { data: districts } = useQuery({
+    queryKey: ["districts-select", division_id],
+    enabled: !!division_id,
+    queryFn: async () => {
+      const { data } = await supabase.from("districts").select("id, name").eq("division_id", division_id).order("name");
       return data ?? [];
     },
   });
@@ -100,13 +118,30 @@ export default function PopForm({ mode, pop }: Props) {
       return data ?? [];
     },
   });
-  const { data: zones } = useQuery({
-    queryKey: ["zones-select"],
-    queryFn: async () => {
-      const { data } = await supabase.from("zones").select("id, name").order("name");
-      return data ?? [];
-    },
-  });
+
+  // Pre-fill division when editing existing POP
+  useEffect(() => {
+    if (pop?.district_id && !division_id) {
+      supabase.from("districts").select("division_id").eq("id", pop.district_id).maybeSingle()
+        .then(({ data }) => { if (data?.division_id) setDivisionId(data.division_id); });
+    }
+  }, [pop?.district_id]);
+
+  // Live POP Prefix uniqueness check (debounced)
+  useEffect(() => {
+    const p = form.pop_prefix.trim();
+    if (!p) { setPrefixCheck({ checking: false, available: null, msg: "" }); return; }
+    setPrefixCheck({ checking: true, available: null, msg: "চেক হচ্ছে..." });
+    const t = setTimeout(async () => {
+      let q = supabase.from("branch_managers").select("id", { count: "exact", head: true }).eq("pop_prefix", p);
+      if (mode === "edit" && pop?.id) q = q.neq("id", pop.id);
+      const { count, error } = await q;
+      if (error) { setPrefixCheck({ checking: false, available: null, msg: "" }); return; }
+      if ((count ?? 0) > 0) setPrefixCheck({ checking: false, available: false, msg: "এই Prefix অন্য POP ব্যবহার করছে" });
+      else setPrefixCheck({ checking: false, available: true, msg: "✓ ব্যবহারযোগ্য" });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [form.pop_prefix, mode, pop?.id]);
 
   const fundNotice = useMemo(() => {
     if (form.pop_type === "prepaid")
@@ -115,24 +150,31 @@ export default function PopForm({ mode, pop }: Props) {
   }, [form.pop_type]);
 
   const validate = (): string | null => {
-    if (!form.name.trim()) return "Contact Person Name আবশ্যক";
-    if (!form.email.trim()) return "Email আবশ্যক";
-    if (!form.contact.trim()) return "Mobile আবশ্যক";
-    if (!form.district_id) return "District আবশ্যক";
-    if (!form.upazila_id) return "Upazila আবশ্যক";
-    if (!form.address.trim()) return "Address আবশ্যক";
-    if (!form.company_name.trim()) return "POP / Business Name আবশ্যক";
-    if (!form.pop_prefix.trim()) return "POP Prefix আবশ্যক";
-    if (!form.pop_type) return "POP Type আবশ্যক";
-    if (Number(form.min_recharge) < 1) return "Min Recharge আবশ্যক (সর্বনিম্ন 1)";
+    const e: Record<string, string> = {};
+    if (!form.name.trim()) e.name = "আবশ্যক";
+    if (!form.email.trim()) e.email = "আবশ্যক";
+    if (!form.contact.trim()) e.contact = "আবশ্যক";
+    if (!division_id) e.division_id = "আবশ্যক";
+    if (!form.district_id) e.district_id = "আবশ্যক";
+    if (!form.upazila_id) e.upazila_id = "আবশ্যক";
+    if (!form.address.trim()) e.address = "আবশ্যক";
+    if (!form.company_name.trim()) e.company_name = "আবশ্যক";
+    if (!form.pop_prefix.trim()) e.pop_prefix = "আবশ্যক";
+    else if (prefixCheck.available === false) e.pop_prefix = "এই Prefix অন্যজন ব্যবহার করছে";
+    if (!form.pop_type) e.pop_type = "আবশ্যক";
+    if (Number(form.min_recharge) < 100) e.min_recharge = "সর্বনিম্ন 100";
     if (mode === "create") {
-      if (!form.tariff_id) return "Tariff আবশ্যক";
-      if (!form.username.trim()) return "Username আবশ্যক";
-      if (!form.password) return "Password আবশ্যক";
-      if (form.password !== form.confirm_password) return "Password মেলেনি";
+      if (!form.tariff_id) e.tariff_id = "আবশ্যক";
+      if (!form.username.trim()) e.username = "আবশ্যক";
+      if (!form.password) e.password = "আবশ্যক";
+      if (form.password !== form.confirm_password) e.confirm_password = "Password মেলেনি";
     }
+    setErrors(e);
+    if (Object.keys(e).length) return "অনুগ্রহ করে লাল চিহ্নিত ঘরগুলো পূরণ করুন";
     return null;
   };
+
+  const errCls = (k: string) => errors[k] ? "border-destructive ring-1 ring-destructive" : "";
 
   const save = useMutation({
     mutationFn: async () => {
@@ -156,7 +198,7 @@ export default function PopForm({ mode, pop }: Props) {
         nid_number: form.national_id || null,
         district_id: form.district_id || null,
         upazila_id: form.upazila_id || null,
-        zone_id: form.zone_id || null,
+        
         pop_prefix: form.pop_prefix || null,
         set_prefix_mikrotik: form.set_prefix_mikrotik,
         pop_type: form.pop_type,
@@ -230,15 +272,15 @@ export default function PopForm({ mode, pop }: Props) {
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label>Contact Person Name <Req /></Label>
-            <Input value={form.name} onChange={(e) => upd("name", e.target.value)} />
+            <Input className={errCls("name")} value={form.name} onChange={(e) => upd("name", e.target.value)} />
           </div>
           <div>
             <Label>Email <Req /></Label>
-            <Input type="email" value={form.email} onChange={(e) => upd("email", e.target.value)} />
+            <Input className={errCls("email")} type="email" value={form.email} onChange={(e) => upd("email", e.target.value)} />
           </div>
           <div>
             <Label>Mobile <Req /></Label>
-            <Input value={form.contact} onChange={(e) => upd("contact", e.target.value)} />
+            <Input className={errCls("contact")} value={form.contact} onChange={(e) => upd("contact", e.target.value)} />
           </div>
           <div>
             <Label>Phone</Label>
@@ -249,24 +291,24 @@ export default function PopForm({ mode, pop }: Props) {
             <Input value={form.national_id} onChange={(e) => upd("national_id", e.target.value)} />
           </div>
           <div>
-            <Label>District <Req /></Label>
-            <Select value={form.district_id} onValueChange={(v) => { upd("district_id", v); upd("upazila_id", ""); }}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন" /></SelectTrigger>
+            <Label>Division <Req /></Label>
+            <Select value={division_id} onValueChange={(v) => { setDivisionId(v); upd("district_id", ""); upd("upazila_id", ""); setErrors((er) => { const n = { ...er }; delete n.division_id; return n; }); }}>
+              <SelectTrigger className={errCls("division_id")}><SelectValue placeholder="নির্বাচন" /></SelectTrigger>
+              <SelectContent>{divisions?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>District / জেলা <Req /></Label>
+            <Select value={form.district_id} onValueChange={(v) => { upd("district_id", v); upd("upazila_id", ""); }} disabled={!division_id}>
+              <SelectTrigger className={errCls("district_id")}><SelectValue placeholder="নির্বাচন" /></SelectTrigger>
               <SelectContent>{districts?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Upazila / Thana <Req /></Label>
+            <Label>Upazila / উপজেলা <Req /></Label>
             <Select value={form.upazila_id} onValueChange={(v) => upd("upazila_id", v)} disabled={!form.district_id}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন" /></SelectTrigger>
+              <SelectTrigger className={errCls("upazila_id")}><SelectValue placeholder="নির্বাচন" /></SelectTrigger>
               <SelectContent>{upazilas?.map((u: any) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Zone</Label>
-            <Select value={form.zone_id} onValueChange={(v) => upd("zone_id", v)}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন" /></SelectTrigger>
-              <SelectContent>{zones?.map((z: any) => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
 
@@ -289,12 +331,17 @@ export default function PopForm({ mode, pop }: Props) {
             <LockedField locked={lockPrefix}>
               <Input
                 value={form.pop_prefix}
-                onChange={(e) => upd("pop_prefix", e.target.value)}
+                onChange={(e) => upd("pop_prefix", e.target.value.toUpperCase())}
                 placeholder="e.g. AB1"
                 readOnly={lockPrefix}
-                className={lockPrefix ? "bg-muted cursor-not-allowed" : ""}
+                className={`${lockPrefix ? "bg-muted cursor-not-allowed" : ""} ${errCls("pop_prefix")} ${prefixCheck.available === false ? "border-destructive" : ""} ${prefixCheck.available === true ? "border-green-500" : ""}`}
               />
             </LockedField>
+            {form.pop_prefix && !lockPrefix && (
+              <p className={`text-[11px] mt-1 ${prefixCheck.available === false ? "text-destructive" : prefixCheck.available === true ? "text-green-600" : "text-muted-foreground"}`}>
+                {prefixCheck.msg}
+              </p>
+            )}
           </div>
 
           <div className="flex items-end gap-3">
@@ -307,7 +354,7 @@ export default function PopForm({ mode, pop }: Props) {
           <div>
             <Label>POP Type <Req /></Label>
             <Select value={form.pop_type} onValueChange={(v) => upd("pop_type", v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className={errCls("pop_type")}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="prepaid">Prepaid (Daily Billing)</SelectItem>
                 <SelectItem value="postpaid">Postpaid (Monthly)</SelectItem>
@@ -323,12 +370,13 @@ export default function PopForm({ mode, pop }: Props) {
 
           <div>
             <Label>Min Rechargeable Amount <Req /></Label>
-            <Input type="number" value={form.min_recharge} onChange={(e) => upd("min_recharge", Number(e.target.value))} />
+            <Input className={errCls("min_recharge")} type="number" min={100} value={form.min_recharge} onChange={(e) => upd("min_recharge", Number(e.target.value))} />
+            <p className="text-[11px] text-muted-foreground mt-1">সর্বনিম্ন ১০০ টাকা</p>
           </div>
 
           <div className="md:col-span-2">
             <Label>Address <Req /></Label>
-            <Textarea value={form.address} onChange={(e) => upd("address", e.target.value)} rows={2} />
+            <Textarea className={errCls("address")} value={form.address} onChange={(e) => upd("address", e.target.value)} rows={2} />
           </div>
           <div>
             <Label className="flex items-center gap-2"><ImagePlus className="h-4 w-4" /> POP Logo</Label>
@@ -350,7 +398,7 @@ export default function PopForm({ mode, pop }: Props) {
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label>POP / Business Name <Req /></Label>
-            <Input value={form.company_name} onChange={(e) => upd("company_name", e.target.value)} />
+            <Input className={errCls("company_name")} value={form.company_name} onChange={(e) => upd("company_name", e.target.value)} />
           </div>
           <div>
             <Label>
@@ -362,7 +410,7 @@ export default function PopForm({ mode, pop }: Props) {
                 onValueChange={(v) => upd("tariff_id", v)}
                 disabled={lockTariff}
               >
-                <SelectTrigger><SelectValue placeholder="ট্যারিফ" /></SelectTrigger>
+                <SelectTrigger className={errCls("tariff_id")}><SelectValue placeholder="ট্যারিফ" /></SelectTrigger>
                 <SelectContent>{tariffs?.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
               </Select>
             </LockedField>
@@ -393,7 +441,7 @@ export default function PopForm({ mode, pop }: Props) {
                 value={form.username}
                 onChange={(e) => upd("username", e.target.value)}
                 readOnly={lockUsername}
-                className={lockUsername ? "bg-muted cursor-not-allowed" : ""}
+                className={`${lockUsername ? "bg-muted cursor-not-allowed" : ""} ${errCls("username")}`}
               />
             </LockedField>
           </div>
@@ -401,11 +449,11 @@ export default function PopForm({ mode, pop }: Props) {
             <>
               <div>
                 <Label>Password <Req /></Label>
-                <Input type="password" value={form.password} onChange={(e) => upd("password", e.target.value)} />
+                <Input className={errCls("password")} type="password" value={form.password} onChange={(e) => upd("password", e.target.value)} />
               </div>
               <div>
                 <Label>Confirm Password <Req /></Label>
-                <Input type="password" value={form.confirm_password} onChange={(e) => upd("confirm_password", e.target.value)} />
+                <Input className={errCls("confirm_password")} type="password" value={form.confirm_password} onChange={(e) => upd("confirm_password", e.target.value)} />
               </div>
             </>
           )}
@@ -433,7 +481,7 @@ export default function PopForm({ mode, pop }: Props) {
 
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={() => navigate("/dashboard/branches/managers")}>বাতিল</Button>
-        <Button onClick={() => save.mutate()} disabled={save.isPending}>
+        <Button onClick={() => save.mutate()} disabled={save.isPending || prefixCheck.checking || prefixCheck.available === false}>
           {save.isPending ? "সংরক্ষণ হচ্ছে..." : mode === "create" ? "POP তৈরি করুন" : "আপডেট করুন"}
         </Button>
       </div>
