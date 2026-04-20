@@ -319,7 +319,9 @@ function useStats() {
         bwTotalUsers, bwActiveUsers, bwInactiveUsers, bwParentResellers,
       };
     },
-    refetchInterval: 30000,
+    refetchInterval: 120000,
+    staleTime: 60000,
+    refetchOnWindowFocus: false,
   });
 }
 
