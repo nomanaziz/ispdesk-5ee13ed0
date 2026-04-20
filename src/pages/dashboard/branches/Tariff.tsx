@@ -1036,6 +1036,13 @@ export default function Tariff() {
           )}
         </DialogContent>
       </Dialog>
+
+      <TariffChangeLogDialog
+        open={logOpen}
+        onOpenChange={setLogOpen}
+        tariffId={logTariff?.id ?? null}
+        tariffName={logTariff?.name ?? ""}
+      />
     </div>
   );
 }
