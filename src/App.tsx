@@ -325,14 +325,9 @@ import ResellerTickets from "@/pages/reseller/ResellerTickets";
 import ResellerUsers from "@/pages/reseller/ResellerUsers";
 import ResellerSettings from "@/pages/reseller/ResellerSettings";
 import ResellerMikrotikUsers from "@/pages/reseller/ResellerMikrotikUsers";
-// POP-scoped Configuration
-import PopZones from "@/pages/reseller/config/PopZones";
-import PopSubZones from "@/pages/reseller/config/PopSubZones";
-import PopBoxes from "@/pages/reseller/config/PopBoxes";
+// POP-scoped Configuration (admin pages reused; only Packages & AllotedAreas remain POP-specific)
 import PopPackages from "@/pages/reseller/config/PopPackages";
 import PopAllotedAreas from "@/pages/reseller/config/PopAllotedAreas";
-import PopDepartments from "@/pages/reseller/config/PopDepartments";
-import PopDesignations from "@/pages/reseller/config/PopDesignations";
 import PopDevicesConfig from "@/pages/reseller/config/PopDevices";
 // POP-scoped Employee
 import PopEmployees from "@/pages/reseller/employee/PopEmployees";
