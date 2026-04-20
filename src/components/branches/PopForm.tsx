@@ -370,12 +370,13 @@ export default function PopForm({ mode, pop }: Props) {
 
           <div>
             <Label>Min Rechargeable Amount <Req /></Label>
-            <Input type="number" value={form.min_recharge} onChange={(e) => upd("min_recharge", Number(e.target.value))} />
+            <Input className={errCls("min_recharge")} type="number" min={100} value={form.min_recharge} onChange={(e) => upd("min_recharge", Number(e.target.value))} />
+            <p className="text-[11px] text-muted-foreground mt-1">সর্বনিম্ন ১০০ টাকা</p>
           </div>
 
           <div className="md:col-span-2">
             <Label>Address <Req /></Label>
-            <Textarea value={form.address} onChange={(e) => upd("address", e.target.value)} rows={2} />
+            <Textarea className={errCls("address")} value={form.address} onChange={(e) => upd("address", e.target.value)} rows={2} />
           </div>
           <div>
             <Label className="flex items-center gap-2"><ImagePlus className="h-4 w-4" /> POP Logo</Label>
@@ -397,7 +398,7 @@ export default function PopForm({ mode, pop }: Props) {
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label>POP / Business Name <Req /></Label>
-            <Input value={form.company_name} onChange={(e) => upd("company_name", e.target.value)} />
+            <Input className={errCls("company_name")} value={form.company_name} onChange={(e) => upd("company_name", e.target.value)} />
           </div>
           <div>
             <Label>
@@ -409,7 +410,7 @@ export default function PopForm({ mode, pop }: Props) {
                 onValueChange={(v) => upd("tariff_id", v)}
                 disabled={lockTariff}
               >
-                <SelectTrigger><SelectValue placeholder="ট্যারিফ" /></SelectTrigger>
+                <SelectTrigger className={errCls("tariff_id")}><SelectValue placeholder="ট্যারিফ" /></SelectTrigger>
                 <SelectContent>{tariffs?.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
               </Select>
             </LockedField>
@@ -440,7 +441,7 @@ export default function PopForm({ mode, pop }: Props) {
                 value={form.username}
                 onChange={(e) => upd("username", e.target.value)}
                 readOnly={lockUsername}
-                className={lockUsername ? "bg-muted cursor-not-allowed" : ""}
+                className={`${lockUsername ? "bg-muted cursor-not-allowed" : ""} ${errCls("username")}`}
               />
             </LockedField>
           </div>
@@ -448,11 +449,11 @@ export default function PopForm({ mode, pop }: Props) {
             <>
               <div>
                 <Label>Password <Req /></Label>
-                <Input type="password" value={form.password} onChange={(e) => upd("password", e.target.value)} />
+                <Input className={errCls("password")} type="password" value={form.password} onChange={(e) => upd("password", e.target.value)} />
               </div>
               <div>
                 <Label>Confirm Password <Req /></Label>
-                <Input type="password" value={form.confirm_password} onChange={(e) => upd("confirm_password", e.target.value)} />
+                <Input className={errCls("confirm_password")} type="password" value={form.confirm_password} onChange={(e) => upd("confirm_password", e.target.value)} />
               </div>
             </>
           )}
