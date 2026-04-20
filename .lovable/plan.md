@@ -1,65 +1,56 @@
 
 
 ## লক্ষ্য
-POP Profile page-এর ৬টা tab-কে সঠিক business logic অনুযায়ী সাজানো + Credit Refund (prepaid only) automation যোগ করা।
+POP type অনুযায়ী sidebar toggles আলাদা দেখাতে হবে + postpaid POP-এর জন্য negative balance + auto-disable rule যোগ।
 
-## ১. Exported vs Unexported Clients — সঠিক সংজ্ঞা
+## ১. PopProfile sidebar toggles — type-aware
 
-**Exported Client** = MikroTik-এ আছে **এবং** POP তার client portal-এ import/add করেছে (`clients` table-এ row আছে, `branch_id = POP`)
+বর্তমানে সব toggle সব POP-এ দেখাচ্ছে। নতুন logic:
 
-**Unexported Client** = MikroTik-এ আছে **কিন্তু** POP এখনো তার client list-এ add করে নাই (MikroTik PPP secret আছে, কিন্তু `clients` table-এ matching row নাই) — তবু enabled থাকলে টাকা কাটছে
+**Postpaid POP দেখাবে:**
+- Client Create Permission
+- Set Prefix in Mikrotik
+- Fund Started, Is Locked (existing)
+- ➕ **Allow Negative Balance** (নতুন)
+- ➕ **Auto-disable Day of Month** (১–২৮; default 10) — এই দিনের মধ্যে পাওনা না দিলে line auto disable
 
-**Left Client recovery flow**: ভুল POP-এ transfer হলে → admin "Unexported Clients" থেকে **Recover** button চাপলে → user-টা MikroTik-এ অপরিবর্তিত থাকে, শুধু portal mapping reset হয় → পরে সঠিক POP-এ transfer করা যাবে
+**Prepaid POP দেখাবে:**
+- Credit Refund Policy (already)
+- Set Prefix in Mikrotik
+- Fund Started, Is Locked
+- ❌ Client Create Permission লুকানো (prepaid-এ অপ্রয়োজনীয় — balance থাকলেই create হবে)
 
-### পরিবর্তন
-- ✏️ `PopProfile.tsx` → **Exported Clients** tab: query এমনভাবে — MikroTik PPP secrets ∩ `clients` table (এই POP-এর)
-- ✏️ **Unexported Clients** tab: MikroTik PPP secrets − `clients` table; প্রতিটা row-এ **Recover** button (existing "Clients Bulk Revert"-কে clarify করে rename: "Recover to Source POP")
-- Recover action → একটা edge function বা direct update যা MikroTik user-কে untouched রেখে portal-side mapping clear করে; admin তখন অন্য POP-এ assign করতে পারবে
+## ২. Database changes (migration)
 
-## ২. Credited Transactions — দৈনিক কাটা টাকার hisab
+`branch_managers` table-এ ২টা column যোগ:
+- `allow_negative_balance` boolean default false
+- `auto_disable_day` smallint default 10 (১–২৮ check)
 
-বর্তমান view মোটামুটি ঠিক আছে (image-145), শুধু কয়েকটা refinement:
-- Default range = **চলতি মাসের ১ম তারিখ → আজ** (already mostly so)
-- Month navigator: "← Previous Month / Next Month →" buttons যোগ
-- View (eye) button → **Credited History dialog** (image-146 এর মতো ইতিমধ্যে আছে — ঠিক আছে)
-- POP portal-এও same view দেখা যাবে (already exists in PortalLedger — verify করব)
+## ৩. PopForm-এ field যোগ
 
-## ৩. Credit Refund Policy — Prepaid-only Auto Refund
+Postpaid select করলে এই দুটি field দেখাবে (prepaid-এ হাইড):
+- "Negative Balance অনুমোদন" switch
+- "Auto-disable তারিখ" number input (১–২৮)
 
-**Trigger**: Prepaid POP-এর কোনো client delete / "left" mark করা হলে → unused days × daily rate ফেরত যাবে POP-এর fund-এ।
+## ৪. Balance enforcement logic
 
-### সূত্র
-```
-unused_days = max(0, recharge_to_date - today)
-refund_amount = unused_days × package_daily_rate
-```
+POP-এর fund deduct করার সময় (existing `FundDeductionDialog` + edge functions যেমন `enforce-billing`):
+- যদি `allow_negative_balance = false` → balance < amount হলে block
+- যদি `true` → negative হতে দিবে
 
-### Database (migration প্রয়োজন)
-- ➕ `credit_refund_logs` table: `id, client_id, pop_id, package_id, daily_rate, paid_days, used_days, refund_days, refund_amount, refunded_at, status`
-- ➕ Trigger function `process_credit_refund_on_client_left()` — `clients` table-এ DELETE বা `status='left'` হলে fire করবে; check করবে: 
-  1. POP `pop_type='prepaid'` কিনা
-  2. POP `credit_refund_policy = true` কিনা
-  3. Client-এর latest recharge active কিনা
-  - সব সত্য হলে: refund row insert + POP-এর `branch_managers.balance` += refund_amount + log entry
-
-**Postpaid POP-এ কোনো refund হবে না** (per-day kataChhe, advance নেয় নাই)
-
-## ৪. POP Change Logs (image-148)
-ইতিমধ্যে কাজ করছে — শুধু verify করব যে credit refund policy toggle change-ও log হচ্ছে। না হলে trigger যোগ করব।
+`enforce-billing` edge function-এ check যোগ: postpaid POP-এর client-দের জন্য আজকের তারিখ ≥ `auto_disable_day` এবং balance < 0 হলে → MikroTik PPP secret disable + client status update।
 
 ## ৫. Files Changed
 
-**Database migration**:
-- ➕ `credit_refund_logs` table + RLS
-- ➕ `process_credit_refund_on_client_left()` trigger function + trigger on `clients` table
+**Migration**: `branch_managers`-এ ২টা column
 
 **Code**:
-- ✏️ `src/pages/dashboard/branches/PopProfile.tsx` — Exported/Unexported query logic ঠিক করা, Recover button যোগ
-- ➕ `src/pages/dashboard/branches/PopCreditRefundLogs.tsx` — নতুন subtab বা existing tab-এ section যোগ refund history দেখাতে
-- ✏️ `src/pages/portal/PortalLedger.tsx` — POP portal-এ same credited history view ensure করা
+- ✏️ `src/pages/dashboard/branches/PopProfile.tsx` — sidebar toggles type-aware করা, নতুন fields-এর display
+- ✏️ `src/components/branches/PopForm.tsx` — postpaid mode-এ ২টা field যোগ
+- ✏️ `supabase/functions/enforce-billing/index.ts` — auto-disable day check যোগ (postpaid POPs)
+- ✏️ `src/components/branches/FundDeductionDialog.tsx` — `allow_negative_balance` honor করা
 
 ## কী **হবে না**
-- MikroTik-এ existing user touch হবে না recover-এর সময়
-- Postpaid POP-এ refund logic কাজ করবে না (intentional)
-- পুরাতন data migration হবে না
+- Prepaid POP-এ negative balance allow হবে না (intentional — advance recharge model)
+- পুরাতন POP-এর behavior change হবে না — দুটো column-এর default safe values
 
