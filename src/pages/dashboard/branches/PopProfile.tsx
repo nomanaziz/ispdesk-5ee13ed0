@@ -202,8 +202,10 @@ export default function PopProfile() {
             <Tabs defaultValue="info">
               <TabsList className="flex flex-wrap h-auto">
                 <TabsTrigger value="info">POP Info</TabsTrigger>
-                <TabsTrigger value="clients">Clients ({running})</TabsTrigger>
+                <TabsTrigger value="exported">Exported ({clients?.length ?? 0})</TabsTrigger>
+                <TabsTrigger value="unexported">Unexported ({unexported?.length ?? 0})</TabsTrigger>
                 <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                <TabsTrigger value="refunds">Credit Refunds ({refundLogs?.length ?? 0})</TabsTrigger>
                 <TabsTrigger value="permissions">Permissions</TabsTrigger>
               </TabsList>
 
@@ -215,6 +217,7 @@ export default function PopProfile() {
                   <Field label="Activation Days" value={pop.reseller_tariffs?.activation_days} />
                   <Field label="Min Balance" value={`৳${pop.min_balance ?? 0}`} />
                   <Field label="Min Recharge" value={`৳${pop.min_recharge ?? 0}`} />
+                  <Field label="Credit Refund Policy" value={pop.credit_refund_policy ? "Enabled" : "Disabled"} />
                 </Section>
                 <Section title="Personal Info">
                   <Field label="Contact Person" value={pop.name} />
@@ -231,12 +234,16 @@ export default function PopProfile() {
                 </Section>
               </TabsContent>
 
-              <TabsContent value="clients" className="mt-4">
+              <TabsContent value="exported" className="mt-4">
+                <p className="text-xs text-muted-foreground mb-2">
+                  MikroTik-এ আছে এবং POP তার client portal-এ import করেছে
+                </p>
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Client ID</TableHead>
                       <TableHead>Name</TableHead>
+                      <TableHead>Username</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Online</TableHead>
                       <TableHead className="text-right">Bill</TableHead>
@@ -247,13 +254,59 @@ export default function PopProfile() {
                       <TableRow key={c.id}>
                         <TableCell className="font-mono text-xs">{c.client_id}</TableCell>
                         <TableCell>{c.name}</TableCell>
+                        <TableCell className="font-mono text-xs">{c.username || "-"}</TableCell>
                         <TableCell><Badge variant="secondary">{c.billing_status || "-"}</Badge></TableCell>
                         <TableCell>{c.is_online ? "🟢" : "⚪"}</TableCell>
                         <TableCell className="text-right">৳{c.monthly_bill ?? 0}</TableCell>
                       </TableRow>
                     ))}
                     {(!clients || clients.length === 0) && (
-                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">কোনো ক্লায়েন্ট নেই</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">কোনো ক্লায়েন্ট নেই</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TabsContent>
+
+              <TabsContent value="unexported" className="mt-4">
+                <p className="text-xs text-muted-foreground mb-2">
+                  MikroTik-এ user আছে কিন্তু POP তার client list-এ এখনো add করেনি — enabled থাকলে টাকা কাটছে।
+                  Recover করলে MikroTik untouched থাকবে, পরে অন্য POP-এ assign করা যাবে।
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Username</TableHead>
+                      <TableHead>Profile</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Comment</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {unexported?.map((s: any) => (
+                      <TableRow key={s.id}>
+                        <TableCell className="font-mono text-xs">{s.name}</TableCell>
+                        <TableCell>{s.profile || "-"}</TableCell>
+                        <TableCell>
+                          <Badge variant={s.disabled ? "destructive" : "default"}>
+                            {s.disabled ? "Disabled" : "Enabled"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{s.comment || "-"}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => recoverMutation.mutate(s.name)}
+                            disabled={recoverMutation.isPending}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" /> Recover
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {(!unexported || unexported.length === 0) && (
+                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">কোনো unexported user নেই</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -284,6 +337,42 @@ export default function PopProfile() {
                     ))}
                     {(!transactions || transactions.length === 0) && (
                       <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">কোনো লেনদেন নেই</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TabsContent>
+
+              <TabsContent value="refunds" className="mt-4">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Prepaid POP-এর client left/delete হলে unused দিনের টাকা automatic ফেরত। নিচে log:
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead className="text-right">Daily Rate</TableHead>
+                      <TableHead className="text-right">Refund Days</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Reason</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {refundLogs?.map((r: any) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="text-xs">{new Date(r.refunded_at).toLocaleString("bn-BD")}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">{r.client_name || "-"}</div>
+                          <div className="font-mono text-xs text-muted-foreground">{r.client_username || ""}</div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">৳{Number(r.daily_rate).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{r.refund_days}</TableCell>
+                        <TableCell className="text-right font-mono font-bold text-emerald-600">+৳{Number(r.refund_amount).toFixed(2)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{r.reason || "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                    {(!refundLogs || refundLogs.length === 0) && (
+                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">কোনো refund হয়নি</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
