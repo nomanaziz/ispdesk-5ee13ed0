@@ -95,10 +95,18 @@ export default function PopForm({ mode, pop }: Props) {
       return data ?? [];
     },
   });
-  const { data: districts } = useQuery({
-    queryKey: ["districts-select"],
+  const { data: divisions } = useQuery({
+    queryKey: ["divisions-select"],
     queryFn: async () => {
-      const { data } = await supabase.from("districts").select("id, name").order("name");
+      const { data } = await supabase.from("divisions").select("id, name").eq("status", "active").order("name");
+      return data ?? [];
+    },
+  });
+  const { data: districts } = useQuery({
+    queryKey: ["districts-select", division_id],
+    enabled: !!division_id,
+    queryFn: async () => {
+      const { data } = await supabase.from("districts").select("id, name").eq("division_id", division_id).order("name");
       return data ?? [];
     },
   });
@@ -110,13 +118,30 @@ export default function PopForm({ mode, pop }: Props) {
       return data ?? [];
     },
   });
-  const { data: zones } = useQuery({
-    queryKey: ["zones-select"],
-    queryFn: async () => {
-      const { data } = await supabase.from("zones").select("id, name").order("name");
-      return data ?? [];
-    },
-  });
+
+  // Pre-fill division when editing existing POP
+  useEffect(() => {
+    if (pop?.district_id && !division_id) {
+      supabase.from("districts").select("division_id").eq("id", pop.district_id).maybeSingle()
+        .then(({ data }) => { if (data?.division_id) setDivisionId(data.division_id); });
+    }
+  }, [pop?.district_id]);
+
+  // Live POP Prefix uniqueness check (debounced)
+  useEffect(() => {
+    const p = form.pop_prefix.trim();
+    if (!p) { setPrefixCheck({ checking: false, available: null, msg: "" }); return; }
+    setPrefixCheck({ checking: true, available: null, msg: "চেক হচ্ছে..." });
+    const t = setTimeout(async () => {
+      let q = supabase.from("branch_managers").select("id", { count: "exact", head: true }).eq("pop_prefix", p);
+      if (mode === "edit" && pop?.id) q = q.neq("id", pop.id);
+      const { count, error } = await q;
+      if (error) { setPrefixCheck({ checking: false, available: null, msg: "" }); return; }
+      if ((count ?? 0) > 0) setPrefixCheck({ checking: false, available: false, msg: "এই Prefix অন্য POP ব্যবহার করছে" });
+      else setPrefixCheck({ checking: false, available: true, msg: "✓ ব্যবহারযোগ্য" });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [form.pop_prefix, mode, pop?.id]);
 
   const fundNotice = useMemo(() => {
     if (form.pop_type === "prepaid")
