@@ -28,8 +28,10 @@ import BulkDateExtendDialog from "@/components/billing/BulkDateExtendDialog";
 import BulkDistrictChangeDialog from "@/components/billing/BulkDistrictChangeDialog";
 import BulkThanaChangeDialog from "@/components/billing/BulkThanaChangeDialog";
 import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows } from "@/lib/exportClients";
+import { usePopScope } from "@/hooks/usePopScope";
 
 export default function ClientList() {
+  const { isPopMode, branchId } = usePopScope();
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [perPage, setPerPage] = useState(100);
@@ -51,14 +53,16 @@ export default function ClientList() {
   const [thanaOpen, setThanaOpen] = useState(false);
 
   const { data: clients, isLoading } = useQuery({
-    queryKey: ["clients-list"],
+    queryKey: ["clients-list", branchId || "all"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q: any = supabase
         .from("clients")
         .select("*, zones:zone_id(name), isp_packages:package_id(name, bandwidth_down, price), mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name)")
         .neq("status", "left")
         .neq("billing_status", "Left")
         .order("created_at", { ascending: false });
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
@@ -238,7 +242,7 @@ export default function ClientList() {
     <div className="space-y-3 p-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-bold">ক্লায়েন্ট তালিকা <span className="text-sm font-normal text-muted-foreground">সকল ক্লায়েন্ট দেখুন</span></h1>
-        <Button asChild size="sm"><Link to="/dashboard/clients/add"><Plus className="h-4 w-4 mr-1" /> নতুন ক্লায়েন্ট</Link></Button>
+        <Button asChild size="sm"><Link to={isPopMode ? "/pop-admin/clients/add" : "/dashboard/clients/add"}><Plus className="h-4 w-4 mr-1" /> নতুন ক্লায়েন্ট</Link></Button>
       </div>
 
       {/* Summary Cards */}

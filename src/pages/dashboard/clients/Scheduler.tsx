@@ -11,9 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, FileText, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { usePopScope } from "@/hooks/usePopScope";
 
 export default function Scheduler() {
   const queryClient = useQueryClient();
+  const { isPopMode, branchId } = usePopScope();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filterType, setFilterType] = useState("all");
@@ -23,21 +25,28 @@ export default function Scheduler() {
   const [form, setForm] = useState({ client_id: "", scheduler_type: "package_scheduler", previous_info: "", schedule_info: "", remarks: "", schedule_date: "" });
 
   const { data: schedulers, isLoading } = useQuery({
-    queryKey: ["client-schedulers"],
+    queryKey: ["client-schedulers", branchId || "all"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q: any = supabase
         .from("client_schedulers")
-        .select("*, clients:client_id(client_id, name, contact, username, zones:zone_id(name))")
+        .select("*, clients:client_id(client_id, name, contact, username, branch_id, zones:zone_id(name))")
         .order("created_at", { ascending: false });
+      const { data, error } = await q;
       if (error) throw error;
+      // Filter to clients in this branch (client_schedulers itself has no branch column)
+      if (isPopMode && branchId) {
+        return (data || []).filter((s: any) => s.clients?.branch_id === branchId);
+      }
       return data;
     },
   });
 
   const { data: clientsList } = useQuery({
-    queryKey: ["clients-for-select"],
+    queryKey: ["clients-for-select", branchId || "all"],
     queryFn: async () => {
-      const { data } = await supabase.from("clients").select("id, client_id, name, username").eq("status", "active").limit(500);
+      let q: any = supabase.from("clients").select("id, client_id, name, username, branch_id").eq("status", "active").limit(500);
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data } = await q;
       return data || [];
     },
   });

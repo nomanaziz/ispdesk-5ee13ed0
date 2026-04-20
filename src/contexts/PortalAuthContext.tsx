@@ -29,6 +29,8 @@ interface PortalCustomer {
   monthly_bill?: number | null;
   balance?: number | null;
   tariff_id?: string | null;
+  district_id?: string | null;
+  upazila_id?: string | null;
   parent_reseller_id?: string | null;
   permissions?: ResellerPermissions | null;
   iat: number;

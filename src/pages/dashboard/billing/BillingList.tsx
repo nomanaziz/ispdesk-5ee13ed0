@@ -28,6 +28,7 @@ import BillReceiveDialog from "@/components/billing/BillReceiveDialog";
 import BillingDatePopover from "@/components/billing/BillingDatePopover";
 import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows } from "@/lib/exportClients";
 import { toast } from "sonner";
+import { usePopScope } from "@/hooks/usePopScope";
 
 const currentMonth = () => {
   const d = new Date();
@@ -36,6 +37,7 @@ const currentMonth = () => {
 
 export default function BillingList() {
   const queryClient = useQueryClient();
+  const { isPopMode, branchId } = usePopScope();
   const [filters, setFilters] = useState<BillingFilters>({ ...defaultFilters, month: currentMonth() });
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
@@ -55,9 +57,9 @@ export default function BillingList() {
   const [payBilling, setPayBilling] = useState<any>(null);
 
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ["billing-list", filters.month],
+    queryKey: ["billing-list", filters.month, branchId || "all"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q: any = supabase
         .from("clients")
         .select(`
           id, client_id, name, contact, username, remote_address, status,
@@ -74,6 +76,8 @@ export default function BillingList() {
         .ilike("billing_status", "active")
         .gt("monthly_bill", 0)
         .order("client_id", { ascending: true });
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data, error } = await q;
 
       if (error) throw error;
 

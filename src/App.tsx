@@ -721,12 +721,12 @@ const App = () => (
               <Route path="/pop-admin/employees/payroll" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Payroll" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/employees/attendance" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Attendance" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
-              {/* POP Admin — Client */}
-              <Route path="/pop-admin/clients" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopClientList /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/clients/add" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopAddClient /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/clients/billing" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopBillingClient /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/clients/left" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopLeftClients /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/clients/scheduler" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopScheduler /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              {/* POP Admin — Client (reuses Admin pages, auto-scoped via usePopScope) */}
+              <Route path="/pop-admin/clients" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientList /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/clients/add" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientAdd /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/clients/billing" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><BillingList /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/clients/left" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientLeft /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/clients/scheduler" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientScheduler /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
               {/* POP Admin — Placeholders for Batch 2 & 3 */}
               <Route path="/pop-admin/billing/list" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Billing List" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />

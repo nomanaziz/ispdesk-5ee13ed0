@@ -15,11 +15,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Save, ArrowLeft } from "lucide-react";
+import { Save, ArrowLeft, AlertTriangle } from "lucide-react";
+import { usePopScope } from "@/hooks/usePopScope";
 
 export default function AddClient() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isPopMode, branchId, tariffId, popName, districtId, upazilaId } = usePopScope();
   const prefill = location.state?.prefill;
   const requestId = location.state?.request_id;
   const editMode = location.state?.editMode === true;
@@ -126,15 +128,74 @@ export default function AddClient() {
     }
   }, []);
 
-  const { data: zones } = useQuery({ queryKey: ["zones-active"], queryFn: async () => { const { data } = await supabase.from("zones").select("id, name").eq("status", "active"); return data || []; } });
-  const { data: subZones } = useQuery({ queryKey: ["sub-zones-active"], queryFn: async () => { const { data } = await supabase.from("sub_zones").select("id, name, zone_id").eq("status", "active"); return data || []; } });
-  const { data: boxes } = useQuery({ queryKey: ["boxes-active"], queryFn: async () => { const { data } = await supabase.from("boxes").select("id, name, zone_id").eq("status", "active"); return data || []; } });
-  const { data: packages } = useQuery({ queryKey: ["isp-packages-active"], queryFn: async () => { const { data } = await supabase.from("isp_packages").select("id, name, price, bandwidth_down").eq("status", "active"); return data || []; } });
+  const { data: zones } = useQuery({
+    queryKey: ["zones-active", branchId || "all"],
+    queryFn: async () => {
+      let q: any = supabase.from("zones").select("id, name").eq("status", "active");
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data } = await q;
+      return data || [];
+    },
+  });
+  const { data: subZones } = useQuery({
+    queryKey: ["sub-zones-active", branchId || "all"],
+    queryFn: async () => {
+      let q: any = supabase.from("sub_zones").select("id, name, zone_id").eq("status", "active");
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data } = await q;
+      return data || [];
+    },
+  });
+  const { data: boxes } = useQuery({
+    queryKey: ["boxes-active", branchId || "all"],
+    queryFn: async () => {
+      let q: any = supabase.from("boxes").select("id, name, zone_id").eq("status", "active");
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data } = await q;
+      return data || [];
+    },
+  });
+  // Packages: in POP mode, load from reseller_tariff_packages (admin-allotted only).
+  // Otherwise, load global isp_packages as before.
+  const { data: packages } = useQuery({
+    queryKey: ["client-add-packages", isPopMode ? `tariff:${tariffId || "none"}` : "global"],
+    queryFn: async () => {
+      if (isPopMode) {
+        if (!tariffId) return [];
+        const { data } = await supabase
+          .from("reseller_tariff_packages")
+          .select("id, package_id, selling_rate, package_rate, isp_packages(id, name, bandwidth_down, price)")
+          .eq("tariff_id", tariffId);
+        // Map to {id, name, price, bandwidth_down} using POP selling_rate
+        return (data || [])
+          .filter((p: any) => p.isp_packages)
+          .map((p: any) => ({
+            id: p.isp_packages.id,
+            name: p.isp_packages.name,
+            bandwidth_down: p.isp_packages.bandwidth_down,
+            price: Number(p.selling_rate || p.package_rate || p.isp_packages.price || 0),
+          }));
+      }
+      const { data } = await supabase
+        .from("isp_packages")
+        .select("id, name, price, bandwidth_down")
+        .eq("status", "active");
+      return data || [];
+    },
+  });
   const { data: connectionTypes } = useQuery({ queryKey: ["connection-types-active"], queryFn: async () => { const { data } = await supabase.from("connection_types_config").select("id, name").eq("status", "active"); return data || []; } });
   const { data: clientTypes } = useQuery({ queryKey: ["client-types-active"], queryFn: async () => { const { data } = await supabase.from("client_types").select("id, name").eq("status", "active"); return data || []; } });
   const { data: mikrotiks } = useQuery({ queryKey: ["mikrotik-devices"], queryFn: async () => { const { data } = await supabase.from("mikrotik_devices").select("id, name"); return data || []; } });
   const { data: protocolTypes } = useQuery({ queryKey: ["protocol-types-active"], queryFn: async () => { const { data } = await supabase.from("protocol_types" as any).select("id, name").eq("status", "active"); return data || []; } });
-  const { data: employees } = useQuery({ queryKey: ["employees-active"], queryFn: async () => { const { data } = await supabase.from("employees").select("id, name").eq("status", "active"); return data || []; } });
+  const { data: employees } = useQuery({
+    queryKey: ["employees-active", branchId || "all"],
+    queryFn: async () => {
+      let q: any = supabase.from("employees").select("id, name").eq("status", "active");
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data } = await q;
+      return data || [];
+    },
+  });
   const { data: billingStatuses } = useQuery({ queryKey: ["billing-statuses"], queryFn: async () => { const { data } = await supabase.from("billing_statuses").select("id, name").eq("status", "active"); return data || []; } });
 
   const filteredSubZones = useMemo(() => form.zone_id ? subZones?.filter((s: any) => s.zone_id === form.zone_id) : subZones, [form.zone_id, subZones]);
@@ -172,6 +233,10 @@ export default function AddClient() {
         installed_by_ids: form.installed_by_ids && form.installed_by_ids.length > 0 ? form.installed_by_ids : null,
         expire_day: form.billing_status === "Active" ? Number(form.expire_day || 10) : null,
         mikrotik_status: mikrotikStatus,
+        // POP-mode: auto-inject branch + default district/upazila from POP profile
+        branch_id: isPopMode ? branchId : (form.branch_id || null),
+        district_id: isPopMode ? (districtId || null) : (form.district_id || null),
+        upazila_id: isPopMode ? (upazilaId || null) : (form.upazila_id || null),
       };
       if (editMode && editClientId) {
         if (shouldSyncMikrotik) {
@@ -254,7 +319,7 @@ export default function AddClient() {
             due: amount,
             status: "unpaid",
             generated: true,
-            branch_id: form.branch_id || null,
+            branch_id: isPopMode ? branchId : (form.branch_id || null),
           }).select("id").maybeSingle();
 
           if (insertedBill?.id) {
@@ -277,7 +342,7 @@ export default function AddClient() {
         await supabase.from("client_requests").update({ setup_status: "Completed" } as any).eq("id", requestId);
       }
       toast.success(editMode ? "ক্লায়েন্ট সফলভাবে আপডেট হয়েছে" : "ক্লায়েন্ট সফলভাবে যোগ হয়েছে");
-      navigate("/dashboard/clients");
+      navigate(isPopMode ? "/pop-admin/clients" : "/dashboard/clients");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -292,8 +357,23 @@ export default function AddClient() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">ক্লায়েন্ট <span className="text-sm font-normal text-muted-foreground">{editMode ? "ক্লায়েন্ট সম্পাদনা" : "নতুন ক্লায়েন্ট যোগ"}</span></h1>
+        <h1 className="text-2xl font-bold">
+          {isPopMode ? `POP — ${popName || ""}` : "ক্লায়েন্ট"}{" "}
+          <span className="text-sm font-normal text-muted-foreground">
+            {editMode ? "ক্লায়েন্ট সম্পাদনা" : "নতুন ক্লায়েন্ট যোগ"}
+          </span>
+        </h1>
       </div>
+
+      {isPopMode && !tariffId && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+          <AlertTriangle className="h-4 w-4 mt-0.5 text-amber-600 shrink-0" />
+          <div>
+            <p className="font-medium">এই POP-এ এখনো কোনো tariff assign করা হয়নি।</p>
+            <p className="text-muted-foreground">নতুন client তৈরির জন্য admin-এর সাথে যোগাযোগ করে tariff assign করিয়ে নিন।</p>
+          </div>
+        </div>
+      )}
 
       {/* Personal Information */}
       <div className="border rounded-lg">
@@ -687,7 +767,7 @@ export default function AddClient() {
 
       {/* Footer */}
       <div className="flex justify-between items-center py-4">
-        <Button variant="outline" onClick={() => navigate("/dashboard/clients")}><ArrowLeft className="h-4 w-4 mr-1" /> তালিকায় ফিরুন</Button>
+        <Button variant="outline" onClick={() => navigate(isPopMode ? "/pop-admin/clients" : "/dashboard/clients")}><ArrowLeft className="h-4 w-4 mr-1" /> তালিকায় ফিরুন</Button>
         <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
           <Save className="h-4 w-4 mr-1" /> {saveMutation.isPending ? "সেভ হচ্ছে..." : "সংরক্ষণ ও বের হন"}
         </Button>
