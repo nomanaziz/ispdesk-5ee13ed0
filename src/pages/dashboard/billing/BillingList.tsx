@@ -448,6 +448,18 @@ export default function BillingList() {
                   );
                 })}
               </TableBody>
+              {paginated.length > 0 && (
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={11} className="text-right">পেজ মোট ({paginated.length} জন):</TableCell>
+                    <TableCell className="text-right">{pageTotals.monthly.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{pageTotals.paid.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{pageTotals.due.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{pageTotals.advance.toLocaleString()}</TableCell>
+                    <TableCell colSpan={4} />
+                  </TableRow>
+                </TableFooter>
+              )}
             </Table>
           </div>
         </CardContent>
