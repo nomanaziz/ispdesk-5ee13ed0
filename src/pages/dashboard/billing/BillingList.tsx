@@ -150,6 +150,17 @@ export default function BillingList() {
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
+  const pageTotals = useMemo(() => {
+    let monthly = 0, paid = 0, due = 0, advance = 0;
+    paginated.forEach((c: any) => {
+      monthly += Number(c.monthly_bill || 0);
+      paid += Number(c.currentBill?.paid || 0);
+      due += Number(c.currentBill?.due || 0);
+      advance += Number(c.currentBill?.advance || 0);
+    });
+    return { monthly, paid, due, advance };
+  }, [paginated]);
+
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
