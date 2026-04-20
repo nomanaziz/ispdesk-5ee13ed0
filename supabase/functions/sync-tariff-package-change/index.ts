@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { tariff_package_id, dry_run } = await req.json();
+    const { tariff_package_id, dry_run, mode } = await req.json();
     if (!tariff_package_id) {
       return new Response(
         JSON.stringify({ error: "tariff_package_id is required" }),
@@ -25,6 +25,7 @@ Deno.serve(async (req) => {
         },
       );
     }
+    // mode === "package_only" → only update DB (no MikroTik push)
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
