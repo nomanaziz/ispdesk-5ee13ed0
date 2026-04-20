@@ -39,8 +39,11 @@ import {
   RefreshCw,
   Eye,
   X as XIcon,
+  History,
+  RotateCw,
 } from "lucide-react";
 import { format } from "date-fns";
+import { TariffChangeLogDialog } from "@/components/branches/TariffChangeLogDialog";
 
 interface PackageRow {
   id?: string; // db id if existing
@@ -78,6 +81,9 @@ export default function Tariff() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [viewTariff, setViewTariff] = useState<any>(null);
+  const [logOpen, setLogOpen] = useState(false);
+  const [logTariff, setLogTariff] = useState<{ id: string; name: string } | null>(null);
+  const [syncing, setSyncing] = useState<string | null>(null);
 
   const [tariffName, setTariffName] = useState("");
   const [tariffType, setTariffType] = useState<"custom" | "date_to_date">("custom");
@@ -144,6 +150,26 @@ export default function Tariff() {
       const { data } = await supabase.from("mikrotik_devices").select("id, name");
       return data ?? [];
     },
+  });
+
+  // Resolve "created_by" → user names
+  const creatorIds = Array.from(
+    new Set((tariffs ?? []).map((t: any) => t.created_by).filter(Boolean)),
+  );
+  const { data: creatorProfiles } = useQuery({
+    queryKey: ["tariff-creator-profiles", creatorIds.join(",")],
+    enabled: creatorIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .in("user_id", creatorIds as string[]);
+      return data ?? [];
+    },
+  });
+  const creatorMap: Record<string, string> = {};
+  (creatorProfiles ?? []).forEach((p: any) => {
+    creatorMap[p.user_id] = p.full_name?.trim() || p.email?.split("@")[0] || "—";
   });
 
   // ----- Helpers -----
@@ -319,6 +345,34 @@ export default function Tariff() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
+      // SAFE DELETE GUARD: ensure no clients are using packages of this tariff
+      const { data: pkgRowsForTariff } = await supabase
+        .from("reseller_tariff_packages")
+        .select("package_id")
+        .eq("tariff_id", id);
+      const pkgIds = Array.from(
+        new Set((pkgRowsForTariff ?? []).map((r: any) => r.package_id).filter(Boolean)),
+      );
+      if (pkgIds.length > 0) {
+        const { count } = await supabase
+          .from("clients")
+          .select("id", { count: "exact", head: true })
+          .in("package_id", pkgIds as string[]);
+        if ((count ?? 0) > 0) {
+          throw new Error(
+            `এই tariff delete করা যাবে না — ${count} জন client এই tariff-এর package ব্যবহার করছে। আগে তাদের অন্য package-এ shift করুন।`,
+          );
+        }
+      }
+      const { count: popCount } = await supabase
+        .from("branch_managers")
+        .select("id", { count: "exact", head: true })
+        .eq("tariff_id", id);
+      if ((popCount ?? 0) > 0) {
+        throw new Error(
+          `এই tariff ${popCount} টি POP-এ assigned আছে। আগে POP থেকে সরান।`,
+        );
+      }
       const { error } = await supabase.from("reseller_tariffs").delete().eq("id", id);
       if (error) throw error;
     },
@@ -328,6 +382,54 @@ export default function Tariff() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const syncPackage = async (tariffId: string) => {
+    setSyncing(tariffId + ":pkg");
+    try {
+      const { data: tpkgs } = await supabase
+        .from("reseller_tariff_packages")
+        .select("id")
+        .eq("tariff_id", tariffId);
+      let total = 0;
+      for (const tp of tpkgs ?? []) {
+        const { data, error } = await supabase.functions.invoke(
+          "sync-tariff-package-change",
+          { body: { tariff_package_id: tp.id, mode: "package_only" } },
+        );
+        if (error) throw error;
+        total += data?.affected_clients ?? 0;
+      }
+      toast.success(`Sync Package সম্পন্ন — ${total} client আপডেট`);
+    } catch (e: any) {
+      toast.error("Sync Package ব্যর্থ: " + (e.message || "Unknown"));
+    } finally {
+      setSyncing(null);
+    }
+  };
+
+  const syncProfile = async (tariffId: string) => {
+    setSyncing(tariffId + ":prof");
+    try {
+      const { data: tpkgs } = await supabase
+        .from("reseller_tariff_packages")
+        .select("id")
+        .eq("tariff_id", tariffId);
+      let total = 0;
+      for (const tp of tpkgs ?? []) {
+        const { data, error } = await supabase.functions.invoke(
+          "sync-tariff-package-change",
+          { body: { tariff_package_id: tp.id } },
+        );
+        if (error) throw error;
+        total += data?.synced ?? 0;
+      }
+      toast.success(`Sync Profile সম্পন্ন — ${total} client MikroTik-এ push হয়েছে`);
+    } catch (e: any) {
+      toast.error("Sync Profile ব্যর্থ: " + (e.message || "Unknown"));
+    } finally {
+      setSyncing(null);
+    }
+  };
 
   const toggleStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -712,6 +814,7 @@ export default function Tariff() {
                     <TableHead>Servers</TableHead>
                     <TableHead>Profiles</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Created By</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Action</TableHead>
                   </TableRow>
@@ -720,7 +823,7 @@ export default function Tariff() {
                   {(!tariffs || tariffs.length === 0) && (
                     <TableRow>
                       <TableCell
-                        colSpan={9}
+                        colSpan={10}
                         className="text-center text-muted-foreground py-8"
                       >
                         কোনো tariff পাওয়া যায়নি
@@ -792,6 +895,9 @@ export default function Tariff() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs">
+                          {t.created_by ? (creatorMap[t.created_by] ?? "—") : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">
                           {t.created_at
                             ? format(new Date(t.created_at), "dd MMM yyyy")
                             : "-"}
@@ -813,6 +919,42 @@ export default function Tariff() {
                               onClick={() => openEdit(t)}
                             >
                               <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Sync Package (DB-level)"
+                              disabled={syncing === t.id + ":pkg"}
+                              onClick={() => {
+                                const popCount = (assignedPopsByTariff?.[t.id] ?? []).length;
+                                if (confirm(`Sync Package চালাবেন? এই tariff-এর ${popCount} POP-এর সব client affected হবে।`))
+                                  syncPackage(t.id);
+                              }}
+                            >
+                              <RefreshCw className={`h-4 w-4 ${syncing === t.id + ":pkg" ? "animate-spin" : ""}`} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Sync Profile (MikroTik push)"
+                              disabled={syncing === t.id + ":prof"}
+                              onClick={() => {
+                                if (confirm("Sync Profile চালাবেন? সব client-এর MikroTik profile push হবে।"))
+                                  syncProfile(t.id);
+                              }}
+                            >
+                              <RotateCw className={`h-4 w-4 ${syncing === t.id + ":prof" ? "animate-spin" : ""}`} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Change Log"
+                              onClick={() => {
+                                setLogTariff({ id: t.id, name: t.name });
+                                setLogOpen(true);
+                              }}
+                            >
+                              <History className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -894,6 +1036,13 @@ export default function Tariff() {
           )}
         </DialogContent>
       </Dialog>
+
+      <TariffChangeLogDialog
+        open={logOpen}
+        onOpenChange={setLogOpen}
+        tariffId={logTariff?.id ?? null}
+        tariffName={logTariff?.name ?? ""}
+      />
     </div>
   );
 }

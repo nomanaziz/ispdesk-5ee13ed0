@@ -6762,6 +6762,75 @@ export type Database = {
           },
         ]
       }
+      reseller_tariff_change_logs: {
+        Row: {
+          action: string
+          assigned_pops: string | null
+          change_reason: string | null
+          changed_at: string
+          changed_by: string | null
+          changed_fields: Json | null
+          effective_from: string | null
+          effective_to: string | null
+          id: string
+          min_activation_days: number | null
+          package_name: string | null
+          package_rate: number | null
+          profile: string | null
+          profile_speed: string | null
+          server_name: string | null
+          tariff_id: string | null
+          tariff_name: string | null
+          tariff_package_id: string | null
+          tariff_type: string | null
+          validity_days: number | null
+        }
+        Insert: {
+          action?: string
+          assigned_pops?: string | null
+          change_reason?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          changed_fields?: Json | null
+          effective_from?: string | null
+          effective_to?: string | null
+          id?: string
+          min_activation_days?: number | null
+          package_name?: string | null
+          package_rate?: number | null
+          profile?: string | null
+          profile_speed?: string | null
+          server_name?: string | null
+          tariff_id?: string | null
+          tariff_name?: string | null
+          tariff_package_id?: string | null
+          tariff_type?: string | null
+          validity_days?: number | null
+        }
+        Update: {
+          action?: string
+          assigned_pops?: string | null
+          change_reason?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          changed_fields?: Json | null
+          effective_from?: string | null
+          effective_to?: string | null
+          id?: string
+          min_activation_days?: number | null
+          package_name?: string | null
+          package_rate?: number | null
+          profile?: string | null
+          profile_speed?: string | null
+          server_name?: string | null
+          tariff_id?: string | null
+          tariff_name?: string | null
+          tariff_package_id?: string | null
+          tariff_type?: string | null
+          validity_days?: number | null
+        }
+        Relationships: []
+      }
       reseller_tariff_packages: {
         Row: {
           buy_rate: number

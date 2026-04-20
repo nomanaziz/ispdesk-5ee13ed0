@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { tariff_package_id, dry_run } = await req.json();
+    const { tariff_package_id, dry_run, mode } = await req.json();
     if (!tariff_package_id) {
       return new Response(
         JSON.stringify({ error: "tariff_package_id is required" }),
@@ -25,6 +25,7 @@ Deno.serve(async (req) => {
         },
       );
     }
+    // mode === "package_only" → only update DB (no MikroTik push)
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -81,39 +82,41 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. For each client, recreate on new server (best-effort, non-blocking errors)
+    // 4. For each client, recreate on new server (or update DB only in package_only mode)
     const results: any[] = [];
     for (const c of affected) {
       try {
-        // Remove from old server if different
-        if (c.mikrotik_server_id && c.mikrotik_server_id !== tp.mikrotik_server_id) {
-          await supabase.functions.invoke("manage-mikrotik-ppp", {
-            body: {
-              action: "remove",
-              device_id: c.mikrotik_server_id,
-              username: c.username,
-            },
-          }).catch((e) => console.error(`remove failed for ${c.username}`, e));
-        }
-
-        // Create on new server
-        if (tp.mikrotik_server_id) {
-          const { error: createErr } = await supabase.functions.invoke(
-            "create-mikrotik-ppp",
-            {
+        if (mode !== "package_only") {
+          // Remove from old server if different
+          if (c.mikrotik_server_id && c.mikrotik_server_id !== tp.mikrotik_server_id) {
+            await supabase.functions.invoke("manage-mikrotik-ppp", {
               body: {
-                device_id: tp.mikrotik_server_id,
+                action: "remove",
+                device_id: c.mikrotik_server_id,
                 username: c.username,
-                password: c.password,
-                profile: tp.mikrotik_profile,
-                service: (tp.protocol_type || "pppoe").toLowerCase(),
               },
-            },
-          );
-          if (createErr) throw createErr;
+            }).catch((e) => console.error(`remove failed for ${c.username}`, e));
+          }
+
+          // Create on new server
+          if (tp.mikrotik_server_id) {
+            const { error: createErr } = await supabase.functions.invoke(
+              "create-mikrotik-ppp",
+              {
+                body: {
+                  device_id: tp.mikrotik_server_id,
+                  username: c.username,
+                  password: c.password,
+                  profile: tp.mikrotik_profile,
+                  service: (tp.protocol_type || "pppoe").toLowerCase(),
+                },
+              },
+            );
+            if (createErr) throw createErr;
+          }
         }
 
-        // Update client row
+        // Update client row (always)
         await supabase
           .from("clients")
           .update({ mikrotik_server_id: tp.mikrotik_server_id })

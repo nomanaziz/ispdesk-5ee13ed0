@@ -98,6 +98,25 @@ export default function Servers() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      // SAFE DELETE GUARD: block if any tariff package uses this server
+      const { count: tariffCount } = await supabase
+        .from("reseller_tariff_packages")
+        .select("id", { count: "exact", head: true })
+        .eq("mikrotik_server_id", id);
+      if ((tariffCount ?? 0) > 0) {
+        throw new Error(
+          `এই server delete করা যাবে না — ${tariffCount} টি tariff package এই server ব্যবহার করছে। আগে tariff থেকে server পরিবর্তন করুন।`,
+        );
+      }
+      const { count: tariffMainCount } = await supabase
+        .from("reseller_tariffs")
+        .select("id", { count: "exact", head: true })
+        .eq("mikrotik_server_id", id);
+      if ((tariffMainCount ?? 0) > 0) {
+        throw new Error(
+          `এই server ${tariffMainCount} টি tariff-এ ব্যবহৃত হচ্ছে। আগে tariff থেকে সরান।`,
+        );
+      }
       const { error } = await supabase.from("mikrotik_devices").delete().eq("id", id);
       if (error) throw error;
     },
@@ -105,6 +124,7 @@ export default function Servers() {
       queryClient.invalidateQueries({ queryKey: ["mikrotik_devices"] });
       toast.success("সার্ভার মুছে ফেলা হয়েছে");
     },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const toggleEnabled = useMutation({
