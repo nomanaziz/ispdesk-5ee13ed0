@@ -279,7 +279,7 @@ export default function Tariff() {
             tariff_type: tariffType,
             created_by: uid,
             // legacy columns satisfied via defaults / nullables
-            activation_days: pkgRows[0].validity_days,
+            activation_days: tariffType === "date_to_date" ? 0 : pkgRows[0].validity_days,
             selling_rate: pkgRows[0].selling_rate,
             package_id: pkgRows[0].package_id,
           })
@@ -305,8 +305,8 @@ export default function Tariff() {
         protocol_type: r.protocol_type,
         buy_rate: r.buy_rate,
         selling_rate: r.selling_rate,
-        validity_days: r.validity_days,
-        min_activation_days: r.min_activation_days,
+        validity_days: tariffType === "date_to_date" ? 0 : r.validity_days,
+        min_activation_days: tariffType === "date_to_date" ? 0 : r.min_activation_days,
       }));
       const { data: inserted, error: insErr } = await supabase
         .from("reseller_tariff_packages")
@@ -518,6 +518,15 @@ export default function Tariff() {
                   <Label htmlFor="t-d2d" className="cursor-pointer">Date To Date</Label>
                 </div>
               </RadioGroup>
+              {tariffType === "date_to_date" ? (
+                <p className="text-xs text-muted-foreground">
+                  Date To Date — client-এর billing date থেকে পরের মাসের একই তারিখ পর্যন্ত validity হবে। Validity Days / Min Activation Days প্রযোজ্য নয়।
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Custom — admin-defined validity ও minimum activation দিন ব্যবহার হবে।
+                </p>
+              )}
             </div>
 
             {/* Tariff Name */}
@@ -569,33 +578,37 @@ export default function Tariff() {
                     }
                   />
                 </div>
-                <div>
-                  <Label>Validity Days</Label>
-                  <Input
-                    type="number"
-                    value={pkgForm.validity_days}
-                    onChange={(e) =>
-                      setPkgForm({
-                        ...pkgForm,
-                        validity_days: Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>Min Activation Days</Label>
-                  <Input
-                    type="number"
-                    value={pkgForm.min_activation_days}
-                    min={1}
-                    onChange={(e) =>
-                      setPkgForm({
-                        ...pkgForm,
-                        min_activation_days: Math.max(1, Number(e.target.value)),
-                      })
-                    }
-                  />
-                </div>
+                {tariffType === "custom" && (
+                  <>
+                    <div>
+                      <Label>Validity Days</Label>
+                      <Input
+                        type="number"
+                        value={pkgForm.validity_days}
+                        onChange={(e) =>
+                          setPkgForm({
+                            ...pkgForm,
+                            validity_days: Number(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label>Min Activation Days</Label>
+                      <Input
+                        type="number"
+                        value={pkgForm.min_activation_days}
+                        min={1}
+                        onChange={(e) =>
+                          setPkgForm({
+                            ...pkgForm,
+                            min_activation_days: Math.max(1, Number(e.target.value)),
+                          })
+                        }
+                      />
+                    </div>
+                  </>
+                )}
                 <div>
                   <Label>Protocol</Label>
                   <Select

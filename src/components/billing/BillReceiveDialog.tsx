@@ -139,14 +139,40 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
 
       // Extend expire date if checked
       if (setNextBilling) {
-        const bd = client.billing_date || 1;
-        const now = new Date();
-        let year = now.getFullYear();
-        let month = now.getMonth() + 2; // next month (0-indexed + 1 for next)
-        if (month > 12) { month -= 12; year++; }
-        const lastDay = new Date(year, month, 0).getDate();
-        const day = Math.min(bd, lastDay);
-        const newExpire = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        // Detect tariff type for this client (via package → reseller_tariff_packages → reseller_tariffs)
+        let tariffType: "custom" | "date_to_date" = "date_to_date";
+        let validityDays = 0;
+        if (client.package_id) {
+          const { data: tpkg } = await supabase
+            .from("reseller_tariff_packages")
+            .select("validity_days, reseller_tariffs(tariff_type)")
+            .eq("package_id", client.package_id)
+            .limit(1)
+            .maybeSingle();
+          const tt = (tpkg as any)?.reseller_tariffs?.tariff_type;
+          if (tt === "custom") {
+            tariffType = "custom";
+            validityDays = Number((tpkg as any)?.validity_days || 30);
+          }
+        }
+
+        let newExpire: string;
+        if (tariffType === "custom" && validityDays > 0) {
+          // Custom: extend from existing expire (or today) by validity_days
+          const base = client.expire_date ? new Date(client.expire_date) : new Date();
+          base.setDate(base.getDate() + validityDays);
+          newExpire = base.toISOString().slice(0, 10);
+        } else {
+          // Date-to-Date: next month same billing day (clamped to last day)
+          const bd = client.billing_date || client.expire_day || 1;
+          const now = new Date();
+          let year = now.getFullYear();
+          let month = now.getMonth() + 2; // next month (1-indexed)
+          if (month > 12) { month -= 12; year++; }
+          const lastDay = new Date(year, month, 0).getDate();
+          const day = Math.min(bd, lastDay);
+          newExpire = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        }
         await supabase.from("clients").update({ expire_date: newExpire }).eq("id", client.id);
       }
 

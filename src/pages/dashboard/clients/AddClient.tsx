@@ -807,8 +807,11 @@ export default function AddClient() {
                     {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
                       <SelectItem key={d} value={String(d)}>প্রতি মাসের {d} তারিখ</SelectItem>
                     ))}
-                  </SelectContent>
+                </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  প্রতি মাসের এই তারিখে line বন্ধ হবে (Date-to-Date tariff হলে validity এই তারিখ থেকেই গণনা হবে)।
+                </p>
               </div>
             </>
           )}
