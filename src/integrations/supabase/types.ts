@@ -6762,10 +6762,81 @@ export type Database = {
           },
         ]
       }
+      reseller_tariff_packages: {
+        Row: {
+          buy_rate: number
+          created_at: string
+          id: string
+          mikrotik_profile: string | null
+          mikrotik_server_id: string | null
+          min_activation_days: number
+          package_id: string
+          protocol_type: string
+          selling_rate: number
+          status: string
+          tariff_id: string
+          updated_at: string
+          validity_days: number
+        }
+        Insert: {
+          buy_rate?: number
+          created_at?: string
+          id?: string
+          mikrotik_profile?: string | null
+          mikrotik_server_id?: string | null
+          min_activation_days?: number
+          package_id: string
+          protocol_type?: string
+          selling_rate?: number
+          status?: string
+          tariff_id: string
+          updated_at?: string
+          validity_days?: number
+        }
+        Update: {
+          buy_rate?: number
+          created_at?: string
+          id?: string
+          mikrotik_profile?: string | null
+          mikrotik_server_id?: string | null
+          min_activation_days?: number
+          package_id?: string
+          protocol_type?: string
+          selling_rate?: number
+          status?: string
+          tariff_id?: string
+          updated_at?: string
+          validity_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reseller_tariff_packages_mikrotik_server_id_fkey"
+            columns: ["mikrotik_server_id"]
+            isOneToOne: false
+            referencedRelation: "mikrotik_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reseller_tariff_packages_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "isp_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reseller_tariff_packages_tariff_id_fkey"
+            columns: ["tariff_id"]
+            isOneToOne: false
+            referencedRelation: "reseller_tariffs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reseller_tariffs: {
         Row: {
-          activation_days: number
+          activation_days: number | null
           created_at: string
+          created_by: string | null
           id: string
           is_daily_recharge: boolean
           mikrotik_profile: string | null
@@ -6774,12 +6845,14 @@ export type Database = {
           name: string
           package_id: string | null
           protocol_type: string | null
-          selling_rate: number
+          selling_rate: number | null
           status: string
+          tariff_type: string
         }
         Insert: {
-          activation_days?: number
+          activation_days?: number | null
           created_at?: string
+          created_by?: string | null
           id?: string
           is_daily_recharge?: boolean
           mikrotik_profile?: string | null
@@ -6788,12 +6861,14 @@ export type Database = {
           name: string
           package_id?: string | null
           protocol_type?: string | null
-          selling_rate?: number
+          selling_rate?: number | null
           status?: string
+          tariff_type?: string
         }
         Update: {
-          activation_days?: number
+          activation_days?: number | null
           created_at?: string
+          created_by?: string | null
           id?: string
           is_daily_recharge?: boolean
           mikrotik_profile?: string | null
@@ -6802,8 +6877,9 @@ export type Database = {
           name?: string
           package_id?: string | null
           protocol_type?: string | null
-          selling_rate?: number
+          selling_rate?: number | null
           status?: string
+          tariff_type?: string
         }
         Relationships: [
           {
