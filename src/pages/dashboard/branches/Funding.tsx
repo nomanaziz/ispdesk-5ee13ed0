@@ -43,7 +43,7 @@ export default function Funding() {
     invoice_number: "",
     received_by: "",
     received_on: today,
-    payment_method: "Cash",
+    payment_method: "Not Applicable",
     remarks: "",
   };
   const [form, setForm] = useState(initialForm);
