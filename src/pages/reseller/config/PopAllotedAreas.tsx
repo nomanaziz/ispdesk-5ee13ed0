@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
-import { getPopScope } from "@/lib/popScope";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -144,7 +144,12 @@ export default function PopAllotedAreas({ mode }: Props) {
                 )}
                 {data?.map((row: any) => (
                   <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {row.name}
+                      {row.isDefault && (
+                        <Badge variant="outline" className="ml-2 text-[10px]">Default — POP profile থেকে</Badge>
+                      )}
+                    </TableCell>
                     {mode === "district" ? (
                       <>
                         <TableCell>{row.code}</TableCell>
