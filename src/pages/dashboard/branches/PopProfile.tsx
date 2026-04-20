@@ -173,6 +173,13 @@ export default function PopProfile() {
               <Toggle label="Set Prefix in Mikrotik" checked={pop.set_prefix_mikrotik} onChange={(v) => update.mutate({ set_prefix_mikrotik: v })} />
               <Toggle label="Fund Started" checked={pop.fund_started} onChange={(v) => update.mutate({ fund_started: v, fund_started_at: v ? new Date().toISOString() : null })} />
               <Toggle label="Is Locked" checked={pop.is_locked} onChange={(v) => update.mutate({ is_locked: v })} />
+              {pop.pop_type === "prepaid" && (
+                <Toggle
+                  label="Credit Refund Policy"
+                  checked={!!pop.credit_refund_policy}
+                  onChange={(v) => update.mutate({ credit_refund_policy: v })}
+                />
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-2 border-t">
