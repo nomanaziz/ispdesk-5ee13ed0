@@ -377,8 +377,8 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Dashboard */}
-              <Route path="/dashboard" element={<P><CompanyOverview /></P>} />
-              <Route path="/dashboard/billing-overview" element={<P><Dashboard /></P>} />
+              <Route path="/dashboard" element={<P><Dashboard /></P>} />
+              <Route path="/dashboard/billing-overview" element={<P><CompanyOverview /></P>} />
               <Route path="/dashboard/olt-overview" element={<P><OltOverview /></P>} />
 
               {/* Config */}

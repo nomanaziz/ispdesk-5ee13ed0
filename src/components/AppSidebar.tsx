@@ -26,23 +26,23 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
 
 interface MenuItem { title: string; url: string; icon: LucideIcon; }
-interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; }
+interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; }
 
 const menuGroups: MenuGroup[] = [
   {
     label: "ড্যাশবোর্ড",
     icon: LayoutDashboard,
     defaultOpen: true,
+    direct: true,
     items: [
-      { title: "মূল ড্যাশবোর্ড", url: "/dashboard", icon: LayoutDashboard },
-      { title: "OLT / ONU ওভারভিউ", url: "/dashboard/olt-overview", icon: Cpu },
-      { title: "ওয়েবসাইট ড্যাশবোর্ড", url: "/dashboard/website", icon: Globe },
+      { title: "ড্যাশবোর্ড", url: "/dashboard", icon: LayoutDashboard },
     ],
   },
   {
     label: "ওয়েবসাইট প্যানেল",
     icon: Globe,
     items: [
+      { title: "ওয়েবসাইট ড্যাশবোর্ড", url: "/dashboard/website", icon: Globe },
       { title: "হোমপেজ এডিটর", url: "/dashboard/website/homepage", icon: Monitor },
       { title: "পেজ", url: "/dashboard/website/pages", icon: FileText },
       { title: "নোটিশ", url: "/dashboard/website/notices", icon: Bell },
@@ -92,7 +92,6 @@ const menuGroups: MenuGroup[] = [
       { title: "নতুন রিকোয়েস্ট", url: "/dashboard/clients/new-request", icon: MessageSquare },
       { title: "নতুন যোগ করুন", url: "/dashboard/clients/add", icon: UserPlus },
       { title: "ক্লায়েন্ট তালিকা", url: "/dashboard/clients", icon: List },
-      { title: "বিলিং ওভারভিউ", url: "/dashboard/billing-overview", icon: BarChart3 },
       { title: "বিলিং তালিকা", url: "/dashboard/billing", icon: CreditCard },
       { title: "দৈনিক বিল কালেকশন", url: "/dashboard/billing/daily-collection", icon: Wallet },
       { title: "বিলিং সাইকেল সেটিংস", url: "/dashboard/billing/cycle-settings", icon: Cog },
@@ -178,6 +177,7 @@ const menuGroups: MenuGroup[] = [
     label: "OLT ম্যানেজমেন্ট",
     icon: Cpu,
     items: [
+      { title: "OLT / ONU ওভারভিউ", url: "/dashboard/olt-overview", icon: Cpu },
       { title: "OLT ডিভাইস", url: "/dashboard/olt", icon: Server },
       { title: "OLT Power Dashboard", url: "/dashboard/olt/power-dashboard", icon: Activity },
       { title: "ONU তালিকা", url: "/dashboard/olt/onu", icon: List },
@@ -397,6 +397,57 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
 
   // Sum of badge counts for items inside this group (used in collapsed mode + group label)
   const groupBadgeCount = group.items.reduce((sum, it) => sum + (badges?.[it.url] || 0), 0);
+  const primaryItem = group.items[0];
+
+  if (group.direct && primaryItem) {
+    const isActive = primaryItem.url === "/dashboard"
+      ? location.pathname === "/dashboard"
+      : location.pathname.startsWith(primaryItem.url);
+
+    if (collapsed) {
+      return (
+        <div className="px-2 py-1">
+          <NavLink
+            to={primaryItem.url}
+            className={cn("relative flex items-center justify-center w-10 h-10 rounded-lg mb-0.5 transition-colors",
+              isActive
+                ? "bg-primary/15 text-primary"
+                : isLight ? "text-muted-foreground hover:text-primary hover:bg-primary/5" : "text-slate-400 hover:text-white hover:bg-white/5"
+            )}
+            title={group.label}
+          >
+            <group.icon className="h-4 w-4" />
+            {groupBadgeCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
+              </span>
+            )}
+          </NavLink>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mb-0.5 px-2">
+        <NavLink
+          to={primaryItem.url}
+          className={cn("flex items-center gap-3 px-4 py-2 text-[13px] font-semibold transition-colors rounded-lg uppercase tracking-wider",
+            isActive
+              ? "bg-primary/10 text-primary"
+              : isLight ? "text-muted-foreground hover:text-foreground hover:bg-muted/50" : "text-slate-400 hover:text-white hover:bg-white/5"
+          )}
+        >
+          <group.icon className="h-4 w-4 shrink-0" />
+          <span className="flex-1 truncate">{group.label}</span>
+          {groupBadgeCount > 0 && (
+            <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+              {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
+            </span>
+          )}
+        </NavLink>
+      </div>
+    );
+  }
 
   if (collapsed) {
     return (
