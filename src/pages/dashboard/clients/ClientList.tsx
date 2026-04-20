@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -55,6 +55,8 @@ export default function ClientList() {
       const { data, error } = await supabase
         .from("clients")
         .select("*, zones:zone_id(name), isp_packages:package_id(name, bandwidth_down, price), mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name)")
+        .neq("status", "left")
+        .neq("billing_status", "Left")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -286,7 +288,7 @@ export default function ClientList() {
           <Select value={String(perPage)} onValueChange={v => { setPerPage(Number(v)); setCurrentPage(0); }}>
             <SelectTrigger className="h-7 w-16 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {[25, 50, 100, 200, 500].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+              {[10, 25, 50, 100, 250, 500, 1000].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -413,6 +415,13 @@ export default function ClientList() {
               })
             )}
           </TableBody>
+          <TableFooter>
+            <TableRow className="bg-primary/10 font-semibold">
+              <TableCell colSpan={8} className="text-xs">মোট: {filtered.length} জন</TableCell>
+              <TableCell className="text-xs">৳ {filtered.reduce((s: number, c: any) => s + Number(c.monthly_bill || 0), 0).toLocaleString()}</TableCell>
+              <TableCell colSpan={9}></TableCell>
+            </TableRow>
+          </TableFooter>
         </Table>
       </div>
 
