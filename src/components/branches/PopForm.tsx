@@ -331,12 +331,17 @@ export default function PopForm({ mode, pop }: Props) {
             <LockedField locked={lockPrefix}>
               <Input
                 value={form.pop_prefix}
-                onChange={(e) => upd("pop_prefix", e.target.value)}
+                onChange={(e) => upd("pop_prefix", e.target.value.toUpperCase())}
                 placeholder="e.g. AB1"
                 readOnly={lockPrefix}
-                className={lockPrefix ? "bg-muted cursor-not-allowed" : ""}
+                className={`${lockPrefix ? "bg-muted cursor-not-allowed" : ""} ${errCls("pop_prefix")} ${prefixCheck.available === false ? "border-destructive" : ""} ${prefixCheck.available === true ? "border-green-500" : ""}`}
               />
             </LockedField>
+            {form.pop_prefix && !lockPrefix && (
+              <p className={`text-[11px] mt-1 ${prefixCheck.available === false ? "text-destructive" : prefixCheck.available === true ? "text-green-600" : "text-muted-foreground"}`}>
+                {prefixCheck.msg}
+              </p>
+            )}
           </div>
 
           <div className="flex items-end gap-3">
@@ -349,7 +354,7 @@ export default function PopForm({ mode, pop }: Props) {
           <div>
             <Label>POP Type <Req /></Label>
             <Select value={form.pop_type} onValueChange={(v) => upd("pop_type", v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className={errCls("pop_type")}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="prepaid">Prepaid (Daily Billing)</SelectItem>
                 <SelectItem value="postpaid">Postpaid (Monthly)</SelectItem>
