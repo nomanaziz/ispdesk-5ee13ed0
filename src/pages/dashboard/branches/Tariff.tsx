@@ -305,8 +305,8 @@ export default function Tariff() {
         protocol_type: r.protocol_type,
         buy_rate: r.buy_rate,
         selling_rate: r.selling_rate,
-        validity_days: r.validity_days,
-        min_activation_days: r.min_activation_days,
+        validity_days: tariffType === "date_to_date" ? 0 : r.validity_days,
+        min_activation_days: tariffType === "date_to_date" ? 0 : r.min_activation_days,
       }));
       const { data: inserted, error: insErr } = await supabase
         .from("reseller_tariff_packages")
