@@ -647,6 +647,12 @@ export default function Funding() {
         funding={payDialog.row}
         mode={payDialog.mode}
       />
+
+      <FundingDetailDialog
+        open={detailDialog.open}
+        onOpenChange={(v) => setDetailDialog((d) => ({ ...d, open: v }))}
+        funding={detailDialog.row}
+      />
     </div>
   );
 }
