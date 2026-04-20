@@ -187,7 +187,15 @@ export default function AddClient() {
   const { data: clientTypes } = useQuery({ queryKey: ["client-types-active"], queryFn: async () => { const { data } = await supabase.from("client_types").select("id, name").eq("status", "active"); return data || []; } });
   const { data: mikrotiks } = useQuery({ queryKey: ["mikrotik-devices"], queryFn: async () => { const { data } = await supabase.from("mikrotik_devices").select("id, name"); return data || []; } });
   const { data: protocolTypes } = useQuery({ queryKey: ["protocol-types-active"], queryFn: async () => { const { data } = await supabase.from("protocol_types" as any).select("id, name").eq("status", "active"); return data || []; } });
-  const { data: employees } = useQuery({ queryKey: ["employees-active"], queryFn: async () => { const { data } = await supabase.from("employees").select("id, name").eq("status", "active"); return data || []; } });
+  const { data: employees } = useQuery({
+    queryKey: ["employees-active", branchId || "all"],
+    queryFn: async () => {
+      let q: any = supabase.from("employees").select("id, name").eq("status", "active");
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data } = await q;
+      return data || [];
+    },
+  });
   const { data: billingStatuses } = useQuery({ queryKey: ["billing-statuses"], queryFn: async () => { const { data } = await supabase.from("billing_statuses").select("id, name").eq("status", "active"); return data || []; } });
 
   const filteredSubZones = useMemo(() => form.zone_id ? subZones?.filter((s: any) => s.zone_id === form.zone_id) : subZones, [form.zone_id, subZones]);
@@ -225,6 +233,10 @@ export default function AddClient() {
         installed_by_ids: form.installed_by_ids && form.installed_by_ids.length > 0 ? form.installed_by_ids : null,
         expire_day: form.billing_status === "Active" ? Number(form.expire_day || 10) : null,
         mikrotik_status: mikrotikStatus,
+        // POP-mode: auto-inject branch + default district/upazila from POP profile
+        branch_id: isPopMode ? branchId : (form.branch_id || null),
+        district_id: isPopMode ? (districtId || null) : (form.district_id || null),
+        upazila_id: isPopMode ? (upazilaId || null) : (form.upazila_id || null),
       };
       if (editMode && editClientId) {
         if (shouldSyncMikrotik) {
