@@ -94,7 +94,7 @@ export default function Funding() {
       if (!form.funding_amount || form.funding_amount <= 0) throw new Error("Funding amount দিন");
       if (form.received_amount < 0) throw new Error("Received amount valid নয়");
 
-      const status = due > 0 ? "pending" : "paid";
+      const status = "paid";
       const { error } = await supabase.from("branch_funding").insert({
         branch_id: selectedPop?.branch_id ?? null,
         amount: form.funding_amount,
