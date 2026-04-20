@@ -325,14 +325,9 @@ import ResellerTickets from "@/pages/reseller/ResellerTickets";
 import ResellerUsers from "@/pages/reseller/ResellerUsers";
 import ResellerSettings from "@/pages/reseller/ResellerSettings";
 import ResellerMikrotikUsers from "@/pages/reseller/ResellerMikrotikUsers";
-// POP-scoped Configuration
-import PopZones from "@/pages/reseller/config/PopZones";
-import PopSubZones from "@/pages/reseller/config/PopSubZones";
-import PopBoxes from "@/pages/reseller/config/PopBoxes";
+// POP-scoped Configuration (admin pages reused; only Packages & AllotedAreas remain POP-specific)
 import PopPackages from "@/pages/reseller/config/PopPackages";
 import PopAllotedAreas from "@/pages/reseller/config/PopAllotedAreas";
-import PopDepartments from "@/pages/reseller/config/PopDepartments";
-import PopDesignations from "@/pages/reseller/config/PopDesignations";
 import PopDevicesConfig from "@/pages/reseller/config/PopDevices";
 // POP-scoped Employee
 import PopEmployees from "@/pages/reseller/employee/PopEmployees";
@@ -703,15 +698,15 @@ const App = () => (
               <Route path="/pop-admin/settings" element={<PortalAuthProvider><ResellerProtectedRoute require="settings"><ResellerLayout><ResellerSettings /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/mikrotik-users" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><ResellerMikrotikUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
-              {/* POP Admin — Configuration */}
-              <Route path="/pop-admin/config/zones" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopZones /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/config/sub-zones" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSubZones /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/config/boxes" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopBoxes /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              {/* POP Admin — Configuration (reuses Admin pages, scoped via usePopScope) */}
+              <Route path="/pop-admin/config/zones" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ConfigZones /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/sub-zones" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ConfigSubZones /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/boxes" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ConfigBoxes /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/config/packages" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPackages /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/config/districts" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopAllotedAreas mode="district" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/config/upazilas" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopAllotedAreas mode="upazila" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/config/departments" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopDepartments /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/config/designations" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopDesignations /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/departments" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><HrDepartments /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/designations" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><HrPositions /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/config/devices" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopDevicesConfig /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
               {/* POP Admin — Employee */}
@@ -728,11 +723,12 @@ const App = () => (
               <Route path="/pop-admin/clients/left" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientLeft /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/clients/scheduler" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientScheduler /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
-              {/* POP Admin — Placeholders for Batch 2 & 3 */}
-              <Route path="/pop-admin/billing/list" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Billing List" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/billing/invoice" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Invoice" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/billing/daily-collection" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Daily Collection" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/billing/profile" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Client Bill Profile" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              {/* POP Admin — Billing (reuses Admin pages, scoped via usePopScope) */}
+              <Route path="/pop-admin/billing/list" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><BillingList /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/billing/daily-collection" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><BillingDailyCollection /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/billing/client/:id" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientProfile /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/billing/invoice" element={<Navigate to="/pop-admin/billing/list" replace />} />
+              <Route path="/pop-admin/billing/profile" element={<Navigate to="/pop-admin/clients/billing" replace />} />
               <Route path="/pop-admin/monitoring/online" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Online Client Monitoring" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/monitoring/ping" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Ping Tools" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/templates" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="SMS Templates" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />

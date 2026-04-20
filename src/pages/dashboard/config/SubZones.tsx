@@ -3,14 +3,18 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ConfigCrudPage from "@/components/config/ConfigCrudPage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { usePopScope } from "@/hooks/usePopScope";
 
 export default function SubZones() {
   const [zoneFilter, setZoneFilter] = useState<string>("all");
+  const { isPopMode, branchId } = usePopScope();
 
   const { data: zones } = useQuery({
-    queryKey: ["config-zones"],
+    queryKey: ["config-zones-options", isPopMode && branchId ? branchId : "all"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("zones").select("id, name").order("name");
+      let q: any = supabase.from("zones").select("id, name").order("name");
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },

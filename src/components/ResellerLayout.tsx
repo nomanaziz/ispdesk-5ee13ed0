@@ -72,9 +72,7 @@ const groups: NavGroup[] = [
     key: "billing", label: "Billing", icon: Receipt,
     items: [
       { to: "/pop-admin/billing/list", label: "Billing List", icon: Receipt },
-      { to: "/pop-admin/billing/invoice", label: "Invoice", icon: FileText },
       { to: "/pop-admin/billing/daily-collection", label: "Daily Collection", icon: Wallet },
-      { to: "/pop-admin/billing/profile", label: "Client Bill Profile", icon: ListChecks },
     ],
   },
   {
