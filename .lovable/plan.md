@@ -1,78 +1,81 @@
 
 
 ## লক্ষ্য
-"Client PGW Payments" আর "PGW Settlement" দুই page-কে একসাথে merge করে **৩-tab UI** বানানো — image-156 অনুযায়ী। "Add Payment" button সরিয়ে দেওয়া হবে; সব entry **automatic** আসবে online recharge থেকে।
+MAC Reseller Funding-এ Refund logic ঠিক করা + View Detail dialog (image-162) + Safe Delete যোগ করা।
 
-## নতুন একক page: `PgwTransactions.tsx` (route: `/dashboard/branches/pgw-transactions`)
+## ১. Refund — POP-এর available balance-এর মধ্যে সীমিত
 
-### Tab 1: POP PGW Transactions (default)
-POP-wise rollup। Filters: POP Status, POP Type, Search।
+**বর্তমান সমস্যা**: `FundingPayDialog`-এ row-এর `Refund` button চাপলে যেকোনো amount refund করা যায় — POP balance check হয় না। ফলে POP যদি ১০০০ টাকা পেয়ে ৮০০ খরচ করে ফেলে, তবুও ১০০০ refund করা সম্ভব → balance negative হয়।
 
-**Columns**: Code | POP Name | POP Type (badge: Prepaid/Postpaid) | Mobile | **Total Received** | **Settled Amount** | **Remaining Amount** | Payment Status | **Action**
+**নতুন rule**: Refund amount ≤ POP-এর current `branch_managers.balance`। (নির্দিষ্ট invoice-এর সাথে refund-এর কোনো বাঁধাধরা সম্পর্ক নেই — POP-এর available balance থেকেই refund হয়।)
 
-**Action column** per row (POP-এর remaining > 0 হলে দেখাবে):
-- 🟦 **Cash** button → "Cash Payment" dialog (image-157):  
-  POP Code, Name, Company, Mobile (auto-fill, read-only) + Payment Date, Paid Amount, Receipt/Trxn No, Remarks → submit হলে `reseller_pgw_settlements` row insert হবে method=`cash`, branch balance অপরিবর্তিত (cash বের হলো)।
-- 🟩 **Fund** button → "Fund Transactions" dialog (image-158) ২টি sub-tab:
-  - **Due Fund Invoice** — POP-এর pending `branch_funding` invoices list, একটা select করে remaining PGW amount দিয়ে adjust।
-  - **Give Fund** — Remaining PGW Payment (read-only), Funding Amount, Invoice Number (auto), Fund Date, Remarks → submit হলে `branch_funding` row (trans_type=`received`) insert; existing trigger POP balance বাড়াবে এবং `reseller_pgw_settlements` row method=`fund` লেখা হবে।
+**পরিবর্তন `FundingPayDialog.tsx` — refund mode-এ**:
+- Dialog open হলে POP-এর live balance fetch (`branch_managers.balance` by `branch_id`)
+- "Available Balance" badge দেখানো (সবুজ যদি > 0, লাল যদি ০)
+- Amount input-এ `max = availableBalance`
+- Submit-এ guard: `amount > availableBalance` হলে error: *"POP-এর available balance ৳X — এর বেশি refund করা যাবে না"*
+- Available = ০ হলে Refund button disabled + message: *"এই POP-এর কোনো অবশিষ্ট balance নেই, refund সম্ভব নয়"*
+- Refund insert-এ remarks-এ source invoice number রাখা হবে (audit trail)
 
-Remaining = ০ হলে status badge "✓ Fully Settled", action buttons disabled।
+## ২. View Detail Dialog (image-162 অনুসারে)
 
-### Tab 2: Transaction Settlement History (image-159)
-Filters: From/To Date, Payment Settlement Status (auto/manual/all), POP।
+বর্তমানে 👁 button কাজ করে না। নতুন **`FundingDetailDialog.tsx`** (separate component):
 
-**Columns**: POP Code | POP Name | Amount | Invoice Number | Remarks | CreatedBy | CreatedOn | **Status** (Auto Settled / Cash / Fund — colored badge) | Action (👁 view detail)। Total row footer।
+**Title**: `Debited Transaction History Of: {invoice_number}`
 
-Source: `reseller_pgw_settlements` table।
+**Top section** — invoice summary card:
+- Reseller Name, Invoice, Fund Date, Created By
 
-### Tab 3: POP Transactions (image-160 — current "Client PGW Payments")
-Filters: From/To Date, POPs। Export buttons (CSV/PDF)।
+**Inner table** — এই invoice-এর বিরুদ্ধে যত pay/refund entry হয়েছে:
 
-**Columns**: POP | ClientCode | Paid Amount | Settled Fund Amount | Remaining Amount | PaymentMethod | Remarks | CreatedBy | CreatedOn। Total row footer।
+| Sr. | Reseller Name | Paid Amount | Discount | Refund(-) | Transaction Type | Created On | Created By | Action |
+|---|---|---|---|---|---|---|---|---|
 
-Source: `reseller_pgw_payments` table (existing) + per-row settlement linkage।
+**Footer totals row**: Total Fund | Total Payment | Total Discount | Total Due
 
-## Database changes
+**Data source**: 
+- বর্তমান schema-এ pay events আলাদা row হিসেবে stored হয় না — `branch_funding` row update হয়। তাই view dialog-এ:
+  - Original fund row → সর্বদা ১ম row (TransactionType = "Fund")
+  - Refund rows → same `branch_id`-এ `trans_type='refund'` rows যেগুলোর remarks-এ এই invoice mentioned আছে
+  - Pay updates → row-এর remarks-এ `[Pay ৳X on date]` log থেকে parse করে timeline দেখানো (existing log format already exists)
 
-### `reseller_pgw_settlements` table — column যোগ
-- `settlement_type` text default `'manual'` — `'auto' | 'cash' | 'fund'`
-- `funding_id` uuid nullable → references `branch_funding(id)` (যখন method=fund)
-- `pgw_payment_ids` uuid[] nullable — কোন কোন PGW payment cover করল
-- `created_by` uuid nullable
+**Action column** in inner table:
+- শুধু refund row-এর জন্য 🗑 delete button — চাপলে confirm: refund delete হলে POP balance সমপরিমাণ বাড়ানো হবে (refund undo)
+- Original fund row-এ delete button থাকবে না এই inner table-এ
 
-### `reseller_pgw_payments` table — column যোগ
-- `settled_amount` numeric default 0
-- `remaining_amount` numeric (computed via trigger: `our_share - settled_amount`)
-- `settlement_status` text default `'pending'` — `'pending'|'partial'|'settled'`
+## ৩. Safe Delete (main table-এর 🗑 button)
 
-### Trigger
-`trg_apply_settlement_to_pgw_payments` — settlement insert হলে FIFO order-এ POP-এর pending PGW payments-এ `settled_amount` বাড়াবে এবং status update করবে।
+**নিয়ম**: একটা funding entry তখনই delete করা যাবে যখন তার বিরুদ্ধে কোনো received payment বা refund history নেই।
 
-## Auto-settlement (existing online recharge flow সহযোগিতা)
-যখন client portal payment gateway দিয়ে recharge করে → existing `payment-callback` edge function `reseller_pgw_payments` row লেখে। এটাতে শুধু **নতুন logic** যোগ:
-- যদি POP-এর `auto_settle_pgw` flag ON থাকে (নতুন `branch_managers.auto_settle_pgw boolean default false` column) → automatic একটা `reseller_pgw_settlements` row type=`auto` insert হবে।
-- নাহলে pending থাকবে যতক্ষণ admin Cash বা Fund button চাপে।
+**Block condition** (যেকোনো একটা true হলে delete বন্ধ):
+- `received_amount > 0` (কেউ কিছু pay করেছে)
+- Same `branch_id`-এ এই invoice number reference করে কোনো refund row exists
+- Row নিজেই refund (refund rows আলাদাভাবে detail dialog থেকে delete হবে)
+
+**Block হলে toast**: *"এই entry-র সাথে যুক্ত পেমেন্ট/রিফান্ড history আছে — আগে detail view থেকে সব sub-entry মুছুন, তারপর এটি delete করতে পারবেন"*
+
+**Allow হলে confirm dialog**:  
+*"এই Fund entry delete করলে POP balance ৳{amount} কমানো হবে। নিশ্চিত?"*
+
+**Implementation**: existing `apply_branch_funding_to_balance` trigger শুধু INSERT-এ চলে। Delete-এ balance reverse করার জন্য নতুন **AFTER DELETE trigger** যোগ করতে হবে যেটা:
+- যদি deleted row `trans_type='fund'` → `branch_managers.balance -= amount`
+- যদি deleted row `trans_type='refund'` → `branch_managers.balance += amount`
 
 ## Files Changed
 
-**Migration**:
-- `reseller_pgw_settlements`-এ ৪টা column
-- `reseller_pgw_payments`-এ ৩টা column
-- Settlement allocator trigger
-- `branch_managers.auto_settle_pgw` column
+**Migration** (নতুন trigger):
+- `apply_branch_funding_delete_to_balance()` function + `AFTER DELETE` trigger on `branch_funding`
 
 **Code**:
-- ➕ `src/pages/dashboard/branches/PgwTransactions.tsx` — নতুন ৩-tab page
-- ➕ `src/components/branches/PgwCashDialog.tsx`
-- ➕ `src/components/branches/PgwFundDialog.tsx` (Due Fund Invoice + Give Fund tabs)
-- ✏️ `src/components/AppSidebar.tsx` — পুরাতন "Client PGW Payments" + "PGW Settlement" sub-menu রিমুভ, একটাই "PGW Transactions" link
-- ✏️ `src/App.tsx` — route registration; পুরাতন routes redirect
-- ✏️ `supabase/functions/payment-callback/index.ts` — auto-settle ঢোকানো
-- ❌ Old: `src/pages/dashboard/branches/PgwPayments.tsx` ও `PgwSettlement.tsx` — replace হবে নতুন page দিয়ে (ফাইল রাখা যাবে কিন্তু sidebar/route থেকে আনহুক)
+- ✏️ `src/components/branches/FundingPayDialog.tsx` — refund-এ POP balance fetch + cap + disabled state
+- ➕ `src/components/branches/FundingDetailDialog.tsx` — নতুন view dialog (image-162 layout)
+- ✏️ `src/pages/dashboard/branches/Funding.tsx`:
+  - 👁 button → `FundingDetailDialog` open
+  - 🗑 button → safe delete check + confirm dialog
+  - "View" eye icon row-এ যুক্ত করা (যদি না থাকে)
 
 ## কী **হবে না**
-- Manual "Add Settlement" button আর থাকবে না — শুধু row-level Cash/Fund action
-- পুরাতন settlement rows-এ retroactive linkage হবে না
-- `reseller_pgw_payments`-এ existing rows-এর `settled_amount` migration-এ ০ থেকে শুরু হবে
+- Pay events-এর জন্য আলাদা history table তৈরি হবে না (existing remarks log + refund rows যথেষ্ট)
+- পুরাতন invoice-এ retroactive sub-entry generation নেই
+- Refund-কে কোনো নির্দিষ্ট fund invoice-এর সাথে hard-link করা হবে না — শুধু POP-এর overall balance-এ কাজ করবে
 
