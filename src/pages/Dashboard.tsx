@@ -314,6 +314,9 @@ function useStats() {
         zoneProblemChart,
         newClientChart,
         unpaidList,
+        totalPopMgrs, bwPopMgrs, regularPopMgrs,
+        popTotalClients, popActiveClients, popInactiveClients,
+        bwTotalUsers, bwActiveUsers, bwInactiveUsers, bwParentResellers,
       };
     },
     refetchInterval: 30000,
