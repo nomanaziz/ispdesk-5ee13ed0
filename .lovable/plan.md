@@ -1,81 +1,94 @@
 
 
 ## লক্ষ্য
-MAC Reseller Funding-এ Refund logic ঠিক করা + View Detail dialog (image-162) + Safe Delete যোগ করা।
+Sidebar থেকে অপ্রয়োজনীয় Add/সাব-মেনু item সরিয়ে দেওয়া, এবং সংশ্লিষ্ট list page-এ উপরে "Add" button যোগ করা। **কোনো feature delete হবে না** — শুধু navigation কমানো হবে।
 
-## ১. Refund — POP-এর available balance-এর মধ্যে সীমিত
+## ১. Sidebar থেকে যেগুলো সরাবো (১৫টি item)
 
-**বর্তমান সমস্যা**: `FundingPayDialog`-এ row-এর `Refund` button চাপলে যেকোনো amount refund করা যায় — POP balance check হয় না। ফলে POP যদি ১০০০ টাকা পেয়ে ৮০০ খরচ করে ফেলে, তবুও ১০০০ refund করা সম্ভব → balance negative হয়।
+### হোম ক্লায়েন্ট group
+- ❌ "নতুন যোগ করুন" (`/dashboard/clients/add`) → Client List-এর উপরে button
+- ❌ "বিলিং সাইকেল সেটিংস" → System group-এ সরানো হবে (কম-ব্যবহার)
 
-**নতুন rule**: Refund amount ≤ POP-এর current `branch_managers.balance`। (নির্দিষ্ট invoice-এর সাথে refund-এর কোনো বাঁধাধরা সম্পর্ক নেই — POP-এর available balance থেকেই refund হয়।)
+### POP / MAC ক্লায়েন্ট group
+- ❌ "POP যোগ করুন" → already Managers list-এ button আছে
+- ❌ "POP ফান্ডিং" + "ফান্ড হিস্ট্রি" → দুটোই sidebar থেকে সরাবো; **POP ম্যানেজার লিস্ট-এ** একটা "Funding ➜" button যোগ — সেখান থেকে Funding page এবং Funding-page-এর উপরে "ফান্ড হিস্ট্রি দেখুন" button
 
-**পরিবর্তন `FundingPayDialog.tsx` — refund mode-এ**:
-- Dialog open হলে POP-এর live balance fetch (`branch_managers.balance` by `branch_id`)
-- "Available Balance" badge দেখানো (সবুজ যদি > 0, লাল যদি ০)
-- Amount input-এ `max = availableBalance`
-- Submit-এ guard: `amount > availableBalance` হলে error: *"POP-এর available balance ৳X — এর বেশি refund করা যাবে না"*
-- Available = ০ হলে Refund button disabled + message: *"এই POP-এর কোনো অবশিষ্ট balance নেই, refund সম্ভব নয়"*
-- Refund insert-এ remarks-এ source invoice number রাখা হবে (audit trail)
+### MikroTik সার্ভার group
+- ❌ "MikroTik থেকে ইম্পোর্ট" + "বাল্ক ক্লায়েন্ট ইম্পোর্ট" → Servers list-এর উপরে দুটো button ("Import Users", "Bulk Import")
 
-## ২. View Detail Dialog (image-162 অনুসারে)
+### HR ও পেরোল group
+- ❌ "কর্মচারী যোগ" → already Employees list-এ button আছে
+- ❌ "পুনরায় যোগদান" → Resignations page-এ row action হিসেবে accessible; sidebar থেকে সরাবো
 
-বর্তমানে 👁 button কাজ করে না। নতুন **`FundingDetailDialog.tsx`** (separate component):
+### নেটওয়ার্ক মনিটরিং group
+- ❌ "সুইচ যোগ করুন" → Switch List উপরে "Add Switch" button (placeholder page; PlaceholderPage retain)
+- ❌ "সুইচ তালিকা (legacy)" → confusing duplicate; সরাবো (Switch ম্যানেজমেন্ট থাকবে)
 
-**Title**: `Debited Transaction History Of: {invoice_number}`
+### ইভেন্ট ও ছুটি (duplicate)
+- ❌ Sidebar-এ **দুইবার যোগ আছে** (line 230-235 এবং 237-242) — একটা সরাবো
 
-**Top section** — invoice summary card:
-- Reseller Name, Invoice, Fund Date, Created By
+### ছুটি ম্যানেজমেন্ট group
+- ❌ "আবেদন" → "অনুমোদন" page-এ tab/button দিয়ে accessible করা; sidebar থেকে সরাবো
 
-**Inner table** — এই invoice-এর বিরুদ্ধে যত pay/refund entry হয়েছে:
+### সাপোর্ট ও টিকেটিং group
+- ❌ "সাপোর্ট ক্যাটাগরি" → Support Tickets-এর উপরে "ক্যাটাগরি ম্যানেজ" button
 
-| Sr. | Reseller Name | Paid Amount | Discount | Refund(-) | Transaction Type | Created On | Created By | Action |
-|---|---|---|---|---|---|---|---|---|
+### টাস্ক ম্যানেজমেন্ট group
+- ❌ "টাস্ক ক্যাটাগরি" → Tasks page-এর উপরে "ক্যাটাগরি ম্যানেজ" button
 
-**Footer totals row**: Total Fund | Total Payment | Total Discount | Total Due
+### ক্রয় group
+- ❌ "ভেন্ডর" → Purchases-এর উপরে "ভেন্ডর ম্যানেজ" button (কম-ব্যবহার)
 
-**Data source**: 
-- বর্তমান schema-এ pay events আলাদা row হিসেবে stored হয় না — `branch_funding` row update হয়। তাই view dialog-এ:
-  - Original fund row → সর্বদা ১ম row (TransactionType = "Fund")
-  - Refund rows → same `branch_id`-এ `trans_type='refund'` rows যেগুলোর remarks-এ এই invoice mentioned আছে
-  - Pay updates → row-এর remarks-এ `[Pay ৳X on date]` log থেকে parse করে timeline দেখানো (existing log format already exists)
+### কনফিগারেশন group
+- ❌ "বিভাগ / জেলা / উপজেলা" — তিনটে জিও-লোকেশন একটা **single page**-এ tab করে দেওয়া (`/dashboard/config/locations` — Division/District/Upazila tab) — sidebar-এ একটা item হবে
 
-**Action column** in inner table:
-- শুধু refund row-এর জন্য 🗑 delete button — চাপলে confirm: refund delete হলে POP balance সমপরিমাণ বাড়ানো হবে (refund undo)
-- Original fund row-এ delete button থাকবে না এই inner table-এ
+## ২. List page-এ "Add" button যোগ (নতুন কোড)
 
-## ৩. Safe Delete (main table-এর 🗑 button)
+| Page | নতুন Button |
+|---|---|
+| `clients/ClientList.tsx` | `+ নতুন ক্লায়েন্ট` → `/dashboard/clients/add` |
+| `branches/Managers.tsx` | ✅ already আছে |
+| `branches/Funding.tsx` | `🕘 ফান্ড হিস্ট্রি` → `/dashboard/branches/funding-history` |
+| `mikrotik/Servers.tsx` | `📥 Import Users` + `📦 Bulk Import` |
+| `monitoring/SwitchList.tsx` | `+ Add Switch` |
+| `support/Tickets.tsx` | `📁 ক্যাটাগরি ম্যানেজ` → categories page |
+| `tasks/Tasks.tsx` | `📁 ক্যাটাগরি ম্যানেজ` → categories page |
+| `purchases/Purchases.tsx` | `🏪 ভেন্ডর` → vendors page |
+| `leave/Approval.tsx` | `📝 নতুন আবেদন` → opens apply page/dialog |
 
-**নিয়ম**: একটা funding entry তখনই delete করা যাবে যখন তার বিরুদ্ধে কোনো received payment বা refund history নেই।
+Empty-state message: list খালি থাকলে "কোনো এন্ট্রি নেই — উপরের button থেকে যোগ করুন" দেখানো হবে।
 
-**Block condition** (যেকোনো একটা true হলে delete বন্ধ):
-- `received_amount > 0` (কেউ কিছু pay করেছে)
-- Same `branch_id`-এ এই invoice number reference করে কোনো refund row exists
-- Row নিজেই refund (refund rows আলাদাভাবে detail dialog থেকে delete হবে)
+## ৩. Locations merge (Division + District + Upazila)
+- নতুন wrapper page `src/pages/dashboard/config/Locations.tsx` — ৩টা tab; existing 3 page-এর component reuse
+- Sidebar-এ একটা entry: "এলাকা (বিভাগ/জেলা/উপজেলা)"
+- পুরাতন routes রাখব backward-compat (redirect to new tab)
 
-**Block হলে toast**: *"এই entry-র সাথে যুক্ত পেমেন্ট/রিফান্ড history আছে — আগে detail view থেকে সব sub-entry মুছুন, তারপর এটি delete করতে পারবেন"*
+## ৪. কী **থাকবেই**
+- সব page accessible থাকবে (route delete হবে না)
+- Permission system, badges, Quick Settings অপরিবর্তিত
+- Reseller portal sidebar এই scope-এর বাইরে
 
-**Allow হলে confirm dialog**:  
-*"এই Fund entry delete করলে POP balance ৳{amount} কমানো হবে। নিশ্চিত?"*
+## ফাইল পরিবর্তন
 
-**Implementation**: existing `apply_branch_funding_to_balance` trigger শুধু INSERT-এ চলে। Delete-এ balance reverse করার জন্য নতুন **AFTER DELETE trigger** যোগ করতে হবে যেটা:
-- যদি deleted row `trans_type='fund'` → `branch_managers.balance -= amount`
-- যদি deleted row `trans_type='refund'` → `branch_managers.balance += amount`
+**✏️ Sidebar audit**:
+- `src/components/AppSidebar.tsx` — উপরের list অনুসারে items/groups সরানো ও duplicate clean-up
 
-## Files Changed
+**✏️ List pages-এ button add**:
+- `src/pages/dashboard/clients/ClientList.tsx`
+- `src/pages/dashboard/branches/Funding.tsx`
+- `src/pages/dashboard/mikrotik/Servers.tsx`
+- `src/pages/dashboard/monitoring/SwitchList.tsx`
+- `src/pages/dashboard/support/Tickets.tsx`
+- `src/pages/dashboard/tasks/Tasks.tsx`
+- `src/pages/dashboard/purchases/Purchases.tsx`
+- `src/pages/dashboard/leave/Approval.tsx`
 
-**Migration** (নতুন trigger):
-- `apply_branch_funding_delete_to_balance()` function + `AFTER DELETE` trigger on `branch_funding`
+**➕ নতুন wrapper**:
+- `src/pages/dashboard/config/Locations.tsx` (Tabs around Divisions/Districts/Upazilas)
+- `src/App.tsx` — route যোগ `/dashboard/config/locations`
 
-**Code**:
-- ✏️ `src/components/branches/FundingPayDialog.tsx` — refund-এ POP balance fetch + cap + disabled state
-- ➕ `src/components/branches/FundingDetailDialog.tsx` — নতুন view dialog (image-162 layout)
-- ✏️ `src/pages/dashboard/branches/Funding.tsx`:
-  - 👁 button → `FundingDetailDialog` open
-  - 🗑 button → safe delete check + confirm dialog
-  - "View" eye icon row-এ যুক্ত করা (যদি না থাকে)
-
-## কী **হবে না**
-- Pay events-এর জন্য আলাদা history table তৈরি হবে না (existing remarks log + refund rows যথেষ্ট)
-- পুরাতন invoice-এ retroactive sub-entry generation নেই
-- Refund-কে কোনো নির্দিষ্ট fund invoice-এর সাথে hard-link করা হবে না — শুধু POP-এর overall balance-এ কাজ করবে
+## পরিসংখ্যান
+- Sidebar item কমবে: **~১৭টা** (১৫ remove + ১ duplicate + ৩ → ১ merge)
+- নতুন button যোগ হবে: **৯টা** list page-এ
+- কোনো page delete হবে না; সব accessible থাকবে
 
