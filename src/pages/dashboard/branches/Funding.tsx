@@ -26,7 +26,7 @@ type PopRow = {
   balance: number | null;
 };
 
-const PAYMENT_METHODS = ["Cash", "bKash", "Nagad", "Rocket", "Bank Transfer", "Cheque"];
+const PAYMENT_METHODS = ["Not Applicable", "Cash", "bKash", "Nagad", "Rocket", "Bank Transfer", "Cheque"];
 
 export default function Funding() {
   const qc = useQueryClient();
