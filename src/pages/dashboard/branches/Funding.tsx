@@ -57,6 +57,7 @@ export default function Funding() {
     row: null,
     mode: "pay",
   });
+  const [detailDialog, setDetailDialog] = useState<{ open: boolean; row: any }>({ open: false, row: null });
 
   const today = new Date().toISOString().split("T")[0];
   const initialForm = {
