@@ -118,6 +118,27 @@ export default function Packages() {
 
   const deleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
+      // SAFE DELETE GUARD: block if any client or tariff package is using these
+      const { data: clientUses } = await supabase
+        .from("clients")
+        .select("id, name, package_id")
+        .in("package_id", ids)
+        .limit(5);
+      if (clientUses && clientUses.length > 0) {
+        const names = clientUses.map((c: any) => c.name).join(", ");
+        throw new Error(
+          `এই package delete করা যাবে না — ${clientUses.length}+ client এটি ব্যবহার করছে (${names}...)। আগে তাদের অন্য package-এ shift করুন।`,
+        );
+      }
+      const { count: tariffUses } = await supabase
+        .from("reseller_tariff_packages")
+        .select("id", { count: "exact", head: true })
+        .in("package_id", ids);
+      if ((tariffUses ?? 0) > 0) {
+        throw new Error(
+          `এই package ${tariffUses} টি tariff-এ ব্যবহৃত হচ্ছে। আগে tariff থেকে সরান।`,
+        );
+      }
       for (const id of ids) {
         const { error } = await supabase.from("isp_packages").delete().eq("id", id);
         if (error) throw error;
@@ -128,6 +149,7 @@ export default function Packages() {
       toast.success("মুছে ফেলা হয়েছে");
       setSelected(new Set()); setDeleteOpen(false);
     },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const bulkStatus = useMutation({
