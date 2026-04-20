@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Banknote, Plus, Check, ChevronsUpDown, History, Filter, X, Eye, Trash2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import FundingPayDialog from "@/components/branches/FundingPayDialog";
+import FundingDetailDialog from "@/components/branches/FundingDetailDialog";
 
 type PopRow = {
   id: string;
@@ -56,6 +57,7 @@ export default function Funding() {
     row: null,
     mode: "pay",
   });
+  const [detailDialog, setDetailDialog] = useState<{ open: boolean; row: any }>({ open: false, row: null });
 
   const today = new Date().toISOString().split("T")[0];
   const initialForm = {
@@ -232,14 +234,34 @@ export default function Funding() {
   });
 
   const del = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("branch_funding").delete().eq("id", id);
+    mutationFn: async (row: any) => {
+      // Safe delete: refund rows handled via detail dialog
+      if ((row.trans_type ?? "") === "refund") {
+        throw new Error("Refund row সরাসরি delete করা যাবে না — Detail view থেকে মুছুন");
+      }
+      // Block if any payment received
+      if (Number(row.received_amount ?? 0) > 0) {
+        throw new Error("এই entry-র সাথে যুক্ত পেমেন্ট history আছে — আগে detail view থেকে সব sub-entry মুছুন, তারপর এটি delete করতে পারবেন");
+      }
+      // Block if any refund row references this invoice
+      if (row.invoice_number && row.branch_id) {
+        const { data: refs } = await supabase
+          .from("branch_funding")
+          .select("id, remarks")
+          .eq("branch_id", row.branch_id)
+          .eq("trans_type", "refund");
+        const linked = (refs ?? []).some((r: any) => (r.remarks ?? "").includes(row.invoice_number));
+        if (linked) {
+          throw new Error("এই entry-র সাথে যুক্ত রিফান্ড history আছে — আগে detail view থেকে সব sub-entry মুছুন");
+        }
+      }
+      const { error } = await supabase.from("branch_funding").delete().eq("id", row.id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["branch-funding"] });
       qc.invalidateQueries({ queryKey: ["pops-with-branch"] });
-      toast.success("ডিলিট হয়েছে");
+      toast.success("ডিলিট হয়েছে — POP balance আপডেট");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -565,7 +587,8 @@ export default function Funding() {
                               size="icon"
                               variant="ghost"
                               className="h-7 w-7"
-                              onClick={() => toast.info("Detail view শীঘ্রই")}
+                              onClick={() => setDetailDialog({ open: true, row: f })}
+                              title="View detail history"
                             >
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
@@ -574,7 +597,15 @@ export default function Funding() {
                               variant="ghost"
                               className="h-7 w-7 text-destructive"
                               onClick={() => {
-                                if (confirm("Delete this funding entry?")) del.mutate(f.id);
+                                const amt = Number(f.amount ?? 0);
+                                const msg = (f.trans_type ?? "") === "refund"
+                                  ? "Refund row সরাসরি delete করা যাবে না — Detail view থেকে মুছুন।"
+                                  : `এই Fund entry delete করলে POP balance ৳${amt.toLocaleString("en-BD")} কমানো হবে। নিশ্চিত?`;
+                                if ((f.trans_type ?? "") === "refund") {
+                                  toast.error(msg);
+                                  return;
+                                }
+                                if (confirm(msg)) del.mutate(f);
                               }}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -615,6 +646,12 @@ export default function Funding() {
         onOpenChange={(v) => setPayDialog((p) => ({ ...p, open: v }))}
         funding={payDialog.row}
         mode={payDialog.mode}
+      />
+
+      <FundingDetailDialog
+        open={detailDialog.open}
+        onOpenChange={(v) => setDetailDialog((d) => ({ ...d, open: v }))}
+        funding={detailDialog.row}
       />
     </div>
   );

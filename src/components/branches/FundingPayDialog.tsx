@@ -3,13 +3,14 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const PAYMENT_METHODS = ["Cash", "bKash", "Nagad", "Rocket", "Bank Transfer", "Cheque"];
+const PAYMENT_METHODS = ["Not Applicable", "Cash", "bKash", "Nagad", "Rocket", "Bank Transfer", "Cheque"];
 
 interface Props {
   open: boolean;
@@ -24,15 +25,31 @@ export default function FundingPayDialog({ open, onOpenChange, funding, mode }: 
   const dueAmount = Number(funding?.due_amount ?? 0);
 
   const [amount, setAmount] = useState(0);
-  const [method, setMethod] = useState("Cash");
+  const [method, setMethod] = useState("Not Applicable");
   const [receivedBy, setReceivedBy] = useState("");
   const [date, setDate] = useState(today);
   const [remarks, setRemarks] = useState("");
 
+  // Live POP balance for refund cap
+  const { data: pop } = useQuery({
+    queryKey: ["pop-balance-for-refund", funding?.branch_id],
+    enabled: !!open && mode === "refund" && !!funding?.branch_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("branch_managers")
+        .select("id, name, balance")
+        .eq("branch_id", funding.branch_id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const availableBalance = Number(pop?.balance ?? 0);
+
   useEffect(() => {
     if (open) {
       setAmount(mode === "pay" ? dueAmount : 0);
-      setMethod("Cash");
+      setMethod("Not Applicable");
       setReceivedBy("");
       setDate(today);
       setRemarks("");
@@ -54,9 +71,11 @@ export default function FundingPayDialog({ open, onOpenChange, funding, mode }: 
       if (mode === "pay" && amount > dueAmount) {
         throw new Error(`Receive amount due-এর বেশি হতে পারবে না (Due: ৳${dueAmount})`);
       }
+      if (mode === "refund" && amount > availableBalance) {
+        throw new Error(`POP-এর available balance ৳${availableBalance.toLocaleString("en-BD")} — এর বেশি refund করা যাবে না`);
+      }
 
       if (mode === "pay") {
-        // Add to received_amount, reduce due_amount
         const newReceived = Number(funding.received_amount ?? 0) + amount;
         const newDue = Math.max(0, dueAmount - amount);
         const { error } = await supabase
@@ -67,12 +86,12 @@ export default function FundingPayDialog({ open, onOpenChange, funding, mode }: 
             payment_method: method,
             received_by: receivedBy || funding.received_by,
             received_on: date,
-            remarks: remarks ? `${funding.remarks ?? ""}\n[Pay ৳${amount} on ${date}] ${remarks}`.trim() : funding.remarks,
+            remarks: `${funding.remarks ?? ""}\n[Pay ৳${amount} on ${date}]${remarks ? " " + remarks : ""}`.trim(),
           })
           .eq("id", funding.id);
         if (error) throw error;
       } else {
-        // Refund — insert a refund row that debits POP balance
+        const refundRemarks = `Refund against ${funding.invoice_number ?? funding.id}${remarks ? " — " + remarks : ""}`;
         const { error } = await supabase.from("branch_funding").insert({
           branch_id: funding.branch_id,
           amount,
@@ -83,8 +102,8 @@ export default function FundingPayDialog({ open, onOpenChange, funding, mode }: 
           received_by: receivedBy || null,
           received_on: date,
           funding_date: date,
-          remarks: remarks || `Refund against ${funding.invoice_number ?? funding.id}`,
-          description: remarks || null,
+          remarks: refundRemarks,
+          description: refundRemarks,
           type: "debit",
           trans_type: "refund",
           status: "paid",
@@ -95,11 +114,14 @@ export default function FundingPayDialog({ open, onOpenChange, funding, mode }: 
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["branch-funding"] });
       qc.invalidateQueries({ queryKey: ["pops-with-branch"] });
+      qc.invalidateQueries({ queryKey: ["pop-balance-for-refund"] });
       toast.success(mode === "pay" ? "Payment received" : "Refund recorded");
       onOpenChange(false);
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const refundDisabled = mode === "refund" && availableBalance <= 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,21 +138,42 @@ export default function FundingPayDialog({ open, onOpenChange, funding, mode }: 
               <div className="text-muted-foreground text-xs">Invoice</div>
               <div className="font-mono">{funding?.invoice_number ?? "-"}</div>
             </div>
-            <div className="rounded-md border bg-muted/40 p-2">
-              <div className="text-muted-foreground text-xs">Current Due</div>
-              <div className="font-semibold text-destructive">৳{dueAmount.toLocaleString("en-BD")}</div>
-            </div>
+            {mode === "pay" ? (
+              <div className="rounded-md border bg-muted/40 p-2">
+                <div className="text-muted-foreground text-xs">Current Due</div>
+                <div className="font-semibold text-destructive">৳{dueAmount.toLocaleString("en-BD")}</div>
+              </div>
+            ) : (
+              <div className="rounded-md border bg-muted/40 p-2">
+                <div className="text-muted-foreground text-xs">POP Available Balance</div>
+                <div className={`font-semibold ${availableBalance > 0 ? "text-success" : "text-destructive"}`}>
+                  ৳{availableBalance.toLocaleString("en-BD")}
+                </div>
+              </div>
+            )}
           </div>
+
+          {refundDisabled && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
+              এই POP-এর কোনো অবশিষ্ট balance নেই, refund সম্ভব নয়।
+            </div>
+          )}
 
           <div>
             <Label>{mode === "pay" ? "Receive Amount (৳)" : "Refund Amount (৳)"}</Label>
             <Input
               type="number"
               min={1}
-              max={mode === "pay" ? dueAmount : undefined}
+              max={mode === "pay" ? dueAmount : availableBalance}
               value={amount || ""}
               onChange={(e) => setAmount(Number(e.target.value))}
+              disabled={refundDisabled}
             />
+            {mode === "refund" && availableBalance > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                সর্বোচ্চ refund: ৳{availableBalance.toLocaleString("en-BD")}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -171,7 +214,7 @@ export default function FundingPayDialog({ open, onOpenChange, funding, mode }: 
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>বাতিল</Button>
-          <Button onClick={() => submit.mutate()} disabled={submit.isPending}>
+          <Button onClick={() => submit.mutate()} disabled={submit.isPending || refundDisabled}>
             {submit.isPending ? "..." : mode === "pay" ? "Receive Payment" : "Refund"}
           </Button>
         </DialogFooter>
