@@ -153,7 +153,7 @@ export default function Managers() {
               <span className="font-semibold text-amber-700 dark:text-amber-400">⚠ {orphanCount} জন Unassigned Client</span>
               <span className="text-muted-foreground"> — কোনো POP-এর সাথে যুক্ত নয় (branch_id NULL)</span>
             </div>
-            <Button size="sm" variant="outline" onClick={() => navigate("/dashboard/clients/list?orphan=1")}>
+            <Button size="sm" variant="outline" onClick={() => navigate("/dashboard/clients?orphan=1")}>
               এদের দেখুন / Assign করুন
             </Button>
           </CardContent>
