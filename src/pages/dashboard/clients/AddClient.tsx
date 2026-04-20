@@ -43,6 +43,7 @@ export default function AddClient() {
 
   const [mikrotikProfiles, setMikrotikProfiles] = useState<{ name: string; rateLimit?: string }[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
+  const [clientCodeError, setClientCodeError] = useState<string>("");
 
   // Compute full expire_date from selected day-of-month (1-31). Uses current month;
   // if today is past that day, rolls to next month. Clamps to last day if month-এ দিন কম.
