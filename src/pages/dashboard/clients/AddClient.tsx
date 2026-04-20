@@ -410,12 +410,19 @@ export default function AddClient() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">
-          {isPopMode ? `POP — ${popName || ""}` : "ক্লায়েন্ট"}{" "}
-          <span className="text-sm font-normal text-muted-foreground">
-            {editMode ? "ক্লায়েন্ট সম্পাদনা" : "নতুন ক্লায়েন্ট যোগ"}
-          </span>
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold">
+            {isPopMode ? `POP — ${popName || ""}` : "ক্লায়েন্ট"}{" "}
+            <span className="text-sm font-normal text-muted-foreground">
+              {editMode ? "ক্লায়েন্ট সম্পাদনা" : "নতুন ক্লায়েন্ট যোগ"}
+            </span>
+          </h1>
+          {isPopMode && (
+            <p className="text-xs text-muted-foreground mt-1">
+              নতুন ক্লায়েন্ট — সার্ভার, প্রোফাইল ও জেলা/উপজেলা স্বয়ংক্রিয় POP প্রোফাইল থেকে
+            </p>
+          )}
+        </div>
       </div>
 
       {isPopMode && !tariffId && (
