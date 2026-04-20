@@ -895,6 +895,9 @@ export default function Tariff() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs">
+                          {t.created_by ? (creatorMap[t.created_by] ?? "—") : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">
                           {t.created_at
                             ? format(new Date(t.created_at), "dd MMM yyyy")
                             : "-"}
@@ -916,6 +919,42 @@ export default function Tariff() {
                               onClick={() => openEdit(t)}
                             >
                               <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Sync Package (DB-level)"
+                              disabled={syncing === t.id + ":pkg"}
+                              onClick={() => {
+                                const popCount = (assignedPopsByTariff?.[t.id] ?? []).length;
+                                if (confirm(`Sync Package চালাবেন? এই tariff-এর ${popCount} POP-এর সব client affected হবে।`))
+                                  syncPackage(t.id);
+                              }}
+                            >
+                              <RefreshCw className={`h-4 w-4 ${syncing === t.id + ":pkg" ? "animate-spin" : ""}`} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Sync Profile (MikroTik push)"
+                              disabled={syncing === t.id + ":prof"}
+                              onClick={() => {
+                                if (confirm("Sync Profile চালাবেন? সব client-এর MikroTik profile push হবে।"))
+                                  syncProfile(t.id);
+                              }}
+                            >
+                              <RotateCw className={`h-4 w-4 ${syncing === t.id + ":prof" ? "animate-spin" : ""}`} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Change Log"
+                              onClick={() => {
+                                setLogTariff({ id: t.id, name: t.name });
+                                setLogOpen(true);
+                              }}
+                            >
+                              <History className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
