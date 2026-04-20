@@ -4,32 +4,162 @@ import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  LayoutDashboard,
-  LogOut,
-  Receipt,
-  ShoppingCart,
-  LifeBuoy,
-  Users,
-  Settings,
-  Search,
-  Menu,
-  Activity,
-  Server,
-  Globe,
+  LayoutDashboard, LogOut, Receipt, ShoppingCart, LifeBuoy, Users, Settings,
+  Search, Menu, Activity, Server, Globe, ChevronDown, ChevronRight,
+  Cog, MapPin, Box, Package, Layers, Briefcase, BadgeCheck, Cpu,
+  UserPlus, ListChecks, Wallet, BarChart3, FileText, Calendar,
+  MessageSquare, Send, Antenna, Radar, Wifi, History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Key = "dashboard" | "invoices" | "purchases" | "tickets" | "users" | "settings" | "mikrotik";
+type PermKey =
+  | "dashboard" | "configuration" | "mikrotik" | "employee" | "client"
+  | "billing" | "monitoring" | "sms" | "reports" | "purchases"
+  | "tickets" | "system" | "fund_history" | "settings" | "users" | "invoices";
 
-const allNav: { key: Key; to: string; label: string; icon: any }[] = [
-  { key: "dashboard", to: "/reseller/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { key: "mikrotik", to: "/reseller/mikrotik-users", label: "MikroTik Users", icon: Server },
-  { key: "invoices", to: "/reseller/invoices", label: "Billing Invoices", icon: Receipt },
-  { key: "purchases", to: "/reseller/purchases", label: "Purchase Orders", icon: ShoppingCart },
-  { key: "tickets", to: "/reseller/tickets", label: "Support Tickets", icon: LifeBuoy },
-  { key: "users", to: "/reseller/users", label: "User Management", icon: Users },
-  { key: "settings", to: "/reseller/settings", label: "Company Settings", icon: Settings },
+interface NavLink { to: string; label: string; icon: any }
+interface NavGroup {
+  key: PermKey;
+  label: string;
+  icon: any;
+  items: NavLink[];
+}
+
+const groups: NavGroup[] = [
+  {
+    key: "dashboard", label: "Dashboard", icon: LayoutDashboard,
+    items: [{ to: "/reseller/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+  },
+  {
+    key: "configuration", label: "Configuration", icon: Cog,
+    items: [
+      { to: "/reseller/config/zones", label: "Zone", icon: MapPin },
+      { to: "/reseller/config/sub-zones", label: "Sub Zone", icon: Layers },
+      { to: "/reseller/config/boxes", label: "Box", icon: Box },
+      { to: "/reseller/config/packages", label: "Package", icon: Package },
+      { to: "/reseller/config/districts", label: "District", icon: MapPin },
+      { to: "/reseller/config/upazilas", label: "Upazila", icon: MapPin },
+      { to: "/reseller/config/departments", label: "Department", icon: Briefcase },
+      { to: "/reseller/config/designations", label: "Designation", icon: BadgeCheck },
+      { to: "/reseller/config/devices", label: "Device", icon: Cpu },
+    ],
+  },
+  {
+    key: "mikrotik", label: "MikroTik Client", icon: Server,
+    items: [{ to: "/reseller/mikrotik-users", label: "MikroTik Users", icon: Server }],
+  },
+  {
+    key: "employee", label: "Employee", icon: Users,
+    items: [
+      { to: "/reseller/employees/add", label: "Add Employee", icon: UserPlus },
+      { to: "/reseller/employees", label: "Employee List", icon: Users },
+      { to: "/reseller/employees/salary-sheet", label: "Salary Sheet", icon: FileText },
+      { to: "/reseller/employees/payroll", label: "Payroll", icon: Wallet },
+      { to: "/reseller/employees/attendance", label: "Attendance", icon: Calendar },
+    ],
+  },
+  {
+    key: "client", label: "Client", icon: Users,
+    items: [
+      { to: "/reseller/clients/add", label: "Add Client", icon: UserPlus },
+      { to: "/reseller/clients", label: "Client List", icon: Users },
+      { to: "/reseller/clients/billing", label: "Billing Client", icon: Receipt },
+      { to: "/reseller/clients/left", label: "Left Clients", icon: Users },
+      { to: "/reseller/clients/scheduler", label: "Scheduler", icon: Calendar },
+    ],
+  },
+  {
+    key: "billing", label: "Billing", icon: Receipt,
+    items: [
+      { to: "/reseller/billing/list", label: "Billing List", icon: Receipt },
+      { to: "/reseller/billing/invoice", label: "Invoice", icon: FileText },
+      { to: "/reseller/billing/daily-collection", label: "Daily Collection", icon: Wallet },
+      { to: "/reseller/billing/profile", label: "Client Bill Profile", icon: ListChecks },
+    ],
+  },
+  {
+    key: "monitoring", label: "Monitoring", icon: Antenna,
+    items: [
+      { to: "/reseller/monitoring/online", label: "Online Clients", icon: Wifi },
+      { to: "/reseller/tickets", label: "Client Support", icon: LifeBuoy },
+      { to: "/reseller/monitoring/ping", label: "Ping Tools", icon: Radar },
+    ],
+  },
+  {
+    key: "sms", label: "SMS Service", icon: MessageSquare,
+    items: [
+      { to: "/reseller/sms/templates", label: "Templates", icon: FileText },
+      { to: "/reseller/sms/individual", label: "Individual / Group", icon: Users },
+      { to: "/reseller/sms/send", label: "Send SMS", icon: Send },
+      { to: "/reseller/sms/gateway", label: "Gateway", icon: Server },
+    ],
+  },
+  {
+    key: "reports", label: "Reports", icon: BarChart3,
+    items: [
+      { to: "/reseller/reports/bill-collection", label: "Bill Collection", icon: BarChart3 },
+      { to: "/reseller/reports/enable-disable", label: "Enable/Disable", icon: BarChart3 },
+      { to: "/reseller/reports/messages", label: "Messages", icon: BarChart3 },
+      { to: "/reseller/reports/processing-fee", label: "Processing Fee", icon: BarChart3 },
+      { to: "/reseller/reports/discount", label: "Discount", icon: BarChart3 },
+      { to: "/reseller/reports/due-sms", label: "Due SMS", icon: BarChart3 },
+    ],
+  },
+  {
+    key: "purchases", label: "Purchase Orders", icon: ShoppingCart,
+    items: [{ to: "/reseller/purchases", label: "Purchase Orders", icon: ShoppingCart }],
+  },
+  {
+    key: "system", label: "System", icon: Settings,
+    items: [
+      { to: "/reseller/settings", label: "Company Settings", icon: Settings },
+      { to: "/reseller/system/period", label: "Period", icon: Calendar },
+      { to: "/reseller/users", label: "Users", icon: Users },
+    ],
+  },
+  {
+    key: "fund_history", label: "Fund History", icon: History,
+    items: [
+      { to: "/reseller/fund-history/credit", label: "Credit History", icon: History },
+      { to: "/reseller/fund-history/debit", label: "Debit History", icon: History },
+    ],
+  },
 ];
+
+// Map legacy permission keys (already issued by portal-auth) to new groups
+function isGroupAllowed(g: NavGroup, customer: any): boolean {
+  if (!customer) return false;
+  const isBw = customer.type === "bw_customer";
+  const isSub = customer.type === "reseller_sub";
+
+  // BW customer hides POP-specific groups
+  if (isBw) {
+    return ["dashboard", "billing", "purchases", "tickets", "settings", "system"].includes(g.key);
+  }
+
+  // Reseller (full POP manager) — see everything
+  if (!isSub) return true;
+
+  // Sub-user — gated by permissions object
+  const perms = customer.permissions || {};
+  // Legacy keys map for backward compat
+  const legacyMap: Record<string, string[]> = {
+    dashboard: ["dashboard"],
+    configuration: ["configuration", "settings"],
+    mikrotik: ["mikrotik", "dashboard"],
+    employee: ["employee", "users"],
+    client: ["client", "dashboard"],
+    billing: ["billing", "invoices"],
+    monitoring: ["monitoring", "tickets"],
+    sms: ["sms"],
+    reports: ["reports"],
+    purchases: ["purchases"],
+    tickets: ["tickets"],
+    system: ["system", "settings"],
+    fund_history: ["fund_history", "settings"],
+  };
+  return (legacyMap[g.key] || [g.key]).some((k) => perms[k]);
+}
 
 export const ResellerLayout = ({ children }: { children: ReactNode }) => {
   const { customer, logout } = usePortalAuth();
@@ -37,26 +167,49 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const [search, setSearch] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    // Open the group containing the current route by default
+    const set = new Set<string>();
+    for (const g of groups) {
+      if (g.items.some((i) => location.pathname.startsWith(i.to))) set.add(g.key);
+    }
+    if (set.size === 0) set.add("dashboard");
+    return set;
+  });
 
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
   };
 
-  // Sub-user permission filtering
-  const isSub = customer?.type === "reseller_sub";
-  const isBwCustomer = customer?.type === "bw_customer";
-  const perms = customer?.permissions;
-  const nav = allNav
-    .filter((item) => (isBwCustomer ? item.key !== "users" && item.key !== "mikrotik" : true))
-    .filter((item) => (isSub && perms && item.key !== "mikrotik" ? perms[item.key as keyof typeof perms] : true))
-    .filter((item) => item.label.toLowerCase().includes(search.toLowerCase()));
+  const toggleGroup = (k: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+  };
+
+  const visibleGroups = groups
+    .filter((g) => isGroupAllowed(g, customer))
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((i) =>
+        !search || i.label.toLowerCase().includes(search.toLowerCase()),
+      ),
+    }))
+    .filter((g) =>
+      !search ||
+      g.label.toLowerCase().includes(search.toLowerCase()) ||
+      g.items.length > 0,
+    );
 
   const popLabel = customer?.name?.toUpperCase() || "RESELLER PORTAL";
+  const isSub = customer?.type === "reseller_sub";
 
   return (
     <div className="min-h-screen flex bg-background">
-      {/* Sidebar */}
       <aside
         className={cn(
           "fixed md:static inset-y-0 left-0 z-40 w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-transform md:translate-x-0",
@@ -69,6 +222,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
           </div>
           <span className="font-semibold text-sm truncate">{popLabel}</span>
         </div>
+
         <div className="p-3 border-b border-sidebar-border">
           <div className="relative">
             <Search className="h-4 w-4 absolute left-2.5 top-2.5 text-muted-foreground" />
@@ -80,35 +234,82 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
             />
           </div>
         </div>
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {nav.map((item) => {
-            const Icon = item.icon;
-            const active = location.pathname.startsWith(item.to);
+
+        <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
+          {visibleGroups.map((g) => {
+            const Icon = g.icon;
+            const isOpen = openGroups.has(g.key) || !!search;
+            const isSingle = g.items.length === 1 && g.items[0].label === g.label;
+            const groupActive = g.items.some((i) => location.pathname.startsWith(i.to));
+
+            if (isSingle) {
+              const item = g.items[0];
+              const active = location.pathname.startsWith(item.to);
+              return (
+                <Link
+                  key={g.key}
+                  to={item.to}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                    active
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              );
+            }
+
             return (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-                  active
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              <div key={g.key}>
+                <button
+                  onClick={() => toggleGroup(g.key)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                    groupActive
+                      ? "text-sidebar-primary-foreground bg-sidebar-accent/50"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="flex-1 text-left">{g.label}</span>
+                  {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                </button>
+                {isOpen && (
+                  <div className="ml-3 pl-3 border-l border-sidebar-border space-y-0.5 mt-0.5 mb-1">
+                    {g.items.map((item) => {
+                      const ItemIcon = item.icon;
+                      const active = location.pathname === item.to ||
+                        (item.to !== "/reseller/dashboard" && location.pathname.startsWith(item.to));
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setMobileOpen(false)}
+                          className={cn(
+                            "flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium transition-colors",
+                            active
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                          )}
+                        >
+                          <ItemIcon className="h-3.5 w-3.5" />
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 )}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
+              </div>
             );
           })}
         </nav>
+
         <div className="p-3 border-t border-sidebar-border">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={handleLogout}
-          >
+          <Button variant="outline" size="sm" className="w-full" onClick={handleLogout}>
             <LogOut className="h-4 w-4 mr-2" /> Logout
           </Button>
         </div>
@@ -156,7 +357,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
             </div>
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6 overflow-x-hidden">{children}</main>
       </div>
     </div>
   );
