@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,13 +88,24 @@ export default function Funding() {
 
   const due = Math.max(0, Number(form.funding_amount) - Number(form.received_amount) - Number(form.discount));
 
+  const totals = useMemo(() => {
+    const t = { amount: 0, received: 0, discount: 0, due: 0 };
+    (fundings ?? []).forEach((f: any) => {
+      t.amount += Number(f.amount ?? 0);
+      t.received += Number(f.received_amount ?? 0);
+      t.discount += Number(f.discount ?? 0);
+      t.due += Number(f.due_amount ?? 0);
+    });
+    return t;
+  }, [fundings]);
+
   const save = useMutation({
     mutationFn: async () => {
       if (!form.pop_id) throw new Error("POP নির্বাচন করুন");
       if (!form.funding_amount || form.funding_amount <= 0) throw new Error("Funding amount দিন");
       if (form.received_amount < 0) throw new Error("Received amount valid নয়");
 
-      const status = due > 0 ? "pending" : "paid";
+      const status = "paid";
       const { error } = await supabase.from("branch_funding").insert({
         branch_id: selectedPop?.branch_id ?? null,
         amount: form.funding_amount,
@@ -335,6 +346,18 @@ export default function Funding() {
                     </TableRow>
                   )}
                 </TableBody>
+                {fundings && fundings.length > 0 && (
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell colSpan={3} className="font-semibold">মোট</TableCell>
+                      <TableCell className="font-mono font-semibold">৳{totals.amount.toLocaleString("en-BD")}</TableCell>
+                      <TableCell className="font-mono font-semibold">৳{totals.received.toLocaleString("en-BD")}</TableCell>
+                      <TableCell className="font-mono font-semibold">৳{totals.discount.toLocaleString("en-BD")}</TableCell>
+                      <TableCell className="font-mono font-semibold">৳{totals.due.toLocaleString("en-BD")}</TableCell>
+                      <TableCell colSpan={3}></TableCell>
+                    </TableRow>
+                  </TableFooter>
+                )}
               </Table>
             </div>
           )}
