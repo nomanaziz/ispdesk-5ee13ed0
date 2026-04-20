@@ -78,6 +78,8 @@ export default function PopForm({ mode, pop }: Props) {
     tariff_id: pop?.tariff_id || "",
     disable_clients: pop?.disable_clients ?? true,
     min_balance: pop?.min_balance ?? 0,
+    allow_negative_balance: pop?.allow_negative_balance ?? false,
+    auto_disable_day: pop?.auto_disable_day ?? 10,
     username: pop?.username || "",
     password: "",
     confirm_password: "",
@@ -207,6 +209,8 @@ export default function PopForm({ mode, pop }: Props) {
         company_name: form.company_name || null,
         disable_clients: form.disable_clients,
         min_balance: form.min_balance,
+        allow_negative_balance: form.pop_type === "postpaid" ? form.allow_negative_balance : false,
+        auto_disable_day: form.pop_type === "postpaid" ? form.auto_disable_day : 10,
         permissions,
         logo_url,
       };
@@ -432,7 +436,40 @@ export default function PopForm({ mode, pop }: Props) {
             <Label>Minimum Balance</Label>
             <Input type="number" value={form.min_balance} onChange={(e) => upd("min_balance", Number(e.target.value))} />
           </div>
-          <div className="md:col-span-2" />
+
+          {form.pop_type === "postpaid" && (
+            <>
+              <div className="flex items-end gap-3">
+                <div className="flex items-start gap-2">
+                  <Switch
+                    checked={form.allow_negative_balance}
+                    onCheckedChange={(v) => upd("allow_negative_balance", v)}
+                  />
+                  <div>
+                    <Label className="text-sm">Negative Balance অনুমোদন</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Postpaid POP-এর balance শূন্যের নিচে যেতে পারবে
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <Label>Auto-disable তারিখ (১–২৮)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={28}
+                  value={form.auto_disable_day}
+                  onChange={(e) => upd("auto_disable_day", Math.max(1, Math.min(28, Number(e.target.value) || 10)))}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  এই তারিখের মধ্যে পাওনা না দিলে line auto disable হবে
+                </p>
+              </div>
+              <div />
+            </>
+          )}
+          {form.pop_type !== "postpaid" && <div className="md:col-span-2" />}
 
           <div>
             <Label>Username {mode === "create" && <Req />} {lockUsername && <Lock className="inline h-3 w-3 ml-1" />}</Label>
