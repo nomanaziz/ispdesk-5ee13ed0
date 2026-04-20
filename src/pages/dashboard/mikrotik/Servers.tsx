@@ -98,23 +98,23 @@ export default function Servers() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      // SAFE DELETE GUARD
-      const { count: clientCount } = await supabase
-        .from("clients")
-        .select("id", { count: "exact", head: true })
-        .eq("mikrotik_server_id", id);
-      if ((clientCount ?? 0) > 0) {
-        throw new Error(
-          `এই server delete করা যাবে না — ${clientCount} জন client এই server ব্যবহার করছে। আগে তাদের অন্য server-এ shift করুন।`,
-        );
-      }
+      // SAFE DELETE GUARD: block if any tariff package uses this server
       const { count: tariffCount } = await supabase
         .from("reseller_tariff_packages")
         .select("id", { count: "exact", head: true })
         .eq("mikrotik_server_id", id);
       if ((tariffCount ?? 0) > 0) {
         throw new Error(
-          `এই server ${tariffCount} টি tariff package-এ ব্যবহৃত হচ্ছে। আগে সেগুলো থেকে সরান।`,
+          `এই server delete করা যাবে না — ${tariffCount} টি tariff package এই server ব্যবহার করছে। আগে tariff থেকে server পরিবর্তন করুন।`,
+        );
+      }
+      const { count: tariffMainCount } = await supabase
+        .from("reseller_tariffs")
+        .select("id", { count: "exact", head: true })
+        .eq("mikrotik_server_id", id);
+      if ((tariffMainCount ?? 0) > 0) {
+        throw new Error(
+          `এই server ${tariffMainCount} টি tariff-এ ব্যবহৃত হচ্ছে। আগে tariff থেকে সরান।`,
         );
       }
       const { error } = await supabase.from("mikrotik_devices").delete().eq("id", id);
