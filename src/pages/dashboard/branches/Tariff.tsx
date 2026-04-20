@@ -823,7 +823,7 @@ export default function Tariff() {
                   {(!tariffs || tariffs.length === 0) && (
                     <TableRow>
                       <TableCell
-                        colSpan={9}
+                        colSpan={10}
                         className="text-center text-muted-foreground py-8"
                       >
                         কোনো tariff পাওয়া যায়নি
