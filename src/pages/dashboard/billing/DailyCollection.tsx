@@ -15,11 +15,13 @@ import { toast } from "@/hooks/use-toast";
 import {
   Banknote, FileSpreadsheet, FileText, Plus, Trash2, CheckCircle2, Search, Clock, X
 } from "lucide-react";
+import { usePopScope } from "@/hooks/usePopScope";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function DailyCollection() {
   const queryClient = useQueryClient();
+  const { isPopMode, branchId } = usePopScope();
   const [fromDate, setFromDate] = useState(today());
   const [toDate, setToDate] = useState(today());
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
@@ -31,34 +33,38 @@ export default function DailyCollection() {
 
   // Fetch collections
   const { data: collections = [], isLoading } = useQuery({
-    queryKey: ["bill-collections", fromDate, toDate],
+    queryKey: ["bill-collections", fromDate, toDate, branchId || "all"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bill_collections")
         .select(`
           *, 
-          client:clients(id, client_id, name, contact, username, monthly_bill),
+          client:clients!inner(id, client_id, name, contact, username, monthly_bill, branch_id),
           billing:billing(id, month, amount, paid, due, status)
         `)
         .gte("created_at", `${fromDate}T00:00:00`)
         .lte("created_at", `${toDate}T23:59:59`)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+      let rows = data || [];
+      if (isPopMode && branchId) rows = rows.filter((r: any) => r.client?.branch_id === branchId);
+      return rows;
     },
   });
 
   // Fetch clients for receive dialog
   const { data: clientsList = [] } = useQuery({
-    queryKey: ["clients-for-billing", clientSearch],
+    queryKey: ["clients-for-billing", clientSearch, branchId || "all"],
     enabled: receiveOpen && clientSearch.length >= 2,
     queryFn: async () => {
-      const { data } = await supabase
+      let q: any = supabase
         .from("clients")
         .select("id, client_id, name, contact, username, monthly_bill")
         .eq("status", "active")
         .or(`client_id.ilike.%${clientSearch}%,name.ilike.%${clientSearch}%,contact.ilike.%${clientSearch}%`)
         .limit(20);
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data } = await q;
       return data || [];
     },
   });

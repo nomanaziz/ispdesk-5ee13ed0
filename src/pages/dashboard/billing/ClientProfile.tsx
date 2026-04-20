@@ -17,11 +17,13 @@ import {
   CreditCard, FileText, Activity, Shield, ChevronDown, ChevronRight
 } from "lucide-react";
 import BillEditDialog from "@/components/billing/BillEditDialog";
+import { usePopScope } from "@/hooks/usePopScope";
 
 export default function ClientProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isPopMode, branchId } = usePopScope();
   const [pppSnapshot, setPppSnapshot] = useState<any>(null);
   const [inlineSearch, setInlineSearch] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -112,17 +114,19 @@ export default function ClientProfile() {
     setShowSearchResults(true);
     const { data } = await supabase
       .from("clients")
-      .select("id, client_id, name, contact, status")
+      .select("id, client_id, name, contact, status, branch_id")
       .or(`name.ilike.%${q}%,client_id.ilike.%${q}%,contact.ilike.%${q}%,username.ilike.%${q}%`)
       .limit(8);
-    setSearchResults(data || []);
-  }, []);
+    let rows = data || [];
+    if (isPopMode && branchId) rows = rows.filter((r: any) => r.branch_id === branchId);
+    setSearchResults(rows);
+  }, [isPopMode, branchId]);
 
   const selectSearchResult = (clientId: string) => {
     setInlineSearch("");
     setSearchResults([]);
     setShowSearchResults(false);
-    navigate(`/dashboard/billing/client/${clientId}`);
+    navigate(isPopMode ? `/pop-admin/billing/client/${clientId}` : `/dashboard/billing/client/${clientId}`);
   };
 
   const pppActionMutation = useMutation({
@@ -150,6 +154,17 @@ export default function ClientProfile() {
   if (!client) return <div className="p-8 text-center text-muted-foreground">ক্লায়েন্ট পাওয়া যায়নি</div>;
 
   const c: any = client;
+  // POP scope guard — block access to clients outside this POP's branch
+  if (isPopMode && branchId && c.branch_id && c.branch_id !== branchId) {
+    return (
+      <div className="p-8 text-center space-y-3">
+        <p className="text-muted-foreground">এই ক্লায়েন্ট আপনার POP-এর অন্তর্ভুক্ত নয়</p>
+        <Button variant="outline" size="sm" onClick={() => navigate("/pop-admin/clients/billing")}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> বিলিং তালিকায় ফিরুন
+        </Button>
+      </div>
+    );
+  }
   const billings = (c.billing || []).sort((a: any, b: any) => b.month?.localeCompare(a.month));
   const collections = (c.bill_collections || []).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   const pppData = pppSnapshot || {};
@@ -161,7 +176,7 @@ export default function ClientProfile() {
     <div className="p-4 space-y-4">
       {/* Top Bar with Back + Search */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/billing")}>
+        <Button variant="ghost" size="sm" onClick={() => navigate(isPopMode ? "/pop-admin/clients/billing" : "/dashboard/billing")}>
           <ArrowLeft className="h-4 w-4 mr-1" /> ফিরুন
         </Button>
         <div className="relative flex-1 max-w-md">

@@ -13,8 +13,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Search, Trash2, Edit, Power, PowerOff, Settings, MapPin } from "lucide-react";
+import { usePopScope } from "@/hooks/usePopScope";
 
 export default function Zones() {
+  const { isPopMode, branchId } = usePopScope();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -24,9 +26,11 @@ export default function Zones() {
   const queryClient = useQueryClient();
 
   const { data: zones, isLoading } = useQuery({
-    queryKey: ["config-zones"],
+    queryKey: ["config-zones", isPopMode && branchId ? branchId : "all"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("zones").select("*, divisions(name), districts(name), upazilas(name)").order("name");
+      let q: any = supabase.from("zones").select("*, divisions(name), districts(name), upazilas(name)").order("name");
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
@@ -79,6 +83,7 @@ export default function Zones() {
         district_id: form.district_id || null,
         upazila_id: form.upazila_id || null,
       };
+      if (isPopMode && branchId) data.branch_id = branchId;
       if (editingItem) {
         const { error } = await supabase.from("zones").update(data).eq("id", editingItem.id);
         if (error) throw error;
