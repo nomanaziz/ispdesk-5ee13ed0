@@ -234,14 +234,34 @@ export default function Funding() {
   });
 
   const del = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("branch_funding").delete().eq("id", id);
+    mutationFn: async (row: any) => {
+      // Safe delete: refund rows handled via detail dialog
+      if ((row.trans_type ?? "") === "refund") {
+        throw new Error("Refund row সরাসরি delete করা যাবে না — Detail view থেকে মুছুন");
+      }
+      // Block if any payment received
+      if (Number(row.received_amount ?? 0) > 0) {
+        throw new Error("এই entry-র সাথে যুক্ত পেমেন্ট history আছে — আগে detail view থেকে সব sub-entry মুছুন, তারপর এটি delete করতে পারবেন");
+      }
+      // Block if any refund row references this invoice
+      if (row.invoice_number && row.branch_id) {
+        const { data: refs } = await supabase
+          .from("branch_funding")
+          .select("id, remarks")
+          .eq("branch_id", row.branch_id)
+          .eq("trans_type", "refund");
+        const linked = (refs ?? []).some((r: any) => (r.remarks ?? "").includes(row.invoice_number));
+        if (linked) {
+          throw new Error("এই entry-র সাথে যুক্ত রিফান্ড history আছে — আগে detail view থেকে সব sub-entry মুছুন");
+        }
+      }
+      const { error } = await supabase.from("branch_funding").delete().eq("id", row.id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["branch-funding"] });
       qc.invalidateQueries({ queryKey: ["pops-with-branch"] });
-      toast.success("ডিলিট হয়েছে");
+      toast.success("ডিলিট হয়েছে — POP balance আপডেট");
     },
     onError: (e: any) => toast.error(e.message),
   });
