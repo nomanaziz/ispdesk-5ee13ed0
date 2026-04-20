@@ -333,7 +333,7 @@ import PopPackages from "@/pages/reseller/config/PopPackages";
 import PopAllotedAreas from "@/pages/reseller/config/PopAllotedAreas";
 import PopDepartments from "@/pages/reseller/config/PopDepartments";
 import PopDesignations from "@/pages/reseller/config/PopDesignations";
-import PopDevices from "@/pages/reseller/config/PopDevices";
+import PopDevicesConfig from "@/pages/reseller/config/PopDevices";
 // POP-scoped Employee
 import PopEmployees from "@/pages/reseller/employee/PopEmployees";
 import PopAddEmployee from "@/pages/reseller/employee/PopAddEmployee";
