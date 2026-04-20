@@ -146,6 +146,20 @@ export default function Managers() {
         <StatCard icon={<Wifi className="h-5 w-5" />} label="অনলাইন ক্লায়েন্ট" value={stats.totalOnline} color="bg-blue-500/10 text-blue-600" />
       </div>
 
+      {orphanCount > 0 && (
+        <Card className="border-amber-500/40 bg-amber-500/5">
+          <CardContent className="pt-4 flex items-center justify-between flex-wrap gap-2">
+            <div className="text-sm">
+              <span className="font-semibold text-amber-700 dark:text-amber-400">⚠ {orphanCount} জন Unassigned Client</span>
+              <span className="text-muted-foreground"> — কোনো POP-এর সাথে যুক্ত নয় (branch_id NULL)</span>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => navigate("/dashboard/clients/list?orphan=1")}>
+              এদের দেখুন / Assign করুন
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Filters */}
       <Card>
         <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
