@@ -745,6 +745,8 @@ export type Database = {
       branch_managers: {
         Row: {
           address: string | null
+          allow_negative_balance: boolean
+          auto_disable_day: number
           balance: number
           branch_id: string | null
           client_code: string | null
@@ -788,6 +790,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          allow_negative_balance?: boolean
+          auto_disable_day?: number
           balance?: number
           branch_id?: string | null
           client_code?: string | null
@@ -831,6 +835,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          allow_negative_balance?: boolean
+          auto_disable_day?: number
           balance?: number
           branch_id?: string | null
           client_code?: string | null

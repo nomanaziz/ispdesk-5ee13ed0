@@ -12,7 +12,7 @@ import { toast } from "sonner";
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  pop: { id: string; name: string; balance: number } | null;
+  pop: { id: string; name: string; balance: number; allow_negative_balance?: boolean; pop_type?: string } | null;
 }
 
 export default function FundDeductionDialog({ open, onOpenChange, pop }: Props) {
@@ -26,6 +26,9 @@ export default function FundDeductionDialog({ open, onOpenChange, pop }: Props) 
       if (!pop) throw new Error("POP missing");
       if (amount <= 0) throw new Error("পরিমাণ লিখুন");
       const newBalance = type === "debit" ? Number(pop.balance) - amount : Number(pop.balance) + amount;
+      if (type === "debit" && newBalance < 0 && !pop.allow_negative_balance) {
+        throw new Error("Balance শূন্যের নিচে যেতে পারবে না — Negative Balance অনুমোদন বন্ধ");
+      }
       const { data: u } = await supabase.auth.getUser();
       const { error: txErr } = await supabase.from("pop_transactions").insert({
         pop_id: pop.id,
