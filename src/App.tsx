@@ -683,20 +683,70 @@ const App = () => (
               <Route path="/portal/my-orders" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalMyOrders /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/profile" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalProfile /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
 
-              {/* Reseller Portal */}
-              <Route path="/reseller" element={<Navigate to="/reseller/dashboard" replace />} />
-              <Route path="/reseller/login" element={<Navigate to="/login" replace />} />
-              <Route path="/reseller/dashboard" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><ResellerDashboard /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/reseller/invoices" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerLayout><ResellerInvoices /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/reseller/invoices/:id" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerLayout><ResellerInvoiceDetail /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/reseller/invoices/:id/print" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerInvoicePrint /></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/reseller/purchases" element={<PortalAuthProvider><ResellerProtectedRoute require="purchases"><ResellerLayout><ResellerPurchaseOrders /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/reseller/purchases/new" element={<PortalAuthProvider><ResellerProtectedRoute require="purchases"><ResellerLayout><ResellerPurchaseOrderForm /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/reseller/tickets" element={<PortalAuthProvider><ResellerProtectedRoute require="tickets"><ResellerLayout><ResellerTickets /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/reseller/users" element={<PortalAuthProvider><ResellerProtectedRoute require="users"><ResellerLayout><ResellerUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/reseller/settings" element={<PortalAuthProvider><ResellerProtectedRoute require="settings"><ResellerLayout><ResellerSettings /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/reseller/mikrotik-users" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><ResellerMikrotikUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              {/* POP Admin Portal */}
+              <Route path="/pop-admin" element={<Navigate to="/pop-admin/dashboard" replace />} />
+              <Route path="/pop-admin/login" element={<Navigate to="/login" replace />} />
+              <Route path="/pop-admin/dashboard" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><ResellerDashboard /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/invoices" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerLayout><ResellerInvoices /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/invoices/:id" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerLayout><ResellerInvoiceDetail /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/invoices/:id/print" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerInvoicePrint /></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/purchases" element={<PortalAuthProvider><ResellerProtectedRoute require="purchases"><ResellerLayout><ResellerPurchaseOrders /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/purchases/new" element={<PortalAuthProvider><ResellerProtectedRoute require="purchases"><ResellerLayout><ResellerPurchaseOrderForm /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/tickets" element={<PortalAuthProvider><ResellerProtectedRoute require="tickets"><ResellerLayout><ResellerTickets /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/users" element={<PortalAuthProvider><ResellerProtectedRoute require="users"><ResellerLayout><ResellerUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/settings" element={<PortalAuthProvider><ResellerProtectedRoute require="settings"><ResellerLayout><ResellerSettings /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/mikrotik-users" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><ResellerMikrotikUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
+              {/* POP Admin — Configuration */}
+              <Route path="/pop-admin/config/zones" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopZones /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/sub-zones" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSubZones /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/boxes" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopBoxes /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/packages" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPackages /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/districts" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopAllotedAreas /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/upazilas" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopAllotedAreas /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/departments" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopDepartments /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/designations" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopDesignations /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/devices" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopDevicesConfig /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+
+              {/* POP Admin — Employee */}
+              <Route path="/pop-admin/employees" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopEmployees /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/employees/add" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopAddEmployee /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/employees/salary-sheet" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Salary Sheet" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/employees/payroll" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Payroll" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/employees/attendance" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Attendance" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+
+              {/* POP Admin — Client */}
+              <Route path="/pop-admin/clients" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopClientList /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/clients/add" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopAddClient /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/clients/billing" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopBillingClient /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/clients/left" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopLeftClients /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/clients/scheduler" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopScheduler /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+
+              {/* POP Admin — Placeholders for Batch 2 & 3 */}
+              <Route path="/pop-admin/billing/list" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Billing List" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/billing/invoice" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Invoice" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/billing/daily-collection" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Daily Collection" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/billing/profile" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Client Bill Profile" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/monitoring/online" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Online Client Monitoring" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/monitoring/ping" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Ping Tools" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/sms/templates" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="SMS Templates" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/sms/individual" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Individual / Group SMS" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/sms/send" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Send SMS" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/sms/gateway" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="SMS Gateway" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/bill-collection" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Bill Collection Report" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/enable-disable" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Enable/Disable History" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/messages" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Messages Report" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/processing-fee" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Processing Fee Report" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/discount" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Discount Report" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/due-sms" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Due SMS Report" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/system/period" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Billing Period Setting" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/fund-history/credit" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Credit History" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/fund-history/debit" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Debit History" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+
+              {/* Legacy /reseller/* → /pop-admin/* redirects */}
+              <Route path="/reseller" element={<Navigate to="/pop-admin/dashboard" replace />} />
+              <Route path="/reseller/login" element={<Navigate to="/login" replace />} />
+              <Route path="/reseller/*" element={<LegacyResellerRedirect />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
