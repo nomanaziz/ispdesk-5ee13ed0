@@ -15,11 +15,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Save, ArrowLeft } from "lucide-react";
+import { Save, ArrowLeft, AlertTriangle } from "lucide-react";
+import { usePopScope } from "@/hooks/usePopScope";
 
 export default function AddClient() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isPopMode, branchId, tariffId, popName, districtId, upazilaId } = usePopScope();
   const prefill = location.state?.prefill;
   const requestId = location.state?.request_id;
   const editMode = location.state?.editMode === true;
