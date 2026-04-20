@@ -704,14 +704,22 @@ export default function AddClient() {
         <div className="p-4 grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <Label>ক্লায়েন্ট কোড *</Label>
-            <Input value={form.client_id} onChange={e => setField("client_id", e.target.value)} />
+            <Input
+              value={form.client_id}
+              onChange={e => { setField("client_id", e.target.value); if (clientCodeError) setClientCodeError(""); }}
+              onBlur={checkClientCodeUnique}
+              placeholder={isPopMode && popMeta?.popPrefix ? `স্বয়ংক্রিয়: ${popMeta.popPrefix}-000001` : "স্বয়ংক্রিয় বা কাস্টম"}
+            />
+            {clientCodeError && <p className="text-xs text-destructive mt-1">{clientCodeError}</p>}
           </div>
           <div>
             <Label>প্যাকেজ *</Label>
             <Select value={form.package_id} onValueChange={v => {
               setField("package_id", v);
-              const pkg = packages?.find(p => p.id === v);
+              const pkg: any = packages?.find((p: any) => p.id === v);
               if (pkg && form.billing_status === "Active") setField("monthly_bill", pkg.price);
+              // POP mode: auto-set profile from tariff package's mikrotik_profile (locked from tariff config)
+              if (isPopMode && pkg?.mikrotik_profile) setField("profile", pkg.mikrotik_profile);
             }}>
               <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
@@ -721,14 +729,20 @@ export default function AddClient() {
           </div>
           <div>
             <Label>প্রোফাইল</Label>
-            <Select value={form.profile} onValueChange={v => setField("profile", v)} disabled={loadingProfiles}>
-              <SelectTrigger><SelectValue placeholder={loadingProfiles ? "লোড হচ্ছে..." : mikrotikProfiles.length > 0 ? "প্রোফাইল নির্বাচন" : "প্রথমে সার্ভার নির্বাচন"} /></SelectTrigger>
+            <Select value={form.profile} onValueChange={v => setField("profile", v)} disabled={loadingProfiles || isPopMode}>
+              <SelectTrigger><SelectValue placeholder={loadingProfiles ? "লোড হচ্ছে..." : isPopMode ? "প্যাকেজ থেকে স্বয়ংক্রিয়" : mikrotikProfiles.length > 0 ? "প্রোফাইল নির্বাচন" : "প্রথমে সার্ভার নির্বাচন"} /></SelectTrigger>
               <SelectContent>
                 {mikrotikProfiles.map(p => (
                   <SelectItem key={p.name} value={p.name}>{p.name}{p.rateLimit ? ` (${p.rateLimit})` : ""}</SelectItem>
                 ))}
+                {isPopMode && form.profile && !mikrotikProfiles.some(p => p.name === form.profile) && (
+                  <SelectItem value={form.profile}>{form.profile}</SelectItem>
+                )}
               </SelectContent>
             </Select>
+            {isPopMode && (
+              <p className="text-xs text-muted-foreground mt-1">প্যাকেজ অনুযায়ী tariff থেকে লক করা</p>
+            )}
           </div>
           <div>
             <Label>ক্লায়েন্ট টাইপ *</Label>
