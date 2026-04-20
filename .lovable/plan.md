@@ -1,127 +1,124 @@
 
 
 ## লক্ষ্য
-দুটো কাজ একসাথে:
-1. **URL rebrand**: `/reseller/*` → `/pop-admin/*` (legacy redirect সহ)
-2. **404 fix + page wiring**: sidebar-এর ৪০+ menu item-এর জন্য POP-scoped page বানিয়ে route-এ wire করা — admin panel এর same feature reuse করে
+আপনার screenshot ও বিবরণ অনুযায়ী POP Admin portal সম্পূর্ণ functional করা — তিনটা মূল সমস্যা solve করতে হবে:
 
-## পরিবর্তনের সারসংক্ষেপ
+1. **Foundation broken**: `reseller01`-এর `branch_id = NULL` → প্রতিটা POP-scoped page-এ "branch assign করা নেই" banner আসছে
+2. **Data scoping schema gap**: অনেক table-এ (`boxes`, `sub_zones`, `departments`, `positions`, `employees`, `isp_packages`) `branch_id` column নেই → POP-scoped CRUD চলবে না
+3. **Wrong column names**: `PopPackages` `package_rate`/`profile_speed` query করছে — actual column হলো `selling_rate`/`buy_rate`/`mikrotik_profile`
 
-### A. URL rebrand: `/reseller` → `/pop-admin`
+## Batch 2A — Foundation fix (এই sprint)
 
-| পুরাতন | নতুন |
-|---|---|
-| `/reseller/dashboard` | `/pop-admin/dashboard` |
-| `/reseller/clients` | `/pop-admin/clients` |
-| `/reseller/billing/list` | `/pop-admin/billing/list` |
-| ... সব route ... | ... সব ... |
+### A. Database migration
 
-- `App.tsx`-এ সব `/reseller/*` route-কে `/pop-admin/*`-এ rename
-- পুরাতন URL backwards compatibility-র জন্য redirect: `<Route path="/reseller/*" element={<Navigate to="/pop-admin/*" replace />} />`
-- `ResellerLayout.tsx`-এর সব `to="/reseller/..."` → `to="/pop-admin/..."`
-- POP login হলে redirect target: `/pop-admin/dashboard`
-- File rename করব না (কোডের ভেতরে component-এর নাম `ResellerLayout` থাকবে — শুধু external URL change)
+**A1. Auto-create branch on POP create + backfill existing**
+- `branch_managers`-এ row create হলে auto একটা `branches` row বানাবে এবং `branch_id` set করবে (trigger)
+- Existing reseller01, noman-এর জন্য branch backfill
 
-### B. Page wiring strategy
-
-প্রতিটি sidebar menu item-এর জন্য — admin panel-এ existing page থাকলে সেটাই reuse করব, কিন্তু POP-scoped wrapper দিয়ে যাতে শুধু এই POP-এর `branch_id` data দেখায়।
-
-**দুটো wrapping approach:**
-1. **Simple config CRUD** (Zone, Box, etc.) — `PopScopedCrud` component already আছে, just import/route
-2. **Complex pages** (Client list, Billing list, Reports) — নতুন lightweight wrapper page বানাবো যা admin page-এর key logic copy করে কিন্তু query-তে `.eq("branch_id", branchId)` filter বসায়
-
-### C. নতুন/wired pages তালিকা
-
-#### Configuration (৯টা — সব already exists কিন্তু route নাই)
-- ✅ Zones, SubZones, Boxes, Packages, Districts, Upazilas, Departments, Designations — already created Phase 1
-- 🆕 `PopDevices.tsx` — POP-scoped MikroTik device list
-
-#### Employee (৫টা)
-- 🆕 `PopAddEmployee.tsx`, `PopEmployees.tsx`, `PopSalarySheet.tsx`, `PopPayroll.tsx`, `PopAttendance.tsx`
-- প্রতিটি `employees` table থেকে `.eq("branch_id", branchId)` দিয়ে data load করবে
-- AddEmployee form: name, mobile, designation, department, salary, photo
-
-#### Client (৫টা)
-- 🆕 `PopAddClient.tsx` — client form (zone/sub-zone/package POP-scoped dropdown)
-- 🆕 `PopClientList.tsx` — `clients` table filter by branch_id
-- 🆕 `PopBillingClient.tsx` — billing-eligible clients
-- 🆕 `PopLeftClients.tsx` — left status clients
-- 🆕 `PopScheduler.tsx` — scheduled status changes
-
-#### Billing (৪টা)
-- 🆕 `PopBillingList.tsx` — `billing` table filter by branch_id
-- 🆕 `PopInvoice.tsx` — invoice listing & view
-- 🆕 `PopDailyCollection.tsx` — `bill_collections` filter by branch
-- 🆕 `PopClientBillProfile.tsx` — per-client billing history
-
-#### Monitoring (২টা — tickets already routed)
-- 🆕 `PopOnlineClients.tsx` — online client monitoring filtered to branch
-- 🆕 `PopPingTools.tsx` — ping/traceroute tool
-
-#### SMS Service (৪টা)
-- 🆕 `PopSmsTemplates.tsx`, `PopSmsIndividual.tsx`, `PopSmsSend.tsx`, `PopSmsGateway.tsx`
-
-#### Reports (৬টা)
-- 🆕 `PopBillCollectionReport.tsx`, `PopEnableDisableReport.tsx`, `PopMessagesReport.tsx`, `PopProcessingFeeReport.tsx`, `PopDiscountReport.tsx`, `PopDueSmsReport.tsx`
-
-#### System (৩টা)
-- 🆕 `PopCompanySettings.tsx` — POP company info edit (logo, address, contact)
-- 🆕 `PopPeriodSetting.tsx` — bill generate day, due days (writes to `pop_billing_periods`)
-- ✅ `ResellerUsers.tsx` already exists → rename usage to PopUsers
-
-#### Fund History (২টা)
-- 🆕 `PopCreditHistory.tsx` — `branch_funding` where trans_type ≠ refund
-- 🆕 `PopDebitHistory.tsx` — `branch_funding` where trans_type = refund + bill deductions
-
-### D. Common pattern প্রতিটি new page-এ
-
-```tsx
-const { customer } = usePortalAuth();
-const { branchId, popId } = getPopScope(customer);
-
-if (!branchId) return <NoBranchBanner />;
-
-const { data } = useQuery({
-  queryKey: ["pop-xxx", branchId],
-  enabled: !!branchId,
-  queryFn: async () => {
-    const { data } = await supabase
-      .from("xxx")
-      .select(...)
-      .eq("branch_id", branchId);
-    return data || [];
-  },
-});
+**A2. Add `branch_id` to scoped tables**
+```sql
+alter table boxes        add column branch_id uuid references branches(id);
+alter table sub_zones    add column branch_id uuid references branches(id);
+alter table departments  add column branch_id uuid references branches(id);
+alter table positions    add column branch_id uuid references branches(id);
+alter table employees    add column branch_id uuid references branches(id);
+-- isp_packages থাকবে global; POP-specific rate `reseller_tariff_packages`-এই থাকবে
+create index idx_boxes_branch on boxes(branch_id);
+-- (একইভাবে অন্যগুলোর জন্য)
 ```
+RLS update: portal anon/service-role read/write স্বাভাবিকভাবে চলবে; admin সব দেখবে।
 
-## কাজ ভাগ (এই sprint-এ ৩ batch-এ)
+**A3. Client code uniqueness**
+```sql
+-- Per-POP unique to allow same code in different POPs (reseller-style codes)
+create unique index uniq_client_id_per_branch
+  on clients(branch_id, client_id) where client_id is not null;
+-- যদি global unique চান তাহলে: create unique index uniq_client_id on clients(client_id);
+```
+*আপনি আগে বলেছিলেন "client code কখনো duplicate হতে পারবে না" — দুটো option আছে। নিচে question-এ choose করতে পারবেন।*
 
-**Batch 1 — URL rebrand + Foundation pages (এই message-এ):**
-- App.tsx এ সব route rename + legacy redirect
-- ResellerLayout sidebar URL update
-- PopDevices, PopAddEmployee, PopEmployees, PopAddClient, PopClientList, PopBillingClient, PopLeftClients, PopScheduler — ৮টা core operational page
-- Login/Logout redirect target update
+**A4. Auto-generate POP client code**
+- `clients` insert-এ `client_id` null হলে: `<pop_code>-<seq>` format-এ generate (eg `0002-000123`)
+- POP-scoped sequence per `branch_id` (function-based)
 
-**Batch 2 — Billing + Reports (পরের message-এ):**
-- PopBillingList, PopInvoice, PopDailyCollection, PopClientBillProfile
-- ৬টা Report page
+**A5. Admin↔POP allotment table already exists** (`pop_district_assignments`) — শুধু admin UI বানাতে হবে।
 
-**Batch 3 — SMS + System + Fund History (পরের পরের message-এ):**
-- ৪টা SMS page
-- PopCompanySettings, PopPeriodSetting
-- PopCreditHistory, PopDebitHistory
-- PopOnlineClients, PopPingTools
+### B. Admin-side: District/Upazila Allotment UI
 
-## কী **হবে না**
-- Existing admin (`/dashboard/*`) ERP module-এ কোনো change নেই
-- Existing portal client (`/portal/*`) untouched
-- পুরাতন `/reseller/*` URL ভাঙবে না — auto-redirect হবে
-- DB schema change নেই (Phase 1-এর tables-ই ব্যবহার করব)
+**নতুন page**: `src/pages/dashboard/branches/PopAllotment.tsx`
+- POP edit screen থেকে link/tab
+- বাঁ দিকে districts checkbox list, ডান দিকে selected district-এর upazilas multi-select
+- Save → `pop_district_assignments` upsert
+- Existing route `/dashboard/branches/edit-manager/:id`-এ "District Allotment" tab যোগ
 
-## File সংখ্যা (Batch 1)
-- Modify: `App.tsx`, `ResellerLayout.tsx`, `PortalAuthContext.tsx` (login redirect)
-- নতুন: ~৮টি `src/pages/reseller/pop-admin/` directory-তে page
-- মোট Batch 1: ~১১ file edit/create
+### C. PopPackages — sync data from tariff (rate সহ)
 
-approve করলে Batch 1 শুরু করব।
+**`PopPackages.tsx` rewrite**:
+- Query field সঠিক করবো: `selling_rate`, `buy_rate`, `mikrotik_profile`, `protocol_type`, `validity_days`, `min_activation_days`
+- Screenshot layout-এর মতো columns: PackageName | ServerName | Protocol | Profile | BuyingRate | SellingRate | ValidityDays | Min R.Days
+- Read-only (admin tariff থেকে আসে — POP edit করতে পারবে না)
+
+### D. PopAllotedAreas split → Districts + Upazilas
+
+বর্তমানে এক page এ দুটোই — split করব:
+- `/pop-admin/config/districts` — শুধু allotted districts list (read-only, admin-set)
+- `/pop-admin/config/upazilas` — district filter সহ allotted upazilas
+
+Both query `pop_district_assignments` joined with `districts`/`upazilas` tables.
+
+### E. PopScopedCrud-এ NULL branch handling
+যেহেতু trigger এখন auto branch বানাবে, "no branch" banner কম দেখাবে। তবু safety রাখব।
+
+## Batch 2A files (এই message-এ)
+
+**Migration (১):**
+- `supabase/migrations/<ts>_pop_admin_foundation.sql` — A1–A4 সব
+
+**Edited (৪):**
+- `supabase/functions/portal-auth/index.ts` — extended permissions object issue
+- `src/pages/reseller/config/PopPackages.tsx` — সঠিক columns
+- `src/pages/reseller/config/PopAllotedAreas.tsx` → split into PopDistricts + PopUpazilas
+- `src/App.tsx` — split routes wire
+- `src/pages/dashboard/branches/EditManager.tsx` — "District Allotment" tab
+
+**New (২):**
+- `src/pages/dashboard/branches/PopAllotment.tsx` — admin allotment UI component
+- `src/pages/reseller/config/PopUpazilas.tsx` — split-out page
+
+## Batch 2B — Module wiring (পরের sprint, এই plan-এ list করা)
+
+**Client module (full admin parity):**
+- `PopAddClient` rewrite — pull from admin `AddClient.tsx` template, scope-filtered dropdowns (zones/boxes/packages from POP), auto client_id generation, NID/address fields
+- `PopNewRequest` — new connection requests for this POP
+- `PopChangeRequest` — package change requests
+- `PopClientList` — full table with all admin columns (status, expire, mikrotik, package, monthly_bill)
+- `PopBillingClient` — billing eligibility filtering
+- `PopLeftClients` / `PopScheduler` — already wired, verify branch filter
+
+**Employee module:** AddEmployee এ photo upload, departments/positions dropdown POP-scoped
+
+**Billing module:** BillingList, Invoice, DailyCollection, ClientBillProfile — all branch-scoped wrapper
+
+**Monitoring:** OnlineClients, PingTools — POP-scoped
+
+**SMS service:** Templates/Individual/Group/Send/Gateway — POP own credit balance থেকে deduct
+
+**Reports (6):** BillCollection, Enable/Disable, Messages, ProcessingFee, Discount, DueSms
+
+**System → Period:** writes to `pop_billing_periods`
+
+**Fund History:** Credit & Debit — `branch_funding` filtered by branch_id
+
+## যা **হবে না**
+- Global `isp_packages` table-এ POP-specific rate column add করব না — POP-rate already `reseller_tariff_packages`-এ আছে
+- পুরাতন reseller URL ভাঙবে না (legacy redirect আছেই)
+- Admin module untouched
+
+## প্রশ্ন যা decide করতে হবে
+
+**Client code uniqueness**: "duplicate হতে পারবে না" — কোন scope-এ?
+- (a) **Per-POP unique** — দুটো ভিন্ন POP একই code ব্যবহার করতে পারবে (recommend, screenshot-এর GalaxyNet style এটাই)
+- (b) **Global unique** — পুরো system-এ একবারই
+
+আপনি Batch 2A approve করলে migration + foundation fix apply করি। তারপর Batch 2B (client/billing/sms/reports full pages) ধাপে ধাপে যাবো।
 
