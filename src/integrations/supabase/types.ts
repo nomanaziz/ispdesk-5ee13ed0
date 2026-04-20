@@ -773,6 +773,7 @@ export type Database = {
           pop_level: number
           pop_prefix: string | null
           pop_type: string
+          pop_type_changed_at: string | null
           portal_enabled: boolean
           server_id: string | null
           set_prefix_mikrotik: boolean
@@ -814,6 +815,7 @@ export type Database = {
           pop_level?: number
           pop_prefix?: string | null
           pop_type?: string
+          pop_type_changed_at?: string | null
           portal_enabled?: boolean
           server_id?: string | null
           set_prefix_mikrotik?: boolean
@@ -855,6 +857,7 @@ export type Database = {
           pop_level?: number
           pop_prefix?: string | null
           pop_type?: string
+          pop_type_changed_at?: string | null
           portal_enabled?: boolean
           server_id?: string | null
           set_prefix_mikrotik?: boolean
