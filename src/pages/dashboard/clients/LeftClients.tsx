@@ -10,10 +10,12 @@ import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Search, FileSpreadsheet, FileText, MoreVertical, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
 import RecoveryInfoDialog from "@/components/clients/RecoveryInfoDialog";
+import { usePopScope } from "@/hooks/usePopScope";
 
 const PER_PAGE_OPTIONS = [10, 25, 50, 100, 250, 500, 1000];
 
 export default function LeftClients() {
+  const { isPopMode, branchId } = usePopScope();
   const [search, setSearch] = useState("");
   const [filterZone, setFilterZone] = useState("all");
   const [filterConnType, setFilterConnType] = useState("all");
@@ -27,13 +29,15 @@ export default function LeftClients() {
   const [recoveryClient, setRecoveryClient] = useState<any | null>(null);
 
   const { data: clients, isLoading } = useQuery({
-    queryKey: ["left-clients"],
+    queryKey: ["left-clients", branchId || "all"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q: any = supabase
         .from("clients")
         .select("*, zones:zone_id(name), isp_packages:package_id(name, bandwidth_down)")
         .or("status.eq.left,billing_status.eq.Left")
         .order("left_date", { ascending: false });
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
