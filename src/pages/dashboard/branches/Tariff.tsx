@@ -152,6 +152,26 @@ export default function Tariff() {
     },
   });
 
+  // Resolve "created_by" → user names
+  const creatorIds = Array.from(
+    new Set((tariffs ?? []).map((t: any) => t.created_by).filter(Boolean)),
+  );
+  const { data: creatorProfiles } = useQuery({
+    queryKey: ["tariff-creator-profiles", creatorIds.join(",")],
+    enabled: creatorIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .in("user_id", creatorIds as string[]);
+      return data ?? [];
+    },
+  });
+  const creatorMap: Record<string, string> = {};
+  (creatorProfiles ?? []).forEach((p: any) => {
+    creatorMap[p.user_id] = p.full_name?.trim() || p.email?.split("@")[0] || "—";
+  });
+
   // ----- Helpers -----
   const fetchProfiles = async (deviceId: string) => {
     if (!deviceId) return;
