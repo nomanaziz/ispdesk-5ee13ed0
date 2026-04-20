@@ -236,6 +236,24 @@ function useStats() {
       const incLM = sum(incomeLastMonth.data);
       const expLM = sum(expenseLastMonth.data);
 
+      // POP/BW Pop breakdown
+      const popMgrs = popManagersAll.data ?? [];
+      const totalPopMgrs = popMgrs.length;
+      const bwPopMgrs = popMgrs.filter((p: any) => (p.pop_type || "").toLowerCase() === "bandwidth").length;
+      const regularPopMgrs = totalPopMgrs - bwPopMgrs;
+      const popBranchIds = new Set(popMgrs.map((p: any) => p.branch_id).filter(Boolean));
+      const popClientsRows = (popClientsAll.data ?? []).filter((c: any) => popBranchIds.has(c.branch_id));
+      const popTotalClients = popClientsRows.length;
+      const popActiveClients = popClientsRows.filter((c: any) => c.status === "active").length;
+      const popInactiveClients = popTotalClients - popActiveClients;
+
+      // BW Reseller portal users
+      const bwUsers = bwResellerUsers.data ?? [];
+      const bwTotalUsers = bwUsers.length;
+      const bwActiveUsers = bwUsers.filter((u: any) => u.status === "active").length;
+      const bwInactiveUsers = bwTotalUsers - bwActiveUsers;
+      const bwParentResellers = new Set((bwResellerParents.data ?? []).map((r: any) => r.reseller_id).filter(Boolean)).size;
+
       return {
         totalClients: clientsAll.count ?? 0,
         thisMonthJoin: thisMonthJoin.count ?? 0,
