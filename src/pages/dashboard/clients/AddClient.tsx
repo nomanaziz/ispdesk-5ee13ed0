@@ -319,7 +319,7 @@ export default function AddClient() {
             due: amount,
             status: "unpaid",
             generated: true,
-            branch_id: form.branch_id || null,
+            branch_id: isPopMode ? branchId : (form.branch_id || null),
           }).select("id").maybeSingle();
 
           if (insertedBill?.id) {
@@ -342,7 +342,7 @@ export default function AddClient() {
         await supabase.from("client_requests").update({ setup_status: "Completed" } as any).eq("id", requestId);
       }
       toast.success(editMode ? "ক্লায়েন্ট সফলভাবে আপডেট হয়েছে" : "ক্লায়েন্ট সফলভাবে যোগ হয়েছে");
-      navigate("/dashboard/clients");
+      navigate(isPopMode ? "/pop-admin/clients" : "/dashboard/clients");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -357,8 +357,23 @@ export default function AddClient() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">ক্লায়েন্ট <span className="text-sm font-normal text-muted-foreground">{editMode ? "ক্লায়েন্ট সম্পাদনা" : "নতুন ক্লায়েন্ট যোগ"}</span></h1>
+        <h1 className="text-2xl font-bold">
+          {isPopMode ? `POP — ${popName || ""}` : "ক্লায়েন্ট"}{" "}
+          <span className="text-sm font-normal text-muted-foreground">
+            {editMode ? "ক্লায়েন্ট সম্পাদনা" : "নতুন ক্লায়েন্ট যোগ"}
+          </span>
+        </h1>
       </div>
+
+      {isPopMode && !tariffId && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+          <AlertTriangle className="h-4 w-4 mt-0.5 text-amber-600 shrink-0" />
+          <div>
+            <p className="font-medium">এই POP-এ এখনো কোনো tariff assign করা হয়নি।</p>
+            <p className="text-muted-foreground">নতুন client তৈরির জন্য admin-এর সাথে যোগাযোগ করে tariff assign করিয়ে নিন।</p>
+          </div>
+        </div>
+      )}
 
       {/* Personal Information */}
       <div className="border rounded-lg">
@@ -752,7 +767,7 @@ export default function AddClient() {
 
       {/* Footer */}
       <div className="flex justify-between items-center py-4">
-        <Button variant="outline" onClick={() => navigate("/dashboard/clients")}><ArrowLeft className="h-4 w-4 mr-1" /> তালিকায় ফিরুন</Button>
+        <Button variant="outline" onClick={() => navigate(isPopMode ? "/pop-admin/clients" : "/dashboard/clients")}><ArrowLeft className="h-4 w-4 mr-1" /> তালিকায় ফিরুন</Button>
         <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
           <Save className="h-4 w-4 mr-1" /> {saveMutation.isPending ? "সেভ হচ্ছে..." : "সংরক্ষণ ও বের হন"}
         </Button>
