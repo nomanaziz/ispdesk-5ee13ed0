@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, Search, Eye } from "lucide-react";
+import { CheckCircle, XCircle, Search, Eye, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
   pending: { label: "অপেক্ষমাণ", variant: "outline", color: "text-yellow-600" },
@@ -100,6 +101,7 @@ export default function Approval() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-xl font-bold text-foreground">লিভ অনুমোদন</h1>
+        <Button asChild size="sm"><Link to="/dashboard/leave/apply"><Plus className="h-4 w-4 mr-1" />নতুন আবেদন</Link></Button>
       </div>
 
       {/* Summary */}

@@ -16,7 +16,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Plus, Search, Pencil, Trash2, MessageSquare, CheckCircle, ListTodo, Clock, AlertTriangle } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, MessageSquare, CheckCircle, ListTodo, Clock, AlertTriangle, FolderOpen } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const priorityColors: Record<string, string> = {
   high: "bg-red-100 text-red-800 border-red-200",
@@ -270,9 +271,12 @@ export default function Tasks() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-xl">টাস্ক ম্যানেজমেন্ট</CardTitle>
-          <Button onClick={() => setDialogOpen(true)} size="sm">
-            <Plus className="h-4 w-4 mr-1" /> নতুন টাস্ক
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild><Link to="/dashboard/tasks/categories"><FolderOpen className="h-4 w-4 mr-1" />ক্যাটাগরি ম্যানেজ</Link></Button>
+            <Button onClick={() => setDialogOpen(true)} size="sm">
+              <Plus className="h-4 w-4 mr-1" /> নতুন টাস্ক
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {/* Filters */}

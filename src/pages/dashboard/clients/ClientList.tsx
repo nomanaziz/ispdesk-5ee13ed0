@@ -9,7 +9,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, CalendarClock, Crown, Wifi, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, CalendarClock, Crown, Wifi, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
@@ -235,7 +236,10 @@ export default function ClientList() {
 
   return (
     <div className="space-y-3 p-4">
-      <h1 className="text-xl font-bold">ক্লায়েন্ট তালিকা <span className="text-sm font-normal text-muted-foreground">সকল ক্লায়েন্ট দেখুন</span></h1>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-xl font-bold">ক্লায়েন্ট তালিকা <span className="text-sm font-normal text-muted-foreground">সকল ক্লায়েন্ট দেখুন</span></h1>
+        <Button asChild size="sm"><Link to="/dashboard/clients/add"><Plus className="h-4 w-4 mr-1" /> নতুন ক্লায়েন্ট</Link></Button>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

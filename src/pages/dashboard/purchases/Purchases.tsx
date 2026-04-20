@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Search, ShoppingCart, DollarSign, CheckCircle, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ShoppingCart, DollarSign, CheckCircle, Clock, Store } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const emptyForm = { purchase_no: "", vendor_id: "", item_id: "", quantity: 1, unit_price: 0, total: 0, purchase_date: new Date().toISOString().split("T")[0], status: "completed", notes: "" };
 
@@ -79,9 +80,12 @@ export default function Purchases() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">ক্রয় তালিকা</h1>
-        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />নতুন ক্রয়</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild><Link to="/dashboard/purchases/vendors"><Store className="h-4 w-4 mr-2" />ভেন্ডর</Link></Button>
+          <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" />নতুন ক্রয়</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

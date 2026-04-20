@@ -70,9 +70,7 @@ const menuGroups: MenuGroup[] = [
       { title: "প্রোটোকল টাইপ", url: "/dashboard/config/protocol-types", icon: Shield },
       { title: "বিলিং স্ট্যাটাস", url: "/dashboard/config/billing-statuses", icon: Tag },
       { title: "প্যাকেজ", url: "/dashboard/config/packages", icon: Package },
-      { title: "বিভাগ", url: "/dashboard/config/divisions", icon: Building },
-      { title: "জেলা", url: "/dashboard/config/districts", icon: Globe },
-      { title: "উপজেলা", url: "/dashboard/config/upazilas", icon: MapPin },
+      { title: "এলাকা (বিভাগ/জেলা/উপজেলা)", url: "/dashboard/config/locations", icon: MapPin },
       { title: "সার্ভিস টাইপ", url: "/dashboard/config/service-types", icon: Wrench },
     ],
   },
@@ -90,11 +88,9 @@ const menuGroups: MenuGroup[] = [
     icon: Users,
     items: [
       { title: "নতুন রিকোয়েস্ট", url: "/dashboard/clients/new-request", icon: MessageSquare },
-      { title: "নতুন যোগ করুন", url: "/dashboard/clients/add", icon: UserPlus },
       { title: "ক্লায়েন্ট তালিকা", url: "/dashboard/clients", icon: List },
       { title: "বিলিং তালিকা", url: "/dashboard/billing", icon: CreditCard },
       { title: "দৈনিক বিল কালেকশন", url: "/dashboard/billing/daily-collection", icon: Wallet },
-      { title: "বিলিং সাইকেল সেটিংস", url: "/dashboard/billing/cycle-settings", icon: Cog },
       { title: "ইনস্টলেশন ফি", url: "/dashboard/sales/installation-fee", icon: DollarSign },
       { title: "চলে যাওয়া ক্লায়েন্ট", url: "/dashboard/clients/left", icon: UserX },
       { title: "শিডিউলার", url: "/dashboard/clients/scheduler", icon: Clock },
@@ -107,11 +103,9 @@ const menuGroups: MenuGroup[] = [
     label: "POP / MAC ক্লায়েন্ট",
     icon: Radio,
     items: [
-      { title: "POP যোগ করুন", url: "/dashboard/branches/add-manager", icon: UserPlus },
       { title: "POP ম্যানেজার লিস্ট", url: "/dashboard/branches/managers", icon: Users },
       { title: "ট্যারিফ কনফিগ", url: "/dashboard/branches/tariff", icon: Settings },
       { title: "POP ফান্ডিং", url: "/dashboard/branches/funding", icon: Banknote },
-      { title: "ফান্ড হিস্ট্রি", url: "/dashboard/branches/funding-history", icon: History },
       { title: "PGW ট্রানজেকশন", url: "/dashboard/branches/pgw-transactions", icon: CreditCardIcon },
       { title: "POP নোটিশ", url: "/dashboard/branches/pop-notice", icon: Bell },
     ],
@@ -133,8 +127,6 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "সার্ভার", url: "/dashboard/mikrotik/servers", icon: Server },
       { title: "সার্ভার ব্যাকআপ", url: "/dashboard/mikrotik/backup", icon: HardDrive },
-      { title: "MikroTik থেকে ইম্পোর্ট", url: "/dashboard/mikrotik/import", icon: Upload },
-      { title: "বাল্ক ক্লায়েন্ট ইম্পোর্ট", url: "/dashboard/mikrotik/bulk-import", icon: Users },
     ],
   },
   {
@@ -160,12 +152,10 @@ const menuGroups: MenuGroup[] = [
       { title: "পেরোল", url: "/dashboard/hr/payroll", icon: Wallet },
       { title: "পদবী", url: "/dashboard/hr/positions", icon: Briefcase },
       { title: "পে-স্লিপ", url: "/dashboard/hr/payslip", icon: FileText },
-      { title: "কর্মচারী যোগ", url: "/dashboard/hr/employees/add", icon: UserPlus },
       { title: "কর্মচারী তালিকা", url: "/dashboard/hr/employees", icon: Users },
       { title: "বেতন শীট", url: "/dashboard/hr/salary-sheet", icon: ScrollText },
       { title: "রিজাইন নিয়ম", url: "/dashboard/hr/resign-rules", icon: FileText },
       { title: "রিজাইনেশন", url: "/dashboard/hr/resignations", icon: UserX },
-      { title: "পুনরায় যোগদান", url: "/dashboard/hr/rejoin", icon: UserPlus },
       { title: "উপস্থিতি", url: "/dashboard/hr/attendance", icon: CheckSquare },
       { title: "শিফট ম্যানেজমেন্ট", url: "/dashboard/hr/shifts", icon: Clock },
       { title: "ZKTeco ডিভাইস", url: "/dashboard/hr/zkteco-devices", icon: Server },
@@ -195,8 +185,6 @@ const menuGroups: MenuGroup[] = [
       { title: "অনলাইন মনিটরিং", url: "/dashboard/monitoring/online", icon: Wifi },
       { title: "Live Traffic", url: "/dashboard/monitoring/live-traffic", icon: Activity },
       { title: "Switch ম্যানেজমেন্ট", url: "/dashboard/network/switches", icon: Network },
-      { title: "সুইচ তালিকা (legacy)", url: "/dashboard/monitoring/switches", icon: Network },
-      { title: "সুইচ যোগ করুন", url: "/dashboard/monitoring/add-switch", icon: UserPlus },
       { title: "POP DASS", url: "/dashboard/monitoring/pop-dass", icon: Monitor },
       { title: "POP IP", url: "/dashboard/monitoring/pop-ip", icon: Globe },
       { title: "POP লগ", url: "/dashboard/monitoring/pop-log", icon: ScrollText },
@@ -222,15 +210,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "ক্যাটাগরি", url: "/dashboard/leave/categories", icon: FolderOpen },
       { title: "সেটআপ", url: "/dashboard/leave/setup", icon: Settings },
-      { title: "আবেদন", url: "/dashboard/leave/apply", icon: FileText },
       { title: "অনুমোদন", url: "/dashboard/leave/approval", icon: CheckSquare },
-    ],
-  },
-  {
-    label: "ইভেন্ট ও ছুটি",
-    icon: Calendar,
-    items: [
-      { title: "ইভেন্ট ও ছুটি", url: "/dashboard/events", icon: Calendar },
     ],
   },
   {
@@ -244,7 +224,6 @@ const menuGroups: MenuGroup[] = [
     label: "সাপোর্ট ও টিকেটিং",
     icon: Headphones,
     items: [
-      { title: "সাপোর্ট ক্যাটাগরি", url: "/dashboard/support/categories", icon: FolderOpen },
       { title: "ক্লায়েন্ট সাপোর্ট", url: "/dashboard/support/tickets", icon: Headphones },
       { title: "সাপোর্ট হিস্টরি", url: "/dashboard/support/history", icon: History },
     ],
@@ -253,7 +232,6 @@ const menuGroups: MenuGroup[] = [
     label: "টাস্ক ম্যানেজমেন্ট",
     icon: CheckSquare,
     items: [
-      { title: "টাস্ক ক্যাটাগরি", url: "/dashboard/tasks/categories", icon: FolderOpen },
       { title: "টাস্ক", url: "/dashboard/tasks", icon: CheckSquare },
       { title: "টাস্ক হিস্টরি", url: "/dashboard/tasks/history", icon: History },
     ],
@@ -273,7 +251,6 @@ const menuGroups: MenuGroup[] = [
     label: "ক্রয়",
     icon: ShoppingCart,
     items: [
-      { title: "ভেন্ডর", url: "/dashboard/purchases/vendors", icon: Store },
       { title: "রিকুইজিশন", url: "/dashboard/purchases/requisitions", icon: ClipboardList },
       { title: "ক্রয়", url: "/dashboard/purchases", icon: ShoppingCart },
       { title: "ক্রয় বিল", url: "/dashboard/purchases/bills", icon: Receipt },
@@ -376,6 +353,7 @@ const menuGroups: MenuGroup[] = [
       { title: "পেমেন্ট গেটওয়ে", url: "/dashboard/system/payment-gateways", icon: CreditCardIcon },
       { title: "ইমেইল সেটআপ", url: "/dashboard/system/email", icon: Mail },
       { title: "সিস্টেম সেটআপ", url: "/dashboard/system/setup", icon: Settings },
+      { title: "বিলিং সাইকেল সেটিংস", url: "/dashboard/billing/cycle-settings", icon: Cog },
       { title: "প্রসেসিং ফি", url: "/dashboard/system/processing-fee", icon: DollarSign },
       { title: "সিস্টেম লগ", url: "/dashboard/system/system-log", icon: ScrollText },
     ],

@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Eye, EyeOff, RefreshCw, Server, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, RefreshCw, Server, Loader2, Upload, Users as UsersIcon } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface MikrotikDevice {
   id: string;
@@ -202,9 +203,13 @@ export default function Servers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold flex items-center gap-2"><Server className="h-6 w-6" /> মাইক্রোটিক সার্ভার</h1>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-1" /> সার্ভার যোগ করুন</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild><Link to="/dashboard/mikrotik/import"><Upload className="h-4 w-4 mr-1" /> Import Users</Link></Button>
+          <Button variant="outline" asChild><Link to="/dashboard/mikrotik/bulk-import"><UsersIcon className="h-4 w-4 mr-1" /> Bulk Import</Link></Button>
+          <Button onClick={openAdd}><Plus className="h-4 w-4 mr-1" /> সার্ভার যোগ করুন</Button>
+        </div>
       </div>
 
       <Card>
