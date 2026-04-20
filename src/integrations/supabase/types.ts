@@ -2792,6 +2792,7 @@ export type Database = {
           box_id: string | null
           branch_id: string | null
           cable_length: number | null
+          cable_recovered: boolean
           client_id: string
           client_type: string | null
           connected_by: string | null
@@ -2801,6 +2802,7 @@ export type Database = {
           core_count: number | null
           created_at: string
           date_of_birth: string | null
+          device_recovered: boolean
           device_serial: string | null
           device_type: string | null
           documents: Json
@@ -2840,6 +2842,10 @@ export type Database = {
           profile: string | null
           protocol_type: string | null
           purchase_date: string | null
+          recovered_at: string | null
+          recovered_by: string | null
+          recovery_remarks: string | null
+          recovery_status: string
           reference_by: string | null
           remarks: string | null
           remote_address: string | null
@@ -2865,6 +2871,7 @@ export type Database = {
           box_id?: string | null
           branch_id?: string | null
           cable_length?: number | null
+          cable_recovered?: boolean
           client_id: string
           client_type?: string | null
           connected_by?: string | null
@@ -2874,6 +2881,7 @@ export type Database = {
           core_count?: number | null
           created_at?: string
           date_of_birth?: string | null
+          device_recovered?: boolean
           device_serial?: string | null
           device_type?: string | null
           documents?: Json
@@ -2913,6 +2921,10 @@ export type Database = {
           profile?: string | null
           protocol_type?: string | null
           purchase_date?: string | null
+          recovered_at?: string | null
+          recovered_by?: string | null
+          recovery_remarks?: string | null
+          recovery_status?: string
           reference_by?: string | null
           remarks?: string | null
           remote_address?: string | null
@@ -2938,6 +2950,7 @@ export type Database = {
           box_id?: string | null
           branch_id?: string | null
           cable_length?: number | null
+          cable_recovered?: boolean
           client_id?: string
           client_type?: string | null
           connected_by?: string | null
@@ -2947,6 +2960,7 @@ export type Database = {
           core_count?: number | null
           created_at?: string
           date_of_birth?: string | null
+          device_recovered?: boolean
           device_serial?: string | null
           device_type?: string | null
           documents?: Json
@@ -2986,6 +3000,10 @@ export type Database = {
           profile?: string | null
           protocol_type?: string | null
           purchase_date?: string | null
+          recovered_at?: string | null
+          recovered_by?: string | null
+          recovery_remarks?: string | null
+          recovery_status?: string
           reference_by?: string | null
           remarks?: string | null
           remote_address?: string | null
