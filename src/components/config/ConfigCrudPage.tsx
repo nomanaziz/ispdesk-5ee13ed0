@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { usePopScope } from "@/hooks/usePopScope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,8 @@ interface ConfigCrudPageProps {
   filterFn?: (row: any) => boolean;
   fetchQuery?: () => Promise<any[]>;
   showStatusTabs?: boolean;
+  /** When true and POP mode, scope queries + inserts by branch_id (defaults to true) */
+  popScoped?: boolean;
 }
 
 export default function ConfigCrudPage({
@@ -47,7 +50,10 @@ export default function ConfigCrudPage({
   filterFn,
   fetchQuery,
   showStatusTabs = false,
+  popScoped = true,
 }: ConfigCrudPageProps) {
+  const { isPopMode, branchId } = usePopScope();
+  const popActive = popScoped && isPopMode && !!branchId;
   const [statusTab, setStatusTab] = useState<"active" | "inactive">("active");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -58,9 +64,11 @@ export default function ConfigCrudPage({
   const queryClient = useQueryClient();
 
   const { data: items, isLoading } = useQuery({
-    queryKey: [queryKey],
+    queryKey: [queryKey, popActive ? branchId : "all"],
     queryFn: fetchQuery || (async () => {
-      const { data, error } = await supabase.from(tableName as any).select("*").order("name");
+      let q: any = supabase.from(tableName as any).select("*").order("name");
+      if (popActive) q = q.eq("branch_id", branchId!);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     }),
@@ -68,11 +76,12 @@ export default function ConfigCrudPage({
 
   const upsertMutation = useMutation({
     mutationFn: async (data: Record<string, any>) => {
+      const payload = popActive ? { ...data, branch_id: branchId } : data;
       if (editingItem) {
-        const { error } = await supabase.from(tableName as any).update(data).eq("id", editingItem.id);
+        const { error } = await supabase.from(tableName as any).update(payload).eq("id", editingItem.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from(tableName as any).insert(data as any);
+        const { error } = await supabase.from(tableName as any).insert(payload as any);
         if (error) throw error;
       }
     },
