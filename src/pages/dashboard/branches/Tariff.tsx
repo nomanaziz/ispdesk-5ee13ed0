@@ -39,8 +39,11 @@ import {
   RefreshCw,
   Eye,
   X as XIcon,
+  History,
+  RotateCw,
 } from "lucide-react";
 import { format } from "date-fns";
+import { TariffChangeLogDialog } from "@/components/branches/TariffChangeLogDialog";
 
 interface PackageRow {
   id?: string; // db id if existing
