@@ -655,6 +655,7 @@ export type Database = {
       }
       boxes: {
         Row: {
+          branch_id: string | null
           code: string | null
           created_at: string
           description: string | null
@@ -665,6 +666,7 @@ export type Database = {
           zone_id: string | null
         }
         Insert: {
+          branch_id?: string | null
           code?: string | null
           created_at?: string
           description?: string | null
@@ -675,6 +677,7 @@ export type Database = {
           zone_id?: string | null
         }
         Update: {
+          branch_id?: string | null
           code?: string | null
           created_at?: string
           description?: string | null
@@ -685,6 +688,13 @@ export type Database = {
           zone_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "boxes_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "boxes_sub_zone_id_fkey"
             columns: ["sub_zone_id"]
@@ -3331,24 +3341,35 @@ export type Database = {
       }
       departments: {
         Row: {
+          branch_id: string | null
           created_at: string
           id: string
           name: string
           status: string
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string
           id?: string
           name: string
           status?: string
         }
         Update: {
+          branch_id?: string | null
           created_at?: string
           id?: string
           name?: string
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "departments_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       destroyed_items: {
         Row: {
@@ -3937,6 +3958,7 @@ export type Database = {
       employees: {
         Row: {
           address: string | null
+          branch_id: string | null
           created_at: string
           date_of_birth: string | null
           default_in_time: string | null
@@ -3976,6 +3998,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          branch_id?: string | null
           created_at?: string
           date_of_birth?: string | null
           default_in_time?: string | null
@@ -4015,6 +4038,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          branch_id?: string | null
           created_at?: string
           date_of_birth?: string | null
           default_in_time?: string | null
@@ -4053,6 +4077,13 @@ export type Database = {
           zkteco_device_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "employees_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "employees_department_id_fkey"
             columns: ["department_id"]
@@ -6380,6 +6411,7 @@ export type Database = {
       }
       positions: {
         Row: {
+          branch_id: string | null
           created_at: string
           department_id: string | null
           id: string
@@ -6387,6 +6419,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string
           department_id?: string | null
           id?: string
@@ -6394,6 +6427,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          branch_id?: string | null
           created_at?: string
           department_id?: string | null
           id?: string
@@ -6401,6 +6435,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "positions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "positions_department_id_fkey"
             columns: ["department_id"]
@@ -8037,6 +8078,7 @@ export type Database = {
       }
       sub_zones: {
         Row: {
+          branch_id: string | null
           code: string | null
           created_at: string
           description: string | null
@@ -8046,6 +8088,7 @@ export type Database = {
           zone_id: string
         }
         Insert: {
+          branch_id?: string | null
           code?: string | null
           created_at?: string
           description?: string | null
@@ -8055,6 +8098,7 @@ export type Database = {
           zone_id: string
         }
         Update: {
+          branch_id?: string | null
           code?: string | null
           created_at?: string
           description?: string | null
@@ -8064,6 +8108,13 @@ export type Database = {
           zone_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sub_zones_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sub_zones_zone_id_fkey"
             columns: ["zone_id"]
