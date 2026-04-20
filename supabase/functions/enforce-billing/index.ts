@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
     // Get active, non-VIP clients whose billing_date has passed
     const { data: expiredClients, error: clientsErr } = await supabase
       .from("clients")
-      .select("id, username, mikrotik_id, mikrotik_status, billing_date, name, client_id, is_vip, expire_date")
+      .select("id, username, mikrotik_id, mikrotik_status, billing_date, name, client_id, is_vip, expire_date, branch_id")
       .eq("status", "active")
       .eq("is_vip", false)
       .lte("billing_date", checkDate)
@@ -215,13 +215,28 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Load POP info per branch to apply postpaid auto_disable_day rule
+    const branchIds = Array.from(new Set(expiredClients.map(c => c.branch_id).filter(Boolean)));
+    const { data: pops } = await supabase
+      .from("branch_managers")
+      .select("id, branch_id, pop_type, auto_disable_day, balance, allow_negative_balance")
+      .in("branch_id", branchIds);
+    const popByBranch = new Map((pops || []).map((p: any) => [p.branch_id, p]));
+
     // Also check expire_date — if expire_date is in the future, skip
     const clientsToDisable = expiredClients.filter(c => {
       if (paidClients.has(c.id)) return false;
       if (c.expire_date) {
-        const expDate = new Date(c.expire_date);
         const todayStr = `${dhakaYear}-${String(dhakaMonth).padStart(2, "0")}-${String(dhakaDate).padStart(2, "0")}`;
         if (c.expire_date > todayStr) return false;
+      }
+      // Postpaid POP: only disable when today >= auto_disable_day AND POP balance < 0 (overdue)
+      const pop: any = c.branch_id ? popByBranch.get(c.branch_id) : null;
+      if (pop && pop.pop_type === "postpaid") {
+        const disableDay = Number(pop.auto_disable_day || 10);
+        if (dhakaDate < disableDay) return false;
+        // If POP balance is non-negative, payments are still being made — skip
+        if (Number(pop.balance || 0) >= 0) return false;
       }
       return true;
     });
