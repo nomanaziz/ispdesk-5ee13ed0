@@ -574,32 +574,42 @@ export default function AddClient() {
         <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <Label>সার্ভার *</Label>
-            <Select value={form.mikrotik_id} onValueChange={v => {
-              setField("mikrotik_id", v);
-              setField("profile", "");
-              setLoadingProfiles(true);
-              supabase.functions.invoke("fetch-mikrotik-profiles", { body: { device_id: v } })
-                .then(({ data }) => {
-                  if (data?.profiles) setMikrotikProfiles(data.profiles);
-                  else setMikrotikProfiles([]);
-                })
-                .catch(() => setMikrotikProfiles([]))
-                .finally(() => setLoadingProfiles(false));
-            }}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+            <Select
+              value={form.mikrotik_id}
+              disabled={isPopMode}
+              onValueChange={v => {
+                setField("mikrotik_id", v);
+                setField("profile", "");
+                setLoadingProfiles(true);
+                supabase.functions.invoke("fetch-mikrotik-profiles", { body: { device_id: v } })
+                  .then(({ data }) => {
+                    if (data?.profiles) setMikrotikProfiles(data.profiles);
+                    else setMikrotikProfiles([]);
+                  })
+                  .catch(() => setMikrotikProfiles([]))
+                  .finally(() => setLoadingProfiles(false));
+              }}
+            >
+              <SelectTrigger><SelectValue placeholder={isPopMode ? "POP-এর ডিফল্ট সার্ভার" : "নির্বাচন করুন"} /></SelectTrigger>
               <SelectContent>
                 {mikrotiks?.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {isPopMode && (
+              <p className="text-xs text-muted-foreground mt-1">POP প্রোফাইল থেকে স্বয়ংক্রিয়</p>
+            )}
           </div>
           <div>
             <Label>প্রোটোকল টাইপ *</Label>
-            <Select value={form.protocol_type} onValueChange={v => setField("protocol_type", v)}>
+            <Select value={form.protocol_type} onValueChange={v => setField("protocol_type", v)} disabled={isPopMode}>
               <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {(protocolTypes as any[])?.map((p: any) => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {isPopMode && (
+              <p className="text-xs text-muted-foreground mt-1">POP-এর জন্য PPPoE লক করা</p>
+            )}
           </div>
           <div>
             <Label>জোন *</Label>
