@@ -164,6 +164,7 @@ import BranchEditManager from "@/pages/dashboard/branches/EditManager";
 import BranchManagers from "@/pages/dashboard/branches/Managers";
 import PopProfile from "@/pages/dashboard/branches/PopProfile";
 import BranchFunding from "@/pages/dashboard/branches/Funding";
+import BranchFundingHistory from "@/pages/dashboard/branches/FundingHistory";
 import BranchPgwPayments from "@/pages/dashboard/branches/PgwPayments";
 import BranchPgwSettlement from "@/pages/dashboard/branches/PgwSettlement";
 import BranchPopNotice from "@/pages/dashboard/branches/PopNotice";
@@ -498,6 +499,7 @@ const App = () => (
               <Route path="/dashboard/branches/managers" element={<P><BranchManagers /></P>} />
               <Route path="/dashboard/branches/pop/:id" element={<P><PopProfile /></P>} />
               <Route path="/dashboard/branches/funding" element={<P><BranchFunding /></P>} />
+              <Route path="/dashboard/branches/funding-history" element={<P><BranchFundingHistory /></P>} />
               <Route path="/dashboard/branches/pgw-payments" element={<P><BranchPgwPayments /></P>} />
               <Route path="/dashboard/branches/pgw-settlement" element={<P><BranchPgwSettlement /></P>} />
               <Route path="/dashboard/branches/pop-notice" element={<P><BranchPopNotice /></P>} />
