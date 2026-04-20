@@ -52,6 +52,14 @@ export default function PopForm({ mode, pop }: Props) {
   );
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
+  const [division_id, setDivisionId] = useState<string>("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [prefixCheck, setPrefixCheck] = useState<{ checking: boolean; available: boolean | null; msg: string }>({
+    checking: false,
+    available: null,
+    msg: "",
+  });
+
   const [form, setForm] = useState({
     name: pop?.name || "",
     email: pop?.email || "",
@@ -60,12 +68,11 @@ export default function PopForm({ mode, pop }: Props) {
     national_id: pop?.national_id || "",
     district_id: pop?.district_id || "",
     upazila_id: pop?.upazila_id || "",
-    zone_id: pop?.zone_id || "",
     pop_code: pop?.pop_code || "",
     pop_prefix: pop?.pop_prefix || "",
     set_prefix_mikrotik: pop?.set_prefix_mikrotik ?? false,
     pop_type: (pop?.pop_type || "prepaid") as "prepaid" | "postpaid",
-    min_recharge: pop?.min_recharge ?? 500,
+    min_recharge: pop?.min_recharge ?? 100,
     address: pop?.address || "",
     company_name: pop?.company_name || "",
     tariff_id: pop?.tariff_id || "",
@@ -76,7 +83,10 @@ export default function PopForm({ mode, pop }: Props) {
     confirm_password: "",
   });
 
-  const upd = (k: string, v: any) => setForm((s) => ({ ...s, [k]: v }));
+  const upd = (k: string, v: any) => {
+    setForm((s) => ({ ...s, [k]: v }));
+    setErrors((e) => { const n = { ...e }; delete n[k]; return n; });
+  };
 
   const { data: tariffs } = useQuery({
     queryKey: ["reseller-tariffs-select"],
