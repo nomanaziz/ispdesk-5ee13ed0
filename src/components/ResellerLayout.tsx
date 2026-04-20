@@ -191,14 +191,21 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const isSubUser = customer?.type === "reseller_sub";
+  const subPerms: Record<string, boolean> = (customer?.permissions as any) || {};
+
   const visibleGroups = groups
     .filter((g) => isGroupAllowed(g, customer))
     .map((g) => ({
       ...g,
-      items: g.items.filter((i) =>
-        !search || i.label.toLowerCase().includes(search.toLowerCase()),
-      ),
+      // Sub-user: filter out items missing route-level permission
+      items: g.items
+        .filter((i) => !isSubUser || subPerms[i.to] !== false)
+        .filter((i) =>
+          !search || i.label.toLowerCase().includes(search.toLowerCase()),
+        ),
     }))
+    .filter((g) => g.items.length > 0)
     .filter((g) =>
       !search ||
       g.label.toLowerCase().includes(search.toLowerCase()) ||

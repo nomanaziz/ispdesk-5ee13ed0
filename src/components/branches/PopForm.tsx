@@ -77,7 +77,7 @@ export default function PopForm({ mode, pop }: Props) {
     company_name: pop?.company_name || "",
     tariff_id: pop?.tariff_id || "",
     disable_clients: pop?.disable_clients ?? true,
-    min_balance: pop?.min_balance ?? 0,
+    min_balance: pop?.min_balance ?? "" as number | "",
     allow_negative_balance: pop?.allow_negative_balance ?? false,
     auto_disable_day: pop?.auto_disable_day ?? 10,
     username: pop?.username || "",
@@ -208,8 +208,9 @@ export default function PopForm({ mode, pop }: Props) {
         address: form.address || null,
         company_name: form.company_name || null,
         disable_clients: form.disable_clients,
-        min_balance: form.min_balance,
-        allow_negative_balance: form.pop_type === "postpaid" ? form.allow_negative_balance : false,
+        min_balance: form.min_balance === "" || form.min_balance === null ? null : Number(form.min_balance),
+        // Derived: empty min_balance => negative allowed automatically
+        allow_negative_balance: form.pop_type === "postpaid" && (form.min_balance === "" || form.min_balance === null),
         auto_disable_day: form.pop_type === "postpaid" ? form.auto_disable_day : 10,
         permissions,
         logo_url,
@@ -434,25 +435,19 @@ export default function PopForm({ mode, pop }: Props) {
           </div>
           <div>
             <Label>Minimum Balance</Label>
-            <Input type="number" value={form.min_balance} onChange={(e) => upd("min_balance", Number(e.target.value))} />
+            <Input
+              type="number"
+              value={form.min_balance as any}
+              placeholder="খালি = সীমা নেই"
+              onChange={(e) => upd("min_balance", e.target.value === "" ? "" : Number(e.target.value))}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              খালি রাখলে balance negative-এ যেতে দিবে। 0 বা সংখ্যা দিলে সেই সীমা maintain করবে।
+            </p>
           </div>
 
           {form.pop_type === "postpaid" && (
             <>
-              <div className="flex items-end gap-3">
-                <div className="flex items-start gap-2">
-                  <Switch
-                    checked={form.allow_negative_balance}
-                    onCheckedChange={(v) => upd("allow_negative_balance", v)}
-                  />
-                  <div>
-                    <Label className="text-sm">Negative Balance অনুমোদন</Label>
-                    <p className="text-[11px] text-muted-foreground">
-                      Postpaid POP-এর balance শূন্যের নিচে যেতে পারবে
-                    </p>
-                  </div>
-                </div>
-              </div>
               <div>
                 <Label>Auto-disable তারিখ (১–২৮)</Label>
                 <Input
@@ -463,10 +458,12 @@ export default function PopForm({ mode, pop }: Props) {
                   onChange={(e) => upd("auto_disable_day", Math.max(1, Math.min(28, Number(e.target.value) || 10)))}
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  এই তারিখের মধ্যে পাওনা না দিলে line auto disable হবে
+                  মাসের কত তারিখের মধ্যে আগের মাসের পাওনা মিটানো must
                 </p>
               </div>
-              <div />
+              <div className="md:col-span-2 rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 p-3 text-[12px] text-amber-800 dark:text-amber-300">
+                <strong>Postpaid নিয়ম:</strong> Postpaid POP-ও daily-rate এ deduct হবে। Auto-disable তারিখের মধ্যে balance এর পাওনা না মিটালে সব client off হবে। Admin fund দিতে পারে (ধার), POP নিজেও recharge করতে পারে।
+              </div>
             </>
           )}
           {form.pop_type !== "postpaid" && <div className="md:col-span-2" />}

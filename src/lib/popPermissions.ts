@@ -1,144 +1,136 @@
 // POP (Branch Manager) menu permission tree
-// Used by Add/Edit POP form and (later) ResellerLayout for menu rendering
-// Default: all permissions enabled EXCEPT payment gateway items.
+// Mirrors ResellerLayout sidebar 1:1 — single source of truth.
+// Default: all permissions enabled.
 
 export type PopMenuItem = { key: string; label: string };
 export type PopMenuGroup = { key: string; label: string; items: PopMenuItem[] };
 
+// Each item.key matches the route path used in ResellerLayout sidebar.
 export const POP_MENU_GROUPS: PopMenuGroup[] = [
+  {
+    key: "dashboard",
+    label: "Dashboard",
+    items: [{ key: "/pop-admin/dashboard", label: "Dashboard" }],
+  },
   {
     key: "configuration",
     label: "Configuration",
     items: [
-      { key: "config.zone", label: "Zone" },
-      { key: "config.subzone", label: "Sub Zone" },
-      { key: "config.box", label: "Box" },
-      { key: "config.package", label: "Package" },
-      { key: "config.district", label: "District" },
-      { key: "config.upazila", label: "Upazila" },
-      { key: "config.connection_type", label: "Connection Type" },
-      { key: "config.protocol", label: "Protocol" },
-      { key: "config.device", label: "Device" },
+      { key: "/pop-admin/config/zones", label: "Zone" },
+      { key: "/pop-admin/config/sub-zones", label: "Sub Zone" },
+      { key: "/pop-admin/config/boxes", label: "Box" },
+      { key: "/pop-admin/config/packages", label: "Package" },
+      { key: "/pop-admin/config/districts", label: "District" },
+      { key: "/pop-admin/config/upazilas", label: "Upazila" },
+      { key: "/pop-admin/config/departments", label: "Department" },
+      { key: "/pop-admin/config/designations", label: "Designation" },
+      { key: "/pop-admin/config/devices", label: "Device" },
     ],
   },
   {
     key: "mikrotik",
-    label: "Mikrotik",
-    items: [
-      { key: "mikrotik.servers", label: "Servers" },
-      { key: "mikrotik.import", label: "Import Clients" },
-      { key: "mikrotik.bulk_import", label: "Bulk Import" },
-    ],
+    label: "MikroTik Client",
+    items: [{ key: "/pop-admin/mikrotik-users", label: "MikroTik Users" }],
   },
   {
     key: "employee",
-    label: "Employee (HR)",
+    label: "Employee",
     items: [
-      { key: "hr.add_employee", label: "Add Employee" },
-      { key: "hr.employees", label: "Employee List" },
-      { key: "hr.salary", label: "Salary Sheet" },
-      { key: "hr.payroll", label: "Payroll" },
-      { key: "hr.attendance", label: "Attendance" },
+      { key: "/pop-admin/employees/add", label: "Add Employee" },
+      { key: "/pop-admin/employees", label: "Employee List" },
+      { key: "/pop-admin/employees/salary-sheet", label: "Salary Sheet" },
+      { key: "/pop-admin/employees/payroll", label: "Payroll" },
+      { key: "/pop-admin/employees/attendance", label: "Attendance" },
     ],
   },
   {
     key: "client",
     label: "Client",
     items: [
-      { key: "client.add", label: "Add Client" },
-      { key: "client.list", label: "Client List" },
-      { key: "client.left", label: "Left Clients" },
-      { key: "client.scheduler", label: "Scheduler" },
-      { key: "client.change_request", label: "Change Request" },
-      { key: "client.portal_manage", label: "Portal Manage" },
+      { key: "/pop-admin/clients/add", label: "Add Client" },
+      { key: "/pop-admin/clients", label: "Client List" },
+      { key: "/pop-admin/clients/billing", label: "Billing Client" },
+      { key: "/pop-admin/clients/left", label: "Left Clients" },
+      { key: "/pop-admin/clients/scheduler", label: "Scheduler" },
     ],
   },
   {
     key: "billing",
     label: "Billing",
     items: [
-      { key: "billing.list", label: "Billing List" },
-      { key: "billing.invoice", label: "Invoice" },
-      { key: "billing.daily_collection", label: "Daily Collection" },
-      { key: "billing.client_profile", label: "Client Bill Profile" },
-    ],
-  },
-  {
-    key: "payment_gateway",
-    label: "Payment Gateway (Admin Only)",
-    items: [
-      { key: "pgw.gateways", label: "Payment Gateways" },
-      { key: "pgw.settlement", label: "PGW Settlement" },
-      { key: "pgw.payments", label: "PGW Payments" },
+      { key: "/pop-admin/billing/list", label: "Billing List" },
+      { key: "/pop-admin/billing/invoice", label: "Invoice" },
+      { key: "/pop-admin/billing/daily-collection", label: "Daily Collection" },
+      { key: "/pop-admin/billing/profile", label: "Client Bill Profile" },
     ],
   },
   {
     key: "monitoring",
     label: "Monitoring",
     items: [
-      { key: "monitor.online_clients", label: "Online Client Monitoring" },
-      { key: "monitor.ping", label: "Ping Tools" },
-      { key: "monitor.pop_devices", label: "POP Devices" },
-    ],
-  },
-  {
-    key: "support",
-    label: "Client Support",
-    items: [
-      { key: "support.categories", label: "Categories" },
-      { key: "support.tickets", label: "Tickets / Complaints" },
-      { key: "support.history", label: "History" },
+      { key: "/pop-admin/monitoring/online", label: "Online Clients" },
+      { key: "/pop-admin/tickets", label: "Client Support" },
+      { key: "/pop-admin/monitoring/ping", label: "Ping Tools" },
     ],
   },
   {
     key: "sms",
     label: "SMS Service",
     items: [
-      { key: "sms.template", label: "Templates" },
-      { key: "sms.individual", label: "Individual" },
-      { key: "sms.group", label: "Group" },
-      { key: "sms.gateway", label: "Gateway" },
-      { key: "sms.send", label: "Send SMS" },
+      { key: "/pop-admin/sms/templates", label: "Templates" },
+      { key: "/pop-admin/sms/individual", label: "Individual / Group" },
+      { key: "/pop-admin/sms/send", label: "Send SMS" },
+      { key: "/pop-admin/sms/gateway", label: "Gateway" },
     ],
   },
   {
     key: "reports",
     label: "Reports",
     items: [
-      { key: "report.btrc", label: "BTRC" },
-      { key: "report.bill_collection", label: "Bill Collection" },
-      { key: "report.messages", label: "Messages" },
-      { key: "report.processing_fee", label: "Processing Fee" },
-      { key: "report.discount", label: "Discount" },
-      { key: "report.due_sms", label: "Due SMS" },
-      { key: "report.financial", label: "Financial" },
-      { key: "report.customer", label: "Customer" },
+      { key: "/pop-admin/reports/bill-collection", label: "Bill Collection" },
+      { key: "/pop-admin/reports/enable-disable", label: "Enable/Disable" },
+      { key: "/pop-admin/reports/messages", label: "Messages" },
+      { key: "/pop-admin/reports/processing-fee", label: "Processing Fee" },
+      { key: "/pop-admin/reports/discount", label: "Discount" },
+      { key: "/pop-admin/reports/due-sms", label: "Due SMS" },
     ],
   },
   {
-    key: "fund",
+    key: "purchases",
+    label: "Purchase Orders",
+    items: [{ key: "/pop-admin/purchases", label: "Purchase Orders" }],
+  },
+  {
+    key: "system",
+    label: "System",
+    items: [
+      { key: "/pop-admin/settings", label: "Company Settings" },
+      { key: "/pop-admin/system/period", label: "Period" },
+      { key: "/pop-admin/users", label: "Users" },
+    ],
+  },
+  {
+    key: "fund_history",
     label: "Fund History",
     items: [
-      { key: "fund.debit", label: "Debit History" },
-      { key: "fund.credit", label: "Credit History" },
+      { key: "/pop-admin/fund-history/credit", label: "Credit History" },
+      { key: "/pop-admin/fund-history/debit", label: "Debit History" },
     ],
   },
 ];
 
-// Items disabled by default (admin-only — payment gateway)
-const DEFAULT_DISABLED_GROUPS = new Set(["payment_gateway"]);
-
 export function buildDefaultPermissions(): Record<string, boolean> {
   const perms: Record<string, boolean> = {};
   for (const group of POP_MENU_GROUPS) {
-    const enabled = !DEFAULT_DISABLED_GROUPS.has(group.key);
+    // group-level key (used by ResellerLayout.isGroupAllowed)
+    perms[group.key] = true;
     for (const item of group.items) {
-      perms[item.key] = enabled;
+      perms[item.key] = true;
     }
   }
   return perms;
 }
 
 export function allPermissionKeys(): string[] {
-  return POP_MENU_GROUPS.flatMap((g) => g.items.map((i) => i.key));
+  return POP_MENU_GROUPS.flatMap((g) => [g.key, ...g.items.map((i) => i.key)]);
 }
