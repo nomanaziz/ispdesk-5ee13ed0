@@ -356,8 +356,37 @@ function StatSkeleton() {
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mt-5 mb-2 first:mt-0">{children}</h2>;
+function SectionCard({
+  title, icon: Icon, tint, children,
+}: {
+  title: string;
+  icon: React.ElementType;
+  tint: string; // e.g. "blue" | "emerald" | "amber" | ...
+  children: React.ReactNode;
+}) {
+  // Map tint name → tailwind classes (must be literal for JIT)
+  const tintMap: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
+    blue:    { bg: "bg-blue-500/5",    border: "border-blue-500/20",    text: "text-blue-600 dark:text-blue-400",       iconBg: "bg-blue-500/15" },
+    emerald: { bg: "bg-emerald-500/5", border: "border-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400", iconBg: "bg-emerald-500/15" },
+    amber:   { bg: "bg-amber-500/5",   border: "border-amber-500/20",   text: "text-amber-600 dark:text-amber-400",     iconBg: "bg-amber-500/15" },
+    violet:  { bg: "bg-violet-500/5",  border: "border-violet-500/20",  text: "text-violet-600 dark:text-violet-400",   iconBg: "bg-violet-500/15" },
+    cyan:    { bg: "bg-cyan-500/5",    border: "border-cyan-500/20",    text: "text-cyan-600 dark:text-cyan-400",       iconBg: "bg-cyan-500/15" },
+    pink:    { bg: "bg-pink-500/5",    border: "border-pink-500/20",    text: "text-pink-600 dark:text-pink-400",       iconBg: "bg-pink-500/15" },
+    orange:  { bg: "bg-orange-500/5",  border: "border-orange-500/20",  text: "text-orange-600 dark:text-orange-400",   iconBg: "bg-orange-500/15" },
+    teal:    { bg: "bg-teal-500/5",    border: "border-teal-500/20",    text: "text-teal-600 dark:text-teal-400",       iconBg: "bg-teal-500/15" },
+  };
+  const t = tintMap[tint] || tintMap.blue;
+  return (
+    <div className={`rounded-xl border ${t.border} ${t.bg} p-3 sm:p-4`}>
+      <div className="flex items-center gap-2 mb-3">
+        <div className={`p-1.5 rounded-md ${t.iconBg} ${t.text}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <h2 className={`text-sm font-semibold uppercase tracking-wider ${t.text}`}>{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
 }
 
 const Dashboard = () => {
