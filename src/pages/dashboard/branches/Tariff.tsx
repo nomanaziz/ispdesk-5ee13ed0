@@ -81,6 +81,9 @@ export default function Tariff() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [viewTariff, setViewTariff] = useState<any>(null);
+  const [logOpen, setLogOpen] = useState(false);
+  const [logTariff, setLogTariff] = useState<{ id: string; name: string } | null>(null);
+  const [syncing, setSyncing] = useState<string | null>(null);
 
   const [tariffName, setTariffName] = useState("");
   const [tariffType, setTariffType] = useState<"custom" | "date_to_date">("custom");
