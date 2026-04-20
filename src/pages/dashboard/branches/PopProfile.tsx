@@ -129,7 +129,7 @@ export default function PopProfile() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-2 border-t">
-              <Button size="sm" variant="outline"><Edit className="h-3.5 w-3.5" /> Update</Button>
+              <Button size="sm" variant="outline" onClick={() => navigate(`/dashboard/branches/edit-manager/${id}`)}><Edit className="h-3.5 w-3.5" /> Update</Button>
               <Button size="sm" variant="outline" onClick={() => toast.info("Coming soon")}><Mail className="h-3.5 w-3.5" /> Send Email</Button>
               <Button size="sm" variant="outline" onClick={() => update.mutate({ pop_type: pop.pop_type === "prepaid" ? "postpaid" : "prepaid" })}>
                 <ArrowLeftRight className="h-3.5 w-3.5" /> Type Change

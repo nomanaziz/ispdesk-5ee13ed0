@@ -250,7 +250,7 @@ export default function Managers() {
                         <TableCell>
                           <PopActionMenu
                             onView={() => navigate(`/dashboard/branches/pop/${m.id}`)}
-                            onEdit={() => navigate(`/dashboard/branches/pop/${m.id}`)}
+                            onEdit={() => navigate(`/dashboard/branches/edit-manager/${m.id}`)}
                             onLogin={() => handleLoginAs(m)}
                             onPasswordRegen={() => setPwdPop(m)}
                             onFund={() => setFundPop(m)}
