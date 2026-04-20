@@ -128,10 +128,61 @@ export default function AddClient() {
     }
   }, []);
 
-  const { data: zones } = useQuery({ queryKey: ["zones-active"], queryFn: async () => { const { data } = await supabase.from("zones").select("id, name").eq("status", "active"); return data || []; } });
-  const { data: subZones } = useQuery({ queryKey: ["sub-zones-active"], queryFn: async () => { const { data } = await supabase.from("sub_zones").select("id, name, zone_id").eq("status", "active"); return data || []; } });
-  const { data: boxes } = useQuery({ queryKey: ["boxes-active"], queryFn: async () => { const { data } = await supabase.from("boxes").select("id, name, zone_id").eq("status", "active"); return data || []; } });
-  const { data: packages } = useQuery({ queryKey: ["isp-packages-active"], queryFn: async () => { const { data } = await supabase.from("isp_packages").select("id, name, price, bandwidth_down").eq("status", "active"); return data || []; } });
+  const { data: zones } = useQuery({
+    queryKey: ["zones-active", branchId || "all"],
+    queryFn: async () => {
+      let q: any = supabase.from("zones").select("id, name").eq("status", "active");
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data } = await q;
+      return data || [];
+    },
+  });
+  const { data: subZones } = useQuery({
+    queryKey: ["sub-zones-active", branchId || "all"],
+    queryFn: async () => {
+      let q: any = supabase.from("sub_zones").select("id, name, zone_id").eq("status", "active");
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data } = await q;
+      return data || [];
+    },
+  });
+  const { data: boxes } = useQuery({
+    queryKey: ["boxes-active", branchId || "all"],
+    queryFn: async () => {
+      let q: any = supabase.from("boxes").select("id, name, zone_id").eq("status", "active");
+      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      const { data } = await q;
+      return data || [];
+    },
+  });
+  // Packages: in POP mode, load from reseller_tariff_packages (admin-allotted only).
+  // Otherwise, load global isp_packages as before.
+  const { data: packages } = useQuery({
+    queryKey: ["client-add-packages", isPopMode ? `tariff:${tariffId || "none"}` : "global"],
+    queryFn: async () => {
+      if (isPopMode) {
+        if (!tariffId) return [];
+        const { data } = await supabase
+          .from("reseller_tariff_packages")
+          .select("id, package_id, selling_rate, package_rate, isp_packages(id, name, bandwidth_down, price)")
+          .eq("tariff_id", tariffId);
+        // Map to {id, name, price, bandwidth_down} using POP selling_rate
+        return (data || [])
+          .filter((p: any) => p.isp_packages)
+          .map((p: any) => ({
+            id: p.isp_packages.id,
+            name: p.isp_packages.name,
+            bandwidth_down: p.isp_packages.bandwidth_down,
+            price: Number(p.selling_rate || p.package_rate || p.isp_packages.price || 0),
+          }));
+      }
+      const { data } = await supabase
+        .from("isp_packages")
+        .select("id, name, price, bandwidth_down")
+        .eq("status", "active");
+      return data || [];
+    },
+  });
   const { data: connectionTypes } = useQuery({ queryKey: ["connection-types-active"], queryFn: async () => { const { data } = await supabase.from("connection_types_config").select("id, name").eq("status", "active"); return data || []; } });
   const { data: clientTypes } = useQuery({ queryKey: ["client-types-active"], queryFn: async () => { const { data } = await supabase.from("client_types").select("id, name").eq("status", "active"); return data || []; } });
   const { data: mikrotiks } = useQuery({ queryKey: ["mikrotik-devices"], queryFn: async () => { const { data } = await supabase.from("mikrotik_devices").select("id, name"); return data || []; } });
