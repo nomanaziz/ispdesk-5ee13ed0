@@ -212,7 +212,7 @@ export default function Managers() {
                   <TableRow><TableCell colSpan={16} className="text-center text-muted-foreground py-8">কোনো POP পাওয়া যায়নি</TableCell></TableRow>
                 ) : (
                   filtered.map((m: any, i) => {
-                    const c = clientCounts?.[m.branch_id || "_none"] || { running: 0, enabled: 0, disabled: 0, left: 0 };
+                    const c = (m.branch_id ? clientCounts?.[m.branch_id] : null) || { running: 0, enabled: 0, disabled: 0, left: 0 };
                     return (
                       <TableRow key={m.id} className="hover:bg-muted/30">
                         <TableCell>{i + 1}</TableCell>
