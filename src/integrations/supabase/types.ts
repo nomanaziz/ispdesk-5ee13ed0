@@ -786,6 +786,7 @@ export type Database = {
           address: string | null
           allow_negative_balance: boolean
           auto_disable_day: number
+          auto_settle_pgw: boolean
           balance: number
           branch_id: string | null
           client_code: string | null
@@ -831,6 +832,7 @@ export type Database = {
           address?: string | null
           allow_negative_balance?: boolean
           auto_disable_day?: number
+          auto_settle_pgw?: boolean
           balance?: number
           branch_id?: string | null
           client_code?: string | null
@@ -876,6 +878,7 @@ export type Database = {
           address?: string | null
           allow_negative_balance?: boolean
           auto_disable_day?: number
+          auto_settle_pgw?: boolean
           balance?: number
           branch_id?: string | null
           client_code?: string | null
@@ -6746,8 +6749,11 @@ export type Database = {
           id: string
           our_share: number
           payment_method: string | null
+          remaining_amount: number
           reseller_id: string
           reseller_share: number
+          settled_amount: number
+          settlement_status: string
           status: string
           tariff_rate: number
           total_amount: number
@@ -6760,8 +6766,11 @@ export type Database = {
           id?: string
           our_share?: number
           payment_method?: string | null
+          remaining_amount?: number
           reseller_id: string
           reseller_share?: number
+          settled_amount?: number
+          settlement_status?: string
           status?: string
           tariff_rate?: number
           total_amount?: number
@@ -6774,8 +6783,11 @@ export type Database = {
           id?: string
           our_share?: number
           payment_method?: string | null
+          remaining_amount?: number
           reseller_id?: string
           reseller_share?: number
+          settled_amount?: number
+          settlement_status?: string
           status?: string
           tariff_rate?: number
           total_amount?: number
@@ -6795,37 +6807,62 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          created_by: string | null
+          funding_id: string | null
           id: string
           method: string | null
           notes: string | null
+          payment_date: string | null
+          pgw_payment_ids: string[] | null
+          receipt_no: string | null
           reference: string | null
           reseller_id: string
           settled_by: string | null
+          settlement_type: string
           status: string
         }
         Insert: {
           amount?: number
           created_at?: string
+          created_by?: string | null
+          funding_id?: string | null
           id?: string
           method?: string | null
           notes?: string | null
+          payment_date?: string | null
+          pgw_payment_ids?: string[] | null
+          receipt_no?: string | null
           reference?: string | null
           reseller_id: string
           settled_by?: string | null
+          settlement_type?: string
           status?: string
         }
         Update: {
           amount?: number
           created_at?: string
+          created_by?: string | null
+          funding_id?: string | null
           id?: string
           method?: string | null
           notes?: string | null
+          payment_date?: string | null
+          pgw_payment_ids?: string[] | null
+          receipt_no?: string | null
           reference?: string | null
           reseller_id?: string
           settled_by?: string | null
+          settlement_type?: string
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reseller_pgw_settlements_funding_id_fkey"
+            columns: ["funding_id"]
+            isOneToOne: false
+            referencedRelation: "branch_funding"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reseller_pgw_settlements_reseller_id_fkey"
             columns: ["reseller_id"]

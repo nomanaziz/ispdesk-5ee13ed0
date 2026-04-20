@@ -165,8 +165,7 @@ import BranchManagers from "@/pages/dashboard/branches/Managers";
 import PopProfile from "@/pages/dashboard/branches/PopProfile";
 import BranchFunding from "@/pages/dashboard/branches/Funding";
 import BranchFundingHistory from "@/pages/dashboard/branches/FundingHistory";
-import BranchPgwPayments from "@/pages/dashboard/branches/PgwPayments";
-import BranchPgwSettlement from "@/pages/dashboard/branches/PgwSettlement";
+import BranchPgwTransactions from "@/pages/dashboard/branches/PgwTransactions";
 import BranchPopNotice from "@/pages/dashboard/branches/PopNotice";
 
 // Events
@@ -500,8 +499,9 @@ const App = () => (
               <Route path="/dashboard/branches/pop/:id" element={<P><PopProfile /></P>} />
               <Route path="/dashboard/branches/funding" element={<P><BranchFunding /></P>} />
               <Route path="/dashboard/branches/funding-history" element={<P><BranchFundingHistory /></P>} />
-              <Route path="/dashboard/branches/pgw-payments" element={<P><BranchPgwPayments /></P>} />
-              <Route path="/dashboard/branches/pgw-settlement" element={<P><BranchPgwSettlement /></P>} />
+              <Route path="/dashboard/branches/pgw-transactions" element={<P><BranchPgwTransactions /></P>} />
+              <Route path="/dashboard/branches/pgw-payments" element={<Navigate to="/dashboard/branches/pgw-transactions" replace />} />
+              <Route path="/dashboard/branches/pgw-settlement" element={<Navigate to="/dashboard/branches/pgw-transactions" replace />} />
               <Route path="/dashboard/branches/pop-notice" element={<P><BranchPopNotice /></P>} />
 
               {/* Events */}
