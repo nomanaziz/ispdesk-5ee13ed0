@@ -1,69 +1,79 @@
 
 
 ## লক্ষ্য
-পুরা website-এর সব major data table-এ একটা **consistent look** আনা:
-1. **Header color** — সব table-এ same theme-based color (primary tone)
-2. **Alternating row color** — এক row সাদা, পরের row primary color-এর হালকা/ফ্যাকাশে version (theme-aware)
-3. **Cross/grid lines** — সব cell-এ border (এটা আগে থেকেই আছে `table.tsx`-এ ✓)
-4. **Footer row** — total user count + monthly bill total + paid total + due total
+Tariff system-কে সম্পূর্ণ পুনর্গঠন: এক tariff-এ **multiple packages**, **multiple servers/profiles**, এবং buy/sell price tracking। Server change করলে user-দের auto-sync।
 
-## Approach: কেন্দ্রীয় (Centralized) সমাধান
+## নতুন Data Model
 
-প্রতিটা page-এ আলাদা করে style update না করে **`src/components/ui/table.tsx`-এ একবার পরিবর্তন** করব। এতে পুরা codebase-এর সব table (200+ জায়গায় ব্যবহৃত) automatic update হবে।
+বর্তমানে `reseller_tariffs`-এ এক row = এক package + এক server। নতুন structure:
 
-### File 1: `src/components/ui/table.tsx` (একমাত্র mandatory edit)
+**`reseller_tariffs`** (parent — শুধু tariff নাম + assigned POPs দেখায়):
+- `id`, `name`, `tariff_type` ('custom' | 'date_to_date'), `status`, `created_at`, `created_by`
+- পুরাতন `package_id`, `selling_rate`, `mikrotik_server_id`, `mikrotik_profile`, `protocol_type`, `activation_days`, `min_activation_days` কলাম **deprecated** কিন্তু backward-compat-এর জন্য রাখব (nullable)।
 
-**TableHeader** — theme primary color tint:
-```
-bg-primary/10 text-foreground font-semibold
-```
-(dark mode-এও কাজ করবে কারণ `--primary` HSL theme থেকে আসে)
+**`reseller_tariff_packages`** (নতুন child table — এক tariff-এ বহু package):
+- `id`, `tariff_id` (FK), `package_id` (FK isp_packages)
+- `mikrotik_server_id` (FK mikrotik_devices), `mikrotik_profile` (text)
+- `protocol_type` ('PPPoE' | 'IPoE' | 'Static')
+- `buy_rate` (numeric — base/buy price), `selling_rate` (numeric)
+- `validity_days` (int, default 30), `min_activation_days` (int, default 1)
+- `created_at`, `updated_at`
+- Unique: (`tariff_id`, `package_id`, `mikrotik_server_id`) — same package different server allowed।
 
-**TableBody** — alternating rows:
-```
-[&_tr:nth-child(odd)]:bg-background          // সাদা/base
-[&_tr:nth-child(even)]:bg-primary/5           // primary-এর হালকা ফ্যাকাশে
-```
-পুরাতন `bg-muted/30` (gray) সরিয়ে theme-aware `bg-primary/5` ব্যবহার।
+**Migration ও sync trigger**: পুরাতন row থেকে data move করে নতুন child table-এ এক row তৈরি করব (data preserved)।
 
-**TableFooter** — already exists, just style করব:
-```
-bg-primary/10 font-semibold border-t-2
-```
+## UI পুনর্গঠন (`Tariff.tsx` rewrite + Edit Dialog)
 
-### File 2: `src/index.css` (optional helper)
-যদি দরকার হয় — একটা utility class `.table-footer-totals` যাতে number cells right-align হয়। কিন্তু সম্ভবত দরকার নেই।
+uploaded screenshot-এর মতো dialog:
+- **Tariff Type**: Custom / Date To Date (radio)
+- **Tariff Name**: text + Edit button
+- **Package Add section** (form fields):
+  - Package Name (Select from `isp_packages`)
+  - Buy Rate (auto-fill from package.price, editable)
+  - Selling Rate (input)
+  - Validity Days (default 30)
+  - Minimum Activation Days (default 1)
+  - Server Name (Select from `mikrotik_devices`)
+  - Protocol (PPPoE/IPoE/Static)
+  - MikroTik Profile (auto-load via `fetch-mikrotik-profiles`)
+  - **[Add Package] button** — adds row to inner table
+- **Inner table**: Sr, Package, Server, Protocol, Profile, Buy, Sell, Validity, Min Days, Action (edit/delete)
+- **Cancel / Update** buttons
 
-## Footer Totals — কীভাবে কাজ করবে
+### Tariff List Table (main page)
+Screenshot-এর কলাম অনুযায়ী:
+| S/N | Tariff Name | Assigned POPs | Packages (comma list) | Servers (comma list) | Profiles (comma list) | CreatedOn | CreatedBy | Action |
 
-Footer row-এ "Total / Paid / Due" দেখানো **per-page logic**, তাই এটা প্রতিটা table page-এ আলাদা ভাবে যোগ করতে হয় (data ভিন্ন, columns ভিন্ন)।
+- **Assigned POPs**: `branch_managers` যাদের `tariff_id` = এই tariff
+- **Packages**: child table থেকে aggregated names
+- **Action**: Sync (refresh icon), Toggle status, Edit, View, Delete
 
-**এই round-এ scope:**
-- ✅ `ClientList.tsx` — total clients + monthly_bill total (ইতিমধ্যে গত round-এ যোগ হয়েছে)
-- ✅ `LeftClients.tsx` — total + due (ইতিমধ্যে যোগ হয়েছে)
-- ➕ `BillingList.tsx` — total bill / paid / due যোগফল
-- ➕ `DailyCollection.tsx` — total collection যোগফল
-- ➕ `Bills.tsx` (bw-buy) — total bill / paid যোগফল
-- ➕ `Invoices.tsx` (bw-sale) — total / paid / due
-- ➕ `Collection.tsx` (bw-sale) — total collection
+## Server Change → Auto-Sync
 
-বাকি ১৫০+ table যেগুলোয় টাকা নেই (config tables, list tables) — শুধু header/alt-row color update পাবে (centralized via `table.tsx`), footer add করব না (অপ্রয়োজনীয়)।
+যখন user কোনো `reseller_tariff_packages` row-এর `mikrotik_server_id` বা `mikrotik_profile` change করে save করে:
+1. সেই tariff-এর সব assigned POP-এর সব client খুঁজে বের করব যাদের package = এই row-এর `package_id`।
+2. প্রতিটা client-এর জন্য নতুন server-এ PPP user create + পুরানো server থেকে remove।
+3. এটা **edge function** `sync-tariff-package-change`-এর মাধ্যমে করব (existing `create-mikrotik-ppp` ও `manage-mikrotik-ppp` function reuse)।
+4. UI-তে confirmation dialog: "X client নতুন server-এ migrate হবে — চালিয়ে যান?"
 
 ## Files
-- ✏️ `src/components/ui/table.tsx` — **all tables একসাথে update**
-- ✏️ `src/pages/dashboard/billing/BillingList.tsx` — footer totals
-- ✏️ `src/pages/dashboard/billing/DailyCollection.tsx` — footer totals
-- ✏️ `src/pages/dashboard/bw-buy/Bills.tsx` — footer totals
-- ✏️ `src/pages/dashboard/bw-sale/Invoices.tsx` — footer totals
-- ✏️ `src/pages/dashboard/bw-sale/Collection.tsx` — footer totals
+
+### Migration
+- ➕ `reseller_tariff_packages` table create + RLS + indexes
+- ➕ Data migration: existing `reseller_tariffs` rows → child rows
+- ➕ `created_by uuid` column-এ যোগ `reseller_tariffs`-এ
+- ➕ `tariff_type text default 'custom'` যোগ
+
+### Code
+- ✏️ `src/pages/dashboard/branches/Tariff.tsx` — সম্পূর্ণ rewrite (multi-package dialog + new list)
+- ➕ `supabase/functions/sync-tariff-package-change/index.ts` — server migration handler
+- ✏️ `src/pages/dashboard/branches/Managers.tsx` — assigned POPs display ঠিক রাখা (no breaking)
+- ✏️ `src/pages/dashboard/branches/PopProfile.tsx` — multi-package display
+- ✏️ `src/pages/dashboard/branches/PgwPayments.tsx` — selling_rate পরিবর্তে first package-এর rate বা mapping logic update
+- ✏️ `src/integrations/supabase/types.ts` — auto-regenerated
 
 ## কী **হবে না**
-- কোনো config/list table যেখানে টাকা নেই (Zones, Districts, Packages, Users ইত্যাদি) — footer যোগ হবে না, শুধু color update পাবে
-- কোনো data/logic পরিবর্তন — শুধু visual + footer summation
-- পুরাতন কাজ (Left Clients recovery, sidebar) touch হবে না
-
-## কেন এই approach সবচেয়ে ভালো
-- **এক জায়গায় change → পুরা site update** (centralized)
-- Theme switch করলে (purple/blue/green) automatic alternating color change হবে
-- Future-এ নতুন table তৈরি করলে automatic same style পাবে
+- পুরাতন `reseller_tariffs` row delete হবে না — শুধু expanded
+- `branch_managers.tariff_id` foreign key অপরিবর্তিত (এক POP-এ এক tariff, কিন্তু সেই tariff-এ multiple packages)
+- AddManager flow অপরিবর্তিত
 
