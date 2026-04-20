@@ -111,6 +111,7 @@ const menuGroups: MenuGroup[] = [
       { title: "POP ম্যানেজার লিস্ট", url: "/dashboard/branches/managers", icon: Users },
       { title: "ট্যারিফ কনফিগ", url: "/dashboard/branches/tariff", icon: Settings },
       { title: "POP ফান্ডিং", url: "/dashboard/branches/funding", icon: Banknote },
+      { title: "ফান্ড হিস্ট্রি", url: "/dashboard/branches/funding-history", icon: History },
       { title: "ক্লায়েন্ট PGW পেমেন্ট", url: "/dashboard/branches/pgw-payments", icon: CreditCardIcon },
       { title: "PGW সেটেলমেন্ট", url: "/dashboard/branches/pgw-settlement", icon: Receipt },
       { title: "POP নোটিশ", url: "/dashboard/branches/pop-notice", icon: Bell },

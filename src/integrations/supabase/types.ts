@@ -706,31 +706,70 @@ export type Database = {
           amount: number | null
           branch_id: string | null
           created_at: string
+          created_by: string | null
           description: string | null
+          discount: number
+          due_amount: number
           funding_date: string | null
           id: string
+          invoice_number: string | null
+          payment_method: string | null
+          processing_fee: number
+          receipt_number: string | null
+          received_amount: number
+          received_by: string | null
+          received_on: string | null
+          remarks: string | null
           status: string
+          trans_type: string
           type: string | null
+          vat: number
         }
         Insert: {
           amount?: number | null
           branch_id?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
+          discount?: number
+          due_amount?: number
           funding_date?: string | null
           id?: string
+          invoice_number?: string | null
+          payment_method?: string | null
+          processing_fee?: number
+          receipt_number?: string | null
+          received_amount?: number
+          received_by?: string | null
+          received_on?: string | null
+          remarks?: string | null
           status?: string
+          trans_type?: string
           type?: string | null
+          vat?: number
         }
         Update: {
           amount?: number | null
           branch_id?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
+          discount?: number
+          due_amount?: number
           funding_date?: string | null
           id?: string
+          invoice_number?: string | null
+          payment_method?: string | null
+          processing_fee?: number
+          receipt_number?: string | null
+          received_amount?: number
+          received_by?: string | null
+          received_on?: string | null
+          remarks?: string | null
           status?: string
+          trans_type?: string
           type?: string | null
+          vat?: number
         }
         Relationships: [
           {
