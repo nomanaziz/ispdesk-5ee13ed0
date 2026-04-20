@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -264,6 +264,26 @@ export default function DailyCollection() {
                       </TableRow>
                     ))}
                   </TableBody>
+                  {filtered.length > 0 && (() => {
+                    const t = filtered.reduce((a: any, c: any) => ({
+                      mb: a.mb + Number(c.client?.monthly_bill || 0),
+                      rec: a.rec + Number(c.amount || 0),
+                      disc: a.disc + Number(c.discount || 0),
+                      due: a.due + Number(c.billing?.due || 0),
+                    }), { mb: 0, rec: 0, disc: 0, due: 0 });
+                    return (
+                      <TableFooter>
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-right">মোট ({filtered.length} টি):</TableCell>
+                          <TableCell className="text-right">{t.mb.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{t.rec.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{t.disc.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{t.due.toLocaleString()}</TableCell>
+                          <TableCell colSpan={2} />
+                        </TableRow>
+                      </TableFooter>
+                    );
+                  })()}
                 </Table>
               </div>
             </CardContent>

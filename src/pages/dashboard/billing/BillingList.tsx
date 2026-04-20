@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -149,6 +149,17 @@ export default function BillingList() {
 
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+
+  const pageTotals = useMemo(() => {
+    let monthly = 0, paid = 0, due = 0, advance = 0;
+    paginated.forEach((c: any) => {
+      monthly += Number(c.monthly_bill || 0);
+      paid += Number(c.currentBill?.paid || 0);
+      due += Number(c.currentBill?.due || 0);
+      advance += Number(c.currentBill?.advance || 0);
+    });
+    return { monthly, paid, due, advance };
+  }, [paginated]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -437,6 +448,18 @@ export default function BillingList() {
                   );
                 })}
               </TableBody>
+              {paginated.length > 0 && (
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={11} className="text-right">পেজ মোট ({paginated.length} জন):</TableCell>
+                    <TableCell className="text-right">{pageTotals.monthly.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{pageTotals.paid.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{pageTotals.due.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{pageTotals.advance.toLocaleString()}</TableCell>
+                    <TableCell colSpan={4} />
+                  </TableRow>
+                </TableFooter>
+              )}
             </Table>
           </div>
         </CardContent>
@@ -449,7 +472,7 @@ export default function BillingList() {
           <Select value={String(perPage)} onValueChange={v => { setPerPage(Number(v)); setPage(1); }}>
             <SelectTrigger className="w-20 h-8"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {[10, 25, 50, 100].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+              {[10, 25, 50, 100, 250, 500, 1000].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
             </SelectContent>
           </Select>
           <span>মোট: {filtered.length} জন</span>
