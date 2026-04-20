@@ -96,7 +96,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
 
       let createdCount = 0;
       if (newClients.length > 0) {
-        const { error: insErr } = await supabase.from("clients").insert(newClients);
+        const { error: insErr } = await supabase.from("clients").insert(newClients as any);
         if (insErr) throw insErr;
         createdCount = newClients.length;
       }
