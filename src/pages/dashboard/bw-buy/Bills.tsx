@@ -240,6 +240,29 @@ export default function Bills() {
                     );
                   })}
                 </TableBody>
+                {filtered.length > 0 && (() => {
+                  const t = filtered.reduce((a: any, b: any) => {
+                    const due = Number(b.amount || 0) - Number(b.paid || 0) - Number(b.discount || 0);
+                    return {
+                      amt: a.amt + Number(b.amount || 0),
+                      paid: a.paid + Number(b.paid || 0),
+                      disc: a.disc + Number(b.discount || 0),
+                      due: a.due + Math.max(0, due),
+                    };
+                  }, { amt: 0, paid: 0, disc: 0, due: 0 });
+                  return (
+                    <TableFooter>
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-right">মোট ({filtered.length} টি):</TableCell>
+                        <TableCell className="text-right">৳{t.amt.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">৳{t.paid.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">৳{t.disc.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">৳{t.due.toLocaleString()}</TableCell>
+                        <TableCell colSpan={2} />
+                      </TableRow>
+                    </TableFooter>
+                  );
+                })()}
               </Table>
             </div>
           )}
