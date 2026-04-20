@@ -587,7 +587,8 @@ export default function Funding() {
                               size="icon"
                               variant="ghost"
                               className="h-7 w-7"
-                              onClick={() => toast.info("Detail view শীঘ্রই")}
+                              onClick={() => setDetailDialog({ open: true, row: f })}
+                              title="View detail history"
                             >
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
@@ -596,7 +597,15 @@ export default function Funding() {
                               variant="ghost"
                               className="h-7 w-7 text-destructive"
                               onClick={() => {
-                                if (confirm("Delete this funding entry?")) del.mutate(f.id);
+                                const amt = Number(f.amount ?? 0);
+                                const msg = (f.trans_type ?? "") === "refund"
+                                  ? "Refund row সরাসরি delete করা যাবে না — Detail view থেকে মুছুন।"
+                                  : `এই Fund entry delete করলে POP balance ৳${amt.toLocaleString("en-BD")} কমানো হবে। নিশ্চিত?`;
+                                if ((f.trans_type ?? "") === "refund") {
+                                  toast.error(msg);
+                                  return;
+                                }
+                                if (confirm(msg)) del.mutate(f);
                               }}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
