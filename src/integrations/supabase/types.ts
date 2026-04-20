@@ -5999,6 +5999,41 @@ export type Database = {
           },
         ]
       }
+      pop_billing_periods: {
+        Row: {
+          branch_manager_id: string
+          created_at: string
+          due_days: number
+          generate_day: number
+          period_type: string
+          updated_at: string
+        }
+        Insert: {
+          branch_manager_id: string
+          created_at?: string
+          due_days?: number
+          generate_day?: number
+          period_type?: string
+          updated_at?: string
+        }
+        Update: {
+          branch_manager_id?: string
+          created_at?: string
+          due_days?: number
+          generate_day?: number
+          period_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pop_billing_periods_branch_manager_id_fkey"
+            columns: ["branch_manager_id"]
+            isOneToOne: true
+            referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pop_devices: {
         Row: {
           branch_id: string | null
@@ -6036,6 +6071,45 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pop_district_assignments: {
+        Row: {
+          branch_manager_id: string
+          created_at: string
+          district_id: string
+          id: string
+          upazila_ids: string[] | null
+        }
+        Insert: {
+          branch_manager_id: string
+          created_at?: string
+          district_id: string
+          id?: string
+          upazila_ids?: string[] | null
+        }
+        Update: {
+          branch_manager_id?: string
+          created_at?: string
+          district_id?: string
+          id?: string
+          upazila_ids?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pop_district_assignments_branch_manager_id_fkey"
+            columns: ["branch_manager_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pop_district_assignments_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "districts"
             referencedColumns: ["id"]
           },
         ]
