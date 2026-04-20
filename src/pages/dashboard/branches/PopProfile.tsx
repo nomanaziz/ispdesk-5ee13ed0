@@ -43,8 +43,36 @@ export default function PopProfile() {
     queryFn: async () => {
       const { data } = await supabase
         .from("clients")
-        .select("id, name, client_id, billing_status, is_online, monthly_bill")
+        .select("id, name, client_id, username, billing_status, is_online, monthly_bill, mikrotik_id")
         .eq("branch_id", pop!.branch_id);
+      return data ?? [];
+    },
+  });
+
+  // Unexported = MikroTik PPP secret rows for this POP's server, but NO matching client row
+  const { data: unexported } = useQuery({
+    queryKey: ["pop-unexported", id, pop?.server_id, pop?.branch_id],
+    enabled: !!pop?.server_id && !!pop?.branch_id,
+    queryFn: async () => {
+      const { data: pppSecrets } = await supabase
+        .from("mikrotik_ppp_secrets" as any)
+        .select("id, name, profile, disabled, comment")
+        .eq("server_id", pop!.server_id);
+      const usernames = new Set((clients ?? []).map((c: any) => (c.username || "").toLowerCase()));
+      return (pppSecrets ?? []).filter((s: any) => !usernames.has((s.name || "").toLowerCase()));
+    },
+  });
+
+  const { data: refundLogs } = useQuery({
+    queryKey: ["pop-refund-logs", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("credit_refund_logs")
+        .select("*")
+        .eq("pop_id", id!)
+        .order("refunded_at", { ascending: false })
+        .limit(100);
       return data ?? [];
     },
   });
@@ -61,6 +89,25 @@ export default function PopProfile() {
         .limit(50);
       return data ?? [];
     },
+  });
+
+  const recoverMutation = useMutation({
+    mutationFn: async (pppName: string) => {
+      // Recover means: clear any portal-side mapping that may have been wrongly created
+      // (MikroTik user untouched). For now this is a safe no-op + toast since unexported
+      // means no client row exists. If a "left" client row exists with this username, reset it.
+      const { error } = await supabase
+        .from("clients")
+        .update({ branch_id: null, status: "recovered" })
+        .eq("username", pppName)
+        .eq("status", "left");
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Recovered — admin can now reassign this user");
+      qc.invalidateQueries({ queryKey: ["pop-unexported", id] });
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const update = useMutation({
