@@ -39,26 +39,30 @@ export default function Managers() {
     },
   });
 
-  const { data: clientCounts } = useQuery({
+  const { data: clientData } = useQuery({
     queryKey: ["pop-client-counts"],
     queryFn: async () => {
       const { data } = await supabase
         .from("clients")
         .select("branch_id, billing_status, is_online");
       const map: Record<string, { running: number; enabled: number; disabled: number; left: number; online: number }> = {};
+      let orphanCount = 0;
       for (const c of data ?? []) {
-        const key = (c as any).branch_id || "_none";
-        if (!map[key]) map[key] = { running: 0, enabled: 0, disabled: 0, left: 0, online: 0 };
-        map[key].running++;
+        const bid = (c as any).branch_id;
+        if (!bid) { orphanCount++; continue; }
+        if (!map[bid]) map[bid] = { running: 0, enabled: 0, disabled: 0, left: 0, online: 0 };
+        map[bid].running++;
         const st = (c as any).billing_status;
-        if (st === "active" || st === "enabled") map[key].enabled++;
-        else if (st === "disabled" || st === "expired") map[key].disabled++;
-        else if (st === "left") map[key].left++;
-        if ((c as any).is_online) map[key].online++;
+        if (st === "active" || st === "enabled") map[bid].enabled++;
+        else if (st === "disabled" || st === "expired") map[bid].disabled++;
+        else if (st === "left") map[bid].left++;
+        if ((c as any).is_online) map[bid].online++;
       }
-      return map;
+      return { map, orphanCount };
     },
   });
+  const clientCounts = clientData?.map;
+  const orphanCount = clientData?.orphanCount ?? 0;
 
   const update = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: any }) => {
@@ -106,7 +110,9 @@ export default function Managers() {
     let totalClients = 0;
     let totalOnline = 0;
     for (const m of managers ?? []) {
-      const c = clientCounts?.[(m as any).branch_id || "_none"];
+      const bid = (m as any).branch_id;
+      if (!bid) continue;
+      const c = clientCounts?.[bid];
       if (c) { totalClients += c.running; totalOnline += c.online; }
     }
     return { total, totalClients, totalOnline };
@@ -139,6 +145,20 @@ export default function Managers() {
         <StatCard icon={<UserCheck className="h-5 w-5" />} label="মোট POP ক্লায়েন্ট" value={stats.totalClients} color="bg-emerald-500/10 text-emerald-600" />
         <StatCard icon={<Wifi className="h-5 w-5" />} label="অনলাইন ক্লায়েন্ট" value={stats.totalOnline} color="bg-blue-500/10 text-blue-600" />
       </div>
+
+      {orphanCount > 0 && (
+        <Card className="border-amber-500/40 bg-amber-500/5">
+          <CardContent className="pt-4 flex items-center justify-between flex-wrap gap-2">
+            <div className="text-sm">
+              <span className="font-semibold text-amber-700 dark:text-amber-400">⚠ {orphanCount} জন Unassigned Client</span>
+              <span className="text-muted-foreground"> — কোনো POP-এর সাথে যুক্ত নয় (branch_id NULL)</span>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => navigate("/dashboard/clients/list?orphan=1")}>
+              এদের দেখুন / Assign করুন
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card>
@@ -206,7 +226,7 @@ export default function Managers() {
                   <TableRow><TableCell colSpan={16} className="text-center text-muted-foreground py-8">কোনো POP পাওয়া যায়নি</TableCell></TableRow>
                 ) : (
                   filtered.map((m: any, i) => {
-                    const c = clientCounts?.[m.branch_id || "_none"] || { running: 0, enabled: 0, disabled: 0, left: 0 };
+                    const c = (m.branch_id ? clientCounts?.[m.branch_id] : null) || { running: 0, enabled: 0, disabled: 0, left: 0 };
                     return (
                       <TableRow key={m.id} className="hover:bg-muted/30">
                         <TableCell>{i + 1}</TableCell>
