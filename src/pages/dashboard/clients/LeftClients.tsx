@@ -5,9 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
-import { Search, FileSpreadsheet, FileText } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Search, FileSpreadsheet, FileText, MoreVertical, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
+import RecoveryInfoDialog from "@/components/clients/RecoveryInfoDialog";
+
+const PER_PAGE_OPTIONS = [10, 25, 50, 100, 250, 500, 1000];
 
 export default function LeftClients() {
   const [search, setSearch] = useState("");
@@ -15,8 +19,12 @@ export default function LeftClients() {
   const [filterConnType, setFilterConnType] = useState("all");
   const [filterClientType, setFilterClientType] = useState("all");
   const [filterPackage, setFilterPackage] = useState("all");
+  const [filterRecovery, setFilterRecovery] = useState("all");
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
+  const [perPage, setPerPage] = useState(50);
+  const [page, setPage] = useState(0);
+  const [recoveryClient, setRecoveryClient] = useState<any | null>(null);
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ["left-clients"],
@@ -42,6 +50,7 @@ export default function LeftClients() {
     if (filterConnType !== "all") list = list.filter((c: any) => c.connection_type === filterConnType);
     if (filterClientType !== "all") list = list.filter((c: any) => c.client_type === filterClientType);
     if (filterPackage !== "all") list = list.filter((c: any) => c.package_id === filterPackage);
+    if (filterRecovery !== "all") list = list.filter((c: any) => (c.recovery_status || "pending") === filterRecovery);
     if (filterFromDate) list = list.filter((c: any) => c.left_date && c.left_date >= filterFromDate);
     if (filterToDate) list = list.filter((c: any) => c.left_date && c.left_date <= filterToDate);
     if (search) {
@@ -49,10 +58,25 @@ export default function LeftClients() {
       list = list.filter((c: any) => c.name?.toLowerCase().includes(s) || c.client_id?.toLowerCase().includes(s) || c.contact?.includes(s));
     }
     return list;
-  }, [clients, search, filterZone, filterConnType, filterClientType, filterPackage, filterFromDate, filterToDate]);
+  }, [clients, search, filterZone, filterConnType, filterClientType, filterPackage, filterRecovery, filterFromDate, filterToDate]);
+
+  const totalDue = useMemo(() => filtered.reduce((s: number, c: any) => s + Number(c.monthly_bill || 0), 0), [filtered]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const paginated = useMemo(() => filtered.slice(page * perPage, (page + 1) * perPage), [filtered, page, perPage]);
+
+  const recoveryBadge = (s: string) => {
+    const map: Record<string, { label: string; cls: string }> = {
+      recovered: { label: "Recovered", cls: "bg-green-500/10 text-green-700 border-green-500/30" },
+      partial: { label: "Partial", cls: "bg-amber-500/10 text-amber-700 border-amber-500/30" },
+      not_applicable: { label: "N/A", cls: "bg-muted text-muted-foreground" },
+      pending: { label: "Pending", cls: "bg-red-500/10 text-red-700 border-red-500/30" },
+    };
+    const m = map[s] || map.pending;
+    return <Badge variant="outline" className={`text-[10px] ${m.cls}`}>{m.label}</Badge>;
+  };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Left Clients <span className="text-sm font-normal text-muted-foreground">View All Left Client</span></h1>
       </div>
@@ -105,6 +129,19 @@ export default function LeftClients() {
             </Select>
           </div>
           <div>
+            <Label className="text-xs uppercase">Recovery Status</Label>
+            <Select value={filterRecovery} onValueChange={setFilterRecovery}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">সব</SelectItem>
+                <SelectItem value="pending">পেন্ডিং</SelectItem>
+                <SelectItem value="recovered">রিকভার্ড</SelectItem>
+                <SelectItem value="partial">আংশিক</SelectItem>
+                <SelectItem value="not_applicable">প্রযোজ্য নয়</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label className="text-xs uppercase">From Left Date</Label>
             <Input type="date" value={filterFromDate} onChange={e => setFilterFromDate(e.target.value)} />
           </div>
@@ -112,13 +149,26 @@ export default function LeftClients() {
             <Label className="text-xs uppercase">To Left Date</Label>
             <Input type="date" value={filterToDate} onChange={e => setFilterToDate(e.target.value)} />
           </div>
-          <div className="md:col-span-2">
+          <div>
             <Label className="text-xs uppercase">Search</Label>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input className="pl-9" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Per-page + total */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>মোট: {filtered.length} জন</span>
+          <Select value={String(perPage)} onValueChange={v => { setPerPage(Number(v)); setPage(0); }}>
+            <SelectTrigger className="h-7 w-20 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PER_PAGE_OPTIONS.map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -141,22 +191,28 @@ export default function LeftClients() {
               <TableHead className="text-xs">B.Status</TableHead>
               <TableHead className="text-xs">Left Date</TableHead>
               <TableHead className="text-xs">Reason</TableHead>
+              <TableHead className="text-xs">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={14} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={14} className="text-center py-8">কোনো বন্ধ ক্লায়েন্ট পাওয়া যায়নি</TableCell></TableRow>
+              <TableRow><TableCell colSpan={15} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+            ) : paginated.length === 0 ? (
+              <TableRow><TableCell colSpan={15} className="text-center py-8">কোনো বন্ধ ক্লায়েন্ট পাওয়া যায়নি</TableCell></TableRow>
             ) : (
-              filtered.map((c: any) => (
+              paginated.map((c: any) => (
                 <TableRow key={c.id}>
                   <TableCell className="text-xs font-medium">{c.client_id}</TableCell>
                   <TableCell className="text-xs">{c.username || c.user_id || "-"}</TableCell>
                   <TableCell className="text-xs font-medium">{c.name}</TableCell>
                   <TableCell className="text-xs">{c.contact}</TableCell>
                   <TableCell className="text-xs">{c.zones?.name || "-"}</TableCell>
-                  <TableCell className="text-xs">{c.connection_type || "-"}</TableCell>
+                  <TableCell className="text-xs">
+                    <div className="flex flex-col gap-0.5">
+                      <span>{c.connection_type || "-"}</span>
+                      {recoveryBadge(c.recovery_status || "pending")}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-xs">{c.client_type || "-"}</TableCell>
                   <TableCell className="text-xs">{c.remote_address || "-"}</TableCell>
                   <TableCell className="text-xs">{c.isp_packages ? `${c.isp_packages.name}/${c.isp_packages.bandwidth_down}Mb` : "-"}</TableCell>
@@ -165,12 +221,46 @@ export default function LeftClients() {
                   <TableCell className="text-xs"><Badge variant="destructive" className="text-[10px]">Left</Badge></TableCell>
                   <TableCell className="text-xs">{c.left_date || "-"}</TableCell>
                   <TableCell className="text-xs">{c.left_reason || "-"}</TableCell>
+                  <TableCell className="text-xs">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="ghost" className="h-7 w-7"><MoreVertical className="h-4 w-4" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setRecoveryClient(c)}>
+                          <Wrench className="h-4 w-4 mr-2" /> রিকভারি ইনফরমেশন
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
+          <TableFooter>
+            <TableRow className="bg-primary/10 font-semibold">
+              <TableCell colSpan={9} className="text-xs">মোট: {filtered.length} জন</TableCell>
+              <TableCell className="text-xs">৳ {totalDue.toLocaleString()}</TableCell>
+              <TableCell colSpan={5}></TableCell>
+            </TableRow>
+          </TableFooter>
         </Table>
       </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">পেজ {page + 1} / {totalPages}</span>
+        <div className="flex items-center gap-1">
+          <Button size="icon" variant="outline" className="h-8 w-8" disabled={page <= 0} onClick={() => setPage(p => p - 1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="outline" className="h-8 w-8" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      <RecoveryInfoDialog open={!!recoveryClient} onOpenChange={(v) => !v && setRecoveryClient(null)} client={recoveryClient} />
     </div>
   );
 }
