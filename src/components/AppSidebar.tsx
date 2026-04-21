@@ -590,6 +590,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
   // Sum of badge counts for items inside this group (used in collapsed mode + group label)
   const groupBadgeCount = group.items.reduce((sum, it) => sum + (badges?.[it.url] || 0), 0);
   const primaryItem = group.items[0];
+  const groupColor = getGroupColor(group);
 
   if (group.direct && primaryItem) {
     const isActive = primaryItem.url === "/dashboard"
