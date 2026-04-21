@@ -11,13 +11,14 @@ interface ThemeCustomizerProps {
 }
 
 export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
-  const { settings, updateSettings, resetSettings } = useTheme();
+  const { settings, updateSettings, resetSettings, lockLight } = useTheme();
 
-  const modeOptions: { value: ThemeMode; icon: React.ElementType; label: string }[] = [
+  const allModeOptions: { value: ThemeMode; icon: React.ElementType; label: string }[] = [
     { value: "light", icon: Sun, label: "লাইট" },
     { value: "dark", icon: Moon, label: "ডার্ক" },
     { value: "system", icon: Monitor, label: "সিস্টেম" },
   ];
+  const modeOptions = lockLight ? allModeOptions.filter(o => o.value === "light") : allModeOptions;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
