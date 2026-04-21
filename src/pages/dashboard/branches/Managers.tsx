@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import PopActionMenu from "@/components/branches/PopActionMenu";
 import FundDeductionDialog from "@/components/branches/FundDeductionDialog";
 import PasswordRegenerateDialog from "@/components/branches/PasswordRegenerateDialog";
+import { loginAsUser } from "@/lib/impersonate";
 
 export default function Managers() {
   const qc = useQueryClient();
@@ -116,8 +117,13 @@ export default function Managers() {
     return { total, totalClients, totalOnline };
   }, [managers, clientCounts]);
 
-  const handleLoginAs = (m: any) => {
-    toast.info(`POP "${m.name}" হিসেবে লগইন — Phase 2-এ আসছে`);
+  const handleLoginAs = async (m: any) => {
+    try {
+      await loginAsUser("reseller", m.id);
+      toast.success(`POP "${m.name}" হিসেবে নতুন ট্যাবে লগইন হচ্ছে`);
+    } catch (e: any) {
+      toast.error(e.message || "Login failed");
+    }
   };
   const handleTypeChange = (m: any) => {
     const next = m.pop_type === "prepaid" ? "postpaid" : "prepaid";

@@ -61,6 +61,25 @@ export const PortalAuthProvider = ({ children }: { children: React.ReactNode }) 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Pick up impersonation token from URL hash (one-shot)
+    const hash = window.location.hash;
+    if (hash.startsWith("#imp=")) {
+      try {
+        const impToken = decodeURIComponent(hash.slice(5));
+        const decoded: PortalCustomer = JSON.parse(atob(impToken));
+        if (decoded.exp > Date.now()) {
+          localStorage.setItem("portal_token", impToken);
+          window.history.replaceState(null, "", window.location.pathname + window.location.search);
+          setCustomer(decoded);
+          setToken(impToken);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // fall through to normal flow
+      }
+    }
+
     const stored = localStorage.getItem("portal_token");
     if (stored) {
       try {

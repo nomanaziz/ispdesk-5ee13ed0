@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Eye, Pencil, Trash2, Search, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Search, ChevronLeft, ChevronRight, RefreshCw, LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { loginAsUser } from "@/lib/impersonate";
 
 interface Customer {
   id: string;
@@ -67,6 +69,7 @@ function generateCode(name: string, existingCodes: Set<string>): string {
 
 export default function Pop() {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -246,6 +249,21 @@ export default function Pop() {
                         <div className="flex items-center justify-center gap-1">
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/dashboard/bw-sale/pop/${c.id}`)}><Eye className="h-3.5 w-3.5" /></Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-primary"
+                              title="Login as Customer"
+                              onClick={() =>
+                                loginAsUser("bw_customer", c.id)
+                                  .then(() => toast.success("নতুন ট্যাবে লগইন হচ্ছে"))
+                                  .catch((e) => toast.error(e.message))
+                              }
+                            >
+                              <LogIn className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(c.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                       </TableCell>

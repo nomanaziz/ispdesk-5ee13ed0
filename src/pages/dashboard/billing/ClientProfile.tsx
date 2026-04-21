@@ -14,16 +14,19 @@ import {
   ArrowLeft, Edit, Calendar, Mail, Package, Download,
   User, Globe, Wifi, HardDrive, Search, WifiOff,
   Power, PowerOff, MessageSquare, RefreshCw, History,
-  CreditCard, FileText, Activity, Shield, ChevronDown, ChevronRight
+  CreditCard, FileText, Activity, Shield, ChevronDown, ChevronRight, LogIn
 } from "lucide-react";
 import BillEditDialog from "@/components/billing/BillEditDialog";
 import { usePopScope } from "@/hooks/usePopScope";
+import { useAuth } from "@/contexts/AuthContext";
+import { loginAsUser } from "@/lib/impersonate";
 
 export default function ClientProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isPopMode, branchId } = usePopScope();
+  const { isAdmin } = useAuth();
   const [pppSnapshot, setPppSnapshot] = useState<any>(null);
   const [inlineSearch, setInlineSearch] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -289,6 +292,20 @@ export default function ClientProfile() {
                 <Button size="sm" variant="outline" className="text-xs gap-1.5 col-span-2" onClick={() => pppActionMutation.mutate("status")} disabled={pppActionMutation.isPending}>
                   <RefreshCw className="h-3 w-3" /> PPP Refresh
                 </Button>
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="text-xs gap-1.5 col-span-2"
+                    onClick={() =>
+                      loginAsUser("client", c.id)
+                        .then(() => toast.success("নতুন ট্যাবে লগইন হচ্ছে"))
+                        .catch((e) => toast.error(e.message))
+                    }
+                  >
+                    <LogIn className="h-3 w-3" /> Login as Client
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

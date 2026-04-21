@@ -6,11 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, KeyRound, Download, User, List } from "lucide-react";
+import { ArrowLeft, KeyRound, Download, User, List, LogIn } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { loginAsUser } from "@/lib/impersonate";
+import { toast } from "sonner";
 
 export default function CustomerView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [customer, setCustomer] = useState<any>(null);
   const [pop, setPop] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -63,6 +67,20 @@ export default function CustomerView() {
                 {customer.activity_status}
               </Badge>
               <div className="space-y-2 pt-2">
+                {isAdmin && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={() =>
+                      loginAsUser("bw_customer", customer.id)
+                        .then(() => toast.success("নতুন ট্যাবে লগইন হচ্ছে"))
+                        .catch((e) => toast.error(e.message))
+                    }
+                  >
+                    <LogIn className="h-3.5 w-3.5" /> Login as Customer
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" className="w-full gap-2"><KeyRound className="h-3.5 w-3.5" /> Regenerate Password</Button>
                 <Button variant="outline" size="sm" className="w-full gap-2"><Download className="h-3.5 w-3.5" /> Download Info</Button>
                 <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => navigate("/dashboard/bw-sale/pop")}>
