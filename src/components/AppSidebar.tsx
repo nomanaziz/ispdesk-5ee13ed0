@@ -796,6 +796,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { resolvedMode } = useTheme();
+  const { lang } = useLanguage();
   const isLight = resolvedMode === "light";
   const [search, setSearch] = useState("");
   const [reorderOpen, setReorderOpen] = useState(false);
