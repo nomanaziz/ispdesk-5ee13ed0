@@ -6266,6 +6266,48 @@ export type Database = {
           },
         ]
       }
+      pop_package_pricing: {
+        Row: {
+          branch_manager_id: string
+          created_at: string
+          id: string
+          pop_selling_rate: number
+          tariff_package_id: string
+          updated_at: string
+        }
+        Insert: {
+          branch_manager_id: string
+          created_at?: string
+          id?: string
+          pop_selling_rate?: number
+          tariff_package_id: string
+          updated_at?: string
+        }
+        Update: {
+          branch_manager_id?: string
+          created_at?: string
+          id?: string
+          pop_selling_rate?: number
+          tariff_package_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pop_package_pricing_branch_manager_id_fkey"
+            columns: ["branch_manager_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pop_package_pricing_tariff_package_id_fkey"
+            columns: ["tariff_package_id"]
+            isOneToOne: false
+            referencedRelation: "reseller_tariff_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pop_transactions: {
         Row: {
           amount: number
