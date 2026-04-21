@@ -63,29 +63,33 @@ export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
 
             <Separator />
 
-            {/* Theme Mode */}
-            <div>
-              <h4 className="text-sm font-semibold mb-3">থিম মোড</h4>
-              <div className="grid grid-cols-3 gap-2">
-                {modeOptions.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => updateSettings({ mode: opt.value })}
-                    className={cn(
-                      "flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border text-xs transition-all",
-                      settings.mode === opt.value
-                        ? "border-primary bg-primary/10 text-primary font-medium"
-                        : "border-border hover:border-primary/40 text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <opt.icon className="h-5 w-5" />
-                    <span>{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            {!lockLight && (
+              <>
+                {/* Theme Mode */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-3">থিম মোড</h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    {modeOptions.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => updateSettings({ mode: opt.value })}
+                        className={cn(
+                          "flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border text-xs transition-all",
+                          settings.mode === opt.value
+                            ? "border-primary bg-primary/10 text-primary font-medium"
+                            : "border-border hover:border-primary/40 text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <opt.icon className="h-5 w-5" />
+                        <span>{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            <Separator />
+                <Separator />
+              </>
+            )}
 
             {/* Skin */}
             <div>
