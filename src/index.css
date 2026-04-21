@@ -69,7 +69,7 @@
   /* ── Dark Mode ── */
   [data-theme-mode="dark"] {
     --background: 224 22% 16%;
-    --foreground: 220 14% 86%;
+    --foreground: 220 18% 94%;
 
     --card: 224 20% 19%;
     --card-foreground: 220 14% 86%;
