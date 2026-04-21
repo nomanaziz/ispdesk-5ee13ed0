@@ -914,7 +914,7 @@ export function AppSidebar() {
               )}
             >
               <ArrowUpDown className="h-3.5 w-3.5" />
-              মেনু সাজান
+              {lang === "bn" ? "মেনু সাজান" : "Reorder menu"}
             </button>
           </div>
         )}
