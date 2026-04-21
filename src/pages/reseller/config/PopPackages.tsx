@@ -84,10 +84,19 @@ export default function PopPackages() {
   }, [currentPage, totalPages]);
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Package</h1>
         <p className="text-xs text-muted-foreground mt-1">Configuration &gt; Package</p>
+      </div>
+
+      <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        <Info className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+        <p>
+          <span className="font-semibold text-foreground">BuyingRate</span> = Admin আপনার কাছে যে দামে বিক্রি করেছে (পরিবর্তনযোগ্য নয়)। শুধু{" "}
+          <span className="font-semibold text-foreground">SellingRate</span> edit করে আপনার client-দের জন্য দাম নির্ধারণ করুন।
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
