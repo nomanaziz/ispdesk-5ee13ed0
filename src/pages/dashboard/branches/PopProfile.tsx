@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import FundDeductionDialog from "@/components/branches/FundDeductionDialog";
 import PasswordRegenerateDialog from "@/components/branches/PasswordRegenerateDialog";
+import { loginAsUser } from "@/lib/impersonate";
 
 export default function PopProfile() {
   const { id } = useParams();
@@ -213,7 +214,7 @@ export default function PopProfile() {
                 <ArrowLeftRight className="h-3.5 w-3.5" /> Type Change
               </Button>
               <Button size="sm" variant="outline" onClick={() => setPwdOpen(true)}><KeyRound className="h-3.5 w-3.5" /> Password</Button>
-              <Button size="sm" variant="outline" onClick={() => toast.info("Coming soon")}><LogIn className="h-3.5 w-3.5" /> Login as POP</Button>
+              <Button size="sm" variant="outline" onClick={() => loginAsUser("reseller", id!).then(() => toast.success("নতুন ট্যাবে লগইন হচ্ছে")).catch((e) => toast.error(e.message))}><LogIn className="h-3.5 w-3.5" /> Login as POP</Button>
               <Button size="sm" variant="outline" onClick={() => navigate("/dashboard/clients/add-client")}><Plus className="h-3.5 w-3.5" /> Add Client</Button>
               <Button size="sm" className="col-span-2" onClick={() => setFundOpen(true)}>Fund Add / Deduction</Button>
             </div>

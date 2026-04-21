@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Trash2, CalendarClock, Package, MessageSquare, Edit, Eye, MoreVertical } from "lucide-react";
+import { Trash2, CalendarClock, Package, MessageSquare, Edit, Eye, MoreVertical, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import StatusSchedulerDialog from "./StatusSchedulerDialog";
 import PackageSchedulerDialog from "./PackageSchedulerDialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { loginAsUser } from "@/lib/impersonate";
 
 interface Props {
   client: any;
@@ -20,6 +22,7 @@ interface Props {
 export default function ClientActionButtons({ client, mode, invalidateKey = "clients-list" }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
   const [statusOpen, setStatusOpen] = useState(false);
   const [packageOpen, setPackageOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -94,6 +97,17 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
               <DropdownMenuItem onSelect={() => setStatusOpen(true)}>
                 <CalendarClock className="mr-2 h-4 w-4" /> স্ট্যাটাস শিডিউলার
               </DropdownMenuItem>
+              {isAdmin && (
+                <DropdownMenuItem
+                  onSelect={() =>
+                    loginAsUser("client", client.id)
+                      .then(() => toast.success("নতুন ট্যাবে ক্লায়েন্ট পোর্টালে লগইন হচ্ছে"))
+                      .catch((e) => toast.error(e.message))
+                  }
+                >
+                  <LogIn className="mr-2 h-4 w-4" /> Admin: Login as Client
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={(e) => {
