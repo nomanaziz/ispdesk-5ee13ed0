@@ -284,5 +284,6 @@ export default function PopPackages() {
         </>
       )}
     </div>
+    </TooltipProvider>
   );
 }
