@@ -37,6 +37,33 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+const hasLegacySwappedPackageRates = (pkg: {
+  buy_rate?: number | null;
+  selling_rate?: number | null;
+}) => {
+  const buy = Number(pkg.buy_rate ?? 0);
+  const sell = Number(pkg.selling_rate ?? 0);
+  return Number.isFinite(buy) && Number.isFinite(sell) && buy > 0 && sell > 0 && buy > sell;
+};
+
+const normalizePackageRates = <T extends { buy_rate?: number | null; selling_rate?: number | null }>(
+  pkg: T,
+) => {
+  if (!hasLegacySwappedPackageRates(pkg)) {
+    return {
+      ...pkg,
+      buy_rate: Number(pkg.buy_rate ?? 0),
+      selling_rate: Number(pkg.selling_rate ?? 0),
+    };
+  }
+
+  return {
+    ...pkg,
+    buy_rate: Number(pkg.selling_rate ?? 0),
+    selling_rate: Number(pkg.buy_rate ?? 0),
+  };
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
