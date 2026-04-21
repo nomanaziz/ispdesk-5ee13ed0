@@ -104,6 +104,8 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
       if (!packageId || !selectedPkg) throw new Error("Package সিলেক্ট করুন");
       if (!targetMikrotik?.id) throw new Error("এই Package-এ MikroTik server assigned নাই");
       if (!selectedPop?.branch_id) throw new Error("এই POP-এর কোনো branch assign করা নেই");
+      if (isMixed) throw new Error("Mixed profile — single profile-এর user select করুন");
+      if (profileMismatch) throw new Error(`Profile mismatch — User profile "${uniqueProfile}" ≠ Package profile "${selectedPkg.mikrotik_profile}"`);
 
       if (selectedPop.pop_type === "prepaid" && selectedPop.fund_started && Number(selectedPop.balance || 0) < creditable) {
         throw new Error(`POP-এর balance অপ্রতুল (${selectedPop.balance} < ${creditable})`);
