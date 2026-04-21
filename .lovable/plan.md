@@ -1,107 +1,70 @@
 
-## লক্ষ্য
-POP Admin / Reseller panel-কে main admin panel-এর সাথে একই visual system-এ আনা:
-1. একই darkened color tone
-2. একই বাংলা default + English toggle behavior
-3. POP layout/header/sidebar-এ admin-এর মতো cleaner, higher-contrast design
-4. POP-specific page heading/button/table text-এ language parity
 
-## Root cause
-POP panel এখন `src/components/ResellerLayout.tsx` নামে আলাদা custom shell ব্যবহার করছে।  
-Main admin panel-এ language toggle + darker readable tone already এসেছে, কিন্তু POP shell-এ এখনো:
-- hardcoded English menu/search/logout text আছে
-- header styling admin `TopBar`-এর মতো নয়
-- POP-specific pages (`src/pages/reseller/**`) এ অনেক hardcoded English labels আছে
+## সমস্যা
+এখন `ThemeProvider` একই `localStorage` key (`ispdesk-theme-v2`) সব জায়গায় use করছে। তাই same browser/PC-তে:
+- Admin dark করলে → Portal client login-ও dark
+- Admin dark করলে → POP admin login-ও dark
+সবাই same theme share করে ফেলছে।
 
-Global theme tokens (`src/index.css`) already darker করা হয়েছে, তাই remaining gap মূলত layout + text layer-এ।
+আবার Portal (client) ও POP admin-এ কোনো theme switcher UI-ও নেই, কিন্তু admin-এর settings ওদের force করছে।
 
-## কী build হবে
+## সমাধান: প্রতি panel-এর আলাদা theme scope
 
-### 1. POP layout-এ admin-এর same language behavior
-`src/components/ResellerLayout.tsx`-এ `useLanguage()` যোগ করা হবে।
+### ১. Scope-aware ThemeProvider
+`ThemeContext.tsx`-এ একটা `scope` prop যোগ করা হবে: `"admin" | "portal" | "pop" | "public"`।
 
-এখানে:
-- ছোট `[বাং | EN]` toggle button add হবে
-- default Bengali থাকবে
-- English switch করলে menu labels, search placeholder, logout, website button, sub-user label ইত্যাদি change হবে
-- search filter Bengali + English দুই labelেই কাজ করবে
+প্রতি scope-এর আলাদা localStorage key:
+- `ispdesk-theme-admin`
+- `ispdesk-theme-portal`
+- `ispdesk-theme-pop`
+- `ispdesk-theme-public`
 
-### 2. POP sidebar/header-কে admin tone-এর সাথে align করা
-`ResellerLayout`-এর shell classes admin `TopBar`/`DashboardLayout` tone অনুযায়ী update হবে:
-- header: `bg-card/95`, subtle border, better spacing
-- sidebar: same sidebar token usage, stronger readable text contrast
-- buttons/hover states: admin panel-এর current tone match করবে
-- mobile drawer/open state stylingও একই family-তে আনা হবে
+অর্থাৎ admin-এ dark mode করলে শুধু admin storage-এ save হবে, portal বা POP-এ প্রভাব পড়বে না।
 
-এতে POP panel visually আলাদা না লেগে same product-এর অংশ মনে হবে।
+### ২. প্রতি panel-এর আলাদা default
+- **Admin** (`/dashboard/*`): user যা set করে (light default)
+- **Portal client** (`/portal/*`): সবসময় **light**, dark mode নেই
+- **POP admin** (`/pop-admin/*`): সবসময় **light**, dark mode নেই
+- **Public website** (`/`): সবসময় **light**
 
-### 3. POP menu labels bilingual করা
-`groups` array-তে Bangla labels primary করা হবে, English fallback mapping রাখা হবে।
+Portal/POP/Public scope-এ theme mode `"light"` hard-locked থাকবে — admin storage থেকে dark পড়বে না।
 
-উদাহরণ:
-- Dashboard → ড্যাশবোর্ড
-- Configuration → কনফিগারেশন
-- Employee → কর্মচারী
-- Billing → বিলিং
-- Reports → রিপোর্ট
-- Logout → লগআউট
+### ৩. App.tsx routing restructure
+এখন root-এ একটা `<ThemeProvider>` সব wrap করছে। সেটা সরিয়ে route group-অনুযায়ী আলাদা provider:
 
-English mode-এ clean English labels দেখাবে, Bangla mode-এ Bengali labels দেখাবে।
+```text
+<LanguageProvider>
+  Routes:
+    /dashboard/*    → <ThemeProvider scope="admin">    <DashboardLayout/>
+    /portal/*       → <ThemeProvider scope="portal" lockLight>  <PortalLayout/>
+    /pop-admin/*    → <ThemeProvider scope="pop" lockLight>     <ResellerLayout/>
+    /*              → <ThemeProvider scope="public" lockLight>  <PublicLayout/>
+```
 
-### 4. POP-specific reseller pages-এ visible text parity
-যেসব POP pages admin shell use করে না, সেগুলোর visible hardcoded text translate-ready করা হবে।
+`lockLight` prop থাকলে provider সবসময় light force করবে এবং `updateSettings` দিয়ে mode change ignore হবে।
 
-প্রথম ধাপে অন্তত এই files:
-- `src/pages/reseller/ResellerDashboard.tsx`
-- `src/pages/reseller/ResellerSettings.tsx`
-- `src/pages/reseller/ResellerUsers.tsx`
-- `src/pages/reseller/ResellerTickets.tsx`
-- `src/pages/reseller/ResellerInvoices.tsx`
-- `src/pages/reseller/ResellerPurchaseOrders.tsx`
-- `src/pages/reseller/config/PopPackages.tsx`
+### ৪. ThemeCustomizer/QuickSettings UI
+- Admin-এ আগের মতই full controls (mode + color + skin)।
+- Portal/POP/Public layouts-এ ThemeCustomizer/QuickSettings render-ই করা হবে না (এখনো করা হচ্ছে না বলে মনে হচ্ছে, verify করব)।
 
-এখানে:
-- page title
-- section heading
-- button labels
-- empty states
-- table headers
-- save/cancel/search/show entries ধরনের common UI text
-BN/EN toggle-এর সাথে switch করবে।
-
-### 5. Admin-style text readability POP pages-এ consistent করা
-যেখানে POP pages-এ muted text, helper text, empty states, subtitle extra faded লাগছে, সেখানে class usage admin-style readable tone অনুযায়ী refine করা হবে:
-- `text-muted-foreground` kept but with proper hierarchy
-- key headings/body text stronger রাখা
-- card/table sections same readability standard-এ আনা
-
-## Technical details
-- `LanguageProvider` already app root-এ আছে, তাই POP panel-এ নতুন context plumbing লাগবে না
-- `ResellerLayout.tsx`-এ `tr()` / translation map pattern add করা হবে, similar to `AppSidebar.tsx`
-- Search logic bilingual হবে: Bangla label + English translation দুটোতেই filter করবে
-- `src/index.css` global darker tokens unchanged থাকবে; POP shell শুধু সেই tokens betterভাবে consume করবে
-- কোনো database / edge function / backend change লাগবে না
+### ৫. Migration safety
+পুরাতন `ispdesk-theme-v2` key থাকলে এক-বার admin scope-এ migrate করা হবে, তারপর key delete। যাতে user-এর existing admin theme harano না যায়।
 
 ## যা বদলাবে না
-- POP business logic
-- permissions / auth flow
-- tariff / package pricing logic
-- main admin routing structure
-- public website
+- Color tokens (`src/index.css`) — আগের darker tone admin-এ ঠিক থাকবে
+- Language toggle behavior
+- Backend / database / RLS
+- Routing paths
 
 ## Files
-- `src/components/ResellerLayout.tsx` — POP shell, header, sidebar, toggle, translated labels
-- `src/pages/reseller/ResellerDashboard.tsx` — dashboard labels
-- `src/pages/reseller/ResellerSettings.tsx` — settings form labels/buttons
-- `src/pages/reseller/ResellerUsers.tsx` — user management text/actions
-- `src/pages/reseller/ResellerTickets.tsx` — ticket UI text
-- `src/pages/reseller/ResellerInvoices.tsx` — invoice list text
-- `src/pages/reseller/ResellerPurchaseOrders.tsx` — purchase orders text
-- `src/pages/reseller/config/PopPackages.tsx` — package page text/search/pagination labels
+- `src/contexts/ThemeContext.tsx` — `scope` + `lockLight` props, scoped storage, light-lock guard, one-time migration
+- `src/App.tsx` — root `<ThemeProvider>` সরিয়ে scope-অনুযায়ী আলাদা provider প্রতি route group-এ
+- `src/components/ThemeCustomizer.tsx` / `src/components/QuickSettings.tsx` — `lockLight` হলে dark mode option hide/disable (light-only color/skin OK)
 
-## Apply-এর পরে expected result
-1. POP panel-এও Bengali default থাকবে
-2. উপরে ছোট BN/EN toggle থাকবে
-3. POP header/sidebar color tone main admin-এর মতো dark/readable হবে
-4. POP menu, search, logout, common headings same design language follow করবে
-5. User আর main admin vs POP admin-এ আলাদা/অসম design feel করবে না
+## Apply-এর পরে expected
+1. Admin dark করলে শুধু admin panel dark হবে
+2. Same PC থেকে portal client login করলে → light, untouched
+3. POP admin login করলে → light, untouched
+4. Public website সবসময় light
+5. প্রতি panel স্বাধীনভাবে theme manage করবে, একে অপরকে override করবে না
+
