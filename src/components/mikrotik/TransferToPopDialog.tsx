@@ -7,8 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { toast } from "sonner";
-import { ArrowRightLeft } from "lucide-react";
+import { ArrowRightLeft, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -20,11 +23,11 @@ interface Props {
 export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransferred }: Props) {
   const qc = useQueryClient();
   const [popId, setPopId] = useState<string>("");
-  const [mikrotikId, setMikrotikId] = useState<string>("");
   const [packageId, setPackageId] = useState<string>("");
+  const [popPickerOpen, setPopPickerOpen] = useState(false);
 
   useEffect(() => {
-    if (!open) { setPopId(""); setMikrotikId(""); setPackageId(""); }
+    if (!open) { setPopId(""); setPackageId(""); }
   }, [open]);
 
   const { data: pops = [] } = useQuery({
@@ -32,31 +35,16 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     queryFn: async () => {
       const { data, error } = await supabase
         .from("branch_managers")
-        .select("id, name, pop_code, branch_id, tariff_id, pop_type, balance")
-        .eq("status", "active")
+        .select("id, name, pop_code, branch_id, tariff_id, pop_type, balance, status")
         .order("name");
       if (error) throw error;
-      return data || [];
+      // case-insensitive active filter — DB has mix of "Active" & "active"
+      return (data || []).filter((p: any) => (p.status || "").toLowerCase() === "active");
     },
     enabled: open,
   });
 
   const selectedPop = pops.find((p: any) => p.id === popId);
-
-  const { data: mikrotiks = [] } = useQuery({
-    queryKey: ["pop_mikrotiks", selectedPop?.branch_id],
-    queryFn: async () => {
-      if (!selectedPop?.branch_id) return [];
-      const { data, error } = await supabase
-        .from("mikrotik_devices")
-        .select("id, name, ip_address")
-        .eq("branch_id", selectedPop.branch_id)
-        .order("name");
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!selectedPop?.branch_id,
-  });
 
   const { data: packages = [] } = useQuery({
     queryKey: ["pop_tariff_packages", selectedPop?.tariff_id],
@@ -64,7 +52,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
       if (!selectedPop?.tariff_id) return [];
       const { data, error } = await supabase
         .from("reseller_tariff_packages")
-        .select("id, package_id, mikrotik_profile, selling_rate, validity_days, isp_packages(name)")
+        .select("id, package_id, mikrotik_server_id, mikrotik_profile, selling_rate, validity_days, isp_packages(name), mikrotik_devices:mikrotik_devices!reseller_tariff_packages_mikrotik_server_id_fkey(id, name, ip_address)")
         .eq("tariff_id", selectedPop.tariff_id)
         .eq("status", "active");
       if (error) throw error;
@@ -74,6 +62,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
   });
 
   const selectedPkg: any = packages.find((p: any) => p.id === packageId);
+  const targetMikrotik = selectedPkg?.mikrotik_devices;
   const perDay = useMemo(() => {
     if (!selectedPkg) return 0;
     const days = Number(selectedPkg.validity_days) || 30;
@@ -84,11 +73,11 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
 
   const transfer = useMutation({
     mutationFn: async () => {
-      if (!popId || !mikrotikId) throw new Error("POP এবং MikroTik সিলেক্ট করুন");
+      if (!popId) throw new Error("POP সিলেক্ট করুন");
       if (!packageId || !selectedPkg) throw new Error("Package সিলেক্ট করুন");
+      if (!targetMikrotik?.id) throw new Error("এই Package-এ MikroTik server assigned নাই");
       if (!selectedPop?.branch_id) throw new Error("এই POP-এর কোনো branch assign করা নেই");
 
-      // Prepaid balance check
       if (selectedPop.pop_type === "prepaid" && Number(selectedPop.balance || 0) < creditable) {
         throw new Error(`POP-এর balance অপ্রতুল (${selectedPop.balance} < ${creditable})`);
       }
@@ -119,8 +108,8 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
           mac_address: r.caller_id || null,
           remote_address: r.remote_address || null,
           connection_type: r.service || null,
-          mikrotik_id: mikrotikId,
-          server_name: mikrotiks.find((m: any) => m.id === mikrotikId)?.name || null,
+          mikrotik_id: targetMikrotik.id,
+          server_name: targetMikrotik.name || null,
           branch_id: selectedPop.branch_id,
           package_id: selectedPkg.package_id,
           monthly_bill: sellingRate,
@@ -129,25 +118,19 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
         }));
 
       let createdCount = 0;
-      let createdIds: string[] = [];
       if (newClients.length > 0) {
-        const { data: ins, error: insErr } = await supabase
-          .from("clients")
-          .insert(newClients as any)
-          .select("id");
+        const { error: insErr } = await supabase.from("clients").insert(newClients as any);
         if (insErr) throw insErr;
-        createdCount = ins?.length || 0;
-        createdIds = (ins || []).map((r: any) => r.id);
+        createdCount = newClients.length;
       }
       const skipped = selectedIds.length - createdCount;
 
-      // Update mikrotik_clients
       const { error } = await supabase
         .from("mikrotik_clients")
         .update({
           transferred_to_pop_id: popId,
-          transferred_to_mikrotik_id: mikrotikId,
-          mikrotik_id: mikrotikId,
+          transferred_to_mikrotik_id: targetMikrotik.id,
+          mikrotik_id: targetMikrotik.id,
           transferred_at: new Date().toISOString(),
           transferred_by: user?.id ?? null,
           exported: true,
@@ -156,7 +139,6 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
         .in("id", selectedIds);
       if (error) throw error;
 
-      // Debit POP balance via branch_funding (refund trans_type subtracts via trigger)
       if (creditable > 0) {
         const { error: fErr } = await supabase.from("branch_funding").insert({
           branch_id: selectedPop.branch_id,
@@ -206,36 +188,43 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
         <div className="space-y-4 py-2">
           <div className="space-y-2">
             <Label>MAC/POP Reseller</Label>
-            <Select value={popId} onValueChange={(v) => { setPopId(v); setMikrotikId(""); setPackageId(""); }}>
-              <SelectTrigger><SelectValue placeholder="POP বাছাই করুন" /></SelectTrigger>
-              <SelectContent>
-                {pops.map((p: any) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name} {p.pop_code ? `(${p.pop_code})` : ""} — ৳{Number(p.balance || 0).toFixed(0)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={popPickerOpen} onOpenChange={setPopPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                  {selectedPop ? (
+                    <span>{selectedPop.name} {selectedPop.pop_code ? `(${selectedPop.pop_code})` : ""} — ৳{Number(selectedPop.balance || 0).toFixed(0)}</span>
+                  ) : (
+                    <span className="text-muted-foreground">POP বাছাই করুন ({pops.length})</span>
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="নাম বা code লিখে search..." />
+                  <CommandList>
+                    <CommandEmpty>কোনো POP পাওয়া যায়নি</CommandEmpty>
+                    <CommandGroup>
+                      {pops.map((p: any) => (
+                        <CommandItem
+                          key={p.id}
+                          value={`${p.name} ${p.pop_code || ""}`}
+                          onSelect={() => { setPopId(p.id); setPackageId(""); setPopPickerOpen(false); }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", popId === p.id ? "opacity-100" : "opacity-0")} />
+                          <span className="flex-1">{p.name} {p.pop_code ? <span className="text-muted-foreground">({p.pop_code})</span> : null}</span>
+                          <span className="text-xs text-muted-foreground">৳{Number(p.balance || 0).toFixed(0)}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-2">
-            <Label>টার্গেট MikroTik সার্ভার</Label>
-            <Select value={mikrotikId} onValueChange={setMikrotikId} disabled={!popId}>
-              <SelectTrigger>
-                <SelectValue placeholder={!popId ? "প্রথমে POP সিলেক্ট করুন" : mikrotiks.length === 0 ? "এই POP-এ কোনো MikroTik নেই" : "MikroTik বাছাই করুন"} />
-              </SelectTrigger>
-              <SelectContent>
-                {mikrotiks.map((m: any) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name} {m.ip_address ? `— ${m.ip_address}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Package</Label>
+            <Label>Package (Tariff থেকে)</Label>
             <Select value={packageId} onValueChange={setPackageId} disabled={!popId}>
               <SelectTrigger>
                 <SelectValue placeholder={!popId ? "প্রথমে POP সিলেক্ট করুন" : !selectedPop?.tariff_id ? "এই POP-এ tariff assigned নাই" : packages.length === 0 ? "Package নাই" : "Package বাছাই করুন"} />
@@ -248,6 +237,15 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Target MikroTik সার্ভার (auto from package)</Label>
+            <Input
+              readOnly
+              value={targetMikrotik ? `${targetMikrotik.name}${targetMikrotik.ip_address ? ` — ${targetMikrotik.ip_address}` : ""}` : "—"}
+              className="bg-muted"
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -276,7 +274,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
           <Button
             onClick={() => transfer.mutate()}
-            disabled={!popId || !mikrotikId || !packageId || transfer.isPending ||
+            disabled={!popId || !packageId || !targetMikrotik?.id || transfer.isPending ||
               (selectedPop?.pop_type === "prepaid" && creditable > Number(selectedPop?.balance || 0))}
           >
             {transfer.isPending ? "Exporting..." : `Export ✓ (${selectedIds.length})`}
