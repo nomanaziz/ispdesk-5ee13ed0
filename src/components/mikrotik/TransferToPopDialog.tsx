@@ -334,7 +334,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
           <Button
             onClick={() => transfer.mutate()}
-            disabled={!popId || !packageId || !targetMikrotik?.id || transfer.isPending ||
+            disabled={!popId || !packageId || !targetMikrotik?.id || transfer.isPending || isMixed || profileMismatch ||
               (selectedPop?.pop_type === "prepaid" && selectedPop?.fund_started && creditable > Number(selectedPop?.balance || 0))}
           >
             {transfer.isPending ? "Exporting..." : `Export ✓ (${selectedIds.length})`}
