@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from "react";
 
 export type ThemeMode = "light" | "dark" | "system";
 export type ThemeSkin = "default" | "bordered";
+export type ThemeScope = "admin" | "portal" | "pop" | "public";
 
 export interface PrimaryColor {
   name: string;
@@ -40,6 +41,8 @@ interface ThemeContextType {
   updateSettings: (partial: Partial<ThemeSettings>) => void;
   resetSettings: () => void;
   resolvedMode: "light" | "dark";
+  scope: ThemeScope;
+  lockLight: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
@@ -47,37 +50,110 @@ const ThemeContext = createContext<ThemeContextType>({
   updateSettings: () => {},
   resetSettings: () => {},
   resolvedMode: "light",
+  scope: "admin",
+  lockLight: false,
 });
 
 function getSystemMode(): "light" | "dark" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
+function detectScope(pathname: string): ThemeScope {
+  if (pathname.startsWith("/dashboard")) return "admin";
+  if (pathname.startsWith("/portal")) return "portal";
+  if (pathname.startsWith("/pop-admin") || pathname.startsWith("/reseller")) return "pop";
+  return "public";
+}
+
+function storageKey(scope: ThemeScope) {
+  return `ispdesk-theme-${scope}`;
+}
+
+function loadSettings(scope: ThemeScope): ThemeSettings {
+  try {
+    const saved = localStorage.getItem(storageKey(scope));
+    if (saved) return { ...defaultSettings, ...JSON.parse(saved) };
+    // One-time migration of legacy global key into admin scope
+    if (scope === "admin") {
+      const legacy = localStorage.getItem("ispdesk-theme-v2");
+      if (legacy) {
+        const parsed = { ...defaultSettings, ...JSON.parse(legacy) };
+        localStorage.setItem(storageKey("admin"), JSON.stringify(parsed));
+        localStorage.removeItem("ispdesk-theme-v2");
+        return parsed;
+      }
+    }
+  } catch {}
+  return defaultSettings;
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<ThemeSettings>(() => {
-    try {
-      const saved = localStorage.getItem("ispdesk-theme-v2");
-      if (saved) return { ...defaultSettings, ...JSON.parse(saved) };
-    } catch {}
-    return defaultSettings;
-  });
+  const [pathname, setPathname] = useState<string>(() => window.location.pathname);
+
+  // React to client-side route changes (history API doesn't fire popstate on push/replace,
+  // so we patch them once to emit a custom event).
+  useEffect(() => {
+    const update = () => setPathname(window.location.pathname);
+    const w = window as any;
+    if (!w.__ispdeskHistoryPatched) {
+      const origPush = history.pushState;
+      const origReplace = history.replaceState;
+      history.pushState = function (...args) {
+        const r = origPush.apply(this, args as any);
+        window.dispatchEvent(new Event("ispdesk:locationchange"));
+        return r;
+      };
+      history.replaceState = function (...args) {
+        const r = origReplace.apply(this, args as any);
+        window.dispatchEvent(new Event("ispdesk:locationchange"));
+        return r;
+      };
+      w.__ispdeskHistoryPatched = true;
+    }
+    window.addEventListener("popstate", update);
+    window.addEventListener("ispdesk:locationchange", update);
+    return () => {
+      window.removeEventListener("popstate", update);
+      window.removeEventListener("ispdesk:locationchange", update);
+    };
+  }, []);
+
+  const scope = useMemo(() => detectScope(pathname), [pathname]);
+  const lockLight = scope !== "admin"; // only admin gets dark mode
+
+  const [settingsByScope, setSettingsByScope] = useState<Record<ThemeScope, ThemeSettings>>(() => ({
+    admin: loadSettings("admin"),
+    portal: loadSettings("portal"),
+    pop: loadSettings("pop"),
+    public: loadSettings("public"),
+  }));
+
+  const settings = settingsByScope[scope];
 
   const [systemMode, setSystemMode] = useState<"light" | "dark">(getSystemMode);
 
-  const resolvedMode = settings.mode === "system" ? systemMode : settings.mode;
+  const effectiveMode: ThemeMode = lockLight ? "light" : settings.mode;
+  const resolvedMode = effectiveMode === "system" ? systemMode : effectiveMode;
 
   const updateSettings = useCallback((partial: Partial<ThemeSettings>) => {
-    setSettings(prev => {
-      const next = { ...prev, ...partial };
-      localStorage.setItem("ispdesk-theme-v2", JSON.stringify(next));
-      return next;
+    setSettingsByScope(prev => {
+      const current = prev[scope];
+      // Strip mode changes when scope is locked to light
+      const safePartial = lockLight ? { ...partial, mode: "light" as ThemeMode } : partial;
+      const next = { ...current, ...safePartial };
+      try {
+        localStorage.setItem(storageKey(scope), JSON.stringify(next));
+      } catch {}
+      return { ...prev, [scope]: next };
     });
-  }, []);
+  }, [scope, lockLight]);
 
   const resetSettings = useCallback(() => {
-    localStorage.removeItem("ispdesk-theme-v2");
-    setSettings(defaultSettings);
-  }, []);
+    try {
+      localStorage.removeItem(storageKey(scope));
+    } catch {}
+    setSettingsByScope(prev => ({ ...prev, [scope]: defaultSettings }));
+  }, [scope]);
 
   // Listen for system theme changes
   useEffect(() => {
@@ -87,24 +163,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  // Apply theme to DOM
+  // Apply theme to DOM whenever the active scope or its settings change
   useEffect(() => {
     const root = document.documentElement;
-    // Set mode
     root.setAttribute("data-theme-mode", resolvedMode);
-    // Set skin
     root.setAttribute("data-skin", settings.skin);
+    root.setAttribute("data-theme-scope", scope);
 
-    // Set primary color CSS variables
     const color = primaryColors.find(c => c.name === settings.primaryColor) || primaryColors[0];
     root.style.setProperty("--primary", color.hsl);
     root.style.setProperty("--ring", color.hsl);
     root.style.setProperty("--sidebar-primary", color.hsl);
     root.style.setProperty("--sidebar-ring", color.hsl);
-  }, [resolvedMode, settings.primaryColor, settings.skin]);
+  }, [resolvedMode, settings.primaryColor, settings.skin, scope]);
 
   return (
-    <ThemeContext.Provider value={{ settings, updateSettings, resetSettings, resolvedMode }}>
+    <ThemeContext.Provider value={{ settings: { ...settings, mode: effectiveMode }, updateSettings, resetSettings, resolvedMode, scope, lockLight }}>
       {children}
     </ThemeContext.Provider>
   );
