@@ -7111,6 +7111,8 @@ export type Database = {
         Row: {
           buy_rate: number
           created_at: string
+          effective_from: string | null
+          effective_to: string | null
           id: string
           mikrotik_profile: string | null
           mikrotik_server_id: string | null
@@ -7126,6 +7128,8 @@ export type Database = {
         Insert: {
           buy_rate?: number
           created_at?: string
+          effective_from?: string | null
+          effective_to?: string | null
           id?: string
           mikrotik_profile?: string | null
           mikrotik_server_id?: string | null
@@ -7141,6 +7145,8 @@ export type Database = {
         Update: {
           buy_rate?: number
           created_at?: string
+          effective_from?: string | null
+          effective_to?: string | null
           id?: string
           mikrotik_profile?: string | null
           mikrotik_server_id?: string | null
