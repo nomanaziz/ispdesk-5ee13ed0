@@ -91,7 +91,7 @@ export function TopBar() {
             variant="ghost"
             size="icon"
             className="h-9 w-9 text-muted-foreground hover:text-foreground"
-            title="থিম কাস্টমাইজার"
+            title={t("থিম কাস্টমাইজার", "Theme customizer")}
             onClick={() => setThemeOpen(true)}
           >
             <Palette className="h-4 w-4" />
@@ -100,7 +100,7 @@ export function TopBar() {
             variant="ghost"
             size="icon"
             className="h-9 w-9 text-muted-foreground hover:text-foreground"
-            title="কুইক সেটিংস"
+            title={t("কুইক সেটিংস", "Quick settings")}
             onClick={() => setQuickOpen(true)}
           >
             <Settings className="h-4 w-4" />
@@ -125,11 +125,11 @@ export function TopBar() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => navigate("/dashboard/system/company")}>
-                <User className="mr-2 h-4 w-4" /> প্রোফাইল
+                <User className="mr-2 h-4 w-4" /> {t("প্রোফাইল", "Profile")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => { signOut(); navigate("/login"); }} className="text-destructive">
-                <LogOut className="mr-2 h-4 w-4" /> সাইন আউট
+                <LogOut className="mr-2 h-4 w-4" /> {t("সাইন আউট", "Sign out")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
