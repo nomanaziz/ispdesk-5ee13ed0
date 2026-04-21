@@ -196,7 +196,7 @@ export default function Tariff() {
     setPkgForm((f) => ({
       ...f,
       package_id: packageId,
-      buy_rate: pkg?.price ?? 0,
+      buy_rate: Number(f.selling_rate ?? pkg?.price ?? 0),
     }));
   };
 
@@ -303,8 +303,8 @@ export default function Tariff() {
         mikrotik_server_id: r.mikrotik_server_id || null,
         mikrotik_profile: r.mikrotik_profile || null,
         protocol_type: r.protocol_type,
-        buy_rate: r.buy_rate,
-        selling_rate: r.selling_rate,
+        buy_rate: Number(r.selling_rate ?? 0),
+        selling_rate: Number(r.selling_rate ?? 0),
         validity_days: tariffType === "date_to_date" ? 0 : r.validity_days,
         min_activation_days: tariffType === "date_to_date" ? 0 : r.min_activation_days,
       }));
@@ -451,7 +451,7 @@ export default function Tariff() {
       tempId: crypto.randomUUID(),
       id: p.id,
       package_id: p.package_id,
-      buy_rate: Number(p.buy_rate ?? 0),
+      buy_rate: Number(p.selling_rate ?? 0),
       selling_rate: Number(p.selling_rate ?? 0),
       validity_days: p.validity_days ?? 30,
       min_activation_days: p.min_activation_days ?? 1,
