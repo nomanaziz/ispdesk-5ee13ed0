@@ -292,20 +292,30 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Per Day Charge</Label>
               <Input readOnly value={perDay ? `৳${perDay.toFixed(2)}` : "—"} className="bg-muted" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Selected Clients</Label>
-              <Input readOnly value={selectedIds.length} className="bg-muted" />
+              <Label className="text-xs">Per User Monthly</Label>
+              <Input readOnly value={monthlyPerUser ? `৳${monthlyPerUser.toFixed(2)}` : "—"} className="bg-muted" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Creditable Amount</Label>
+              <Label className="text-xs">Total Monthly ({selectedIds.length})</Label>
+              <Input readOnly value={totalMonthly ? `৳${totalMonthly.toFixed(2)}` : "—"} className="bg-muted" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Total Creditable</Label>
               <Input readOnly value={creditable ? `৳${creditable.toFixed(2)}` : "—"} className="bg-muted font-semibold" />
             </div>
           </div>
+
+          {profileMismatch && (
+            <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded px-2 py-1.5">
+              ⚠️ User-দের MikroTik profile <span className="font-mono">"{uniqueProfile}"</span> — কিন্তু Package profile <span className="font-mono">"{selectedPkg?.mikrotik_profile}"</span>। আগে MikroTik-এ profile change করুন।
+            </p>
+          )}
 
           {selectedPop && !selectedPop.fund_started && (
             <p className="text-xs text-muted-foreground bg-muted px-2 py-1.5 rounded">
