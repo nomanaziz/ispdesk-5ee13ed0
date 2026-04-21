@@ -356,6 +356,24 @@ export default function Import() {
         selectedIds={Array.from(selectedIds)}
         onTransferred={() => setSelectedIds(new Set())}
       />
+
+      <Dialog open={bulkExportOpen} onOpenChange={setBulkExportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Client লিস্টে এক্সপোর্ট</DialogTitle>
+            <DialogDescription>
+              নির্বাচিত <b>{selectedIds.size}</b> জন MikroTik ইউজার Admin Client লিস্টে যুক্ত হবে।
+              স্ট্যাটাস <b>"unverified"</b> থাকবে — পরে edit করে full billing client বানানো যাবে।
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkExportOpen(false)} disabled={isExporting}>বাতিল</Button>
+            <Button onClick={bulkExportToClientList} disabled={isExporting}>
+              {isExporting ? "এক্সপোর্ট হচ্ছে..." : `${selectedIds.size} জন এক্সপোর্ট করুন`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
