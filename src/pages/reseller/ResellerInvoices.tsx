@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Printer, Wallet } from "lucide-react";
 import PayBillDialog from "@/components/reseller/PayBillDialog";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const ResellerInvoices = () => {
   const { customer } = usePortalAuth();
+  const { t } = useLanguage();
   const resellerId = getBillingCustomerId(customer);
   const [payOpen, setPayOpen] = useState(false);
   const [activeInv, setActiveInv] = useState<any>(null);
@@ -39,22 +41,22 @@ const ResellerInvoices = () => {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Billing Invoices</CardTitle>
+          <CardTitle className="text-lg">{t("বিলিং ইনভয়েস", "Billing Invoices")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Sr</TableHead>
-                  <TableHead>Bill No</TableHead>
-                  <TableHead>Month</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Paid</TableHead>
-                  <TableHead className="text-right">Discount</TableHead>
-                  <TableHead className="text-right">Due</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead>{t("ক্রম", "Sr")}</TableHead>
+                  <TableHead>{t("বিল নং", "Bill No")}</TableHead>
+                  <TableHead>{t("মাস", "Month")}</TableHead>
+                  <TableHead className="text-right">{t("পরিমাণ", "Amount")}</TableHead>
+                  <TableHead className="text-right">{t("পরিশোধিত", "Paid")}</TableHead>
+                  <TableHead className="text-right">{t("ডিসকাউন্ট", "Discount")}</TableHead>
+                  <TableHead className="text-right">{t("বকেয়া", "Due")}</TableHead>
+                  <TableHead>{t("স্ট্যাটাস", "Status")}</TableHead>
+                  <TableHead className="text-right">{t("অ্যাকশন", "Action")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

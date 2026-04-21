@@ -21,9 +21,11 @@ import {
 } from "@/components/ui/table";
 import { Pencil, Check, X, ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function PopPackages() {
   const qc = useQueryClient();
+  const { t } = useLanguage();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftRate, setDraftRate] = useState<string>("");
   const [search, setSearch] = useState("");
@@ -104,15 +106,15 @@ export default function PopPackages() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Package</h1>
+        <h1 className="text-2xl font-bold">{t("প্যাকেজ", "Package")}</h1>
         <p className="text-xs text-muted-foreground mt-1">
-          Configuration &gt; Package
+          {t("কনফিগারেশন", "Configuration")} &gt; {t("প্যাকেজ", "Package")}
         </p>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm">
-          <span>Show</span>
+          <span>{t("দেখান", "Show")}</span>
           <Select
             value={String(pageSize)}
             onValueChange={(v) => {
@@ -131,10 +133,10 @@ export default function PopPackages() {
               ))}
             </SelectContent>
           </Select>
-          <span>entries</span>
+          <span>{t("এন্ট্রি", "entries")}</span>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <span>Search:</span>
+          <span>{t("খুঁজুন:", "Search:")}</span>
           <Input
             value={search}
             onChange={(e) => {
@@ -154,22 +156,22 @@ export default function PopPackages() {
         </div>
       ) : error ? (
         <p className="text-sm text-destructive py-6 text-center">
-          Package লোড করা যায়নি — {(error as any).message}
+          {t("প্যাকেজ লোড করা যায়নি", "Failed to load packages")} — {(error as any).message}
         </p>
       ) : (
         <>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Package Name</TableHead>
-                <TableHead>Server Name</TableHead>
-                <TableHead>Protocol Type</TableHead>
-                <TableHead>Profile</TableHead>
-                <TableHead className="text-center">BuyingRate</TableHead>
-                <TableHead className="text-center">SellingRate</TableHead>
-                <TableHead className="text-center">ValidityDays</TableHead>
-                <TableHead className="text-center">Min R.Days</TableHead>
-                <TableHead className="text-center">Action</TableHead>
+                <TableHead>{t("প্যাকেজ নাম", "Package Name")}</TableHead>
+                <TableHead>{t("সার্ভার নাম", "Server Name")}</TableHead>
+                <TableHead>{t("প্রোটোকল টাইপ", "Protocol Type")}</TableHead>
+                <TableHead>{t("প্রোফাইল", "Profile")}</TableHead>
+                <TableHead className="text-center">{t("ক্রয়মূল্য", "Buying Rate")}</TableHead>
+                <TableHead className="text-center">{t("বিক্রয়মূল্য", "Selling Rate")}</TableHead>
+                <TableHead className="text-center">{t("ভ্যালিডিটি দিন", "Validity Days")}</TableHead>
+                <TableHead className="text-center">{t("ন্যূনতম দিন", "Min R.Days")}</TableHead>
+                <TableHead className="text-center">{t("অ্যাকশন", "Action")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -179,7 +181,7 @@ export default function PopPackages() {
                     colSpan={9}
                     className="text-center text-muted-foreground py-8"
                   >
-                    কোনো package পাওয়া যায়নি
+                    {t("কোনো প্যাকেজ পাওয়া যায়নি", "No packages found")}
                   </TableCell>
                 </TableRow>
               )}
@@ -278,7 +280,7 @@ export default function PopPackages() {
 
           <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
             <div className="text-muted-foreground">
-              Showing {showingFrom} to {showingTo} of {total} entries
+              {t(`${total} এর মধ্যে ${showingFrom} থেকে ${showingTo} দেখানো হচ্ছে`, `Showing ${showingFrom} to ${showingTo} of ${total} entries`)}
             </div>
             <div className="flex items-center gap-1">
               <Button
@@ -288,7 +290,7 @@ export default function PopPackages() {
                 disabled={currentPage <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
-                <ChevronLeft className="h-4 w-4" /> Previous
+                <ChevronLeft className="h-4 w-4" /> {t("পূর্ববর্তী", "Previous")}
               </Button>
               {pageNumbers.map((n) => (
                 <Button
@@ -308,7 +310,7 @@ export default function PopPackages() {
                 disabled={currentPage >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               >
-                Next <ChevronRight className="h-4 w-4" />
+                {t("পরবর্তী", "Next")} <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>

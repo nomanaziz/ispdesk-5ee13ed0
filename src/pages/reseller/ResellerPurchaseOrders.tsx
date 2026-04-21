@@ -10,9 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const ResellerPurchaseOrders = () => {
   const { customer } = usePortalAuth();
+  const { t } = useLanguage();
   const resellerId = getBillingCustomerId(customer);
   const qc = useQueryClient();
 
@@ -45,10 +47,10 @@ const ResellerPurchaseOrders = () => {
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-lg">Purchase Orders</CardTitle>
+          <CardTitle className="text-lg">{t("ক্রয় অর্ডার", "Purchase Orders")}</CardTitle>
           <Button asChild size="sm">
             <Link to="/reseller/purchases/new">
-              <Plus className="h-4 w-4 mr-1" /> New Order
+              <Plus className="h-4 w-4 mr-1" /> {t("নতুন অর্ডার", "New Order")}
             </Link>
           </Button>
         </CardHeader>
@@ -57,20 +59,20 @@ const ResellerPurchaseOrders = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Sr</TableHead>
-                  <TableHead>Order No</TableHead>
-                  <TableHead>Billing Month</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead>{t("ক্রম", "Sr")}</TableHead>
+                  <TableHead>{t("অর্ডার নং", "Order No")}</TableHead>
+                  <TableHead>{t("বিলিং মাস", "Billing Month")}</TableHead>
+                  <TableHead>{t("তৈরি", "Created")}</TableHead>
+                  <TableHead className="text-right">{t("মোট", "Total")}</TableHead>
+                  <TableHead>{t("স্ট্যাটাস", "Status")}</TableHead>
+                  <TableHead className="text-right">{t("অ্যাকশন", "Action")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {orders.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No purchase orders
+                      {t("কোনো ক্রয় অর্ডার নেই", "No purchase orders")}
                     </TableCell>
                   </TableRow>
                 )}
