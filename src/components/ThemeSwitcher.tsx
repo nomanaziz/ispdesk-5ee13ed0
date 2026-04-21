@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 
 export function ThemeSwitcher() {
-  const { resolvedMode, updateSettings } = useTheme();
+  const { resolvedMode, updateSettings, lockLight } = useTheme();
+
+  if (lockLight) return null;
 
   const toggle = () => {
     updateSettings({ mode: resolvedMode === "dark" ? "light" : "dark" });
