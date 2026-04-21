@@ -122,19 +122,12 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "MikroTik সার্ভার",
-    icon: Server,
-    items: [
-      { title: "সার্ভার", url: "/dashboard/mikrotik/servers", icon: Server },
-      { title: "সার্ভার ব্যাকআপ", url: "/dashboard/mikrotik/backup", icon: HardDrive },
-    ],
-  },
-  {
     label: "ডিভাইস",
     icon: ShieldCheck,
     items: [
       { title: "ড্যাশবোর্ড", url: "/dashboard/device-admin", icon: LayoutDashboard },
       { title: "ডিভাইস ইনভেন্টরি", url: "/dashboard/device-admin/devices", icon: Server },
+      { title: "MikroTik PPPoE", url: "/dashboard/mikrotik/servers", icon: Server },
       { title: "অল ডিভাইস ইউজার", url: "/dashboard/device-admin/users", icon: Users },
       { title: "জব ম্যানেজমেন্ট", url: "/dashboard/device-admin/jobs", icon: Briefcase },
       { title: "ইউজার গ্রুপ", url: "/dashboard/device-admin/groups", icon: Users2 },
