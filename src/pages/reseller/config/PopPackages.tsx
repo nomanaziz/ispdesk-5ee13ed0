@@ -170,23 +170,44 @@ export default function PopPackages() {
                       <td className="px-3 py-2 border-r border-b border-border">{p.mikrotik_devices?.name || "—"}</td>
                       <td className="px-3 py-2 border-r border-b border-border uppercase">{p.protocol_type || "—"}</td>
                       <td className="px-3 py-2 border-r border-b border-border">{p.mikrotik_profile || "—"}</td>
-                      <td className="px-3 py-2 border-r border-b border-border text-center font-mono">
-                        {Number(p.buy_rate || 0).toLocaleString()}
+                      <td className="px-3 py-2 border-r border-b border-border text-center font-mono text-muted-foreground">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 cursor-help">
+                              <Lock className="h-3 w-3 opacity-60" />
+                              {Number(p.buy_rate || 0).toLocaleString()}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Admin-এর নির্ধারিত rate — পরিবর্তনযোগ্য নয়</TooltipContent>
+                        </Tooltip>
                       </td>
-                      <td className="px-3 py-2 border-r border-b border-border text-center font-mono font-semibold">
+                      <td className="px-3 py-2 border-r border-b border-border text-center font-mono font-semibold bg-emerald-50/40 dark:bg-emerald-950/20">
                         {isEdit ? (
-                          <Input
-                            type="number"
-                            value={draftRate}
-                            onChange={(e) => setDraftRate(e.target.value)}
-                            className="h-8 w-24 mx-auto text-center"
-                            min={p.buy_rate || 0}
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") save(p);
-                              if (e.key === "Escape") setEditingId(null);
-                            }}
-                          />
+                          <div className="flex flex-col items-center gap-0.5">
+                            <Input
+                              type="number"
+                              value={draftRate}
+                              onChange={(e) => setDraftRate(e.target.value)}
+                              className={`h-8 w-24 text-center ${
+                                Number(draftRate) > 0 && Number(draftRate) < Number(p.buy_rate || 0)
+                                  ? "border-destructive focus-visible:ring-destructive"
+                                  : ""
+                              }`}
+                              min={p.buy_rate || 0}
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") save(p);
+                                if (e.key === "Escape") setEditingId(null);
+                              }}
+                            />
+                            <span className={`text-[10px] ${
+                              Number(draftRate) > 0 && Number(draftRate) < Number(p.buy_rate || 0)
+                                ? "text-destructive"
+                                : "text-muted-foreground"
+                            }`}>
+                              Min: ৳{Number(p.buy_rate || 0).toLocaleString()}
+                            </span>
+                          </div>
                         ) : (
                           Number(p.selling_rate || 0).toLocaleString()
                         )}
@@ -206,15 +227,19 @@ export default function PopPackages() {
                             </Button>
                           </div>
                         ) : (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                            onClick={() => startEdit(p)}
-                            title="Edit selling rate"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                onClick={() => startEdit(p)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Selling Rate edit করুন</TooltipContent>
+                          </Tooltip>
                         )}
                       </td>
                     </tr>
