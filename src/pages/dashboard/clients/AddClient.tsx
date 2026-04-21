@@ -339,17 +339,24 @@ export default function AddClient() {
           mikrotikStatus = data?.mikrotik_status || "unknown";
           payload.mikrotik_status = mikrotikStatus;
 
-          // If secret already existed, merge its data into payload
           if (data?.already_exists) {
             if (data.existing_profile) payload.profile = data.existing_profile;
             if (data.existing_remote_address) payload.remote_address = data.existing_remote_address;
           }
         }
 
+        // POP mode: insert via portal-data edge function (service-role) so RLS doesn't block
+        if (isPopMode) {
+          const res = await callPortal<{ ok: boolean; id?: string; error?: string }>("create_client", payload);
+          if (!res.ok) throw new Error(res.error || "ক্লায়েন্ট তৈরি ব্যর্থ");
+          return;
+        }
+
         const { data: insertedClient, error } = await supabase.from("clients").insert(payload).select("id").single();
         if (error) throw error;
 
-        // Auto-generate billing record — prorated for first month if mid-month join
+        // Auto-generate billing record — prorated for first month if mid-month join (admin mode only;
+        // POP mode does this server-side inside create_client)
         if (insertedClient?.id && form.billing_status === "Active") {
           const joinStr = form.joining_date || format(new Date(), "yyyy-MM-dd");
           const join = new Date(joinStr + "T00:00:00");
@@ -374,7 +381,7 @@ export default function AddClient() {
             due: amount,
             status: "unpaid",
             generated: true,
-            branch_id: isPopMode ? branchId : (form.branch_id || null),
+            branch_id: form.branch_id || null,
           }).select("id").maybeSingle();
 
           if (insertedBill?.id) {
