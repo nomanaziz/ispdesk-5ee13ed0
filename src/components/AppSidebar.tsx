@@ -609,7 +609,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
             )}
             title={groupLabel}
           >
-            <group.icon className="h-4 w-4" />
+            <group.icon className={cn("h-4 w-4", !isActive && groupColor)} />
             {groupBadgeCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                 {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
