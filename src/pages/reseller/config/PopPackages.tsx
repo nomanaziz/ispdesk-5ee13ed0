@@ -161,9 +161,9 @@ export default function PopPackages() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>PackageName</TableHead>
-                <TableHead>ServerName</TableHead>
-                <TableHead>Protocol</TableHead>
+                <TableHead>Package Name</TableHead>
+                <TableHead>Server Name</TableHead>
+                <TableHead>Protocol Type</TableHead>
                 <TableHead>Profile</TableHead>
                 <TableHead className="text-center">BuyingRate</TableHead>
                 <TableHead className="text-center">SellingRate</TableHead>
