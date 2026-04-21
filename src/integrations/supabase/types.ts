@@ -6075,6 +6075,112 @@ export type Database = {
           },
         ]
       }
+      pop_daily_charges: {
+        Row: {
+          branch_id: string
+          charge_date: string
+          charged_amount: number
+          charged_by: string | null
+          client_id: string | null
+          client_name: string | null
+          client_username: string | null
+          created_at: string
+          daily_rate: number
+          id: string
+          monthly_rate: number
+          package_id: string | null
+          package_name: string | null
+          pop_balance_after: number
+          pop_balance_before: number
+          pop_id: string
+          profile: string | null
+          protocol_type: string | null
+          remarks: string | null
+          server_id: string | null
+          server_name: string | null
+          sub_zone_id: string | null
+          sub_zone_name: string | null
+          zone_id: string | null
+          zone_name: string | null
+        }
+        Insert: {
+          branch_id: string
+          charge_date?: string
+          charged_amount?: number
+          charged_by?: string | null
+          client_id?: string | null
+          client_name?: string | null
+          client_username?: string | null
+          created_at?: string
+          daily_rate?: number
+          id?: string
+          monthly_rate?: number
+          package_id?: string | null
+          package_name?: string | null
+          pop_balance_after?: number
+          pop_balance_before?: number
+          pop_id: string
+          profile?: string | null
+          protocol_type?: string | null
+          remarks?: string | null
+          server_id?: string | null
+          server_name?: string | null
+          sub_zone_id?: string | null
+          sub_zone_name?: string | null
+          zone_id?: string | null
+          zone_name?: string | null
+        }
+        Update: {
+          branch_id?: string
+          charge_date?: string
+          charged_amount?: number
+          charged_by?: string | null
+          client_id?: string | null
+          client_name?: string | null
+          client_username?: string | null
+          created_at?: string
+          daily_rate?: number
+          id?: string
+          monthly_rate?: number
+          package_id?: string | null
+          package_name?: string | null
+          pop_balance_after?: number
+          pop_balance_before?: number
+          pop_id?: string
+          profile?: string | null
+          protocol_type?: string | null
+          remarks?: string | null
+          server_id?: string | null
+          server_name?: string | null
+          sub_zone_id?: string | null
+          sub_zone_name?: string | null
+          zone_id?: string | null
+          zone_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pop_daily_charges_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pop_daily_charges_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pop_daily_charges_pop_id_fkey"
+            columns: ["pop_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pop_devices: {
         Row: {
           branch_id: string | null
