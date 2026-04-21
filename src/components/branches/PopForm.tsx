@@ -408,7 +408,7 @@ export default function PopForm({ mode, pop }: Props) {
             <Label>
               Tariff {mode === "create" && <Req />} {lockTariff && <Lock className="inline h-3 w-3 ml-1" />}
             </Label>
-            <LockedField locked={lockTariff} title={lockTariff ? "Tariff lifetime fixed — পরিবর্তন করা যাবে না" : undefined}>
+            <LockedField locked={lockTariff}>
               <Select
                 value={form.tariff_id}
                 onValueChange={(v) => upd("tariff_id", v)}
