@@ -6261,6 +6261,76 @@ export type Database = {
           },
         ]
       }
+      pop_fund_recharges: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          branch_id: string | null
+          created_at: string
+          funding_id: string | null
+          gateway_payment_id: string | null
+          gateway_response: Json | null
+          id: string
+          method: string
+          note: string | null
+          pop_id: string
+          status: string
+          trx_id: string | null
+        }
+        Insert: {
+          amount?: number
+          approved_at?: string | null
+          branch_id?: string | null
+          created_at?: string
+          funding_id?: string | null
+          gateway_payment_id?: string | null
+          gateway_response?: Json | null
+          id?: string
+          method: string
+          note?: string | null
+          pop_id: string
+          status?: string
+          trx_id?: string | null
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          branch_id?: string | null
+          created_at?: string
+          funding_id?: string | null
+          gateway_payment_id?: string | null
+          gateway_response?: Json | null
+          id?: string
+          method?: string
+          note?: string | null
+          pop_id?: string
+          status?: string
+          trx_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pop_fund_recharges_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pop_fund_recharges_funding_id_fkey"
+            columns: ["funding_id"]
+            isOneToOne: false
+            referencedRelation: "branch_funding"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pop_fund_recharges_pop_id_fkey"
+            columns: ["pop_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pop_fund_start_logs: {
         Row: {
           action: string
