@@ -559,23 +559,18 @@ export default function Tariff() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Buy Rate (৳)</Label>
-                  <Input
-                    type="number"
-                    value={pkgForm.buy_rate}
-                    onChange={(e) =>
-                      setPkgForm({ ...pkgForm, buy_rate: Number(e.target.value) })
-                    }
-                  />
-                </div>
-                <div>
                   <Label>Selling Rate (৳) *</Label>
+                  <p className="text-[11px] text-muted-foreground mb-1">
+                    এটি POP-এর Buying Rate হিসেবে ব্যবহৃত হবে
+                  </p>
                   <Input
                     type="number"
                     value={pkgForm.selling_rate}
-                    onChange={(e) =>
-                      setPkgForm({ ...pkgForm, selling_rate: Number(e.target.value) })
-                    }
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      // Mirror to buy_rate for backward compatibility
+                      setPkgForm({ ...pkgForm, selling_rate: v, buy_rate: v });
+                    }}
                   />
                 </div>
                 {tariffType === "custom" && (
@@ -759,7 +754,6 @@ export default function Tariff() {
                           <TableCell>{srvName}</TableCell>
                           <TableCell>{r.protocol_type}</TableCell>
                           <TableCell>{r.mikrotik_profile}</TableCell>
-                          <TableCell className="font-mono">৳{r.buy_rate}</TableCell>
                           <TableCell className="font-mono">৳{r.selling_rate}</TableCell>
                           <TableCell>{r.validity_days}</TableCell>
                           <TableCell>{r.min_activation_days}</TableCell>
@@ -1027,8 +1021,7 @@ export default function Tariff() {
                     <TableHead>Package</TableHead>
                     <TableHead>Server</TableHead>
                     <TableHead>Profile</TableHead>
-                    <TableHead>Buy</TableHead>
-                    <TableHead>Sell</TableHead>
+                    <TableHead>Selling Rate</TableHead>
                     <TableHead>Days</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1038,7 +1031,6 @@ export default function Tariff() {
                       <TableCell>{p.isp_packages?.name ?? "-"}</TableCell>
                       <TableCell>{p.mikrotik_devices?.name ?? "-"}</TableCell>
                       <TableCell>{p.mikrotik_profile ?? "-"}</TableCell>
-                      <TableCell className="font-mono">৳{p.buy_rate}</TableCell>
                       <TableCell className="font-mono">৳{p.selling_rate}</TableCell>
                       <TableCell>{p.validity_days}</TableCell>
                     </TableRow>

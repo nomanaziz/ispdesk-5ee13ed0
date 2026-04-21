@@ -380,7 +380,6 @@ Deno.serve(async (req) => {
       case "get_tariff_packages": {
         if (tok.type !== "reseller" && tok.type !== "reseller_sub")
           return json({ error: "Not allowed" }, 403);
-        // Resolve reseller's tariff_id from branch_managers (token may be stale)
         const resellerId =
           tok.type === "reseller_sub"
             ? (tok as any).parent_reseller_id
@@ -396,27 +395,67 @@ Deno.serve(async (req) => {
         const { data: pkgs, error } = await sb
           .from("reseller_tariff_packages")
           .select(
-            "id, buy_rate, selling_rate, mikrotik_profile, protocol_type, validity_days, min_activation_days, package_id, mikrotik_server_id"
+            "id, selling_rate, mikrotik_profile, protocol_type, validity_days, min_activation_days, package_id, mikrotik_server_id"
           )
           .eq("tariff_id", tariffId)
           .eq("status", "active");
         if (error) return json({ error: error.message }, 500);
+
         const pkgIds = Array.from(new Set((pkgs ?? []).map((p) => p.package_id).filter(Boolean)));
         const srvIds = Array.from(new Set((pkgs ?? []).map((p) => p.mikrotik_server_id).filter(Boolean)));
-        const [pkgRefs, srvRefs] = await Promise.all([
+        const tpIds = (pkgs ?? []).map((p) => p.id);
+        const [pkgRefs, srvRefs, pricingRefs] = await Promise.all([
           pkgIds.length
             ? sb.from("isp_packages").select("id, name, bandwidth_down, package_type").in("id", pkgIds)
             : Promise.resolve({ data: [] } as any),
           srvIds.length
             ? sb.from("mikrotik_devices").select("id, name").in("id", srvIds)
             : Promise.resolve({ data: [] } as any),
+          tpIds.length
+            ? sb
+                .from("pop_package_pricing")
+                .select("tariff_package_id, pop_selling_rate")
+                .eq("branch_manager_id", resellerId)
+                .in("tariff_package_id", tpIds)
+            : Promise.resolve({ data: [] } as any),
         ]);
         const pkgMap = new Map((pkgRefs.data ?? []).map((r: any) => [r.id, r]));
         const srvMap = new Map((srvRefs.data ?? []).map((r: any) => [r.id, r]));
+        const priceMap = new Map(
+          (pricingRefs.data ?? []).map((r: any) => [r.tariff_package_id, Number(r.pop_selling_rate ?? 0)]),
+        );
+
+        // Auto-seed any missing pricing rows so the POP can edit them later.
+        const missing = (pkgs ?? []).filter((p: any) => !priceMap.has(p.id));
+        if (missing.length) {
+          const seedRows = missing.map((p: any) => ({
+            branch_manager_id: resellerId,
+            tariff_package_id: p.id,
+            pop_selling_rate: Number(p.selling_rate ?? 0),
+          }));
+          await sb
+            .from("pop_package_pricing")
+            .upsert(seedRows, { onConflict: "branch_manager_id,tariff_package_id" });
+          for (const p of missing) priceMap.set(p.id, Number(p.selling_rate ?? 0));
+        }
+
         const out = (pkgs ?? []).map((p: any) => {
-          const normalized = normalizePackageRates(p);
+          const adminRate = Number(p.selling_rate ?? 0);
+          const popRate = priceMap.get(p.id) ?? adminRate;
           return {
-            ...normalized,
+            id: p.id,
+            mikrotik_profile: p.mikrotik_profile,
+            protocol_type: p.protocol_type,
+            validity_days: p.validity_days,
+            min_activation_days: p.min_activation_days,
+            package_id: p.package_id,
+            mikrotik_server_id: p.mikrotik_server_id,
+            // POP's buying rate (locked) = Admin's selling_rate
+            buy_rate: adminRate,
+            admin_selling_rate: adminRate,
+            // POP's own selling rate (editable)
+            selling_rate: popRate,
+            pop_selling_rate: popRate,
             isp_packages: pkgMap.get(p.package_id) || null,
             mikrotik_devices: srvMap.get(p.mikrotik_server_id) || null,
           };
@@ -441,25 +480,29 @@ Deno.serve(async (req) => {
           .eq("id", resellerId)
           .maybeSingle();
         if (!pop?.tariff_id) return json({ error: "No tariff assigned" }, 403);
-        // Fetch row to enforce: must belong to own tariff, and rate >= buy_rate
-        const { data: rawRow } = await sb
+        // Validate package belongs to POP's tariff and check Admin selling_rate as the floor.
+        const { data: row } = await sb
           .from("reseller_tariff_packages")
-          .select("id, tariff_id, buy_rate, selling_rate")
+          .select("id, tariff_id, selling_rate")
           .eq("id", package_id)
           .maybeSingle();
-        const row = rawRow ? normalizePackageRates(rawRow) : null;
         if (!row || row.tariff_id !== pop.tariff_id)
           return json({ error: "Package not in your tariff" }, 403);
-        if (rate < Number(row.buy_rate || 0))
-          return json({ error: `Selling rate cannot be less than buy rate (৳${row.buy_rate})` }, 400);
+        const adminRate = Number(row.selling_rate || 0);
+        if (rate < adminRate)
+          return json({ error: `Selling rate cannot be less than buying rate (৳${adminRate})` }, 400);
+
+        // Upsert POP-specific selling rate (Admin's selling_rate is NOT touched).
         const { error: upErr } = await sb
-          .from("reseller_tariff_packages")
-          .update(
-            hasLegacySwappedPackageRates(rawRow ?? {})
-              ? { buy_rate: rate }
-              : { selling_rate: rate },
-          )
-          .eq("id", package_id);
+          .from("pop_package_pricing")
+          .upsert(
+            {
+              branch_manager_id: resellerId,
+              tariff_package_id: package_id,
+              pop_selling_rate: rate,
+            },
+            { onConflict: "branch_manager_id,tariff_package_id" },
+          );
         if (upErr) return json({ error: upErr.message }, 500);
         return json({ ok: true });
       }
