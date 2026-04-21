@@ -1,40 +1,46 @@
 
 
 ## লক্ষ্য
-POP Reseller Package page-কে screenshot-এর মতো simple table layout-এ পরিবর্তন — শুধু **SellingRate** column editable, বাকি সব read-only।
+PopPackages page-এ নিশ্চিত করা যে **শুধু SellingRate** column editable, বাকি ৮টি column (BuyingRate সহ) সম্পূর্ণ read-only — কোনোভাবেই edit করা যাবে না।
 
-## Current vs Target
+## বর্তমান অবস্থা (audit)
+Code পড়ে দেখলাম:
+- ✅ Backend (`update_tariff_selling_rate`) শুধু `selling_rate` field update করে, `buy_rate` immutable
+- ✅ Backend validation: `selling_rate >= buy_rate` enforce করা আছে
+- ✅ Frontend Action column-এর pencil শুধু `selling_rate` cell-কে input-এ পরিণত করে
+- ⚠️ কিন্তু visual clarity কম — কোন cell editable সেটা user-এর কাছে স্পষ্ট নয়। SellingRate cell আর BuyingRate cell দেখতে একই রকম, তাই confusion হচ্ছে।
 
-**বর্তমান** (`PopPackages.tsx`): Card layout, helper info banners, inline pencil-edit on Sell Rate, ৯টি column।
+## পরিবর্তন (single file: `src/pages/reseller/config/PopPackages.tsx`)
 
-**Target** (screenshot অনুযায়ী): Plain table, ৯ column same order:
-`PackageName | ServerName | Protocol | Profile | BuyingRate | SellingRate | ValidityDays | Min R.Days | Action`
+### 1. Visual distinction — BuyingRate "locked" দেখানো
+- BuyingRate cell-এ ছোট 🔒 lock icon + muted color → "এটা admin set করেছে, edit করা যাবে না"
+- Tooltip: "Admin-এর নির্ধারিত rate — পরিবর্তনযোগ্য নয়"
 
-পার্থক্য:
-- শুধু **Action column-এর pencil button** চাপলে SellingRate cell editable হবে (currently SellingRate-এ click করলেও editable, ওটা off করব না — Action button দিয়ে trigger same)
-- Helper banner ও info card সরিয়ে clean look
-- Search box ও pagination header (screenshot-এর মতো `SHOW [100] ENTRIES ... SEARCH:` style)
+### 2. SellingRate cell highlight
+- Background subtle green tint (`bg-emerald-50/40`) যাতে editable column চোখে পড়ে
+- Header-এ ছোট ✏️ icon + tooltip: "শুধু এই column পরিবর্তনযোগ্য"
 
-## পরিবর্তন (single file)
+### 3. Helper banner (table-এর উপরে, ছোট one-liner)
+```
+ℹ️ BuyingRate = Admin আপনার কাছে যে দামে বিক্রি করেছে (পরিবর্তনযোগ্য নয়)। 
+   শুধু SellingRate edit করে আপনার নিজের client-দের জন্য দাম নির্ধারণ করুন।
+```
 
-### `src/pages/reseller/config/PopPackages.tsx`
+### 4. Edit input UX improvement
+- Input-এর placeholder/label: "Buy: ৳400 → Min sell: ৳400"
+- যদি draft rate < buy_rate হয় real-time red border + inline warning "Buy rate এর কম হতে পারবে না"
 
-1. **Remove**: top heading description, blue info Card, Card wrapper around table
-2. **Add at top**: page title + breadcrumb-style subtitle ("Configuration > Package")
-3. **Add toolbar row**: 
-   - Left: `Show [select 10/25/50/100] entries`
-   - Right: `Search: [input]` — client-side filter on package name / server / profile
-4. **Table styling**: bordered, header dark slate bg (matching screenshot), centered numeric columns
-5. **Edit flow**: unchanged logic (`updateRate` mutation, buy_rate floor validation), শুধু Pencil icon → green edit-pencil icon (screenshot-এর মতো)
-6. **Footer row**: `Showing X to Y of N entries` + simple pagination (Previous / page numbers / Next)
+### 5. Action column tooltip আরও স্পষ্ট
+- Pencil button hover: "Selling Rate edit করুন"
 
 ## যা **বদলাবে না**
-- `portal-data` edge function (`get_tariff_packages`, `update_tariff_selling_rate`) — intact
-- Buy rate immutability + sell ≥ buy validation — intact  
-- Auth/permission flow — intact
+- Backend `portal-data` edge function — intact (already correct)
+- Buy rate immutability — already enforced server-side
+- Table structure, columns, pagination, search — সব intact
+- Edit flow logic (`updateRate` mutation) — intact
 
 ## Files
 - **Modified**: `src/pages/reseller/config/PopPackages.tsx`
 
-approve করলে এই ১টি file rewrite করব।
+approve করলে এই ১টি file-এ visual clarity improvements apply করব।
 
