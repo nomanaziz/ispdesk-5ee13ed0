@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import FundDeductionDialog from "@/components/branches/FundDeductionDialog";
 import PasswordRegenerateDialog from "@/components/branches/PasswordRegenerateDialog";
+import PopDebitHistory from "@/components/branches/PopDebitHistory";
+import PopCreditHistory from "@/components/branches/PopCreditHistory";
 import { loginAsUser } from "@/lib/impersonate";
 
 export default function PopProfile() {
@@ -230,6 +232,8 @@ export default function PopProfile() {
                 <TabsTrigger value="exported">Exported ({clients?.length ?? 0})</TabsTrigger>
                 <TabsTrigger value="unexported">Unexported ({unexported?.length ?? 0})</TabsTrigger>
                 <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                <TabsTrigger value="debit">Debit Transactions</TabsTrigger>
+                <TabsTrigger value="credit">Credit Transactions</TabsTrigger>
                 <TabsTrigger value="refunds">Credit Refunds ({refundLogs?.length ?? 0})</TabsTrigger>
                 <TabsTrigger value="permissions">Permissions</TabsTrigger>
               </TabsList>
@@ -373,6 +377,14 @@ export default function PopProfile() {
                     )}
                   </TableBody>
                 </Table>
+              </TabsContent>
+
+              <TabsContent value="debit" className="mt-4">
+                <PopDebitHistory branchId={pop.branch_id || undefined} popName={pop.name} />
+              </TabsContent>
+
+              <TabsContent value="credit" className="mt-4">
+                <PopCreditHistory popId={id} popName={pop.name} mode="admin" />
               </TabsContent>
 
               <TabsContent value="refunds" className="mt-4">
