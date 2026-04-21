@@ -129,69 +129,46 @@ export default function AddClient() {
         });
     }
   }, []);
-  const { data: zones } = useQuery({
-    queryKey: ["zones-active", branchId || "all"],
+  // ─── POP-mode: fetch ALL form metadata via portal-data edge function (service-role) ───
+  // Portal users have no Supabase auth.uid(), so direct table reads are blocked by RLS.
+  const { data: popMeta } = useQuery({
+    enabled: isPopMode,
+    queryKey: ["pop-add-client-meta", popId, branchId, tariffId],
     queryFn: async () => {
-      let q: any = supabase.from("zones").select("id, name").eq("status", "active");
-      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
-      const { data } = await q;
-      return data || [];
+      const res = await callPortal<any>("get_client_form_meta");
+      return res;
     },
   });
-  const { data: subZones } = useQuery({
-    queryKey: ["sub-zones-active", branchId || "all"],
-    queryFn: async () => {
-      let q: any = supabase.from("sub_zones").select("id, name, zone_id").eq("status", "active");
-      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
-      const { data } = await q;
-      return data || [];
-    },
-  });
-  const { data: boxes } = useQuery({
-    queryKey: ["boxes-active", branchId || "all"],
-    queryFn: async () => {
-      let q: any = supabase.from("boxes").select("id, name, zone_id").eq("status", "active");
-      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
-      const { data } = await q;
-      return data || [];
-    },
-  });
-  // Packages: in POP mode, load from reseller_tariff_packages (admin-allotted only).
-  // Otherwise, load global isp_packages as before.
-  const { data: packages } = useQuery({
-    queryKey: ["client-add-packages", isPopMode ? `tariff:${tariffId || "none"}:pop:${popId || "none"}` : "global"],
-    queryFn: async () => {
-      if (isPopMode) {
-        if (!tariffId) return [];
-        const { data } = await supabase
-          .from("reseller_tariff_packages")
-          .select("id, package_id, selling_rate, package_rate, mikrotik_profile, mikrotik_server_id, isp_packages(id, name, bandwidth_down, price)")
-          .eq("tariff_id", tariffId);
-        const rows = (data || []).filter((p: any) => p.isp_packages);
 
-        // Fetch this POP's own selling rates (POP-specific markup, separate from Admin's selling_rate)
-        let popPriceMap = new Map<string, number>();
-        if (popId && rows.length) {
-          const { data: pricing } = await supabase
-            .from("pop_package_pricing" as any)
-            .select("tariff_package_id, pop_selling_rate")
-            .eq("branch_manager_id", popId)
-            .in("tariff_package_id", rows.map((r: any) => r.id));
-          popPriceMap = new Map(
-            (pricing || []).map((r: any) => [r.tariff_package_id, Number(r.pop_selling_rate ?? 0)]),
-          );
-        }
-
-        return rows.map((p: any) => ({
-          id: p.isp_packages.id,
-          name: p.isp_packages.name,
-          bandwidth_down: p.isp_packages.bandwidth_down,
-          // POP mode: use POP's own selling rate (their price to end-users), not Admin's selling_rate
-          price: popPriceMap.get(p.id) ?? Number(p.selling_rate ?? 0),
-          mikrotik_profile: p.mikrotik_profile || null,
-          mikrotik_server_id: p.mikrotik_server_id || null,
-        }));
-      }
+  // ─── Admin-mode queries (unchanged) ───
+  const { data: zonesAdmin } = useQuery({
+    enabled: !isPopMode,
+    queryKey: ["zones-active-admin"],
+    queryFn: async () => {
+      const { data } = await supabase.from("zones").select("id, name").eq("status", "active");
+      return data || [];
+    },
+  });
+  const { data: subZonesAdmin } = useQuery({
+    enabled: !isPopMode,
+    queryKey: ["sub-zones-active-admin"],
+    queryFn: async () => {
+      const { data } = await supabase.from("sub_zones").select("id, name, zone_id").eq("status", "active");
+      return data || [];
+    },
+  });
+  const { data: boxesAdmin } = useQuery({
+    enabled: !isPopMode,
+    queryKey: ["boxes-active-admin"],
+    queryFn: async () => {
+      const { data } = await supabase.from("boxes").select("id, name, zone_id").eq("status", "active");
+      return data || [];
+    },
+  });
+  const { data: packagesAdmin } = useQuery({
+    enabled: !isPopMode,
+    queryKey: ["client-add-packages-admin"],
+    queryFn: async () => {
       const { data } = await supabase
         .from("isp_packages")
         .select("id, name, price, bandwidth_down")
@@ -199,48 +176,32 @@ export default function AddClient() {
       return data || [];
     },
   });
-
-  // POP-mode metadata: branch_manager (server_id, pop_prefix), tariff (mikrotik_server_id), district/upazila names
-  const { data: popMeta } = useQuery({
-    enabled: isPopMode && !!branchId,
-    queryKey: ["pop-meta", branchId, tariffId, districtId, upazilaId],
+  const { data: connectionTypesAdmin } = useQuery({ enabled: !isPopMode, queryKey: ["connection-types-active-admin"], queryFn: async () => { const { data } = await supabase.from("connection_types_config").select("id, name").eq("status", "active"); return data || []; } });
+  const { data: clientTypesAdmin } = useQuery({ enabled: !isPopMode, queryKey: ["client-types-active-admin"], queryFn: async () => { const { data } = await supabase.from("client_types").select("id, name").eq("status", "active"); return data || []; } });
+  const { data: mikrotiksAdmin } = useQuery({ enabled: !isPopMode, queryKey: ["mikrotik-devices-admin"], queryFn: async () => { const { data } = await supabase.from("mikrotik_devices").select("id, name"); return data || []; } });
+  const { data: protocolTypesAdmin } = useQuery({ enabled: !isPopMode, queryKey: ["protocol-types-active-admin"], queryFn: async () => { const { data } = await supabase.from("protocol_types" as any).select("id, name").eq("status", "active"); return data || []; } });
+  const { data: employeesAdmin } = useQuery({
+    enabled: !isPopMode,
+    queryKey: ["employees-active-admin"],
     queryFn: async () => {
-      const [bm, tr, dist, upa] = await Promise.all([
-        supabase.from("branch_managers").select("server_id, pop_prefix, pop_code").eq("branch_id", branchId!).maybeSingle(),
-        tariffId
-          ? supabase.from("reseller_tariffs").select("mikrotik_server_id").eq("id", tariffId).maybeSingle()
-          : Promise.resolve({ data: null } as any),
-        districtId
-          ? supabase.from("districts").select("name").eq("id", districtId).maybeSingle()
-          : Promise.resolve({ data: null } as any),
-        upazilaId
-          ? supabase.from("upazilas").select("name").eq("id", upazilaId).maybeSingle()
-          : Promise.resolve({ data: null } as any),
-      ]);
-      const defaultServerId =
-        (tr as any)?.data?.mikrotik_server_id || (bm as any)?.data?.server_id || null;
-      return {
-        defaultServerId,
-        popPrefix: (bm as any)?.data?.pop_prefix || (bm as any)?.data?.pop_code || "",
-        districtName: (dist as any)?.data?.name || "",
-        upazilaName: (upa as any)?.data?.name || "",
-      };
-    },
-  });
-  const { data: connectionTypes } = useQuery({ queryKey: ["connection-types-active"], queryFn: async () => { const { data } = await supabase.from("connection_types_config").select("id, name").eq("status", "active"); return data || []; } });
-  const { data: clientTypes } = useQuery({ queryKey: ["client-types-active"], queryFn: async () => { const { data } = await supabase.from("client_types").select("id, name").eq("status", "active"); return data || []; } });
-  const { data: mikrotiks } = useQuery({ queryKey: ["mikrotik-devices"], queryFn: async () => { const { data } = await supabase.from("mikrotik_devices").select("id, name"); return data || []; } });
-  const { data: protocolTypes } = useQuery({ queryKey: ["protocol-types-active"], queryFn: async () => { const { data } = await supabase.from("protocol_types" as any).select("id, name").eq("status", "active"); return data || []; } });
-  const { data: employees } = useQuery({
-    queryKey: ["employees-active", branchId || "all"],
-    queryFn: async () => {
-      let q: any = supabase.from("employees").select("id, name").eq("status", "active");
-      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
-      const { data } = await q;
+      const { data } = await supabase.from("employees").select("id, name").eq("status", "active");
       return data || [];
     },
   });
-  const { data: billingStatuses } = useQuery({ queryKey: ["billing-statuses"], queryFn: async () => { const { data } = await supabase.from("billing_statuses").select("id, name").eq("status", "active"); return data || []; } });
+  const { data: billingStatusesAdmin } = useQuery({ enabled: !isPopMode, queryKey: ["billing-statuses-admin"], queryFn: async () => { const { data } = await supabase.from("billing_statuses").select("id, name").eq("status", "active"); return data || []; } });
+
+  // ─── Unified accessors (POP mode reads from popMeta, Admin mode from individual queries) ───
+  const zones = (isPopMode ? popMeta?.zones : zonesAdmin) || [];
+  const subZones = (isPopMode ? popMeta?.subZones : subZonesAdmin) || [];
+  const boxes = (isPopMode ? popMeta?.boxes : boxesAdmin) || [];
+  const packages = (isPopMode ? popMeta?.packages : packagesAdmin) || [];
+  const connectionTypes = (isPopMode ? popMeta?.connectionTypes : connectionTypesAdmin) || [];
+  const clientTypes = (isPopMode ? popMeta?.clientTypes : clientTypesAdmin) || [];
+  const mikrotiks = (isPopMode ? popMeta?.mikrotiks : mikrotiksAdmin) || [];
+  const protocolTypes = (isPopMode ? popMeta?.protocolTypes : protocolTypesAdmin) || [];
+  const employees = (isPopMode ? popMeta?.employees : employeesAdmin) || [];
+  const billingStatuses = (isPopMode ? popMeta?.billingStatuses : billingStatusesAdmin) || [];
+
 
   // POP mode: auto-fill default server, lock protocol to PPPoE
   useEffect(() => {
