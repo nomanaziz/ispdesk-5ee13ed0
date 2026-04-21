@@ -31,6 +31,7 @@ export default function Import() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [bulkExportOpen, setBulkExportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [bulkProfileOpen, setBulkProfileOpen] = useState(false);
 
   const { data: servers = [] } = useQuery({
     queryKey: ["mikrotik_devices_active"],
