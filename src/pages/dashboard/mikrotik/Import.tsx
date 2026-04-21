@@ -362,6 +362,16 @@ export default function Import() {
         onTransferred={() => setSelectedIds(new Set())}
       />
 
+      <BulkProfileChangeDialog
+        open={bulkProfileOpen}
+        onOpenChange={setBulkProfileOpen}
+        selectedClients={clients.filter((c: any) => selectedIds.has(c.id))}
+        onSuccess={() => {
+          setSelectedIds(new Set());
+          queryClient.invalidateQueries({ queryKey: ["mikrotik_clients"] });
+        }}
+      />
+
       <Dialog open={bulkExportOpen} onOpenChange={setBulkExportOpen}>
         <DialogContent>
           <DialogHeader>
