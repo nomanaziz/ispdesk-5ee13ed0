@@ -21,7 +21,7 @@ import { usePopScope } from "@/hooks/usePopScope";
 export default function AddClient() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isPopMode, branchId, tariffId, popName, districtId, upazilaId } = usePopScope();
+  const { isPopMode, branchId, popId, tariffId, popName, districtId, upazilaId } = usePopScope();
   const prefill = location.state?.prefill;
   const requestId = location.state?.request_id;
   const editMode = location.state?.editMode === true;
@@ -158,7 +158,7 @@ export default function AddClient() {
   // Packages: in POP mode, load from reseller_tariff_packages (admin-allotted only).
   // Otherwise, load global isp_packages as before.
   const { data: packages } = useQuery({
-    queryKey: ["client-add-packages", isPopMode ? `tariff:${tariffId || "none"}` : "global"],
+    queryKey: ["client-add-packages", isPopMode ? `tariff:${tariffId || "none"}:pop:${popId || "none"}` : "global"],
     queryFn: async () => {
       if (isPopMode) {
         if (!tariffId) return [];
@@ -166,18 +166,30 @@ export default function AddClient() {
           .from("reseller_tariff_packages")
           .select("id, package_id, selling_rate, package_rate, mikrotik_profile, mikrotik_server_id, isp_packages(id, name, bandwidth_down, price)")
           .eq("tariff_id", tariffId);
-        return (data || [])
-          .filter((p: any) => p.isp_packages)
-          .map((p: any) => ({
-            id: p.isp_packages.id,
-            name: p.isp_packages.name,
-            bandwidth_down: p.isp_packages.bandwidth_down,
-            // POP mode: ALWAYS use reseller's own selling_rate (their price to clients).
-            // Never fall back to admin's isp_packages.price — that's the global price, not the reseller's.
-            price: Number(p.selling_rate ?? 0),
-            mikrotik_profile: p.mikrotik_profile || null,
-            mikrotik_server_id: p.mikrotik_server_id || null,
-          }));
+        const rows = (data || []).filter((p: any) => p.isp_packages);
+
+        // Fetch this POP's own selling rates (POP-specific markup, separate from Admin's selling_rate)
+        let popPriceMap = new Map<string, number>();
+        if (popId && rows.length) {
+          const { data: pricing } = await supabase
+            .from("pop_package_pricing" as any)
+            .select("tariff_package_id, pop_selling_rate")
+            .eq("branch_manager_id", popId)
+            .in("tariff_package_id", rows.map((r: any) => r.id));
+          popPriceMap = new Map(
+            (pricing || []).map((r: any) => [r.tariff_package_id, Number(r.pop_selling_rate ?? 0)]),
+          );
+        }
+
+        return rows.map((p: any) => ({
+          id: p.isp_packages.id,
+          name: p.isp_packages.name,
+          bandwidth_down: p.isp_packages.bandwidth_down,
+          // POP mode: use POP's own selling rate (their price to end-users), not Admin's selling_rate
+          price: popPriceMap.get(p.id) ?? Number(p.selling_rate ?? 0),
+          mikrotik_profile: p.mikrotik_profile || null,
+          mikrotik_server_id: p.mikrotik_server_id || null,
+        }));
       }
       const { data } = await supabase
         .from("isp_packages")
