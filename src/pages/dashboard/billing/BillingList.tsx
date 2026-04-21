@@ -26,6 +26,7 @@ import BulkDistrictChangeDialog from "@/components/billing/BulkDistrictChangeDia
 import BulkThanaChangeDialog from "@/components/billing/BulkThanaChangeDialog";
 import BillReceiveDialog from "@/components/billing/BillReceiveDialog";
 import BillingDatePopover from "@/components/billing/BillingDatePopover";
+import RemainingDaysCell from "@/components/billing/RemainingDaysCell";
 import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows } from "@/lib/exportClients";
 import { toast } from "sonner";
 import { usePopScope } from "@/hooks/usePopScope";
@@ -42,6 +43,22 @@ export default function BillingList() {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Fetch POP type for prepaid-only column (R.Days)
+  const { data: popInfo } = useQuery({
+    queryKey: ["pop-info-billing", branchId],
+    queryFn: async () => {
+      if (!branchId) return null;
+      const { data } = await supabase
+        .from("branch_managers")
+        .select("pop_type")
+        .eq("branch_id", branchId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: isPopMode && !!branchId,
+  });
+  const isPrepaidPop = isPopMode && popInfo?.pop_type === "prepaid";
 
   // Dialogs
   const [migrateOpen, setMigrateOpen] = useState(false);
@@ -369,6 +386,7 @@ export default function BillingList() {
                   <TableHead>প্যাকেজ</TableHead>
                   <TableHead>স্পিড</TableHead>
                   <TableHead>মেয়াদ</TableHead>
+                  {isPrepaidPop && <TableHead className="text-center">R.Days</TableHead>}
                   <TableHead>স্ট্যাটাস</TableHead>
                   <TableHead className="text-right">মাসিক বিল</TableHead>
                   <TableHead className="text-right">পরিশোধিত</TableHead>
@@ -382,9 +400,9 @@ export default function BillingList() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={19} className="text-center py-8 text-muted-foreground">লোড হচ্ছে...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={isPrepaidPop ? 20 : 19} className="text-center py-8 text-muted-foreground">লোড হচ্ছে...</TableCell></TableRow>
                 ) : paginated.length === 0 ? (
-                  <TableRow><TableCell colSpan={19} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={isPrepaidPop ? 20 : 19} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
                 ) : paginated.map((c: any, i: number) => {
                   const b = c.currentBill;
                   const bs = (b?.status || "unpaid").toLowerCase();
@@ -413,6 +431,11 @@ export default function BillingList() {
                       <TableCell>
                         <BillingDatePopover client={c} />
                       </TableCell>
+                      {isPrepaidPop && (
+                        <TableCell className="text-center">
+                          <RemainingDaysCell client={c} />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Badge variant={c.status === "active" ? "default" : c.status === "left" ? "destructive" : "secondary"} className="text-xs capitalize">
                           {c.status}
@@ -454,9 +477,9 @@ export default function BillingList() {
               </TableBody>
               {paginated.length > 0 && (
                 <TableFooter>
-                  <TableRow>
-                    <TableCell colSpan={11} className="text-right">পেজ মোট ({paginated.length} জন):</TableCell>
-                    <TableCell className="text-right">{pageTotals.monthly.toLocaleString()}</TableCell>
+                    <TableRow>
+                      <TableCell colSpan={isPrepaidPop ? 12 : 11} className="text-right">পেজ মোট ({paginated.length} জন):</TableCell>
+                      <TableCell className="text-right">{pageTotals.monthly.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{pageTotals.paid.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{pageTotals.due.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{pageTotals.advance.toLocaleString()}</TableCell>
