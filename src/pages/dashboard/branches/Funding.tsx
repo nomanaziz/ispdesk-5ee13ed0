@@ -201,6 +201,7 @@ export default function Funding() {
   const save = useMutation({
     mutationFn: async () => {
       if (!form.pop_id) throw new Error("POP নির্বাচন করুন");
+      if (!selectedPop?.branch_id) throw new Error("নির্বাচিত POP-এর কোনো branch attach নেই — POP সেটিংসে branch যোগ করুন");
       if (!form.funding_amount || form.funding_amount <= 0) throw new Error("Funding amount দিন");
       if (form.received_amount < 0) throw new Error("Received amount valid নয়");
 
