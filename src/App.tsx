@@ -340,6 +340,8 @@ import PopBillingClient from "@/pages/reseller/clients/PopBillingClient";
 import PopLeftClients from "@/pages/reseller/clients/PopLeftClients";
 import PopScheduler from "@/pages/reseller/clients/PopScheduler";
 import PopPlaceholder from "@/pages/reseller/PopPlaceholder";
+import PopFundDebitHistory from "@/pages/reseller/PopFundDebitHistory";
+import PopFundCreditHistory from "@/pages/reseller/PopFundCreditHistory";
 
 // Redirect helper: any /reseller/<rest> → /pop-admin/<rest>
 const LegacyResellerRedirect = () => {
@@ -744,8 +746,8 @@ const App = () => (
               <Route path="/pop-admin/reports/discount" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Discount Report" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/reports/due-sms" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Due SMS Report" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/system/period" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Billing Period Setting" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/fund-history/credit" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Credit History" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/fund-history/debit" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Debit History" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/fund-history/credit" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopFundCreditHistory /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/fund-history/debit" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopFundDebitHistory /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
               {/* Legacy /reseller/* → /pop-admin/* redirects */}
               <Route path="/reseller" element={<Navigate to="/pop-admin/dashboard" replace />} />
