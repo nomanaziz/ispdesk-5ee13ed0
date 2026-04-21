@@ -26,6 +26,7 @@ import BulkDistrictChangeDialog from "@/components/billing/BulkDistrictChangeDia
 import BulkThanaChangeDialog from "@/components/billing/BulkThanaChangeDialog";
 import BillReceiveDialog from "@/components/billing/BillReceiveDialog";
 import BillingDatePopover from "@/components/billing/BillingDatePopover";
+import RemainingDaysCell from "@/components/billing/RemainingDaysCell";
 import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows } from "@/lib/exportClients";
 import { toast } from "sonner";
 import { usePopScope } from "@/hooks/usePopScope";
