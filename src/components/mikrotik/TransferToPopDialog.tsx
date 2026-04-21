@@ -215,6 +215,21 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {isMixed && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 space-y-1.5">
+              <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
+                <AlertTriangle className="h-4 w-4" /> Mixed profiles detected
+              </div>
+              <p className="text-xs text-destructive/90">সবগুলো user-এর MikroTik profile এক হতে হবে:</p>
+              <ul className="text-xs text-destructive/90 ml-4 list-disc">
+                {profileGroups.map(([prof, count]) => (
+                  <li key={prof}><span className="font-mono">{prof}</span> — {count} user</li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground pt-1">💡 Import page-এ "প্রোফাইল" filter দিয়ে এক profile-এর user আলাদা করে export করুন।</p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>MAC/POP Reseller</Label>
             <Popover open={popPickerOpen} onOpenChange={setPopPickerOpen}>
