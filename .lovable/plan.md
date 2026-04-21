@@ -1,66 +1,48 @@
 
 
 ## লক্ষ্য
-**Prepaid POP** type-এর জন্য Billing List page-এ একটা নতুন **R.Days (Remaining Days)** column যোগ করা — যা client-এর `expire_date` থেকে আজকের দিন বাদ দিয়ে কত দিন বাকি আছে সেটা দেখাবে, এবং inline edit করে change করা যাবে।
+POP package page-এ column order ও terminology ঠিক করা — screenshot/explanation অনুযায়ী।
 
-## কোথায় দেখাবে
-- **Page**: `/dashboard/billing` ও `/pop-admin/billing` (একই `BillingList.tsx` component)
-- **Condition**: শুধু POP যার `pop_type = "prepaid"` সেই মোডে এই column দেখাবে। Postpaid POP বা Admin (non-POP) view-তে দেখাবে না।
-- **Position**: "মেয়াদ" (Ex.Date) column-এর ঠিক পরে — screenshot-এর order মেনে।
+## সমস্যা
+এখন column order ভুল ও design inconsistent। User চাইছে exact এই order:
 
-## R.Days লজিক
-
-```text
-remainingDays = Math.ceil((expire_date - today) / 1 দিন)
-
-Display:
-  remainingDays > 7    → সবুজ pill, সংখ্যা দেখাবে (e.g., "19")
-  1 ≤ days ≤ 7         → লাল pill, সংখ্যা দেখাবে (e.g., "1", "5")
-  remainingDays = 0    → লাল pill, "0"
-  remainingDays < 0    → লাল pill, "Expired"
-  expire_date নেই      → "—"
+```
+Package Name | Server Name | Protocol Type | Profile | BuyingRate | SellingRate | ValidityDays | Min R.Days | Action
 ```
 
-## Edit flow (inline, Pop-up)
-- R.Days pill-এ click → একটি ছোট popover খুলবে:
-  - Number input: "নতুন R.Days" (default = current remaining)
-  - "Save" button → server-এ `expire_date = today + newDays` set করে save
-  - Cancel button
-- Save সফল হলে toast + table refresh
-- Validation: 0 বা positive integer; max 365
+- **BuyingRate** = admin যেটায় reseller-এর কাছে বিক্রি করছে (= DB-এর `buy_rate`) → reseller-এর কাছে এটাই কেনা দাম, **locked/read-only**
+- **SellingRate** = reseller তার client-এর কাছে যেটায় বিক্রি করবে (= DB-এর `selling_rate`) → **শুধু এটা editable**
 
-## পরিবর্তনের সুযোগ — POP type detect করা
+Wrong values screenshot-এ ("buying rate পাঁচশ কেন") আসছে কারণ হয়তো mapping উল্টে গেছে বা admin price দেখাচ্ছে।
 
-`usePopScope` hook-এ বর্তমানে `pop_type` নাই। এটা যোগ করতে হবে:
-- `PortalAuthContext` → POP login হলে customer object-এ `pop_type` (branches table থেকে) include করা
-- `usePopScope` → `popType` return করা
-- `BillingList` → `isPrepaidPop = isPopMode && popType === "prepaid"` দিয়ে column conditional render
+## পরিবর্তন (`src/pages/reseller/config/PopPackages.tsx`)
 
-বিকল্প (simpler): Login-এর সময় না এনে `BillingList`-এর initial query-তেই branch থেকে pop_type একবার fetch করা। এটা cleaner — আমি এই পদ্ধতিই ব্যবহার করব।
+### 1. Column order fix
+Header sequence ঠিক করা: **Package Name → Server Name → Protocol Type → Profile → BuyingRate → SellingRate → ValidityDays → Min R.Days → Action**
 
-## পরিবর্তনের ফাইল
+### 2. Data mapping verify ও fix
+- `BuyingRate` column = `pkg.buy_rate` (admin sells to this reseller at) — display only, no edit
+- `SellingRate` column = `pkg.selling_rate` (reseller sells to client at) — only editable field
+- নিশ্চিত করব edge function `get_tariff_packages` থেকে `buy_rate` ও `selling_rate` দুটোই আসছে এবং সঠিকভাবে map হচ্ছে — যদি mapping mismatch থাকে তাহলে field name fix
 
-### 1. `src/pages/dashboard/billing/BillingList.tsx`
-- Branch pop_type fetch করার ছোট useQuery (POP mode-এ)
-- Table header: `<TableHead>` যোগ "R.Days" — শুধু `isPrepaidPop` হলে
-- Table body: প্রতি row-এ remaining days calculate করে color pill — শুধু `isPrepaidPop` হলে
-- Column count update (`colSpan={19}` → `20` prepaid POP-এ)
-- Footer `colSpan` adjust
+### 3. Design consistency
+- Existing design system (table from `@/components/ui/table` + Badge + Button) ব্যবহার করব — কোনো custom card/colored layout না
+- BuyingRate cell: plain text, muted color, lock icon hint
+- SellingRate cell: text + small green pencil icon → click করলে inline edit (input + save/cancel)
+- Validation: `selling_rate >= buy_rate` (already enforced server-side) — client-side warning
+- Footer pagination: existing simple pattern
 
-### 2. `src/components/billing/RemainingDaysCell.tsx` (নতুন ছোট file)
-- Pill display + popover edit
-- supabase update `expire_date` = `today + newDays`
-- onSuccess: `queryClient.invalidateQueries(["billing-list"])`
+### 4. Verification (read-only)
+implementation-এর আগে edge function `portal-data` action `get_tariff_packages` quickly check করে নেব যাতে field names confirm হয়।
 
 ## যা **বদলাবে না**
-- Database schema — `expire_date` field already আছে, কোনো migration লাগবে না
-- Postpaid POP ও Admin view — অপরিবর্তিত
-- বাকি column, filter, pagination, bulk actions — intact
-- POP package page (পূর্বের কাজ) — touch হবে না
+- Backend (`portal-data` actions, `update_tariff_selling_rate` validation) — intact
+- Database schema — intact
+- AddClient flow (পূর্বের কাজ যেখানে selling_rate auto-fill হয়) — intact
 
 ## Files
-- **Modified**: `src/pages/dashboard/billing/BillingList.tsx`
-- **New**: `src/components/billing/RemainingDaysCell.tsx`
+- **Inspect first**: `supabase/functions/portal-data/index.ts` (only the `get_tariff_packages` action)
+- **Modified**: `src/pages/reseller/config/PopPackages.tsx`
 
-approve করলে default mode-এ গিয়ে এই ২টি file change apply করব।
+approve করলে inspect → fix apply করব। কোনো backend বা schema change হবে না।
 
