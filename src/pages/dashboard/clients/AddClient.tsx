@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Save, ArrowLeft, AlertTriangle } from "lucide-react";
 import { usePopScope } from "@/hooks/usePopScope";
+import { callPortal } from "@/lib/portalApi";
 
 export default function AddClient() {
   const navigate = useNavigate();
