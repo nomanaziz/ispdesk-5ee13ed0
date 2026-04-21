@@ -37,6 +37,33 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+const hasLegacySwappedPackageRates = (pkg: {
+  buy_rate?: number | null;
+  selling_rate?: number | null;
+}) => {
+  const buy = Number(pkg.buy_rate ?? 0);
+  const sell = Number(pkg.selling_rate ?? 0);
+  return Number.isFinite(buy) && Number.isFinite(sell) && buy > 0 && sell > 0 && buy > sell;
+};
+
+const normalizePackageRates = <T extends { buy_rate?: number | null; selling_rate?: number | null }>(
+  pkg: T,
+) => {
+  if (!hasLegacySwappedPackageRates(pkg)) {
+    return {
+      ...pkg,
+      buy_rate: Number(pkg.buy_rate ?? 0),
+      selling_rate: Number(pkg.selling_rate ?? 0),
+    };
+  }
+
+  return {
+    ...pkg,
+    buy_rate: Number(pkg.selling_rate ?? 0),
+    selling_rate: Number(pkg.buy_rate ?? 0),
+  };
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -386,11 +413,14 @@ Deno.serve(async (req) => {
         ]);
         const pkgMap = new Map((pkgRefs.data ?? []).map((r: any) => [r.id, r]));
         const srvMap = new Map((srvRefs.data ?? []).map((r: any) => [r.id, r]));
-        const out = (pkgs ?? []).map((p: any) => ({
-          ...p,
-          isp_packages: pkgMap.get(p.package_id) || null,
-          mikrotik_devices: srvMap.get(p.mikrotik_server_id) || null,
-        }));
+        const out = (pkgs ?? []).map((p: any) => {
+          const normalized = normalizePackageRates(p);
+          return {
+            ...normalized,
+            isp_packages: pkgMap.get(p.package_id) || null,
+            mikrotik_devices: srvMap.get(p.mikrotik_server_id) || null,
+          };
+        });
         return json({ packages: out });
       }
 
@@ -412,18 +442,23 @@ Deno.serve(async (req) => {
           .maybeSingle();
         if (!pop?.tariff_id) return json({ error: "No tariff assigned" }, 403);
         // Fetch row to enforce: must belong to own tariff, and rate >= buy_rate
-        const { data: row } = await sb
+        const { data: rawRow } = await sb
           .from("reseller_tariff_packages")
-          .select("id, tariff_id, buy_rate")
+          .select("id, tariff_id, buy_rate, selling_rate")
           .eq("id", package_id)
           .maybeSingle();
+        const row = rawRow ? normalizePackageRates(rawRow) : null;
         if (!row || row.tariff_id !== pop.tariff_id)
           return json({ error: "Package not in your tariff" }, 403);
         if (rate < Number(row.buy_rate || 0))
           return json({ error: `Selling rate cannot be less than buy rate (৳${row.buy_rate})` }, 400);
         const { error: upErr } = await sb
           .from("reseller_tariff_packages")
-          .update({ selling_rate: rate })
+          .update(
+            hasLegacySwappedPackageRates(rawRow ?? {})
+              ? { buy_rate: rate }
+              : { selling_rate: rate },
+          )
           .eq("id", package_id);
         if (upErr) return json({ error: upErr.message }, 500);
         return json({ ok: true });
