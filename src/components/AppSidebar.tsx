@@ -23,10 +23,11 @@ import { Sidebar, SidebarContent, useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
 
-interface MenuItem { title: string; url: string; icon: LucideIcon; }
-interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; }
+interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
+interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; }
 
 const menuGroups: MenuGroup[] = [
   {
