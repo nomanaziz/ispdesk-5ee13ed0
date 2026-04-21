@@ -139,8 +139,16 @@ export default function PopPackages() {
                   <th className="px-3 py-2 text-left font-semibold border-r border-slate-600">ServerName</th>
                   <th className="px-3 py-2 text-left font-semibold border-r border-slate-600">Protocol</th>
                   <th className="px-3 py-2 text-left font-semibold border-r border-slate-600">Profile</th>
-                  <th className="px-3 py-2 text-center font-semibold border-r border-slate-600">BuyingRate</th>
-                  <th className="px-3 py-2 text-center font-semibold border-r border-slate-600">SellingRate</th>
+                  <th className="px-3 py-2 text-center font-semibold border-r border-slate-600">
+                    <span className="inline-flex items-center gap-1">
+                      <Lock className="h-3 w-3 opacity-70" /> BuyingRate
+                    </span>
+                  </th>
+                  <th className="px-3 py-2 text-center font-semibold border-r border-slate-600 bg-emerald-700/40">
+                    <span className="inline-flex items-center gap-1">
+                      <Pencil className="h-3 w-3" /> SellingRate
+                    </span>
+                  </th>
                   <th className="px-3 py-2 text-center font-semibold border-r border-slate-600">ValidityDays</th>
                   <th className="px-3 py-2 text-center font-semibold border-r border-slate-600">Min R.Days</th>
                   <th className="px-3 py-2 text-center font-semibold">Action</th>
