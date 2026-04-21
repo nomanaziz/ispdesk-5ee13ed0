@@ -408,7 +408,7 @@ export default function PopForm({ mode, pop }: Props) {
             <Label>
               Tariff {mode === "create" && <Req />} {lockTariff && <Lock className="inline h-3 w-3 ml-1" />}
             </Label>
-            <LockedField locked={lockTariff}>
+            <LockedField locked={lockTariff} title={lockTariff ? "Tariff lifetime fixed — পরিবর্তন করা যাবে না" : undefined}>
               <Select
                 value={form.tariff_id}
                 onValueChange={(v) => upd("tariff_id", v)}
@@ -418,6 +418,11 @@ export default function PopForm({ mode, pop }: Props) {
                 <SelectContent>{tariffs?.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
               </Select>
             </LockedField>
+            {mode === "create" && (
+              <p className="text-[11px] text-destructive mt-1">
+                ⚠️ একবার Tariff সিলেক্ট করলে এটি আর পরিবর্তন করা যাবে না (lifetime fixed)
+              </p>
+            )}
           </div>
           <div className="flex items-end gap-3">
             <div className="flex items-start gap-2">
