@@ -1,81 +1,104 @@
 
 
-## লক্ষ্য
-Admin sidebar-এর প্রত্যেকটা group-এর icon-কে আলাদা আলাদা সুন্দর "rainbow" candy-tone color দেওয়া, যাতে চোখে দেখেই বোঝা যায় কোনটা কোন module।
+## লক্ষ্য (Goal)
+POP-এর জন্য **Debit History** (admin → POP fund) এবং **Credit History** (POP → daily client charges) — দুইটাই দুই side-এ:
 
-## ডিজাইন approach
+1. **Admin side** (`PopProfile.tsx` view): দুইটা নতুন tab — Debit Transactions + Credit Transactions
+2. **POP-Admin side** (`/pop-admin/*`): Fund History menu group → Debit History + Credit History
+3. Credit row-এ **eye / view** action → ওই দিনের সব active client-এর per-user breakdown popup
 
-### ১. প্রতি group-এর জন্য নির্ধারিত color
-`menuGroups` array-এ প্রতি group-এর `label`-কে একটা নির্দিষ্ট candy color-এ map করা হবে (Tailwind palette-এর `-500/-600` shade — গাঢ় কিন্তু সুন্দর)। Light/dark dual mode-এ readable থাকার জন্য light mode-এ `-600`, dark mode-এ `-400` ব্যবহার করা হবে।
+## Approach
 
-পরিকল্পিত rainbow assignment (২৬টা group):
-
-| Group | Color |
+### ১. Data backbone: per-day per-client charge log
+নতুন table `pop_daily_charges`:
+| column | type |
 |---|---|
-| ড্যাশবোর্ড | indigo |
-| ওয়েবসাইট প্যানেল | sky |
-| কনফিগারেশন | slate (neutral, gear) |
-| VAS | teal |
-| হোম ক্লায়েন্ট | blue |
-| POP / MAC ক্লায়েন্ট | violet |
-| ব্যান্ডউইথ ক্লায়েন্ট | cyan |
-| ডিভাইস | emerald |
-| HR ও পেরোল | pink |
-| OLT ম্যানেজমেন্ট | purple |
-| নেটওয়ার্ক মনিটরিং | green |
-| নেটওয়ার্ক ডায়াগ্রাম | lime |
-| ছুটি ম্যানেজমেন্ট | amber |
-| ইভেন্ট ও ছুটি | yellow |
-| সাপোর্ট ও টিকেটিং | rose |
-| টাস্ক ম্যানেজমেন্ট | fuchsia |
-| ব্যান্ডউইথ ক্রয় | cyan-700 |
-| ক্রয় | orange |
-| বিক্রয় ও সার্ভিস | red |
-| ইনভেন্টরি | amber-700 |
-| অ্যাসেট | stone |
-| অ্যাকাউন্টিং | green-700 |
-| রিপোর্ট | blue-700 |
-| SMS সার্ভিস | sky-700 |
-| ই-কমার্স | pink-600 |
-| সিস্টেম | zinc |
+| id | uuid |
+| pop_id | uuid (branch_managers.id) |
+| branch_id | uuid |
+| client_id | uuid (clients.id) |
+| client_username | text |
+| client_name | text |
+| package_id | uuid |
+| package_name | text |
+| profile | text |
+| protocol_type | text |
+| server_name | text |
+| zone_id, zone_name | uuid/text |
+| sub_zone_id, sub_zone_name | uuid/text |
+| monthly_rate | numeric |
+| daily_rate | numeric |
+| charged_amount | numeric |
+| pop_balance_before, pop_balance_after | numeric |
+| charge_date | date |
+| created_at | timestamptz |
 
-প্রতিটার জন্য একটা `colorClass` string (e.g., `"text-violet-600 dark:text-violet-400"`) থাকবে।
+Index: `(pop_id, charge_date)`, `(branch_id, charge_date)`, `(client_id, charge_date)`. RLS: admin all, POP own rows (`branch_id = current pop branch`).
 
-### ২. Implementation
-`AppSidebar.tsx`-এ:
+### ২. Daily-charge engine
+Edge function `apply-pop-daily-charges` (নতুন), schedule `cron.schedule` দৈনিক ১টায়:
+- প্রতিটা **prepaid** POP-এর প্রতিটা active client (`billing_status` active/enabled) এর জন্য:
+  - daily_rate = monthly_bill ÷ 30
+  - `pop_daily_charges` row insert
+  - `branch_managers.balance` থেকে subtract
+- Transaction-safe, idempotent (একই date-pop-client unique constraint)
 
-- `MenuGroup` interface-এ optional `color?: string` field যোগ
-- প্রতি `menuGroups` entry-তে `color` set করা (উপরের mapping অনুযায়ী)
-- একটা helper `getGroupColor(group)` যেটা color class return করে, না থাকলে fallback `text-muted-foreground`/`text-slate-400`
-- 4টা জায়গায় `<group.icon className="h-4 w-4 ..." />`-এ এই color class merge করা (cn দিয়ে):
-  - direct collapsed (line ~577)
-  - direct expanded (line ~598)
-  - collapsible collapsed (line ~622)
-  - collapsible expanded button header (line ~643)
-- Active state-এ icon color group-color হবে না — active-এ primary color override থাকবে (existing behavior, কোনো change নাই)
-- Child item icons (`<item.icon>`, line ~666)-এ parent group-এর color soft tone (opacity-70) দেওয়া হবে যাতে subtle rainbow effect থাকে কিন্তু text overpower না করে — এই জন্য `CollapsibleGroup` থেকে `groupColor` child render-এ pass হবে
+পুরাতন data backfill জন্য one-time SQL: যদি balance-এ আগে থেকে deduction হয়ে থাকে (existing trigger বা manual via FundDeductionDialog), সেগুলো `pop_transactions`-এ আছে — সেগুলো credit history-তে দেখানো হবে fallback হিসেবে।
 
-### ৩. Hover ও active behavior
-- Hover: existing background change (`hover:bg-muted/50`) থাকবে, icon-color hover-এ আরো গাঢ় হবে (`group-hover:text-{color}-700`) — optional, simple রাখার জন্য skip করব এবং শুধু base color দেব
-- Active: existing `text-primary` override → group color এর উপরে primary বসবে (cn order maintain)
+### ৩. Admin UI — `PopProfile.tsx`
+বর্তমান tabs-এ যোগ:
+- **Debit Transactions**: `branch_funding` থেকে POP-এর সব fund row + payment history (image-173 layout: Funding Date | Amount | Total Paid | Discount | Total Due | Payment Date | Paid Amount | Discount | Remarks | ReceivedBy)
+- **Credit Transactions**: `pop_daily_charges` থেকে date-grouped rollup (image-174/177 layout: Date | Total User | Total Credited User | Packages | Profiles | Protocol Types | Servers | Total Credited Amount | Action eye)
+- Eye click → modal (image-178 layout): Serial | UserName | Zone | Subzone | Package | Profile | Protocol | Server | Monthly Rate | Daily Rate | Credited Amount | Credited By | Remarks — totals row সহ। Filter: Zone, Sub-zone
 
-### ৪. Scope
-- শুধু **admin** AppSidebar (`src/components/AppSidebar.tsx`)
-- POP sidebar (`ResellerLayout.tsx`) এবং Portal sidebar এতে অন্তর্ভুক্ত নয় (user বললে পরে করব)
+দু'টা tab-এ from/to date filter, Generate PDF + CSV button (existing `reportExport` util reuse)।
+
+### ৪. POP-Admin UI — `/pop-admin/*`
+`ResellerLayout.tsx` sidebar-এ নতুন group "Fund History":
+- `/pop-admin/fund-history/debit` → `PopFundDebitHistory.tsx` (image-175 layout)
+- `/pop-admin/fund-history/credit` → `PopFundCreditHistory.tsx` (image-177 layout, eye → image-178 modal)
+
+দুইটা page admin-side wo same component reuse করবে — একটা `<PopDebitHistory popId={..} mode="admin|pop" />` ও `<PopCreditHistory popId={..} mode="admin|pop" />` shared component, `usePopScope()` দিয়ে POP-mode-এ auto branch_id detect।
+
+POP-Admin login করলে শুধু own POP-এর data, admin login করলে selected POP-এর।
+
+### ৫. Files
+
+**Migration:**
+- `supabase/migrations/<ts>_pop_daily_charges.sql` — নতুন table + RLS + unique index `(pop_id, client_id, charge_date)`
+
+**Edge function:**
+- `supabase/functions/apply-pop-daily-charges/index.ts` — daily cron, idempotent insert + balance update
+
+**Shared components:**
+- `src/components/branches/PopDebitHistory.tsx` (image-173/175 layout, both modes)
+- `src/components/branches/PopCreditHistory.tsx` (image-174/177 + eye → modal image-178)
+- `src/components/branches/PopCreditDetailDialog.tsx` (per-day per-user breakdown popup)
+
+**Admin pages updated:**
+- `src/pages/dashboard/branches/PopProfile.tsx` — দুই নতুন tab যোগ
+
+**POP-Admin pages new:**
+- `src/pages/reseller/PopFundDebitHistory.tsx`
+- `src/pages/reseller/PopFundCreditHistory.tsx`
+
+**Routing:**
+- `src/App.tsx` — দুইটা `/pop-admin/fund-history/*` route যোগ
+- `src/components/ResellerLayout.tsx` — sidebar-এ "Fund History" group যোগ (Debit + Credit)
+- `src/components/ResellerProtectedRoute.tsx` — `require="fund-history"` permission key যোগ
+
+**Types:** `src/integrations/supabase/types.ts` (auto-regen)
 
 ## যা বদলাবে না
-- Group order, labels, translations
-- Routing, RLS, backend
-- Active highlight color (primary)
-- Sidebar collapse/expand behavior
-- Badge styling
-
-## Files
-- `src/components/AppSidebar.tsx` — `MenuGroup` interface-এ `color`, প্রতি group-এ color assign, 4টা icon render-এ color class merge, child item icon-এ soft inherit
+- Existing `Funding.tsx` / `FundingHistory.tsx` admin pages — অপরিবর্তিত রাখব (parallel, supplemental)
+- Existing balance update triggers — অপরিবর্তিত
+- `credit_refund_logs` flow (left-client refund) — আলাদা concern
 
 ## Apply-এর পরে expected
-- প্রতিটা admin sidebar group-এর icon আলাদা candy/rainbow color-এ দেখাবে (indigo, sky, violet, emerald, pink, ইত্যাদি)
-- Light mode-এ গাঢ় (-600), dark mode-এ উজ্জ্বল (-400) — দু'টোতেই readable
-- চাইল্ড menu icon গুলোও parent-এর color tone subtle ভাবে inherit করবে
-- Active item আগের মতই primary color-এ highlight হবে
+1. **Admin → POP view** এ "Debit Transactions" + "Credit Transactions" tab দেখাবে (নিচের two existing tabs-এর পাশে)
+2. **POP-Admin sidebar**-এ নতুন "Fund History" menu → Debit + Credit
+3. **Credit row-এর eye** click → ওই দিন কোন user-এর কত daily rate, total কত — পুরো breakdown
+4. Daily cron প্রতিদিন রাতে active client-প্রতি charge log করে balance update করবে
+5. PDF/CSV export button দু'টা history page-এ থাকবে
+6. From/To date + Zone/Sub-zone filter
 
