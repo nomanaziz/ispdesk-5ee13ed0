@@ -14,47 +14,47 @@
   :root,
   [data-theme-mode="light"] {
     --background: 220 14% 96%;
-    --foreground: 224 20% 16%;
+    --foreground: 224 30% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 224 20% 16%;
+    --card-foreground: 224 30% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 224 20% 16%;
+    --popover-foreground: 224 30% 10%;
 
     --primary: 258 90% 66%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 14% 93%;
-    --secondary-foreground: 224 20% 16%;
+    --secondary-foreground: 224 30% 10%;
 
     --muted: 220 14% 93%;
-    --muted-foreground: 220 9% 46%;
+    --muted-foreground: 220 15% 32%;
 
     --accent: 220 14% 93%;
-    --accent-foreground: 224 20% 16%;
+    --accent-foreground: 224 30% 10%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 84% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 89%;
-    --input: 220 13% 89%;
+    --border: 220 14% 82%;
+    --input: 220 14% 82%;
     --ring: 258 90% 66%;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 224 20% 28%;
+    --sidebar-foreground: 224 28% 18%;
     --sidebar-primary: 258 90% 66%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 14% 96%;
-    --sidebar-accent-foreground: 224 20% 16%;
-    --sidebar-border: 220 13% 91%;
+    --sidebar-accent-foreground: 224 30% 10%;
+    --sidebar-border: 220 13% 86%;
     --sidebar-ring: 258 90% 66%;
 
-    --warning: 38 92% 50%;
+    --warning: 38 92% 45%;
     --warning-foreground: 0 0% 100%;
-    --critical: 0 84% 60%;
+    --critical: 0 84% 50%;
     --critical-foreground: 0 0% 100%;
-    --success: 142 71% 45%;
+    --success: 142 71% 38%;
     --success-foreground: 0 0% 100%;
 
     --chart-1: 258 90% 66%;
@@ -69,7 +69,7 @@
   /* ── Dark Mode ── */
   [data-theme-mode="dark"] {
     --background: 224 22% 16%;
-    --foreground: 220 14% 86%;
+    --foreground: 220 18% 94%;
 
     --card: 224 20% 19%;
     --card-foreground: 220 14% 86%;
@@ -84,7 +84,7 @@
     --secondary-foreground: 220 14% 86%;
 
     --muted: 224 18% 23%;
-    --muted-foreground: 220 12% 62%;
+    --muted-foreground: 220 15% 78%;
 
     --accent: 224 18% 23%;
     --accent-foreground: 220 14% 86%;
@@ -133,7 +133,16 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Hind Siliguri', 'Noto Sans Bengali', 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "liga", "kern";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  html[lang="bn"] body,
+  :lang(bn) {
+    letter-spacing: 0.005em;
+    line-height: 1.65;
   }
 }
 

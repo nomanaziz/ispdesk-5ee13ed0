@@ -3,17 +3,20 @@ import { LogOut, User, Globe, Search, Bell, Palette, Settings } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate, Link } from "react-router-dom";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { ThemeCustomizer } from "@/components/ThemeCustomizer";
 import { QuickSettings } from "@/components/QuickSettings";
 import { GlobalClientSearch } from "@/components/GlobalClientSearch";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 
 export function TopBar() {
   const { user, roles, signOut } = useAuth();
+  const { lang, setLang, t } = useLanguage();
   const navigate = useNavigate();
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const [searchOpen, setSearchOpen] = useState(false);
@@ -43,7 +46,7 @@ export function TopBar() {
             onClick={() => setSearchOpen(true)}
           >
             <Search className="h-4 w-4" />
-            <span className="text-xs">ক্লায়েন্ট অনুসন্ধান...</span>
+            <span className="text-xs">{t("ক্লায়েন্ট অনুসন্ধান...", "Search clients...")}</span>
             <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
               ⌘K
             </kbd>
@@ -53,7 +56,32 @@ export function TopBar() {
           </Button>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <Link to="/" target="_blank" title="ওয়েবসাইটে যান">
+          {/* Language Toggle */}
+          <div className="inline-flex items-center rounded-full border border-border/60 bg-muted/30 p-0.5 h-8" role="group" aria-label="Language">
+            <button
+              type="button"
+              onClick={() => setLang("bn")}
+              className={cn(
+                "px-2.5 h-7 rounded-full text-[11px] font-semibold transition-colors",
+                lang === "bn" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+              title="বাংলা"
+            >
+              বাং
+            </button>
+            <button
+              type="button"
+              onClick={() => setLang("en")}
+              className={cn(
+                "px-2.5 h-7 rounded-full text-[11px] font-semibold transition-colors",
+                lang === "en" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+              title="English"
+            >
+              EN
+            </button>
+          </div>
+          <Link to="/" target="_blank" title={t("ওয়েবসাইটে যান", "Open website")}>
             <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
               <Globe className="h-4 w-4" />
             </Button>
@@ -63,7 +91,7 @@ export function TopBar() {
             variant="ghost"
             size="icon"
             className="h-9 w-9 text-muted-foreground hover:text-foreground"
-            title="থিম কাস্টমাইজার"
+            title={t("থিম কাস্টমাইজার", "Theme customizer")}
             onClick={() => setThemeOpen(true)}
           >
             <Palette className="h-4 w-4" />
@@ -72,7 +100,7 @@ export function TopBar() {
             variant="ghost"
             size="icon"
             className="h-9 w-9 text-muted-foreground hover:text-foreground"
-            title="কুইক সেটিংস"
+            title={t("কুইক সেটিংস", "Quick settings")}
             onClick={() => setQuickOpen(true)}
           >
             <Settings className="h-4 w-4" />
@@ -97,11 +125,11 @@ export function TopBar() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => navigate("/dashboard/system/company")}>
-                <User className="mr-2 h-4 w-4" /> প্রোফাইল
+                <User className="mr-2 h-4 w-4" /> {t("প্রোফাইল", "Profile")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => { signOut(); navigate("/login"); }} className="text-destructive">
-                <LogOut className="mr-2 h-4 w-4" /> সাইন আউট
+                <LogOut className="mr-2 h-4 w-4" /> {t("সাইন আউট", "Sign out")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

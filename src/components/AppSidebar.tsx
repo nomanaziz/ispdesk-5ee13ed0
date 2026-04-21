@@ -23,10 +23,11 @@ import { Sidebar, SidebarContent, useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
 
-interface MenuItem { title: string; url: string; icon: LucideIcon; }
-interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; }
+interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
+interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; }
 
 const menuGroups: MenuGroup[] = [
   {
@@ -353,13 +354,199 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
+// Bangla → English translations for sidebar group labels and menu item titles.
+// Default UI is Bangla; lookup returns English when language toggled.
+const SIDEBAR_EN: Record<string, string> = {
+  // Group labels
+  "ড্যাশবোর্ড": "Dashboard",
+  "ওয়েবসাইট প্যানেল": "Website Panel",
+  "কনফিগারেশন": "Configuration",
+  "VAS": "VAS",
+  "হোম ক্লায়েন্ট": "Home Clients",
+  "POP / MAC ক্লায়েন্ট": "POP / MAC Clients",
+  "ব্যান্ডউইথ ক্লায়েন্ট": "Bandwidth Clients",
+  "ডিভাইস": "Devices",
+  "HR ও পেরোল": "HR & Payroll",
+  "OLT ম্যানেজমেন্ট": "OLT Management",
+  "নেটওয়ার্ক মনিটরিং": "Network Monitoring",
+  "নেটওয়ার্ক ডায়াগ্রাম": "Network Diagram",
+  "ছুটি ম্যানেজমেন্ট": "Leave Management",
+  "ইভেন্ট ও ছুটি": "Events & Holidays",
+  "সাপোর্ট ও টিকেটিং": "Support & Ticketing",
+  "টাস্ক ম্যানেজমেন্ট": "Task Management",
+  "ব্যান্ডউইথ ক্রয়": "Bandwidth Purchase",
+  "ক্রয়": "Purchase",
+  "বিক্রয় ও সার্ভিস": "Sales & Services",
+  "ইনভেন্টরি": "Inventory",
+  "অ্যাসেট": "Assets",
+  "অ্যাকাউন্টিং": "Accounting",
+  "রিপোর্ট": "Reports",
+  "SMS সার্ভিস": "SMS Service",
+  "ই-কমার্স": "E-Commerce",
+  "সিস্টেম": "System",
+
+  // Common item titles
+  "ওয়েবসাইট ড্যাশবোর্ড": "Website Dashboard",
+  "হোমপেজ এডিটর": "Homepage Editor",
+  "পেজ": "Pages",
+  "নোটিশ": "Notices",
+  "অফার": "Offers",
+  "টেস্টিমোনিয়াল": "Testimonials",
+  "পার্টনার": "Partners",
+  "ফিচার": "Features",
+  "সার্ভিস": "Services",
+  "উৎসব": "Festivals",
+  "মেনু এডিটর": "Menu Editor",
+  "মিডিয়া লাইব্রেরি": "Media Library",
+  "About পেজ": "About Page",
+  "সাইট সেটিংস": "Site Settings",
+  "জোন": "Zones",
+  "সাব জোন": "Sub Zones",
+  "বক্স": "Boxes",
+  "কানেকশন টাইপ": "Connection Types",
+  "ক্লায়েন্ট টাইপ": "Client Types",
+  "প্রোটোকল টাইপ": "Protocol Types",
+  "বিলিং স্ট্যাটাস": "Billing Statuses",
+  "প্যাকেজ": "Packages",
+  "এলাকা (বিভাগ/জেলা/উপজেলা)": "Areas (Division/District/Upazila)",
+  "সার্ভিস টাইপ": "Service Types",
+  "VAS কনফিগ": "VAS Config",
+  "সাবস্ক্রিপশন": "Subscriptions",
+  "লেনদেন": "Transactions",
+  "নতুন রিকোয়েস্ট": "New Requests",
+  "ক্লায়েন্ট তালিকা": "Client List",
+  "বিলিং তালিকা": "Billing List",
+  "দৈনিক বিল কালেকশন": "Daily Bill Collection",
+  "ইনস্টলেশন ফি": "Installation Fee",
+  "চলে যাওয়া ক্লায়েন্ট": "Left Clients",
+  "শিডিউলার": "Scheduler",
+  "পরিবর্তন রিকোয়েস্ট": "Change Requests",
+  "পোর্টাল ম্যানেজ": "Portal Manage",
+  "আপডেট রিকোয়েস্ট": "Update Requests",
+  "POP ম্যানেজার লিস্ট": "POP Manager List",
+  "ট্যারিফ কনফিগ": "Tariff Config",
+  "POP ফান্ডিং": "POP Funding",
+  "PGW ট্রানজেকশন": "PGW Transactions",
+  "POP নোটিশ": "POP Notices",
+  "POP / কাস্টমার": "POP / Customer",
+  "সার্ভিস ক্যাটালগ": "Service Catalog",
+  "বিক্রয় ইনভয়েস": "Sales Invoices",
+  "বিল কালেকশন": "Bill Collection",
+  "রিকারিং ইনভয়েস": "Recurring Invoices",
+  "ডিভাইস ইনভেন্টরি": "Device Inventory",
+  "অল ডিভাইস ইউজার": "All Device Users",
+  "জব ম্যানেজমেন্ট": "Job Management",
+  "ইউজার গ্রুপ": "User Groups",
+  "ব্যাকআপ সেন্টার": "Backup Center",
+  "শিডিউল ম্যানেজার": "Schedule Manager",
+  "অডিট লগ": "Audit Log",
+  "ডিপার্টমেন্ট": "Departments",
+  "পে-হেড": "Pay Heads",
+  "পেরোল": "Payroll",
+  "পদবী": "Positions",
+  "পে-স্লিপ": "Pay Slip",
+  "কর্মচারী তালিকা": "Employees",
+  "বেতন শীট": "Salary Sheet",
+  "রিজাইন নিয়ম": "Resignation Rules",
+  "রিজাইনেশন": "Resignations",
+  "উপস্থিতি": "Attendance",
+  "শিফট ম্যানেজমেন্ট": "Shift Management",
+  "ZKTeco ডিভাইস": "ZKTeco Devices",
+  "উপস্থিতি নিয়ম": "Attendance Rules",
+  "HR সেটিংস": "HR Settings",
+  "OLT / ONU ওভারভিউ": "OLT / ONU Overview",
+  "OLT ডিভাইস": "OLT Devices",
+  "ONU তালিকা": "ONU List",
+  "OLT ইউজার": "OLT Users",
+  "ইউজার ডাউন কাউন্ট": "User Down Count",
+  "ফাইবার ডাউন ফাইন্ডার": "Fiber Down Finder",
+  "OLT শেয়ারিং": "OLT Sharing",
+  "অনলাইন মনিটরিং": "Online Monitoring",
+  "Switch ম্যানেজমেন্ট": "Switch Management",
+  "POP লগ": "POP Log",
+  "Ping টুলস": "Ping Tools",
+  "POP ডিভাইস": "POP Devices",
+  "ডায়াগ্রাম": "Diagram",
+  "নেটওয়ার্ক POP": "Network POP",
+  "ডায়াগ্রামে ক্লায়েন্ট": "Clients on Diagram",
+  "নেটওয়ার্ক কানেকশন": "Network Connections",
+  "বিতরণকৃত আইটেম": "Distributed Items",
+  "ম্যাপে নেটওয়ার্ক": "Network on Map",
+  "ক্যাটাগরি": "Categories",
+  "সেটআপ": "Setup",
+  "অনুমোদন": "Approval",
+  "ক্লায়েন্ট সাপোর্ট": "Client Support",
+  "সাপোর্ট হিস্টরি": "Support History",
+  "টাস্ক": "Tasks",
+  "টাস্ক হিস্টরি": "Task History",
+  "আইটেম": "Items",
+  "আইটেম ক্যাটাগরি": "Item Categories",
+  "প্রোভাইডার": "Providers",
+  "ক্রয় বিল": "Purchase Bills",
+  "রিকুইজিশন": "Requisitions",
+  "প্রোডাক্ট ইনভয়েস": "Product Invoice",
+  "সার্ভিস ইনভয়েস": "Service Invoice",
+  "ইউনিট": "Units",
+  "স্টোর লোকেশন": "Store Locations",
+  "স্টক": "Stock",
+  "অ্যাসেট তালিকা": "Asset List",
+  "নষ্ট আইটেম": "Destroyed Items",
+  "চার্ট অফ অ্যাকাউন্টস": "Chart of Accounts",
+  "আয়": "Income",
+  "ব্যয়": "Expense",
+  "জার্নাল": "Journal",
+  "অ্যাকাউন্ট ব্যালেন্স": "Account Balance",
+  "ব্যালেন্স শীট": "Balance Sheet",
+  "লাভ-ক্ষতি": "Profit & Loss",
+  "P&L তুলনা": "P&L Compare",
+  "ট্রায়াল ব্যালেন্স": "Trial Balance",
+  "ক্যাশ বুক": "Cash Book",
+  "ছাড় রিপোর্ট": "Discount Report",
+  "কাস্টমার রিপোর্ট": "Customer Report",
+  "মেসেজ রিপোর্ট": "Message Report",
+  "বকেয়া কাস্টমার SMS": "Due Customer SMS",
+  "প্রসেসিং ফি": "Processing Fee",
+  "BTRC মাসিক রিপোর্ট": "BTRC Monthly Report",
+  "আর্থিক লেনদেন": "Financial Transactions",
+  "ব্যক্তিগত SMS": "Individual SMS",
+  "SMS টেমপ্লেট": "SMS Templates",
+  "SMS গ্রুপ": "SMS Groups",
+  "SMS পাঠান": "Send SMS",
+  "SMS গেটওয়ে": "SMS Gateway",
+  "ক্যাটেগরি": "Categories",
+  "প্রোডাক্ট": "Products",
+  "অর্ডার": "Orders",
+  "শিপিং চার্জ": "Shipping Charges",
+  "কুপন": "Coupons",
+  "ওয়ারেন্টি ক্লেইম": "Warranty Claims",
+  "সেলস রিপোর্ট": "Sales Report",
+  "অ্যাপ ইউজার": "App Users",
+  "রোল": "Roles",
+  "OLT পারমিশন": "OLT Permissions",
+  "কোম্পানি সেটআপ": "Company Setup",
+  "ইনভয়েস সেটআপ": "Invoice Setup",
+  "পিরিয়ড সেটআপ": "Period Setup",
+  "পেমেন্ট গেটওয়ে": "Payment Gateways",
+  "ইমেইল সেটআপ": "Email Setup",
+  "সিস্টেম সেটআপ": "System Setup",
+  "বিলিং সাইকেল সেটিংস": "Billing Cycle Settings",
+  "সিস্টেম লগ": "System Log",
+};
+
+function tr(label: string, lang: "bn" | "en"): string {
+  if (lang === "bn") return label;
+  return SIDEBAR_EN[label] ?? label;
+}
+
 function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: boolean }) {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { resolvedMode } = useTheme();
+  const { lang } = useLanguage();
   const isLight = resolvedMode === "light";
   const { data: badges } = useSidebarBadges();
+  const groupLabel = tr(group.label, lang);
   const isActiveGroup = group.items.some(item =>
     item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url)
   );
@@ -385,7 +572,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
                 ? "bg-primary/15 text-primary"
                 : isLight ? "text-muted-foreground hover:text-primary hover:bg-primary/5" : "text-slate-400 hover:text-white hover:bg-white/5"
             )}
-            title={group.label}
+            title={groupLabel}
           >
             <group.icon className="h-4 w-4" />
             {groupBadgeCount > 0 && (
@@ -409,7 +596,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
           )}
         >
           <group.icon className="h-4 w-4 shrink-0" />
-          <span className="flex-1 truncate">{group.label}</span>
+          <span className="flex-1 truncate">{groupLabel}</span>
           {groupBadgeCount > 0 && (
             <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
               {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
@@ -431,7 +618,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
                 isActive
                   ? "bg-primary/15 text-primary"
                   : isLight ? "text-muted-foreground hover:text-primary hover:bg-primary/5" : "text-slate-400 hover:text-white hover:bg-white/5"
-              )} title={group.label}>
+              )} title={groupLabel}>
               <group.icon className="h-4 w-4" />
               {groupBadgeCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
@@ -454,7 +641,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
             : isLight ? "text-muted-foreground hover:text-foreground" : "text-slate-400 hover:text-white"
         )} style={{ width: "calc(100% - 16px)" }}>
         <group.icon className="h-4 w-4 shrink-0" />
-        <span className="flex-1 text-left truncate">{group.label}</span>
+        <span className="flex-1 text-left truncate">{groupLabel}</span>
         {groupBadgeCount > 0 && !effectiveOpen && (
           <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
             {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
@@ -477,7 +664,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
                       : "text-slate-400 hover:text-white hover:bg-white/5"
                 )}>
                 <item.icon className="h-3.5 w-3.5 shrink-0" />
-                <span className="flex-1 truncate">{item.title}</span>
+                <span className="flex-1 truncate">{tr(item.title, lang)}</span>
                 {count > 0 && (
                   <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
                     {count > 99 ? "99+" : count}
@@ -609,6 +796,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { resolvedMode } = useTheme();
+  const { lang } = useLanguage();
   const isLight = resolvedMode === "light";
   const [search, setSearch] = useState("");
   const [reorderOpen, setReorderOpen] = useState(false);
@@ -629,8 +817,13 @@ export function AppSidebar() {
     if (!q) return orderedGroups.map((g) => ({ group: g, matched: false }));
     return orderedGroups
       .map((g) => {
-        const groupMatches = g.label.toLowerCase().includes(q);
-        const items = groupMatches ? g.items : g.items.filter((i) => i.title.toLowerCase().includes(q));
+        const groupMatches =
+          g.label.toLowerCase().includes(q) || tr(g.label, "en").toLowerCase().includes(q);
+        const items = groupMatches
+          ? g.items
+          : g.items.filter(
+              (i) => i.title.toLowerCase().includes(q) || tr(i.title, "en").toLowerCase().includes(q)
+            );
         if (items.length === 0) return null;
         return { group: { ...g, items }, matched: true };
       })
@@ -676,7 +869,7 @@ export function AppSidebar() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="মেনু খুঁজুন..."
+                placeholder={lang === "bn" ? "মেনু খুঁজুন..." : "Search menu..."}
                 className={cn(
                   "w-full h-8 pl-8 pr-7 text-[12px] rounded-md outline-none transition-colors",
                   isLight
@@ -703,7 +896,7 @@ export function AppSidebar() {
             ))}
             {filteredGroups.length === 0 && (
               <div className="px-4 py-6 text-center text-xs text-muted-foreground">
-                কোনো মেনু পাওয়া যায়নি
+                {lang === "bn" ? "কোনো মেনু পাওয়া যায়নি" : "No menu found"}
               </div>
             )}
           </SidebarContent>
@@ -721,7 +914,7 @@ export function AppSidebar() {
               )}
             >
               <ArrowUpDown className="h-3.5 w-3.5" />
-              মেনু সাজান
+              {lang === "bn" ? "মেনু সাজান" : "Reorder menu"}
             </button>
           </div>
         )}
