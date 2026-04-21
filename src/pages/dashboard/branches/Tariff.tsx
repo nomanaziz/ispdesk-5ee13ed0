@@ -724,8 +724,7 @@ export default function Tariff() {
                     <TableHead>Server</TableHead>
                     <TableHead>Protocol</TableHead>
                     <TableHead>Profile</TableHead>
-                    <TableHead>Buy</TableHead>
-                    <TableHead>Sell</TableHead>
+                    <TableHead>Selling Rate</TableHead>
                     <TableHead>Validity</TableHead>
                     <TableHead>Min Days</TableHead>
                     <TableHead>Action</TableHead>
@@ -735,7 +734,7 @@ export default function Tariff() {
                   {pkgRows.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={10}
+                        colSpan={9}
                         className="text-center text-muted-foreground py-6"
                       >
                         কোনো package যোগ করা হয়নি
