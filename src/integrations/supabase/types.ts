@@ -714,7 +714,7 @@ export type Database = {
       branch_funding: {
         Row: {
           amount: number | null
-          branch_id: string | null
+          branch_id: string
           created_at: string
           created_by: string | null
           description: string | null
@@ -737,7 +737,7 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
-          branch_id?: string | null
+          branch_id: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -760,7 +760,7 @@ export type Database = {
         }
         Update: {
           amount?: number | null
-          branch_id?: string | null
+          branch_id?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
