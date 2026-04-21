@@ -35,7 +35,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     queryFn: async () => {
       const { data, error } = await supabase
         .from("branch_managers")
-        .select("id, name, pop_code, branch_id, tariff_id, pop_type, balance, status")
+        .select("id, name, pop_code, branch_id, tariff_id, pop_type, balance, status, fund_started")
         .order("name");
       if (error) throw error;
       // case-insensitive active filter — DB has mix of "Active" & "active"
@@ -78,7 +78,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
       if (!targetMikrotik?.id) throw new Error("এই Package-এ MikroTik server assigned নাই");
       if (!selectedPop?.branch_id) throw new Error("এই POP-এর কোনো branch assign করা নেই");
 
-      if (selectedPop.pop_type === "prepaid" && Number(selectedPop.balance || 0) < creditable) {
+      if (selectedPop.pop_type === "prepaid" && selectedPop.fund_started && Number(selectedPop.balance || 0) < creditable) {
         throw new Error(`POP-এর balance অপ্রতুল (${selectedPop.balance} < ${creditable})`);
       }
 
@@ -139,7 +139,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
         .in("id", selectedIds);
       if (error) throw error;
 
-      if (creditable > 0) {
+      if (creditable > 0 && selectedPop.fund_started) {
         const { error: fErr } = await supabase.from("branch_funding").insert({
           branch_id: selectedPop.branch_id,
           amount: creditable,
@@ -156,14 +156,14 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
         if (fErr) throw fErr;
       }
 
-      return { createdCount, skipped, creditable };
+      return { createdCount, skipped, creditable, fundStarted: !!selectedPop.fund_started };
     },
     onSuccess: (res) => {
-      const { createdCount, skipped, creditable } = res;
-      toast.success(
-        `${createdCount} client তৈরি — ৳${creditable} POP balance থেকে কাটা হয়েছে` +
-        (skipped > 0 ? ` (${skipped} duplicate skip)` : "")
-      );
+      const { createdCount, skipped, creditable, fundStarted } = res;
+      const base = fundStarted
+        ? `${createdCount} client তৈরি — ৳${creditable} POP balance থেকে কাটা হয়েছে`
+        : `${createdCount} client তৈরি — Free mode (balance unchanged)`;
+      toast.success(base + (skipped > 0 ? ` (${skipped} duplicate skip)` : ""));
       qc.invalidateQueries({ queryKey: ["mikrotik_clients"] });
       qc.invalidateQueries({ queryKey: ["existing_client_usernames"] });
       qc.invalidateQueries({ queryKey: ["pops_for_transfer"] });
@@ -263,7 +263,13 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
             </div>
           </div>
 
-          {selectedPop?.pop_type === "prepaid" && creditable > Number(selectedPop?.balance || 0) && (
+          {selectedPop && !selectedPop.fund_started && (
+            <p className="text-xs text-muted-foreground bg-muted px-2 py-1.5 rounded">
+              🟢 Free mode — এই POP-এর fund start নেই, balance check হবে না। Unlimited transfer allowed।
+            </p>
+          )}
+
+          {selectedPop?.pop_type === "prepaid" && selectedPop?.fund_started && creditable > Number(selectedPop?.balance || 0) && (
             <p className="text-xs text-destructive">
               ⚠️ POP balance ৳{Number(selectedPop.balance || 0).toFixed(2)} — creditable ৳{creditable.toFixed(2)} এর চেয়ে কম। Export blocked।
             </p>
@@ -275,7 +281,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
           <Button
             onClick={() => transfer.mutate()}
             disabled={!popId || !packageId || !targetMikrotik?.id || transfer.isPending ||
-              (selectedPop?.pop_type === "prepaid" && creditable > Number(selectedPop?.balance || 0))}
+              (selectedPop?.pop_type === "prepaid" && selectedPop?.fund_started && creditable > Number(selectedPop?.balance || 0))}
           >
             {transfer.isPending ? "Exporting..." : `Export ✓ (${selectedIds.length})`}
           </Button>
