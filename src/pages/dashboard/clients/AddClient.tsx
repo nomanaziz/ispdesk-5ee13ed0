@@ -731,10 +731,8 @@ export default function AddClient() {
               if (isPopMode && pkg?.mikrotik_profile) setField("profile", pkg.mikrotik_profile);
               // Warn if reseller hasn't set a selling rate yet
               if (isPopMode && pkg && (!pkg.price || pkg.price <= 0)) {
-                toast({
-                  title: "Selling Rate সেট করা নেই",
+                toast.error("Selling Rate সেট করা নেই", {
                   description: "এই প্যাকেজের জন্য Package page-এ গিয়ে আপনার Selling Rate সেট করুন।",
-                  variant: "destructive",
                 });
               }
             }}>
