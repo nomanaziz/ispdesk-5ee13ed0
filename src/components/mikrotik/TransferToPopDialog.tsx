@@ -44,6 +44,30 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     enabled: open,
   });
 
+  const { data: selectedRows = [] } = useQuery({
+    queryKey: ["mt_selected_for_transfer", selectedIds],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("mikrotik_clients")
+        .select("id, name, profile")
+        .in("id", selectedIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open && selectedIds.length > 0,
+  });
+
+  const profileGroups = useMemo(() => {
+    const map = new Map<string, number>();
+    (selectedRows as any[]).forEach((r) => {
+      const k = r.profile || "(no profile)";
+      map.set(k, (map.get(k) || 0) + 1);
+    });
+    return Array.from(map.entries());
+  }, [selectedRows]);
+  const isMixed = profileGroups.length > 1;
+  const uniqueProfile = profileGroups.length === 1 ? profileGroups[0][0] : null;
+
   const selectedPop = pops.find((p: any) => p.id === popId);
 
   const { data: packages = [] } = useQuery({
