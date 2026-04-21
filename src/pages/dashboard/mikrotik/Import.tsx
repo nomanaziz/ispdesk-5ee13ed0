@@ -264,6 +264,9 @@ export default function Import() {
                 <Button variant="secondary" size="sm" onClick={() => setBulkExportOpen(true)} disabled={selectedIds.size === 0}>
                   <UserPlus className="h-4 w-4 mr-1" /> Client লিস্টে এক্সপোর্ট ({selectedIds.size})
                 </Button>
+                <Button variant="outline" size="sm" onClick={() => setBulkProfileOpen(true)} disabled={selectedIds.size === 0}>
+                  <Layers className="h-4 w-4 mr-1" /> Bulk Profile Change ({selectedIds.size})
+                </Button>
               </>
             )}
           </div>
