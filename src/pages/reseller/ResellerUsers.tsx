@@ -9,9 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import PermissionTree from "@/components/reseller/PermissionTree";
+import { useAuth } from "@/contexts/AuthContext";
+import { loginAsUser } from "@/lib/impersonate";
 
 const defaultPerms: ResellerPermissions = {
   dashboard: true,
@@ -24,6 +26,7 @@ const defaultPerms: ResellerPermissions = {
 
 const ResellerUsers = () => {
   const { customer } = usePortalAuth();
+  const { isAdmin } = useAuth();
   const resellerId = customer?.parent_reseller_id || customer?.sub;
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -161,21 +164,38 @@ const ResellerUsers = () => {
                   <TableCell>{u.mobile || "—"}</TableCell>
                   <TableCell><Badge variant={u.status === "active" ? "default" : "secondary"}>{u.status}</Badge></TableCell>
                   <TableCell className="text-right">
-                    {!isSub && (
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                    <div className="flex justify-end gap-1">
+                      {isAdmin && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
-                          onClick={() => confirm("Delete this user?") && del.mutate(u.id)}
+                          className="h-8 w-8 text-primary"
+                          title="Admin: Login as this sub-user"
+                          onClick={() =>
+                            loginAsUser("reseller_sub", u.id)
+                              .then(() => toast.success("নতুন ট্যাবে লগইন হচ্ছে"))
+                              .catch((e) => toast.error(e.message))
+                          }
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <LogIn className="h-4 w-4" />
                         </Button>
-                      </div>
-                    )}
+                      )}
+                      {!isSub && (
+                        <>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => confirm("Delete this user?") && del.mutate(u.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
