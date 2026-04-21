@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
@@ -7,19 +8,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Server, Search, Power, PowerOff, Eye, EyeOff } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Server, Search, Power, PowerOff, Eye, EyeOff, UserPlus, Layers } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ResellerMikrotikUsers() {
   const { customer } = usePortalAuth();
   const qc = useQueryClient();
-  // For sub-users, use parent reseller id; otherwise their own id
-  const popId = customer?.type === "reseller_sub" ? customer?.parent_reseller_id : customer?.sub;
+  const popId = customer?.type === "reseller_sub" ? (customer as any)?.parent_reseller_id : customer?.sub;
+  const branchId = (customer as any)?.branch_id;
+  const tariffId = (customer as any)?.tariff_id;
   const [activeMt, setActiveMt] = useState<string>("");
   const [search, setSearch] = useState("");
   const [showPwd, setShowPwd] = useState<Record<string, boolean>>({});
+  const [createOpen, setCreateOpen] = useState(false);
+  const [target, setTarget] = useState<any>(null);
+  const [form, setForm] = useState({ name: "", contact: "", address: "", package_id: "", zone_id: "", joining_date: new Date().toISOString().slice(0, 10) });
 
   const { data: pop } = useQuery({
     queryKey: ["reseller_pop", popId],
@@ -34,11 +41,9 @@ export default function ResellerMikrotikUsers() {
   const { data: mikrotiks = [] } = useQuery({
     queryKey: ["reseller_mikrotiks", popId, pop?.branch_id],
     queryFn: async () => {
-      // Devices visible to this POP: either same branch_id, or directly transferred to
-      const branchId = pop?.branch_id;
+      const branchIdLocal = pop?.branch_id;
       const orFilters: string[] = [];
-      if (branchId) orFilters.push(`branch_id.eq.${branchId}`);
-      // also include any MT that has a transferred client to this POP
+      if (branchIdLocal) orFilters.push(`branch_id.eq.${branchIdLocal}`);
       const { data: transferredMtIds } = await supabase
         .from("mikrotik_clients")
         .select("transferred_to_mikrotik_id")
@@ -81,8 +86,33 @@ export default function ResellerMikrotikUsers() {
     enabled: !!popId && !!activeMt,
   });
 
+  // POP-এর tariff থেকে packages
+  const { data: tariffPackages = [] } = useQuery({
+    queryKey: ["pop_tariff_packages", tariffId],
+    queryFn: async () => {
+      if (!tariffId) return [];
+      const { data } = await supabase
+        .from("reseller_tariff_packages")
+        .select("id, package_id, selling_rate, isp_packages(id, name, speed)")
+        .eq("tariff_id", tariffId)
+        .eq("status", "active");
+      return data || [];
+    },
+    enabled: !!tariffId,
+  });
+
+  const { data: zones = [] } = useQuery({
+    queryKey: ["pop_zones", branchId],
+    queryFn: async () => {
+      if (!branchId) return [];
+      const { data } = await supabase.from("zones").select("id, name").eq("branch_id", branchId).order("name");
+      return data || [];
+    },
+    enabled: !!branchId,
+  });
+
   const filtered = users.filter((u: any) =>
-    [u.name, u.caller_id, u.profile, u.remote_address].some((v) => v?.toLowerCase().includes(search.toLowerCase()))
+    [u.name, u.caller_id, u.profile, u.remote_address].some((v) => v?.toLowerCase().includes(search.toLowerCase())),
   );
 
   const toggleStatus = useMutation({
@@ -99,6 +129,62 @@ export default function ResellerMikrotikUsers() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const openCreate = (u: any) => {
+    setTarget(u);
+    setForm({
+      name: u.name || "",
+      contact: "",
+      address: "",
+      package_id: "",
+      zone_id: "",
+      joining_date: new Date().toISOString().slice(0, 10),
+    });
+    setCreateOpen(true);
+  };
+
+  const createClient = useMutation({
+    mutationFn: async () => {
+      if (!target) throw new Error("No user selected");
+      if (!branchId) throw new Error("POP-এর branch পাওয়া যায়নি");
+      const pkg = tariffPackages.find((p: any) => p.id === form.package_id);
+      const monthly = pkg?.selling_rate || null;
+      const { data: created, error } = await supabase
+        .from("clients")
+        .insert({
+          name: form.name,
+          username: target.name,
+          password: target.password,
+          mac_address: target.caller_id || null,
+          remote_address: target.remote_address || null,
+          profile: target.profile || null,
+          server_name: target.server_name || null,
+          mikrotik_id: target.transferred_to_mikrotik_id || target.mikrotik_id || null,
+          protocol_type: target.service || null,
+          contact: form.contact || null,
+          address: form.address || null,
+          package_id: form.package_id || null,
+          zone_id: form.zone_id || null,
+          monthly_bill: monthly,
+          joining_date: form.joining_date,
+          status: "active",
+          branch_id: branchId,
+          client_id: "TMP-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
+          documents: {},
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      await supabase.from("mikrotik_clients").update({ linked_client_id: created.id, exported: true, exported_to: "pop_client" }).eq("id", target.id);
+      return created;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reseller_mt_users"] });
+      toast.success("ক্লায়েন্ট তৈরি হয়েছে");
+      setCreateOpen(false);
+    },
+    onError: (e: any) => toast.error("তৈরি ব্যর্থ: " + e.message),
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -111,6 +197,11 @@ export default function ResellerMikrotikUsers() {
             {pop?.pop_code && <Badge variant="outline" className="ml-2">{pop.pop_code}</Badge>}
           </p>
         </div>
+        <Button asChild variant="outline">
+          <Link to="/pop-admin/mikrotik-users/bulk-create">
+            <Layers className="h-4 w-4 mr-1" /> Bulk Client Import →
+          </Link>
+        </Button>
       </div>
 
       {mikrotiks.length === 0 ? (
@@ -164,7 +255,7 @@ export default function ResellerMikrotikUsers() {
                           <TableHead>প্রোফাইল</TableHead>
                           <TableHead>Caller ID</TableHead>
                           <TableHead>রিমোট অ্যাড্রেস</TableHead>
-                          <TableHead>স্ট্যাটাস</TableHead>
+                          <TableHead>অবস্থা</TableHead>
                           <TableHead className="text-right">অ্যাকশন</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -189,11 +280,20 @@ export default function ResellerMikrotikUsers() {
                             <TableCell className="font-mono text-xs">{u.caller_id || "—"}</TableCell>
                             <TableCell className="font-mono text-xs">{u.remote_address || "—"}</TableCell>
                             <TableCell>
-                              <Badge variant={u.status === "disabled" ? "destructive" : "default"}>
-                                {u.status || "active"}
-                              </Badge>
+                              {u.linked_client_id ? (
+                                <Badge variant="default">Client</Badge>
+                              ) : u.status === "disabled" ? (
+                                <Badge variant="destructive">Disabled</Badge>
+                              ) : (
+                                <Badge variant="secondary">Transferred</Badge>
+                              )}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right space-x-1">
+                              {!u.linked_client_id && (
+                                <Button variant="default" size="sm" onClick={() => openCreate(u)}>
+                                  <UserPlus className="h-4 w-4 mr-1" /> ক্লায়েন্ট বানান
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -218,6 +318,65 @@ export default function ResellerMikrotikUsers() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>ক্লায়েন্ট তৈরি করুন</DialogTitle>
+            <DialogDescription>
+              MikroTik ইউজার <b>{target?.name}</b> থেকে full billing client বানানো হবে।
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 py-2">
+            <div className="col-span-2">
+              <Label>পূর্ণ নাম *</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div>
+              <Label>মোবাইল</Label>
+              <Input value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
+            </div>
+            <div>
+              <Label>Joining Date</Label>
+              <Input type="date" value={form.joining_date} onChange={(e) => setForm({ ...form, joining_date: e.target.value })} />
+            </div>
+            <div className="col-span-2">
+              <Label>ঠিকানা</Label>
+              <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            </div>
+            <div>
+              <Label>প্যাকেজ</Label>
+              <Select value={form.package_id} onValueChange={(v) => setForm({ ...form, package_id: v })}>
+                <SelectTrigger><SelectValue placeholder="সিলেক্ট করুন" /></SelectTrigger>
+                <SelectContent>
+                  {tariffPackages.map((p: any) => (
+                    <SelectItem key={p.id} value={p.package_id}>
+                      {p.isp_packages?.name} — ৳{p.selling_rate}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Zone</Label>
+              <Select value={form.zone_id} onValueChange={(v) => setForm({ ...form, zone_id: v })}>
+                <SelectTrigger><SelectValue placeholder="সিলেক্ট করুন" /></SelectTrigger>
+                <SelectContent>
+                  {zones.map((z: any) => (
+                    <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>বাতিল</Button>
+            <Button onClick={() => createClient.mutate()} disabled={createClient.isPending || !form.name}>
+              {createClient.isPending ? "তৈরি হচ্ছে..." : "তৈরি করুন"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

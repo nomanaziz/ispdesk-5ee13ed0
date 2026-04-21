@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, XCircle, RefreshCw, ArrowRightLeft } from "lucide-react";
+import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, XCircle, RefreshCw, ArrowRightLeft, UserPlus } from "lucide-react";
 import * as XLSX from "xlsx";
 import { TransferToPopDialog } from "@/components/mikrotik/TransferToPopDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 export default function Import() {
   const navigate = useNavigate();
@@ -27,6 +28,8 @@ export default function Import() {
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [isSyncing, setIsSyncing] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [bulkExportOpen, setBulkExportOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: servers = [] } = useQuery({
     queryKey: ["mikrotik_devices_active"],
@@ -102,6 +105,50 @@ export default function Import() {
   };
 
   // Transfer handled by TransferToPopDialog
+
+  const bulkExportToClientList = async () => {
+    if (selectedIds.size === 0) return;
+    setIsExporting(true);
+    try {
+      const rows = clients.filter((c: any) => selectedIds.has(c.id));
+      const payload = rows.map((c: any) => ({
+        name: c.name,
+        username: c.name,
+        password: c.password,
+        mac_address: c.caller_id || null,
+        profile: c.profile || null,
+        server_name: c.server_name || null,
+        mikrotik_id: c.mikrotik_id || null,
+        remote_address: c.remote_address || null,
+        protocol_type: c.service || null,
+        status: "unverified",
+        client_id: "TMP-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
+        documents: {},
+      }));
+      const { data: inserted, error } = await supabase.from("clients").insert(payload).select("id, username");
+      if (error) throw error;
+      const idMap = new Map<string, string>();
+      (inserted || []).forEach((row: any) => idMap.set(row.username?.toLowerCase(), row.id));
+      await Promise.all(
+        rows.map((c: any) => {
+          const cid = idMap.get(c.name?.toLowerCase());
+          return supabase
+            .from("mikrotik_clients")
+            .update({ exported: true, exported_to: "client_list", linked_client_id: cid })
+            .eq("id", c.id);
+        }),
+      );
+      toast.success(`${rows.length} জন ক্লায়েন্ট লিস্টে এক্সপোর্ট হয়েছে (unverified)`);
+      setSelectedIds(new Set());
+      setBulkExportOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["mikrotik_clients"] });
+      queryClient.invalidateQueries({ queryKey: ["existing_client_usernames"] });
+    } catch (e: any) {
+      toast.error("এক্সপোর্ট ব্যর্থ: " + (e.message || "অজানা ত্রুটি"));
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const generateExcel = () => {
     const ws = XLSX.utils.json_to_sheet(
@@ -208,9 +255,14 @@ export default function Import() {
             </Select>
             <Button variant="outline" size="sm" onClick={generateExcel}><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel জেনারেট</Button>
             {transferStatus === "pending" && (
-              <Button variant="default" size="sm" onClick={() => setTransferOpen(true)} disabled={selectedIds.size === 0}>
-                <ArrowRightLeft className="h-4 w-4 mr-1" /> POP-এ ট্রান্সফার ({selectedIds.size})
-              </Button>
+              <>
+                <Button variant="default" size="sm" onClick={() => setTransferOpen(true)} disabled={selectedIds.size === 0}>
+                  <ArrowRightLeft className="h-4 w-4 mr-1" /> POP-এ ট্রান্সফার ({selectedIds.size})
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => setBulkExportOpen(true)} disabled={selectedIds.size === 0}>
+                  <UserPlus className="h-4 w-4 mr-1" /> Client লিস্টে এক্সপোর্ট ({selectedIds.size})
+                </Button>
+              </>
             )}
           </div>
         </CardHeader>
@@ -304,6 +356,24 @@ export default function Import() {
         selectedIds={Array.from(selectedIds)}
         onTransferred={() => setSelectedIds(new Set())}
       />
+
+      <Dialog open={bulkExportOpen} onOpenChange={setBulkExportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Client লিস্টে এক্সপোর্ট</DialogTitle>
+            <DialogDescription>
+              নির্বাচিত <b>{selectedIds.size}</b> জন MikroTik ইউজার Admin Client লিস্টে যুক্ত হবে।
+              স্ট্যাটাস <b>"unverified"</b> থাকবে — পরে edit করে full billing client বানানো যাবে।
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkExportOpen(false)} disabled={isExporting}>বাতিল</Button>
+            <Button onClick={bulkExportToClientList} disabled={isExporting}>
+              {isExporting ? "এক্সপোর্ট হচ্ছে..." : `${selectedIds.size} জন এক্সপোর্ট করুন`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

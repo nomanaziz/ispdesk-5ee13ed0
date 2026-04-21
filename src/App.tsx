@@ -325,6 +325,7 @@ import ResellerTickets from "@/pages/reseller/ResellerTickets";
 import ResellerUsers from "@/pages/reseller/ResellerUsers";
 import ResellerSettings from "@/pages/reseller/ResellerSettings";
 import ResellerMikrotikUsers from "@/pages/reseller/ResellerMikrotikUsers";
+import ResellerMikrotikBulkCreate from "@/pages/reseller/ResellerMikrotikBulkCreate";
 // POP-scoped Configuration (admin pages reused; only Packages & AllotedAreas remain POP-specific)
 import PopPackages from "@/pages/reseller/config/PopPackages";
 import PopAllotedAreas from "@/pages/reseller/config/PopAllotedAreas";
@@ -697,6 +698,7 @@ const App = () => (
               <Route path="/pop-admin/users" element={<PortalAuthProvider><ResellerProtectedRoute require="users"><ResellerLayout><ResellerUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/settings" element={<PortalAuthProvider><ResellerProtectedRoute require="settings"><ResellerLayout><ResellerSettings /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/mikrotik-users" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><ResellerMikrotikUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/mikrotik-users/bulk-create" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><ResellerMikrotikBulkCreate /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
               {/* POP Admin — Configuration (reuses Admin pages, scoped via usePopScope) */}
               <Route path="/pop-admin/config/zones" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ConfigZones /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />

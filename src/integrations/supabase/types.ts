@@ -4885,6 +4885,7 @@ export type Database = {
           exported: boolean
           exported_to: string | null
           id: string
+          linked_client_id: string | null
           logout_time: string | null
           mikrotik_id: string | null
           name: string
@@ -4907,6 +4908,7 @@ export type Database = {
           exported?: boolean
           exported_to?: string | null
           id?: string
+          linked_client_id?: string | null
           logout_time?: string | null
           mikrotik_id?: string | null
           name: string
@@ -4929,6 +4931,7 @@ export type Database = {
           exported?: boolean
           exported_to?: string | null
           id?: string
+          linked_client_id?: string | null
           logout_time?: string | null
           mikrotik_id?: string | null
           name?: string
@@ -4950,6 +4953,13 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mikrotik_clients_linked_client_id_fkey"
+            columns: ["linked_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
