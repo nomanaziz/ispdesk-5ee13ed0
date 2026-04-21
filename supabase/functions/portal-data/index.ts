@@ -507,6 +507,210 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
 
+      case "get_client_form_meta": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub")
+          return json({ error: "Not allowed" }, 403);
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        if (!resellerId) return json({ error: "No reseller" }, 400);
+
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("id, branch_id, tariff_id, server_id, pop_prefix, pop_code, district_id, upazila_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+        if (!pop) return json({ error: "POP not found" }, 404);
+
+        const branchId = pop.branch_id;
+        const tariffId = pop.tariff_id;
+
+        const [
+          tariff, district, upazila,
+          zones, subZones, boxes,
+          connTypes, clientTypes, billingStatuses, protocolTypes,
+          mikrotiks, employees,
+          tpkgs,
+        ] = await Promise.all([
+          tariffId
+            ? sb.from("reseller_tariffs").select("mikrotik_server_id").eq("id", tariffId).maybeSingle()
+            : Promise.resolve({ data: null } as any),
+          pop.district_id
+            ? sb.from("districts").select("name").eq("id", pop.district_id).maybeSingle()
+            : Promise.resolve({ data: null } as any),
+          pop.upazila_id
+            ? sb.from("upazilas").select("name").eq("id", pop.upazila_id).maybeSingle()
+            : Promise.resolve({ data: null } as any),
+          branchId
+            ? sb.from("zones").select("id, name").eq("status", "active").eq("branch_id", branchId)
+            : Promise.resolve({ data: [] } as any),
+          branchId
+            ? sb.from("sub_zones").select("id, name, zone_id").eq("status", "active").eq("branch_id", branchId)
+            : Promise.resolve({ data: [] } as any),
+          branchId
+            ? sb.from("boxes").select("id, name, zone_id").eq("status", "active").eq("branch_id", branchId)
+            : Promise.resolve({ data: [] } as any),
+          sb.from("connection_types_config").select("id, name").eq("status", "active"),
+          sb.from("client_types").select("id, name").eq("status", "active"),
+          sb.from("billing_statuses").select("id, name").eq("status", "active"),
+          sb.from("protocol_types").select("id, name").eq("status", "active"),
+          sb.from("mikrotik_devices").select("id, name"),
+          branchId
+            ? sb.from("employees").select("id, name").eq("status", "active").eq("branch_id", branchId)
+            : Promise.resolve({ data: [] } as any),
+          tariffId
+            ? sb.from("reseller_tariff_packages")
+                .select("id, package_id, selling_rate, mikrotik_profile, mikrotik_server_id, isp_packages(id, name, bandwidth_down, price)")
+                .eq("tariff_id", tariffId)
+            : Promise.resolve({ data: [] } as any),
+        ]);
+
+        const defaultServerId =
+          (tariff as any)?.data?.mikrotik_server_id || pop.server_id || null;
+
+        // POP-specific selling rates
+        const tpkgRows = ((tpkgs as any).data || []).filter((p: any) => p.isp_packages);
+        let popPriceMap = new Map<string, number>();
+        if (tpkgRows.length) {
+          const { data: pricing } = await sb
+            .from("pop_package_pricing")
+            .select("tariff_package_id, pop_selling_rate")
+            .eq("branch_manager_id", resellerId)
+            .in("tariff_package_id", tpkgRows.map((r: any) => r.id));
+          popPriceMap = new Map(
+            (pricing || []).map((r: any) => [r.tariff_package_id, Number(r.pop_selling_rate ?? 0)]),
+          );
+        }
+
+        const packages = tpkgRows.map((p: any) => ({
+          id: p.isp_packages.id,
+          name: p.isp_packages.name,
+          bandwidth_down: p.isp_packages.bandwidth_down,
+          price: popPriceMap.get(p.id) ?? Number(p.selling_rate ?? 0),
+          mikrotik_profile: p.mikrotik_profile || null,
+          mikrotik_server_id: p.mikrotik_server_id || null,
+        }));
+
+        // Generate next client code preview using the same pattern as set_client_code trigger
+        // Format: <pop_code>-<6-digit-seq>. We don't consume the sequence here — use COUNT-based suggestion.
+        const popPrefix = pop.pop_prefix || pop.pop_code || "0000";
+        // Find last code matching prefix to suggest next
+        const { data: lastClient } = await sb
+          .from("clients")
+          .select("client_id")
+          .like("client_id", `${popPrefix}-%`)
+          .order("client_id", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        let nextNum = 1;
+        if (lastClient?.client_id) {
+          const m = String(lastClient.client_id).match(/-(\d+)$/);
+          if (m) nextNum = parseInt(m[1], 10) + 1;
+        }
+        const nextClientCode = `${popPrefix}-${String(nextNum).padStart(6, "0")}`;
+
+        // Server name lookup
+        let serverName: string | null = null;
+        if (defaultServerId) {
+          const srv = ((mikrotiks as any).data || []).find((m: any) => m.id === defaultServerId);
+          serverName = srv?.name || null;
+        }
+
+        return json({
+          branchId,
+          tariffId,
+          popPrefix,
+          nextClientCode,
+          districtName: (district as any)?.data?.name || "",
+          upazilaName: (upazila as any)?.data?.name || "",
+          defaultServerId,
+          defaultServerName: serverName,
+          zones: (zones as any).data || [],
+          subZones: (subZones as any).data || [],
+          boxes: (boxes as any).data || [],
+          connectionTypes: (connTypes as any).data || [],
+          clientTypes: (clientTypes as any).data || [],
+          billingStatuses: (billingStatuses as any).data || [],
+          protocolTypes: (protocolTypes as any).data || [],
+          mikrotiks: (mikrotiks as any).data || [],
+          employees: (employees as any).data || [],
+          packages,
+        });
+      }
+
+      case "check_client_code_unique": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub")
+          return json({ error: "Not allowed" }, 403);
+        const code = String(payload.client_id || "").trim();
+        if (!code) return json({ unique: true });
+        const { data } = await sb
+          .from("clients")
+          .select("id")
+          .eq("client_id", code)
+          .limit(1);
+        return json({ unique: !data || data.length === 0 });
+      }
+
+      case "create_client": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub")
+          return json({ error: "Not allowed" }, 403);
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("branch_id, district_id, upazila_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+
+        const p = payload || {};
+        if (!p.name || !p.client_id) return json({ error: "নাম ও ক্লায়েন্ট কোড আবশ্যক" }, 400);
+
+        // Force scope to this POP's branch
+        const insertRow: any = {
+          ...p,
+          branch_id: pop.branch_id,
+          district_id: pop.district_id || null,
+          upazila_id: pop.upazila_id || null,
+        };
+
+        const { data: inserted, error } = await sb
+          .from("clients")
+          .insert(insertRow)
+          .select("id")
+          .single();
+        if (error) return json({ error: error.message }, 500);
+
+        // Auto-generate first billing row (prorated)
+        if (inserted?.id && p.billing_status === "Active" && Number(p.monthly_bill) > 0) {
+          const joinStr = p.joining_date || new Date().toISOString().slice(0, 10);
+          const join = new Date(joinStr + "T00:00:00");
+          const y = join.getFullYear();
+          const m = join.getMonth() + 1;
+          const totalDays = new Date(y, m, 0).getDate();
+          const joinDay = join.getDate();
+          const daysRemaining = totalDays - joinDay + 1;
+          const monthly = Number(p.monthly_bill || 0);
+          const isProrated = joinDay > 1;
+          const amount = isProrated
+            ? Math.round((monthly / totalDays) * daysRemaining * 100) / 100
+            : monthly;
+          const monthKey = `${y}-${String(m).padStart(2, "0")}`;
+          const billId = `BILL-${p.client_id}-${monthKey}`;
+          await sb.from("billing").insert({
+            bill_id: billId,
+            client_id: inserted.id,
+            month: `${monthKey}-01`,
+            amount,
+            due: amount,
+            status: "unpaid",
+            generated: true,
+            branch_id: pop.branch_id,
+          });
+        }
+
+        return json({ ok: true, id: inserted?.id });
+      }
+
       default:
         return json({ error: "Unknown action" }, 400);
     }
