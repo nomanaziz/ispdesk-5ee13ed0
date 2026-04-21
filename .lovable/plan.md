@@ -1,100 +1,107 @@
 
-
 ## লক্ষ্য
-1. Admin dashboard-এ ভাষা toggle button (BN default, EN switchable)
-2. সুন্দর Bangla font load করা (পড়তে সহজ, ফ্যাকাশে না)
-3. Text colors darker করা যাতে readability ভালো হয়
+POP Admin / Reseller panel-কে main admin panel-এর সাথে একই visual system-এ আনা:
+1. একই darkened color tone
+2. একই বাংলা default + English toggle behavior
+3. POP layout/header/sidebar-এ admin-এর মতো cleaner, higher-contrast design
+4. POP-specific page heading/button/table text-এ language parity
 
----
+## Root cause
+POP panel এখন `src/components/ResellerLayout.tsx` নামে আলাদা custom shell ব্যবহার করছে।  
+Main admin panel-এ language toggle + darker readable tone already এসেছে, কিন্তু POP shell-এ এখনো:
+- hardcoded English menu/search/logout text আছে
+- header styling admin `TopBar`-এর মতো নয়
+- POP-specific pages (`src/pages/reseller/**`) এ অনেক hardcoded English labels আছে
 
-## ১. ভাষা Toggle Button
+Global theme tokens (`src/index.css`) already darker করা হয়েছে, তাই remaining gap মূলত layout + text layer-এ।
 
-`LanguageContext` (BN/EN, `t()` helper) আগে থেকেই আছে — শুধু UI button add করতে হবে।
+## কী build হবে
 
-**TopBar.tsx**-এ Globe icon-এর পাশে ছোট pill button:
-```
-[বাং | EN]
-```
-- Click করলে BN ↔ EN switch
-- Default = BN (already saved in localStorage via context)
-- Active language highlighted with primary color
+### 1. POP layout-এ admin-এর same language behavior
+`src/components/ResellerLayout.tsx`-এ `useLanguage()` যোগ করা হবে।
 
-**Sidebar + TopBar wiring**: `AppSidebar` ও `TopBar`-এর hardcoded Bangla strings গুলো `t("বাংলা", "English")` দিয়ে wrap করা হবে। এতে toggle press করলে instantly সব menu label, search placeholder, profile menu ইত্যাদি English-এ আসবে।
+এখানে:
+- ছোট `[বাং | EN]` toggle button add হবে
+- default Bengali থাকবে
+- English switch করলে menu labels, search placeholder, logout, website button, sub-user label ইত্যাদি change হবে
+- search filter Bengali + English দুই labelেই কাজ করবে
 
-**Scope (realistic)**:
-- ✅ Sidebar group labels + menu items (sabai 200+ items)
-- ✅ TopBar (search, profile, signout)
-- ✅ Dashboard landing page common headings
+### 2. POP sidebar/header-কে admin tone-এর সাথে align করা
+`ResellerLayout`-এর shell classes admin `TopBar`/`DashboardLayout` tone অনুযায়ী update হবে:
+- header: `bg-card/95`, subtle border, better spacing
+- sidebar: same sidebar token usage, stronger readable text contrast
+- buttons/hover states: admin panel-এর current tone match করবে
+- mobile drawer/open state stylingও একই family-তে আনা হবে
 
-> Individual admin pages (120+ pages) এ hardcoded Bangla আছে — সেগুলো future iteration-এ gradually convert হবে। এই round-এ navigation/chrome English-এ যাবে, page contents BN থাকবে যতক্ষণ না আলাদাভাবে convert করা হয়।
+এতে POP panel visually আলাদা না লেগে same product-এর অংশ মনে হবে।
 
----
+### 3. POP menu labels bilingual করা
+`groups` array-তে Bangla labels primary করা হবে, English fallback mapping রাখা হবে।
 
-## ২. Bangla Font
+উদাহরণ:
+- Dashboard → ড্যাশবোর্ড
+- Configuration → কনফিগারেশন
+- Employee → কর্মচারী
+- Billing → বিলিং
+- Reports → রিপোর্ট
+- Logout → লগআউট
 
-`index.html`-এ Google Fonts add:
-```html
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-```
+English mode-এ clean English labels দেখাবে, Bangla mode-এ Bengali labels দেখাবে।
 
-**`src/index.css`** body font:
-```css
-body {
-  font-family: 'Hind Siliguri', 'Noto Sans Bengali', 'Inter', system-ui, sans-serif;
-  font-feature-settings: "liga", "kern";
-  letter-spacing: 0.01em;
-}
-```
+### 4. POP-specific reseller pages-এ visible text parity
+যেসব POP pages admin shell use করে না, সেগুলোর visible hardcoded text translate-ready করা হবে।
 
-`Hind Siliguri` (Bengali-optimized, modern, clean) primary; `Noto Sans Bengali` fallback; `Inter` for English/numbers.
+প্রথম ধাপে অন্তত এই files:
+- `src/pages/reseller/ResellerDashboard.tsx`
+- `src/pages/reseller/ResellerSettings.tsx`
+- `src/pages/reseller/ResellerUsers.tsx`
+- `src/pages/reseller/ResellerTickets.tsx`
+- `src/pages/reseller/ResellerInvoices.tsx`
+- `src/pages/reseller/ResellerPurchaseOrders.tsx`
+- `src/pages/reseller/config/PopPackages.tsx`
 
-`tailwind.config.ts`-এ:
-```ts
-fontFamily: {
-  sans: ['Hind Siliguri', 'Noto Sans Bengali', 'Inter', 'system-ui', 'sans-serif'],
-  bengali: ['Hind Siliguri', 'Noto Sans Bengali', 'sans-serif'],
-}
-```
+এখানে:
+- page title
+- section heading
+- button labels
+- empty states
+- table headers
+- save/cancel/search/show entries ধরনের common UI text
+BN/EN toggle-এর সাথে switch করবে।
 
----
+### 5. Admin-style text readability POP pages-এ consistent করা
+যেখানে POP pages-এ muted text, helper text, empty states, subtitle extra faded লাগছে, সেখানে class usage admin-style readable tone অনুযায়ী refine করা হবে:
+- `text-muted-foreground` kept but with proper hierarchy
+- key headings/body text stronger রাখা
+- card/table sections same readability standard-এ আনা
 
-## ৩. Text Colors Darker (Readability)
+## Technical details
+- `LanguageProvider` already app root-এ আছে, তাই POP panel-এ নতুন context plumbing লাগবে না
+- `ResellerLayout.tsx`-এ `tr()` / translation map pattern add করা হবে, similar to `AppSidebar.tsx`
+- Search logic bilingual হবে: Bangla label + English translation দুটোতেই filter করবে
+- `src/index.css` global darker tokens unchanged থাকবে; POP shell শুধু সেই tokens betterভাবে consume করবে
+- কোনো database / edge function / backend change লাগবে না
 
-বর্তমান issue: `--muted-foreground: 220 9% 46%` খুব faded।
-
-**`src/index.css` light mode update**:
-```css
---foreground: 224 30% 10%;          /* was 16% → now 10% (darker) */
---muted-foreground: 220 15% 32%;    /* was 46% → now 32% (much darker) */
---card-foreground: 224 30% 10%;
---popover-foreground: 224 30% 10%;
---secondary-foreground: 224 30% 10%;
---accent-foreground: 224 30% 10%;
---sidebar-foreground: 224 28% 18%;  /* was 28% → 18% */
---border: 220 14% 82%;              /* was 89% → 82% (slightly more visible) */
-```
-
-**Dark mode**-এ similar adjustment — text একটু brighter:
-```css
---foreground: 220 18% 94%;          /* was 86% → 94% */
---muted-foreground: 220 15% 78%;    /* was 62% → 78% */
-```
-
-এতে যেকোনো লেখা — heading, body, muted helper text — সব আরো readable হবে, ফ্যাকাশে লাগবে না।
-
----
-
-## যা **বদলাবে না**
-- Public website (Home, Packages, Shop ইত্যাদি) — শুধু Admin/Dashboard scope
-- Backend, database, edge functions — কোনো change নাই
-- Existing primary color theme system
+## যা বদলাবে না
+- POP business logic
+- permissions / auth flow
+- tariff / package pricing logic
+- main admin routing structure
+- public website
 
 ## Files
-- **Modified**: `index.html` (font links)
-- **Modified**: `src/index.css` (font-family, color tokens)
-- **Modified**: `tailwind.config.ts` (font family)
-- **Modified**: `src/components/TopBar.tsx` (BN/EN toggle button)
-- **Modified**: `src/components/AppSidebar.tsx` (`t()` wrap for menu labels — large file but mechanical change)
+- `src/components/ResellerLayout.tsx` — POP shell, header, sidebar, toggle, translated labels
+- `src/pages/reseller/ResellerDashboard.tsx` — dashboard labels
+- `src/pages/reseller/ResellerSettings.tsx` — settings form labels/buttons
+- `src/pages/reseller/ResellerUsers.tsx` — user management text/actions
+- `src/pages/reseller/ResellerTickets.tsx` — ticket UI text
+- `src/pages/reseller/ResellerInvoices.tsx` — invoice list text
+- `src/pages/reseller/ResellerPurchaseOrders.tsx` — purchase orders text
+- `src/pages/reseller/config/PopPackages.tsx` — package page text/search/pagination labels
 
-approve করলে default mode-এ apply করব।
-
+## Apply-এর পরে expected result
+1. POP panel-এও Bengali default থাকবে
+2. উপরে ছোট BN/EN toggle থাকবে
+3. POP header/sidebar color tone main admin-এর মতো dark/readable হবে
+4. POP menu, search, logout, common headings same design language follow করবে
+5. User আর main admin vs POP admin-এ আলাদা/অসম design feel করবে না
