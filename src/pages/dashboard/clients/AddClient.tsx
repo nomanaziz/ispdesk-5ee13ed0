@@ -172,7 +172,9 @@ export default function AddClient() {
             id: p.isp_packages.id,
             name: p.isp_packages.name,
             bandwidth_down: p.isp_packages.bandwidth_down,
-            price: Number(p.selling_rate || p.package_rate || p.isp_packages.price || 0),
+            // POP mode: ALWAYS use reseller's own selling_rate (their price to clients).
+            // Never fall back to admin's isp_packages.price — that's the global price, not the reseller's.
+            price: Number(p.selling_rate ?? 0),
             mikrotik_profile: p.mikrotik_profile || null,
             mikrotik_server_id: p.mikrotik_server_id || null,
           }));
@@ -727,6 +729,14 @@ export default function AddClient() {
               if (pkg && form.billing_status === "Active") setField("monthly_bill", pkg.price);
               // POP mode: auto-set profile from tariff package's mikrotik_profile (locked from tariff config)
               if (isPopMode && pkg?.mikrotik_profile) setField("profile", pkg.mikrotik_profile);
+              // Warn if reseller hasn't set a selling rate yet
+              if (isPopMode && pkg && (!pkg.price || pkg.price <= 0)) {
+                toast({
+                  title: "Selling Rate সেট করা নেই",
+                  description: "এই প্যাকেজের জন্য Package page-এ গিয়ে আপনার Selling Rate সেট করুন।",
+                  variant: "destructive",
+                });
+              }
             }}>
               <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
