@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, XCircle, RefreshCw, ArrowRightLeft, UserPlus } from "lucide-react";
+import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, XCircle, RefreshCw, ArrowRightLeft, UserPlus, Layers } from "lucide-react";
 import * as XLSX from "xlsx";
 import { TransferToPopDialog } from "@/components/mikrotik/TransferToPopDialog";
+import { BulkProfileChangeDialog } from "@/components/mikrotik/BulkProfileChangeDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 export default function Import() {
@@ -30,6 +31,7 @@ export default function Import() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [bulkExportOpen, setBulkExportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [bulkProfileOpen, setBulkProfileOpen] = useState(false);
 
   const { data: servers = [] } = useQuery({
     queryKey: ["mikrotik_devices_active"],
@@ -262,6 +264,9 @@ export default function Import() {
                 <Button variant="secondary" size="sm" onClick={() => setBulkExportOpen(true)} disabled={selectedIds.size === 0}>
                   <UserPlus className="h-4 w-4 mr-1" /> Client লিস্টে এক্সপোর্ট ({selectedIds.size})
                 </Button>
+                <Button variant="outline" size="sm" onClick={() => setBulkProfileOpen(true)} disabled={selectedIds.size === 0}>
+                  <Layers className="h-4 w-4 mr-1" /> Bulk Profile Change ({selectedIds.size})
+                </Button>
               </>
             )}
           </div>
@@ -355,6 +360,16 @@ export default function Import() {
         onOpenChange={setTransferOpen}
         selectedIds={Array.from(selectedIds)}
         onTransferred={() => setSelectedIds(new Set())}
+      />
+
+      <BulkProfileChangeDialog
+        open={bulkProfileOpen}
+        onOpenChange={setBulkProfileOpen}
+        selectedClients={clients.filter((c: any) => selectedIds.has(c.id))}
+        onSuccess={() => {
+          setSelectedIds(new Set());
+          queryClient.invalidateQueries({ queryKey: ["mikrotik_clients"] });
+        }}
       />
 
       <Dialog open={bulkExportOpen} onOpenChange={setBulkExportOpen}>
