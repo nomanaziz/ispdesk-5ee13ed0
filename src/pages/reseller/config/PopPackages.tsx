@@ -246,7 +246,7 @@ export default function PopPackages() {
                             onClick={() => save(p)}
                             title="সংরক্ষণ"
                           >
-                            <Check className="h-4 w-4 text-emerald-600" />
+                            <Check className="h-4 w-4 text-primary" />
                           </Button>
                           <Button
                             size="icon"
@@ -266,7 +266,7 @@ export default function PopPackages() {
                           onClick={() => startEdit(p)}
                           title="Selling Rate edit করুন"
                         >
-                          <Pencil className="h-3.5 w-3.5 text-emerald-600" />
+                          <Pencil className="h-3.5 w-3.5 text-primary" />
                         </Button>
                       )}
                     </TableCell>
