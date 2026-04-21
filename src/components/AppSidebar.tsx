@@ -27,7 +27,41 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
 
 interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
-interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; }
+interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
+
+// Rainbow candy-tone color per group label. Light: -600, Dark: -400 for readability.
+const GROUP_COLORS: Record<string, string> = {
+  "ড্যাশবোর্ড": "text-indigo-600 dark:text-indigo-400",
+  "ওয়েবসাইট প্যানেল": "text-sky-600 dark:text-sky-400",
+  "কনফিগারেশন": "text-slate-600 dark:text-slate-300",
+  "VAS": "text-teal-600 dark:text-teal-400",
+  "হোম ক্লায়েন্ট": "text-blue-600 dark:text-blue-400",
+  "POP / MAC ক্লায়েন্ট": "text-violet-600 dark:text-violet-400",
+  "ব্যান্ডউইথ ক্লায়েন্ট": "text-cyan-600 dark:text-cyan-400",
+  "ডিভাইস": "text-emerald-600 dark:text-emerald-400",
+  "HR ও পেরোল": "text-pink-600 dark:text-pink-400",
+  "OLT ম্যানেজমেন্ট": "text-purple-600 dark:text-purple-400",
+  "নেটওয়ার্ক মনিটরিং": "text-green-600 dark:text-green-400",
+  "নেটওয়ার্ক ডায়াগ্রাম": "text-lime-600 dark:text-lime-400",
+  "ছুটি ম্যানেজমেন্ট": "text-amber-600 dark:text-amber-400",
+  "ইভেন্ট ও ছুটি": "text-yellow-600 dark:text-yellow-400",
+  "সাপোর্ট ও টিকেটিং": "text-rose-600 dark:text-rose-400",
+  "টাস্ক ম্যানেজমেন্ট": "text-fuchsia-600 dark:text-fuchsia-400",
+  "ব্যান্ডউইথ ক্রয়": "text-cyan-700 dark:text-cyan-300",
+  "ক্রয়": "text-orange-600 dark:text-orange-400",
+  "বিক্রয় ও সার্ভিস": "text-red-600 dark:text-red-400",
+  "ইনভেন্টরি": "text-amber-700 dark:text-amber-300",
+  "অ্যাসেট": "text-stone-600 dark:text-stone-300",
+  "অ্যাকাউন্টিং": "text-green-700 dark:text-green-300",
+  "রিপোর্ট": "text-blue-700 dark:text-blue-300",
+  "SMS সার্ভিস": "text-sky-700 dark:text-sky-300",
+  "ই-কমার্স": "text-pink-700 dark:text-pink-300",
+  "সিস্টেম": "text-zinc-600 dark:text-zinc-300",
+};
+
+function getGroupColor(group: MenuGroup): string {
+  return group.color ?? GROUP_COLORS[group.label] ?? "text-muted-foreground";
+}
 
 const menuGroups: MenuGroup[] = [
   {
@@ -556,6 +590,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
   // Sum of badge counts for items inside this group (used in collapsed mode + group label)
   const groupBadgeCount = group.items.reduce((sum, it) => sum + (badges?.[it.url] || 0), 0);
   const primaryItem = group.items[0];
+  const groupColor = getGroupColor(group);
 
   if (group.direct && primaryItem) {
     const isActive = primaryItem.url === "/dashboard"
@@ -574,7 +609,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
             )}
             title={groupLabel}
           >
-            <group.icon className="h-4 w-4" />
+            <group.icon className={cn("h-4 w-4", !isActive && groupColor)} />
             {groupBadgeCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                 {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
@@ -595,7 +630,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
               : isLight ? "text-muted-foreground hover:text-foreground hover:bg-muted/50" : "text-slate-400 hover:text-white hover:bg-white/5"
           )}
         >
-          <group.icon className="h-4 w-4 shrink-0" />
+          <group.icon className={cn("h-4 w-4 shrink-0", !isActive && groupColor)} />
           <span className="flex-1 truncate">{groupLabel}</span>
           {groupBadgeCount > 0 && (
             <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
@@ -619,7 +654,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
                   ? "bg-primary/15 text-primary"
                   : isLight ? "text-muted-foreground hover:text-primary hover:bg-primary/5" : "text-slate-400 hover:text-white hover:bg-white/5"
               )} title={groupLabel}>
-              <group.icon className="h-4 w-4" />
+              <group.icon className={cn("h-4 w-4", !isActive && groupColor)} />
               {groupBadgeCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                   {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
@@ -640,7 +675,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
             ? "text-primary"
             : isLight ? "text-muted-foreground hover:text-foreground" : "text-slate-400 hover:text-white"
         )} style={{ width: "calc(100% - 16px)" }}>
-        <group.icon className="h-4 w-4 shrink-0" />
+        <group.icon className={cn("h-4 w-4 shrink-0", !isActiveGroup && groupColor)} />
         <span className="flex-1 text-left truncate">{groupLabel}</span>
         {groupBadgeCount > 0 && !effectiveOpen && (
           <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
@@ -663,7 +698,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
                       ? "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       : "text-slate-400 hover:text-white hover:bg-white/5"
                 )}>
-                <item.icon className="h-3.5 w-3.5 shrink-0" />
+                <item.icon className={cn("h-3.5 w-3.5 shrink-0", !isActive && groupColor, !isActive && "opacity-70")} />
                 <span className="flex-1 truncate">{tr(item.title, lang)}</span>
                 {count > 0 && (
                   <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
