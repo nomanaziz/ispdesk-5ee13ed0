@@ -869,7 +869,7 @@ export function AppSidebar() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="মেনু খুঁজুন..."
+                placeholder={lang === "bn" ? "মেনু খুঁজুন..." : "Search menu..."}
                 className={cn(
                   "w-full h-8 pl-8 pr-7 text-[12px] rounded-md outline-none transition-colors",
                   isLight
