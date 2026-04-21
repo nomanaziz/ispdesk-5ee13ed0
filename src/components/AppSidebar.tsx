@@ -896,7 +896,7 @@ export function AppSidebar() {
             ))}
             {filteredGroups.length === 0 && (
               <div className="px-4 py-6 text-center text-xs text-muted-foreground">
-                কোনো মেনু পাওয়া যায়নি
+                {lang === "bn" ? "কোনো মেনু পাওয়া যায়নি" : "No menu found"}
               </div>
             )}
           </SidebarContent>
