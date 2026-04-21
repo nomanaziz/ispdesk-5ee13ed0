@@ -1,101 +1,89 @@
 
 
 ## লক্ষ্য
-Admin যেকোনো জায়গা থেকে (POP/Reseller, ISP Client, BW Sale Customer) **"Login as"** চাপলে এক click-এ ওই account-এ portal/reseller dashboard-এ auto-login হবে — password ছাড়াই, নতুন tab-এ।
+Mikrotik Import page-এ **Bulk Profile Change** function যোগ — একসাথে multiple user select করে এক click-এ MikroTik-এ ও DB-তে profile change হবে।
 
-## Architecture
+## Workflow
 
 ```text
-Admin clicks "Login as" → impersonate-portal-user edge function
-                           (verifies admin role, fetches user, issues portal token)
-                              ↓
-                          returns { token, customer, redirect_url }
-                              ↓
-              window.open(redirect_url + #imp=<token>) → new tab
-                              ↓
-         PortalAuthContext / AuthLanding picks up `#imp=` from URL hash,
-         stores token in localStorage, navigates to correct dashboard
+Import page → Pending Transfer tab → multiple user select (checkbox)
+   ↓
+"Bulk Profile Change" button চাপ (selected count সহ)
+   ↓
+Dialog খোলে → selected user-দের summary দেখাবে:
+   • মোট: 50 জন
+   • Server group: server-A (30), server-B (20)   ← একই server-এর users একসাথে handle হবে
+   • Current profiles: 10mb (50)
+   ↓
+নতুন Profile select → server অনুযায়ী auto profile list load
+   (`manage-mikrotik-ppp` action: "list-profiles")
+   ↓
+"পরিবর্তন করুন" চাপ
+   ↓
+প্রতিটা user-এর জন্য parallel call:
+   manage-mikrotik-ppp { action:"update", mikrotik_id, username, profile }
+   ↓
+Success → mikrotik_clients.profile DB-তেও update
+   ↓
+Toast: "45 জন সফল, 5 জন ব্যর্থ" + per-user error log dialog-এ
 ```
 
-এক unified flow — প্রত্যেক user-type-এর জন্য আলাদা logic নেই।
+## Logic & Edge Cases
+
+```text
+Multi-server selection হলে:
+   - Users group by mikrotik_id
+   - প্রতিটা server-এর জন্য আলাদা profile list fetch
+   - Profile name একই হলে ✓, আলাদা হলে → user-কে warning:
+     "নির্বাচিত user-রা ভিন্ন server-এ — প্রতিটা server-এর জন্য আলাদা profile select করতে হবে"
+   - সরল সমাধান: এক সাথে শুধু এক server-এর users handle (filter দিয়ে guide)
+
+যদি transferred (linked_client_id != null) user থাকে:
+   - শুধু MikroTik update যথেষ্ট নয় — `clients.profile`-ও update করতে হবে
+   - Transferred users-এর জন্য সতর্কতা banner
+```
 
 ## পরিবর্তন
 
-### 1. New edge function: `supabase/functions/impersonate-portal-user/index.ts`
-- Input: `{ user_type: "client" | "reseller" | "reseller_sub" | "bw_customer", user_id: uuid }`
-- Auth: caller-এর JWT verify → `is_admin_or_super(auth.uid())` check, না হলে 403
-- User-type অনুযায়ী respective table থেকে row fetch (clients / branch_managers / bw_reseller_users / bw_sale_customers)
-- `portal-auth`-এর মতো same `issueToken` helper দিয়ে token issue (24h exp)
-- `portal_login_log`-এ insert with `note: "admin_impersonation by <admin_email>"` (audit trail)
-- Return: `{ token, customer, redirect: "/portal/dashboard" বা "/pop-admin/dashboard" }`
-- `verify_jwt = true` (default) — Supabase auth JWT validation দরকার
-
-### 2. New helper: `src/lib/impersonate.ts`
+### 1. New file: `src/components/mikrotik/BulkProfileChangeDialog.tsx`
+Component props:
 ```ts
-export async function loginAsUser(user_type, user_id) {
-  const { data, error } = await supabase.functions.invoke("impersonate-portal-user", {
-    body: { user_type, user_id }
-  });
-  if (error || data?.error) throw new Error(...);
-  // open new tab with token in hash (one-shot pickup)
-  const url = `${window.location.origin}${data.redirect}#imp=${encodeURIComponent(data.token)}`;
-  window.open(url, "_blank", "noopener");
-}
+{ open, onOpenChange, selectedClients: any[], onSuccess: () => void }
 ```
+- `useQuery` দিয়ে selected users group by `mikrotik_id`
+- Multi-server detect → warning + first server-এর জন্য কাজ allow
+- `useQuery` profile list: `supabase.functions.invoke("manage-mikrotik-ppp", { body: { mikrotik_id, action: "list-profiles" }})` (per-server cache)
+- Submit button: progress bar + per-user result tracking
+- Result summary dialog: ✅ success count, ❌ failed list (username + error)
 
-### 3. `PortalAuthContext.tsx` — pick up `#imp=` token on mount
-useEffect-এর শুরুতে check:
-```ts
-const hash = window.location.hash;
-if (hash.startsWith("#imp=")) {
-  const token = decodeURIComponent(hash.slice(5));
-  const decoded = JSON.parse(atob(token));
-  if (decoded.exp > Date.now()) {
-    localStorage.setItem("portal_token", token);
-    window.history.replaceState(null, "", window.location.pathname); // clean URL
-    setCustomer(decoded); setToken(token); setLoading(false);
-    return;
-  }
-}
-// existing localStorage flow...
-```
-
-### 4. UI wiring — "Login as" buttons (admin-only, hidden for non-admin)
-সবগুলোতে `useAuth().isAdmin` দিয়ে gate, আর `loginAsUser(...)` call:
-
-| File | Change |
-|---|---|
-| `src/pages/dashboard/branches/Managers.tsx` | `handleLoginAs` → `loginAsUser("reseller", m.id)` |
-| `src/pages/dashboard/branches/PopProfile.tsx` (line 216) | "Coming soon" → real call |
-| `src/components/client-actions/ClientActionButtons.tsx` | নতুন menu item "Admin: Login as Client" (isAdmin হলে) → `loginAsUser("client", client.id)` |
-| `src/pages/dashboard/billing/ClientProfile.tsx` | Quick Actions-এ "Login as Client" button যোগ (admin-only) |
-| `src/pages/dashboard/bw-sale/Pop.tsx` (line 246-250) | Action column-এ LogIn icon button (admin-only) → `loginAsUser("bw_customer", c.id)` |
-| `src/pages/dashboard/bw-sale/CustomerView.tsx` | Header-এ "Login as Customer" button যোগ (admin-only) |
-| `src/pages/reseller/ResellerUsers.tsx` | Sub-user row-এ "Login as" icon (admin-only) → `loginAsUser("reseller_sub", u.id)` |
-
-প্রত্যেক জায়গায় same one-liner:
-```tsx
-{isAdmin && <Button onClick={() => loginAsUser("...", id).catch(e => toast.error(e.message))}>
-  <LogIn /> Login as
-</Button>}
-```
-
-## Security
-
-- Edge function-এ admin role check বাধ্যতামূলক (non-admin call → 403)
-- Token-এ `impersonated_by: admin_user_id` claim যোগ — future audit-এ কে কাকে impersonate করল track করা যাবে
-- `portal_login_log`-এ `user_agent` field-এ `[IMPERSONATED]` prefix
-- New tab-এ open হবে — admin session intact থাকবে main tab-এ
+### 2. `src/pages/dashboard/mikrotik/Import.tsx`
+- Import new dialog
+- New state: `const [bulkProfileOpen, setBulkProfileOpen] = useState(false);`
+- Toolbar-এ নতুন button (line 263-এর পরে, Pending Transfer mode-এ):
+  ```tsx
+  <Button variant="outline" size="sm" onClick={() => setBulkProfileOpen(true)} disabled={selectedIds.size === 0}>
+    <Layers className="h-4 w-4 mr-1" /> Bulk Profile Change ({selectedIds.size})
+  </Button>
+  ```
+- Bottom-এ render:
+  ```tsx
+  <BulkProfileChangeDialog
+    open={bulkProfileOpen}
+    onOpenChange={setBulkProfileOpen}
+    selectedClients={clients.filter(c => selectedIds.has(c.id))}
+    onSuccess={() => { setSelectedIds(new Set()); queryClient.invalidateQueries({ queryKey: ["mikrotik_clients"] }); }}
+  />
+  ```
 
 ## যা **বদলাবে না**
-- `portal-auth` edge function — intact (regular login flow)
-- `PortalAuthContext` login/logout flow — intact, শুধু `#imp=` pickup যোগ হচ্ছে
-- DB schema, RLS, কোনো migration — কিছু লাগবে না (existing tables ব্যবহার)
-- Regular user login UX — কোনো change নেই
+- Existing `manage-mikrotik-ppp` edge function — already supports `update` with `profile` ও `list-profiles`, কিছু change লাগবে না
+- `Import.tsx`-এর existing filters, table, transfer flow — intact
+- DB schema, RLS, migration — কোনো change নাই
+- `BulkProfileChangeDialog.tsx` (billing folder-এর existing one) — alada file, untouched
 
-## Files Created/Modified
-- **New**: `supabase/functions/impersonate-portal-user/index.ts`, `src/lib/impersonate.ts`
-- **Modified**: `src/contexts/PortalAuthContext.tsx`, `src/pages/dashboard/branches/Managers.tsx`, `src/pages/dashboard/branches/PopProfile.tsx`, `src/components/client-actions/ClientActionButtons.tsx`, `src/pages/dashboard/billing/ClientProfile.tsx`, `src/pages/dashboard/bw-sale/Pop.tsx`, `src/pages/dashboard/bw-sale/CustomerView.tsx`, `src/pages/reseller/ResellerUsers.tsx`
+## Files
+- **New**: `src/components/mikrotik/BulkProfileChangeDialog.tsx`
+- **Modified**: `src/pages/dashboard/mikrotik/Import.tsx`
 
-approve করলে এই 8 file-এ change apply করব এবং নতুন 2 file create করব।
+approve করলে ১টি নতুন file create করব এবং ১টি file-এ ৩টি ছোট change apply করব।
 
