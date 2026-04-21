@@ -230,9 +230,8 @@ export default function PopForm({ mode, pop }: Props) {
         const { error } = await supabase.from("branch_managers").insert(insertPayload);
         if (error) throw error;
       } else {
-        // Edit: only admin can change locked fields
+        // Edit: tariff is lifetime-fixed (never updated). Admin can still change other locked fields.
         if (isAdmin) {
-          basePayload.tariff_id = form.tariff_id || null;
           basePayload.pop_code = form.pop_code || null;
           basePayload.username = form.username;
         }
