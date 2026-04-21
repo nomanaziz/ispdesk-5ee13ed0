@@ -27,7 +27,41 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
 
 interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
-interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; }
+interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
+
+// Rainbow candy-tone color per group label. Light: -600, Dark: -400 for readability.
+const GROUP_COLORS: Record<string, string> = {
+  "ড্যাশবোর্ড": "text-indigo-600 dark:text-indigo-400",
+  "ওয়েবসাইট প্যানেল": "text-sky-600 dark:text-sky-400",
+  "কনফিগারেশন": "text-slate-600 dark:text-slate-300",
+  "VAS": "text-teal-600 dark:text-teal-400",
+  "হোম ক্লায়েন্ট": "text-blue-600 dark:text-blue-400",
+  "POP / MAC ক্লায়েন্ট": "text-violet-600 dark:text-violet-400",
+  "ব্যান্ডউইথ ক্লায়েন্ট": "text-cyan-600 dark:text-cyan-400",
+  "ডিভাইস": "text-emerald-600 dark:text-emerald-400",
+  "HR ও পেরোল": "text-pink-600 dark:text-pink-400",
+  "OLT ম্যানেজমেন্ট": "text-purple-600 dark:text-purple-400",
+  "নেটওয়ার্ক মনিটরিং": "text-green-600 dark:text-green-400",
+  "নেটওয়ার্ক ডায়াগ্রাম": "text-lime-600 dark:text-lime-400",
+  "ছুটি ম্যানেজমেন্ট": "text-amber-600 dark:text-amber-400",
+  "ইভেন্ট ও ছুটি": "text-yellow-600 dark:text-yellow-400",
+  "সাপোর্ট ও টিকেটিং": "text-rose-600 dark:text-rose-400",
+  "টাস্ক ম্যানেজমেন্ট": "text-fuchsia-600 dark:text-fuchsia-400",
+  "ব্যান্ডউইথ ক্রয়": "text-cyan-700 dark:text-cyan-300",
+  "ক্রয়": "text-orange-600 dark:text-orange-400",
+  "বিক্রয় ও সার্ভিস": "text-red-600 dark:text-red-400",
+  "ইনভেন্টরি": "text-amber-700 dark:text-amber-300",
+  "অ্যাসেট": "text-stone-600 dark:text-stone-300",
+  "অ্যাকাউন্টিং": "text-green-700 dark:text-green-300",
+  "রিপোর্ট": "text-blue-700 dark:text-blue-300",
+  "SMS সার্ভিস": "text-sky-700 dark:text-sky-300",
+  "ই-কমার্স": "text-pink-700 dark:text-pink-300",
+  "সিস্টেম": "text-zinc-600 dark:text-zinc-300",
+};
+
+function getGroupColor(group: MenuGroup): string {
+  return group.color ?? GROUP_COLORS[group.label] ?? "text-muted-foreground";
+}
 
 const menuGroups: MenuGroup[] = [
   {
