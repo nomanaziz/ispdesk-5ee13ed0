@@ -1,0 +1,2 @@
+ALTER TABLE public.mikrotik_clients ADD COLUMN IF NOT EXISTS linked_client_id uuid REFERENCES public.clients(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_mikrotik_clients_linked_client_id ON public.mikrotik_clients(linked_client_id);
