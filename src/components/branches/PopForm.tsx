@@ -230,9 +230,8 @@ export default function PopForm({ mode, pop }: Props) {
         const { error } = await supabase.from("branch_managers").insert(insertPayload);
         if (error) throw error;
       } else {
-        // Edit: only admin can change locked fields
+        // Edit: tariff is lifetime-fixed (never updated). Admin can still change other locked fields.
         if (isAdmin) {
-          basePayload.tariff_id = form.tariff_id || null;
           basePayload.pop_code = form.pop_code || null;
           basePayload.username = form.username;
         }
@@ -249,7 +248,7 @@ export default function PopForm({ mode, pop }: Props) {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const lockTariff = mode === "edit" && !isAdmin;
+  const lockTariff = mode === "edit";
   const lockCode = mode === "edit" && !isAdmin;
   const lockPrefix = mode === "edit" && !isAdmin;
   const lockUsername = mode === "edit" && !isAdmin;
@@ -419,6 +418,11 @@ export default function PopForm({ mode, pop }: Props) {
                 <SelectContent>{tariffs?.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
               </Select>
             </LockedField>
+            {mode === "create" && (
+              <p className="text-[11px] text-destructive mt-1">
+                ⚠️ একবার Tariff সিলেক্ট করলে এটি আর পরিবর্তন করা যাবে না (lifetime fixed)
+              </p>
+            )}
           </div>
           <div className="flex items-end gap-3">
             <div className="flex items-start gap-2">
