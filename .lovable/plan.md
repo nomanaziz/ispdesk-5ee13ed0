@@ -1,89 +1,40 @@
 
 
 ## লক্ষ্য
-Mikrotik Import page-এ **Bulk Profile Change** function যোগ — একসাথে multiple user select করে এক click-এ MikroTik-এ ও DB-তে profile change হবে।
+POP Reseller Package page-কে screenshot-এর মতো simple table layout-এ পরিবর্তন — শুধু **SellingRate** column editable, বাকি সব read-only।
 
-## Workflow
+## Current vs Target
 
-```text
-Import page → Pending Transfer tab → multiple user select (checkbox)
-   ↓
-"Bulk Profile Change" button চাপ (selected count সহ)
-   ↓
-Dialog খোলে → selected user-দের summary দেখাবে:
-   • মোট: 50 জন
-   • Server group: server-A (30), server-B (20)   ← একই server-এর users একসাথে handle হবে
-   • Current profiles: 10mb (50)
-   ↓
-নতুন Profile select → server অনুযায়ী auto profile list load
-   (`manage-mikrotik-ppp` action: "list-profiles")
-   ↓
-"পরিবর্তন করুন" চাপ
-   ↓
-প্রতিটা user-এর জন্য parallel call:
-   manage-mikrotik-ppp { action:"update", mikrotik_id, username, profile }
-   ↓
-Success → mikrotik_clients.profile DB-তেও update
-   ↓
-Toast: "45 জন সফল, 5 জন ব্যর্থ" + per-user error log dialog-এ
-```
+**বর্তমান** (`PopPackages.tsx`): Card layout, helper info banners, inline pencil-edit on Sell Rate, ৯টি column।
 
-## Logic & Edge Cases
+**Target** (screenshot অনুযায়ী): Plain table, ৯ column same order:
+`PackageName | ServerName | Protocol | Profile | BuyingRate | SellingRate | ValidityDays | Min R.Days | Action`
 
-```text
-Multi-server selection হলে:
-   - Users group by mikrotik_id
-   - প্রতিটা server-এর জন্য আলাদা profile list fetch
-   - Profile name একই হলে ✓, আলাদা হলে → user-কে warning:
-     "নির্বাচিত user-রা ভিন্ন server-এ — প্রতিটা server-এর জন্য আলাদা profile select করতে হবে"
-   - সরল সমাধান: এক সাথে শুধু এক server-এর users handle (filter দিয়ে guide)
+পার্থক্য:
+- শুধু **Action column-এর pencil button** চাপলে SellingRate cell editable হবে (currently SellingRate-এ click করলেও editable, ওটা off করব না — Action button দিয়ে trigger same)
+- Helper banner ও info card সরিয়ে clean look
+- Search box ও pagination header (screenshot-এর মতো `SHOW [100] ENTRIES ... SEARCH:` style)
 
-যদি transferred (linked_client_id != null) user থাকে:
-   - শুধু MikroTik update যথেষ্ট নয় — `clients.profile`-ও update করতে হবে
-   - Transferred users-এর জন্য সতর্কতা banner
-```
+## পরিবর্তন (single file)
 
-## পরিবর্তন
+### `src/pages/reseller/config/PopPackages.tsx`
 
-### 1. New file: `src/components/mikrotik/BulkProfileChangeDialog.tsx`
-Component props:
-```ts
-{ open, onOpenChange, selectedClients: any[], onSuccess: () => void }
-```
-- `useQuery` দিয়ে selected users group by `mikrotik_id`
-- Multi-server detect → warning + first server-এর জন্য কাজ allow
-- `useQuery` profile list: `supabase.functions.invoke("manage-mikrotik-ppp", { body: { mikrotik_id, action: "list-profiles" }})` (per-server cache)
-- Submit button: progress bar + per-user result tracking
-- Result summary dialog: ✅ success count, ❌ failed list (username + error)
-
-### 2. `src/pages/dashboard/mikrotik/Import.tsx`
-- Import new dialog
-- New state: `const [bulkProfileOpen, setBulkProfileOpen] = useState(false);`
-- Toolbar-এ নতুন button (line 263-এর পরে, Pending Transfer mode-এ):
-  ```tsx
-  <Button variant="outline" size="sm" onClick={() => setBulkProfileOpen(true)} disabled={selectedIds.size === 0}>
-    <Layers className="h-4 w-4 mr-1" /> Bulk Profile Change ({selectedIds.size})
-  </Button>
-  ```
-- Bottom-এ render:
-  ```tsx
-  <BulkProfileChangeDialog
-    open={bulkProfileOpen}
-    onOpenChange={setBulkProfileOpen}
-    selectedClients={clients.filter(c => selectedIds.has(c.id))}
-    onSuccess={() => { setSelectedIds(new Set()); queryClient.invalidateQueries({ queryKey: ["mikrotik_clients"] }); }}
-  />
-  ```
+1. **Remove**: top heading description, blue info Card, Card wrapper around table
+2. **Add at top**: page title + breadcrumb-style subtitle ("Configuration > Package")
+3. **Add toolbar row**: 
+   - Left: `Show [select 10/25/50/100] entries`
+   - Right: `Search: [input]` — client-side filter on package name / server / profile
+4. **Table styling**: bordered, header dark slate bg (matching screenshot), centered numeric columns
+5. **Edit flow**: unchanged logic (`updateRate` mutation, buy_rate floor validation), শুধু Pencil icon → green edit-pencil icon (screenshot-এর মতো)
+6. **Footer row**: `Showing X to Y of N entries` + simple pagination (Previous / page numbers / Next)
 
 ## যা **বদলাবে না**
-- Existing `manage-mikrotik-ppp` edge function — already supports `update` with `profile` ও `list-profiles`, কিছু change লাগবে না
-- `Import.tsx`-এর existing filters, table, transfer flow — intact
-- DB schema, RLS, migration — কোনো change নাই
-- `BulkProfileChangeDialog.tsx` (billing folder-এর existing one) — alada file, untouched
+- `portal-data` edge function (`get_tariff_packages`, `update_tariff_selling_rate`) — intact
+- Buy rate immutability + sell ≥ buy validation — intact  
+- Auth/permission flow — intact
 
 ## Files
-- **New**: `src/components/mikrotik/BulkProfileChangeDialog.tsx`
-- **Modified**: `src/pages/dashboard/mikrotik/Import.tsx`
+- **Modified**: `src/pages/reseller/config/PopPackages.tsx`
 
-approve করলে ১টি নতুন file create করব এবং ১টি file-এ ৩টি ছোট change apply করব।
+approve করলে এই ১টি file rewrite করব।
 
