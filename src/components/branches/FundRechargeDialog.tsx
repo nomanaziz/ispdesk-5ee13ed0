@@ -71,9 +71,12 @@ export default function FundRechargeDialog({ open, onOpenChange, popId, popName 
 
           <div className="text-center space-y-2 py-2">
             <p className="text-sm font-medium">Pay Using bKash</p>
-            <div className="inline-flex items-center justify-center gap-1 px-4 py-2 rounded-md bg-pink-50 border border-pink-200">
-              <span className="font-bold text-pink-600">bKash</span>
-              <span className="text-pink-500">Payment</span>
+            <div
+              className="inline-flex items-center justify-center gap-1 px-4 py-2 rounded-md border"
+              style={{ backgroundColor: "hsl(330 80% 96%)", borderColor: "hsl(330 80% 85%)", color: "hsl(330 80% 45%)" }}
+            >
+              <span className="font-bold">bKash</span>
+              <span>Payment</span>
             </div>
           </div>
 
