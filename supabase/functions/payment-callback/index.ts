@@ -17,6 +17,7 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const gateway = url.searchParams.get("gateway") || "";
   const requestId = url.searchParams.get("request_id") || "";
+  const popRechargeId = url.searchParams.get("pop_recharge_id") || "";
   let status = url.searchParams.get("status") || "";
   let trxId = url.searchParams.get("trxID") || url.searchParams.get("tran_id") || "";
 
@@ -37,7 +38,72 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Load payment request
+  // ---------- POP self-service fund recharge flow ----------
+  if (popRechargeId) {
+    const { data: rec } = await supabase.from("pop_fund_recharges")
+      .select("*, branch_managers(id, name, branch_id)")
+      .eq("id", popRechargeId).maybeSingle();
+
+    const popPortal = (s: string) => {
+      const base = APP_URL || `${url.protocol}//${url.host.replace(/\.functions\..*/, ".lovable.app")}`;
+      return `${base}/pop-admin/fund-history/debit?recharge=${s}`;
+    };
+    if (!rec) return redirect(popPortal("failed"));
+
+    let verified = false;
+    let gatewayData: any = formData;
+    try {
+      if (gateway === "bkash" && status === "success") {
+        const paymentID = url.searchParams.get("paymentID") || "";
+        const ex = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/bkash-payment`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+          body: JSON.stringify({ action: "execute", paymentID }),
+        });
+        gatewayData = await ex.json();
+        verified = gatewayData.statusCode === "0000" || gatewayData.transactionStatus === "Completed";
+        trxId = gatewayData.trxID || trxId;
+      }
+    } catch (e) { console.error("pop recharge verify error", e); }
+
+    if (!verified) {
+      await supabase.from("pop_fund_recharges").update({
+        status: "failed", gateway_response: gatewayData, trx_id: trxId || rec.trx_id,
+      }).eq("id", rec.id);
+      return redirect(popPortal("failed"));
+    }
+
+    // Insert into branch_funding (trigger will credit pop balance)
+    const { data: fund, error: fundErr } = await supabase.from("branch_funding").insert({
+      branch_id: rec.branch_id,
+      amount: rec.amount,
+      received_amount: rec.amount,
+      due_amount: 0,
+      discount: 0,
+      vat: 0,
+      processing_fee: 0,
+      payment_method: gateway,
+      trans_type: "fund",
+      status: "paid",
+      funding_date: new Date().toISOString().slice(0, 10),
+      received_on: new Date().toISOString().slice(0, 10),
+      type: "online",
+      remarks: `POP online recharge — ${gateway} TrxID ${trxId}`,
+    }).select("id").maybeSingle();
+    if (fundErr) console.error("branch_funding insert failed", fundErr);
+
+    await supabase.from("pop_fund_recharges").update({
+      status: "approved",
+      gateway_response: gatewayData,
+      trx_id: trxId,
+      funding_id: fund?.id ?? null,
+      approved_at: new Date().toISOString(),
+    }).eq("id", rec.id);
+
+    return redirect(popPortal("success"));
+  }
+
+  // Load payment request (client bill flow)
   const { data: pr } = await supabase.from("public_payment_requests")
     .select("*, clients(name)").eq("id", requestId).maybeSingle();
 
