@@ -3,11 +3,13 @@ import { LogOut, User, Globe, Search, Bell, Palette, Settings } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate, Link } from "react-router-dom";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { ThemeCustomizer } from "@/components/ThemeCustomizer";
 import { QuickSettings } from "@/components/QuickSettings";
 import { GlobalClientSearch } from "@/components/GlobalClientSearch";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
