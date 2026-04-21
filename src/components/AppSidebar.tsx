@@ -572,7 +572,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
                 ? "bg-primary/15 text-primary"
                 : isLight ? "text-muted-foreground hover:text-primary hover:bg-primary/5" : "text-slate-400 hover:text-white hover:bg-white/5"
             )}
-            title={group.label}
+            title={groupLabel}
           >
             <group.icon className="h-4 w-4" />
             {groupBadgeCount > 0 && (
@@ -596,7 +596,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
           )}
         >
           <group.icon className="h-4 w-4 shrink-0" />
-          <span className="flex-1 truncate">{group.label}</span>
+          <span className="flex-1 truncate">{groupLabel}</span>
           {groupBadgeCount > 0 && (
             <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
               {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
@@ -618,7 +618,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
                 isActive
                   ? "bg-primary/15 text-primary"
                   : isLight ? "text-muted-foreground hover:text-primary hover:bg-primary/5" : "text-slate-400 hover:text-white hover:bg-white/5"
-              )} title={group.label}>
+              )} title={groupLabel}>
               <group.icon className="h-4 w-4" />
               {groupBadgeCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
@@ -641,7 +641,7 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
             : isLight ? "text-muted-foreground hover:text-foreground" : "text-slate-400 hover:text-white"
         )} style={{ width: "calc(100% - 16px)" }}>
         <group.icon className="h-4 w-4 shrink-0" />
-        <span className="flex-1 text-left truncate">{group.label}</span>
+        <span className="flex-1 text-left truncate">{groupLabel}</span>
         {groupBadgeCount > 0 && !effectiveOpen && (
           <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
             {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
