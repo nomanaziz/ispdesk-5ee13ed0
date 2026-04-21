@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { toast } from "sonner";
-import { ArrowRightLeft, Check, ChevronsUpDown } from "lucide-react";
+import { ArrowRightLeft, Check, ChevronsUpDown, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -44,6 +44,30 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     enabled: open,
   });
 
+  const { data: selectedRows = [] } = useQuery({
+    queryKey: ["mt_selected_for_transfer", selectedIds],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("mikrotik_clients")
+        .select("id, name, profile")
+        .in("id", selectedIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open && selectedIds.length > 0,
+  });
+
+  const profileGroups = useMemo(() => {
+    const map = new Map<string, number>();
+    (selectedRows as any[]).forEach((r) => {
+      const k = r.profile || "(no profile)";
+      map.set(k, (map.get(k) || 0) + 1);
+    });
+    return Array.from(map.entries());
+  }, [selectedRows]);
+  const isMixed = profileGroups.length > 1;
+  const uniqueProfile = profileGroups.length === 1 ? profileGroups[0][0] : null;
+
   const selectedPop = pops.find((p: any) => p.id === popId);
 
   const { data: packages = [] } = useQuery({
@@ -70,6 +94,9 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     return days > 0 ? rate / days : 0;
   }, [selectedPkg]);
   const creditable = useMemo(() => +(perDay * selectedIds.length).toFixed(2), [perDay, selectedIds.length]);
+  const monthlyPerUser = useMemo(() => Number(selectedPkg?.selling_rate) || 0, [selectedPkg]);
+  const totalMonthly = useMemo(() => +(monthlyPerUser * selectedIds.length).toFixed(2), [monthlyPerUser, selectedIds.length]);
+  const profileMismatch = !!(selectedPkg?.mikrotik_profile && uniqueProfile && uniqueProfile !== selectedPkg.mikrotik_profile);
 
   const transfer = useMutation({
     mutationFn: async () => {
@@ -77,6 +104,8 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
       if (!packageId || !selectedPkg) throw new Error("Package সিলেক্ট করুন");
       if (!targetMikrotik?.id) throw new Error("এই Package-এ MikroTik server assigned নাই");
       if (!selectedPop?.branch_id) throw new Error("এই POP-এর কোনো branch assign করা নেই");
+      if (isMixed) throw new Error("Mixed profile — single profile-এর user select করুন");
+      if (profileMismatch) throw new Error(`Profile mismatch — User profile "${uniqueProfile}" ≠ Package profile "${selectedPkg.mikrotik_profile}"`);
 
       if (selectedPop.pop_type === "prepaid" && selectedPop.fund_started && Number(selectedPop.balance || 0) < creditable) {
         throw new Error(`POP-এর balance অপ্রতুল (${selectedPop.balance} < ${creditable})`);
@@ -186,6 +215,21 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {isMixed && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 space-y-1.5">
+              <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
+                <AlertTriangle className="h-4 w-4" /> Mixed profiles detected
+              </div>
+              <p className="text-xs text-destructive/90">সবগুলো user-এর MikroTik profile এক হতে হবে:</p>
+              <ul className="text-xs text-destructive/90 ml-4 list-disc">
+                {profileGroups.map(([prof, count]) => (
+                  <li key={prof}><span className="font-mono">{prof}</span> — {count} user</li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground pt-1">💡 Import page-এ "প্রোফাইল" filter দিয়ে এক profile-এর user আলাদা করে export করুন।</p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>MAC/POP Reseller</Label>
             <Popover open={popPickerOpen} onOpenChange={setPopPickerOpen}>
@@ -248,20 +292,30 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Per Day Charge</Label>
               <Input readOnly value={perDay ? `৳${perDay.toFixed(2)}` : "—"} className="bg-muted" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Selected Clients</Label>
-              <Input readOnly value={selectedIds.length} className="bg-muted" />
+              <Label className="text-xs">Per User Monthly</Label>
+              <Input readOnly value={monthlyPerUser ? `৳${monthlyPerUser.toFixed(2)}` : "—"} className="bg-muted" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Creditable Amount</Label>
+              <Label className="text-xs">Total Monthly ({selectedIds.length})</Label>
+              <Input readOnly value={totalMonthly ? `৳${totalMonthly.toFixed(2)}` : "—"} className="bg-muted" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Total Creditable</Label>
               <Input readOnly value={creditable ? `৳${creditable.toFixed(2)}` : "—"} className="bg-muted font-semibold" />
             </div>
           </div>
+
+          {profileMismatch && (
+            <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded px-2 py-1.5">
+              ⚠️ User-দের MikroTik profile <span className="font-mono">"{uniqueProfile}"</span> — কিন্তু Package profile <span className="font-mono">"{selectedPkg?.mikrotik_profile}"</span>। আগে MikroTik-এ profile change করুন।
+            </p>
+          )}
 
           {selectedPop && !selectedPop.fund_started && (
             <p className="text-xs text-muted-foreground bg-muted px-2 py-1.5 rounded">
@@ -280,7 +334,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
           <Button
             onClick={() => transfer.mutate()}
-            disabled={!popId || !packageId || !targetMikrotik?.id || transfer.isPending ||
+            disabled={!popId || !packageId || !targetMikrotik?.id || transfer.isPending || isMixed || profileMismatch ||
               (selectedPop?.pop_type === "prepaid" && selectedPop?.fund_started && creditable > Number(selectedPop?.balance || 0))}
           >
             {transfer.isPending ? "Exporting..." : `Export ✓ (${selectedIds.length})`}
