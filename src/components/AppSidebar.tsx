@@ -543,8 +543,10 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { resolvedMode } = useTheme();
+  const { lang } = useLanguage();
   const isLight = resolvedMode === "light";
   const { data: badges } = useSidebarBadges();
+  const groupLabel = tr(group.label, lang);
   const isActiveGroup = group.items.some(item =>
     item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url)
   );
