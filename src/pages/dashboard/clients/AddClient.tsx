@@ -203,24 +203,50 @@ export default function AddClient() {
   const billingStatuses = (isPopMode ? popMeta?.billingStatuses : billingStatusesAdmin) || [];
 
 
-  // POP mode: auto-fill default server, lock protocol to PPPoE
+  // POP mode: auto-fill default server, lock protocol to PPPoE, auto-suggest client_id + default credentials
   useEffect(() => {
-    if (!isPopMode) return;
-    if (popMeta?.defaultServerId && !form.mikrotik_id) {
-      setForm(prev => ({ ...prev, mikrotik_id: popMeta.defaultServerId, protocol_type: "PPPoE" }));
+    if (!isPopMode || !popMeta) return;
+    setForm(prev => {
+      const next = { ...prev };
+      if (popMeta.defaultServerId && !prev.mikrotik_id) {
+        next.mikrotik_id = popMeta.defaultServerId;
+        next.protocol_type = "PPPoE";
+      }
+      // Auto-suggest client code if empty (and use it as default username if username is empty)
+      if (!prev.client_id && popMeta.nextClientCode) {
+        next.client_id = popMeta.nextClientCode;
+        if (!prev.username) next.username = popMeta.nextClientCode;
+      }
+      // Default password = "12345" if empty (POP can override)
+      if (!prev.password) next.password = "12345";
+      return next;
+    });
+
+    // Fetch mikrotik profiles for the default server
+    if (popMeta.defaultServerId && mikrotikProfiles.length === 0) {
       setLoadingProfiles(true);
       supabase.functions.invoke("fetch-mikrotik-profiles", { body: { device_id: popMeta.defaultServerId } })
         .then(({ data }) => setMikrotikProfiles(data?.profiles || []))
         .catch(() => setMikrotikProfiles([]))
         .finally(() => setLoadingProfiles(false));
     }
-  }, [isPopMode, popMeta?.defaultServerId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPopMode, popMeta?.defaultServerId, popMeta?.nextClientCode]);
 
   // Duplicate client_id check (global across all POPs/Admin)
   const checkClientCodeUnique = async () => {
     setClientCodeError("");
     const code = (form.client_id || "").trim();
     if (!code) return;
+    if (isPopMode) {
+      try {
+        const res = await callPortal<{ unique: boolean }>("check_client_code_unique", { client_id: code });
+        if (!res.unique && (!editMode || code !== prefill?.client_id)) {
+          setClientCodeError("এই client code ইতিমধ্যে অন্য POP/Admin-এ ব্যবহৃত হয়েছে");
+        }
+      } catch { /* ignore */ }
+      return;
+    }
     const { data } = await supabase.from("clients").select("id").eq("client_id", code).limit(1);
     if (data && data.length > 0 && (!editMode || data[0].id !== editClientId)) {
       setClientCodeError("এই client code ইতিমধ্যে অন্য POP/Admin-এ ব্যবহৃত হয়েছে");
