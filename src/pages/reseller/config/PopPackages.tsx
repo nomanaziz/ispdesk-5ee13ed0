@@ -5,8 +5,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Pencil, Check, X, ChevronLeft, ChevronRight, Lock, Info } from "lucide-react";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function PopPackages() {
   const qc = useQueryClient();
