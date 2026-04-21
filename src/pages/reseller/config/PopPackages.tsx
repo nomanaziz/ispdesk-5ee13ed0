@@ -52,7 +52,7 @@ export default function PopPackages() {
       <div>
         <h1 className="text-2xl font-bold">Package</h1>
         <p className="text-sm text-muted-foreground">
-          Admin আপনার tariff-এ যে package গুলো assign করেছে — শুধু Selling Rate পরিবর্তনযোগ্য
+          Admin আপনার tariff-এ যে package assign করেছে — <b>Buy Rate</b> = admin আপনার থেকে নিচ্ছে, <b>Sell Rate</b> = আপনি client-এর কাছে যে দামে বেচবেন
         </p>
       </div>
 
@@ -60,7 +60,7 @@ export default function PopPackages() {
         <CardContent className="p-4 flex items-start gap-2 text-sm">
           <Info className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
           <p className="text-muted-foreground">
-            Selling Rate ছাড়া অন্য কিছু পরিবর্তন করতে admin-এর সাথে যোগাযোগ করুন। Selling Rate কখনো Buy Rate-এর কম হতে পারবে না।
+            <b>Buy Rate</b> পরিবর্তন করতে admin-এর সাথে যোগাযোগ করুন। আপনি শুধু <b>Sell Rate</b> পরিবর্তন করতে পারবেন — যা কখনো Buy Rate-এর কম হতে পারবে না।
           </p>
         </CardContent>
       </Card>
