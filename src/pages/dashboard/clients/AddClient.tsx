@@ -444,6 +444,36 @@ export default function AddClient() {
         </div>
       )}
 
+      {isPopMode && (
+        <div className="rounded-lg border bg-card p-4 text-sm">
+          <p className="font-semibold mb-2">📋 ক্লায়েন্ট তৈরির চেকলিস্ট (Client create checklist)</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1.5">
+            {[
+              { label: "প্রোটোকল টাইপ (Protocol)", count: protocolTypes.length },
+              { label: "কানেকশন টাইপ (Connection)", count: connectionTypes.length },
+              { label: "ক্লায়েন্ট টাইপ (Client type)", count: clientTypes.length },
+              { label: "বিলিং স্ট্যাটাস (Billing status)", count: billingStatuses.length },
+              { label: "প্যাকেজ (Package)", count: packages.length },
+              { label: "মাইক্রোটিক সার্ভার (Mikrotik server)", count: mikrotiks.length },
+            ].map((row) => {
+              const ok = row.count > 0;
+              return (
+                <div key={row.label} className="flex items-center gap-2">
+                  <span className={cn("inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold", ok ? "bg-emerald-500/15 text-emerald-600" : "bg-destructive/15 text-destructive")}>
+                    {ok ? "✓" : "✗"}
+                  </span>
+                  <span className={cn("flex-1", ok ? "text-foreground" : "text-muted-foreground")}>{row.label}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{ok ? `${row.count} টি` : "লোড হয়নি"}</span>
+                </div>
+              );
+            })}
+          </div>
+          {!popMeta && (
+            <p className="text-xs text-muted-foreground mt-2">মেটাডেটা লোড হচ্ছে…</p>
+          )}
+        </div>
+      )}
+
       {/* Personal Information */}
       <div className="border rounded-lg">
         <SectionHeader icon="👤" title="ব্যক্তিগত তথ্য" />
