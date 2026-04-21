@@ -53,7 +53,7 @@ export default function Import() {
     queryFn: async () => {
       let q = supabase
         .from("mikrotik_clients")
-        .select("*, mikrotik_devices(name), branches(name), transferred_pop:branch_managers!mikrotik_clients_transferred_to_pop_id_fkey(name, pop_code), transferred_mt:mikrotik_devices!mikrotik_clients_transferred_to_mikrotik_id_fkey(name)")
+        .select("*, mikrotik_devices:mikrotik_devices!mikrotik_clients_mikrotik_id_fkey(name), branches(name), transferred_pop:branch_managers!mikrotik_clients_transferred_to_pop_id_fkey(name, pop_code), transferred_mt:mikrotik_devices!mikrotik_clients_transferred_to_mikrotik_id_fkey(name)")
         .order("created_at", { ascending: false });
       if (transferStatus === "pending") q = q.is("transferred_to_pop_id", null);
       else q = q.not("transferred_to_pop_id", "is", null);

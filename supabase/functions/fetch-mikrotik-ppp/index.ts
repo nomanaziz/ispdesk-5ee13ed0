@@ -525,15 +525,6 @@ Deno.serve(async (req) => {
 
     // ── ACTION: sync-secrets (default) ──
 
-    const { data: existingClients } = await supabase
-      .from("clients")
-      .select("username");
-    const existingUsernames = new Set(
-      (existingClients || [])
-        .map((c: any) => c.username?.toLowerCase())
-        .filter(Boolean)
-    );
-
     let totalSynced = 0;
     const errors: string[] = [];
 
@@ -550,11 +541,8 @@ Deno.serve(async (req) => {
 
         const pppSecrets = await mikrotikCommand(conn, "/ppp/secret/print");
 
-        const newSecrets = pppSecrets.filter(
-          (s) => !existingUsernames.has(s.name?.toLowerCase())
-        );
-
-        for (const secret of newSecrets) {
+        for (const secret of pppSecrets) {
+          if (!secret.name) continue;
           const isDisabled = secret.disabled === "true" || secret.disabled === "yes";
           const { error: upsertErr } = await supabase
             .from("mikrotik_clients")
