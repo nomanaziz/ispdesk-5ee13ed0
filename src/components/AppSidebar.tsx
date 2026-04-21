@@ -475,7 +475,6 @@ const SIDEBAR_EN: Record<string, string> = {
   "ক্যাটাগরি": "Categories",
   "সেটআপ": "Setup",
   "অনুমোদন": "Approval",
-  "ইভেন্ট ও ছুটি": "Events & Holidays",
   "ক্লায়েন্ট সাপোর্ট": "Client Support",
   "সাপোর্ট হিস্টরি": "Support History",
   "টাস্ক": "Tasks",
