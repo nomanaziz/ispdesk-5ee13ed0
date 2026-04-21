@@ -1,70 +1,81 @@
 
 
-## সমস্যা
-এখন `ThemeProvider` একই `localStorage` key (`ispdesk-theme-v2`) সব জায়গায় use করছে। তাই same browser/PC-তে:
-- Admin dark করলে → Portal client login-ও dark
-- Admin dark করলে → POP admin login-ও dark
-সবাই same theme share করে ফেলছে।
+## লক্ষ্য
+Admin sidebar-এর প্রত্যেকটা group-এর icon-কে আলাদা আলাদা সুন্দর "rainbow" candy-tone color দেওয়া, যাতে চোখে দেখেই বোঝা যায় কোনটা কোন module।
 
-আবার Portal (client) ও POP admin-এ কোনো theme switcher UI-ও নেই, কিন্তু admin-এর settings ওদের force করছে।
+## ডিজাইন approach
 
-## সমাধান: প্রতি panel-এর আলাদা theme scope
+### ১. প্রতি group-এর জন্য নির্ধারিত color
+`menuGroups` array-এ প্রতি group-এর `label`-কে একটা নির্দিষ্ট candy color-এ map করা হবে (Tailwind palette-এর `-500/-600` shade — গাঢ় কিন্তু সুন্দর)। Light/dark dual mode-এ readable থাকার জন্য light mode-এ `-600`, dark mode-এ `-400` ব্যবহার করা হবে।
 
-### ১. Scope-aware ThemeProvider
-`ThemeContext.tsx`-এ একটা `scope` prop যোগ করা হবে: `"admin" | "portal" | "pop" | "public"`।
+পরিকল্পিত rainbow assignment (২৬টা group):
 
-প্রতি scope-এর আলাদা localStorage key:
-- `ispdesk-theme-admin`
-- `ispdesk-theme-portal`
-- `ispdesk-theme-pop`
-- `ispdesk-theme-public`
+| Group | Color |
+|---|---|
+| ড্যাশবোর্ড | indigo |
+| ওয়েবসাইট প্যানেল | sky |
+| কনফিগারেশন | slate (neutral, gear) |
+| VAS | teal |
+| হোম ক্লায়েন্ট | blue |
+| POP / MAC ক্লায়েন্ট | violet |
+| ব্যান্ডউইথ ক্লায়েন্ট | cyan |
+| ডিভাইস | emerald |
+| HR ও পেরোল | pink |
+| OLT ম্যানেজমেন্ট | purple |
+| নেটওয়ার্ক মনিটরিং | green |
+| নেটওয়ার্ক ডায়াগ্রাম | lime |
+| ছুটি ম্যানেজমেন্ট | amber |
+| ইভেন্ট ও ছুটি | yellow |
+| সাপোর্ট ও টিকেটিং | rose |
+| টাস্ক ম্যানেজমেন্ট | fuchsia |
+| ব্যান্ডউইথ ক্রয় | cyan-700 |
+| ক্রয় | orange |
+| বিক্রয় ও সার্ভিস | red |
+| ইনভেন্টরি | amber-700 |
+| অ্যাসেট | stone |
+| অ্যাকাউন্টিং | green-700 |
+| রিপোর্ট | blue-700 |
+| SMS সার্ভিস | sky-700 |
+| ই-কমার্স | pink-600 |
+| সিস্টেম | zinc |
 
-অর্থাৎ admin-এ dark mode করলে শুধু admin storage-এ save হবে, portal বা POP-এ প্রভাব পড়বে না।
+প্রতিটার জন্য একটা `colorClass` string (e.g., `"text-violet-600 dark:text-violet-400"`) থাকবে।
 
-### ২. প্রতি panel-এর আলাদা default
-- **Admin** (`/dashboard/*`): user যা set করে (light default)
-- **Portal client** (`/portal/*`): সবসময় **light**, dark mode নেই
-- **POP admin** (`/pop-admin/*`): সবসময় **light**, dark mode নেই
-- **Public website** (`/`): সবসময় **light**
+### ২. Implementation
+`AppSidebar.tsx`-এ:
 
-Portal/POP/Public scope-এ theme mode `"light"` hard-locked থাকবে — admin storage থেকে dark পড়বে না।
+- `MenuGroup` interface-এ optional `color?: string` field যোগ
+- প্রতি `menuGroups` entry-তে `color` set করা (উপরের mapping অনুযায়ী)
+- একটা helper `getGroupColor(group)` যেটা color class return করে, না থাকলে fallback `text-muted-foreground`/`text-slate-400`
+- 4টা জায়গায় `<group.icon className="h-4 w-4 ..." />`-এ এই color class merge করা (cn দিয়ে):
+  - direct collapsed (line ~577)
+  - direct expanded (line ~598)
+  - collapsible collapsed (line ~622)
+  - collapsible expanded button header (line ~643)
+- Active state-এ icon color group-color হবে না — active-এ primary color override থাকবে (existing behavior, কোনো change নাই)
+- Child item icons (`<item.icon>`, line ~666)-এ parent group-এর color soft tone (opacity-70) দেওয়া হবে যাতে subtle rainbow effect থাকে কিন্তু text overpower না করে — এই জন্য `CollapsibleGroup` থেকে `groupColor` child render-এ pass হবে
 
-### ৩. App.tsx routing restructure
-এখন root-এ একটা `<ThemeProvider>` সব wrap করছে। সেটা সরিয়ে route group-অনুযায়ী আলাদা provider:
+### ৩. Hover ও active behavior
+- Hover: existing background change (`hover:bg-muted/50`) থাকবে, icon-color hover-এ আরো গাঢ় হবে (`group-hover:text-{color}-700`) — optional, simple রাখার জন্য skip করব এবং শুধু base color দেব
+- Active: existing `text-primary` override → group color এর উপরে primary বসবে (cn order maintain)
 
-```text
-<LanguageProvider>
-  Routes:
-    /dashboard/*    → <ThemeProvider scope="admin">    <DashboardLayout/>
-    /portal/*       → <ThemeProvider scope="portal" lockLight>  <PortalLayout/>
-    /pop-admin/*    → <ThemeProvider scope="pop" lockLight>     <ResellerLayout/>
-    /*              → <ThemeProvider scope="public" lockLight>  <PublicLayout/>
-```
-
-`lockLight` prop থাকলে provider সবসময় light force করবে এবং `updateSettings` দিয়ে mode change ignore হবে।
-
-### ৪. ThemeCustomizer/QuickSettings UI
-- Admin-এ আগের মতই full controls (mode + color + skin)।
-- Portal/POP/Public layouts-এ ThemeCustomizer/QuickSettings render-ই করা হবে না (এখনো করা হচ্ছে না বলে মনে হচ্ছে, verify করব)।
-
-### ৫. Migration safety
-পুরাতন `ispdesk-theme-v2` key থাকলে এক-বার admin scope-এ migrate করা হবে, তারপর key delete। যাতে user-এর existing admin theme harano না যায়।
+### ৪. Scope
+- শুধু **admin** AppSidebar (`src/components/AppSidebar.tsx`)
+- POP sidebar (`ResellerLayout.tsx`) এবং Portal sidebar এতে অন্তর্ভুক্ত নয় (user বললে পরে করব)
 
 ## যা বদলাবে না
-- Color tokens (`src/index.css`) — আগের darker tone admin-এ ঠিক থাকবে
-- Language toggle behavior
-- Backend / database / RLS
-- Routing paths
+- Group order, labels, translations
+- Routing, RLS, backend
+- Active highlight color (primary)
+- Sidebar collapse/expand behavior
+- Badge styling
 
 ## Files
-- `src/contexts/ThemeContext.tsx` — `scope` + `lockLight` props, scoped storage, light-lock guard, one-time migration
-- `src/App.tsx` — root `<ThemeProvider>` সরিয়ে scope-অনুযায়ী আলাদা provider প্রতি route group-এ
-- `src/components/ThemeCustomizer.tsx` / `src/components/QuickSettings.tsx` — `lockLight` হলে dark mode option hide/disable (light-only color/skin OK)
+- `src/components/AppSidebar.tsx` — `MenuGroup` interface-এ `color`, প্রতি group-এ color assign, 4টা icon render-এ color class merge, child item icon-এ soft inherit
 
 ## Apply-এর পরে expected
-1. Admin dark করলে শুধু admin panel dark হবে
-2. Same PC থেকে portal client login করলে → light, untouched
-3. POP admin login করলে → light, untouched
-4. Public website সবসময় light
-5. প্রতি panel স্বাধীনভাবে theme manage করবে, একে অপরকে override করবে না
+- প্রতিটা admin sidebar group-এর icon আলাদা candy/rainbow color-এ দেখাবে (indigo, sky, violet, emerald, pink, ইত্যাদি)
+- Light mode-এ গাঢ় (-600), dark mode-এ উজ্জ্বল (-400) — দু'টোতেই readable
+- চাইল্ড menu icon গুলোও parent-এর color tone subtle ভাবে inherit করবে
+- Active item আগের মতই primary color-এ highlight হবে
 
