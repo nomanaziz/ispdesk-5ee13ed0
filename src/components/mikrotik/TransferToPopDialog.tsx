@@ -94,6 +94,9 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     return days > 0 ? rate / days : 0;
   }, [selectedPkg]);
   const creditable = useMemo(() => +(perDay * selectedIds.length).toFixed(2), [perDay, selectedIds.length]);
+  const monthlyPerUser = useMemo(() => Number(selectedPkg?.selling_rate) || 0, [selectedPkg]);
+  const totalMonthly = useMemo(() => +(monthlyPerUser * selectedIds.length).toFixed(2), [monthlyPerUser, selectedIds.length]);
+  const profileMismatch = !!(selectedPkg?.mikrotik_profile && uniqueProfile && uniqueProfile !== selectedPkg.mikrotik_profile);
 
   const transfer = useMutation({
     mutationFn: async () => {
