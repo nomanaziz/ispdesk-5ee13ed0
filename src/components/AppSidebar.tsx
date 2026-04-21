@@ -817,8 +817,13 @@ export function AppSidebar() {
     if (!q) return orderedGroups.map((g) => ({ group: g, matched: false }));
     return orderedGroups
       .map((g) => {
-        const groupMatches = g.label.toLowerCase().includes(q);
-        const items = groupMatches ? g.items : g.items.filter((i) => i.title.toLowerCase().includes(q));
+        const groupMatches =
+          g.label.toLowerCase().includes(q) || tr(g.label, "en").toLowerCase().includes(q);
+        const items = groupMatches
+          ? g.items
+          : g.items.filter(
+              (i) => i.title.toLowerCase().includes(q) || tr(i.title, "en").toLowerCase().includes(q)
+            );
         if (items.length === 0) return null;
         return { group: { ...g, items }, matched: true };
       })
