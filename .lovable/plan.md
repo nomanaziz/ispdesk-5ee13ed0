@@ -1,26 +1,53 @@
 
 
 ## লক্ষ্য
-Tariff field-কে **lifetime non-changeable** করা — একবার POP create-এ select হয়ে গেলে আর কেউ (Admin সহ) change করতে পারবে না। সাথে create form-এ লাল warning text দেখানো।
+POP-এর `fund_started = false` হলে balance check **skip** করব। তখন creditable amount calculate হবে কিন্তু balance থেকে কাটা হবে না, এবং unlimited transfer-এ allow করব।
 
-## পরিবর্তন (শুধু `src/components/branches/PopForm.tsx`)
+## Logic
 
-### 1. Tariff field (lines 408–422)
-- **Create mode** (লাল warning): label-এর নিচে ছোট লাল text —
-  > ⚠️ একবার Tariff সিলেক্ট করলে এটি আর পরিবর্তন করা যাবে না (lifetime fixed)
-- **Edit mode**: dropdown সবসময় **disabled + Lock icon**, Admin-এর জন্যও। Tooltip: "Tariff lifetime fixed — পরিবর্তন করা যাবে না"
+```text
+fund_started = TRUE  → বর্তমান logic (balance check + debit)
+fund_started = FALSE → free mode:
+                       - balance check skip
+                       - Export blocked warning দেখাবে না
+                       - balance debit (branch_funding insert) skip
+                       - Creditable amount শুধু info হিসেবে দেখাবে (grey badge: "Free mode")
+```
 
-### 2. Lock logic (line 252)
-- `const lockTariff = mode === "edit";` — `!isAdmin` শর্ত সরিয়ে দেব, যাতে Admin-ও change করতে না পারে।
+## পরিবর্তন (শুধু `src/components/mikrotik/TransferToPopDialog.tsx`)
 
-### 3. Save mutation (lines 234–238)
-- Edit branch থেকে `basePayload.tariff_id = …` line সরিয়ে দেব, যাতে accidentally update payload-এ না যায়।
+### 1. POP query (line 38)
+- `select`-এ `fund_started` যোগ:
+  `"id, name, pop_code, branch_id, tariff_id, pop_type, balance, status, fund_started"`
+
+### 2. Mutation balance check (lines 81-83)
+- Condition update:
+  `if (selectedPop.pop_type === "prepaid" && selectedPop.fund_started && Number(selectedPop.balance || 0) < creditable)`
+
+### 3. Balance debit insert (lines 138-153)
+- `branch_funding` insert wrap:
+  `if (creditable > 0 && selectedPop.fund_started) { ... }`
+- যাতে fund start না থাকলে কোনো deduction record না হয়
+
+### 4. UI warning (lines 266-270)
+- Condition-এ `selectedPop.fund_started` যোগ:
+  `selectedPop?.pop_type === "prepaid" && selectedPop?.fund_started && creditable > Number(...)`
+
+### 5. Export button disabled (lines 277-278)
+- একই condition update
+
+### 6. Free mode badge (creditable section-এর নিচে নতুন)
+- যদি `selectedPop && !selectedPop.fund_started`:
+  > 🟢 Free mode — এই POP-এর fund start নেই, balance check হবে না। Unlimited transfer allowed।
+
+### 7. Success toast (line 158)
+- Fund off হলে toast message:
+  `${createdCount} client তৈরি — Free mode (balance unchanged)`
 
 ## যা **বদলাবে না**
-- POP Code, POP Prefix, Username — Admin-only lock যেমন আছে তেমনই থাকবে
-- অন্য সব field, validation, mutation flow intact
-- `EditManager.tsx`, `Managers.tsx`, allotment, কোনো DB schema — কিছুই touch হবে না
-- কোনো migration লাগবে না
+- Existing prepaid+fund_started POP-এর behavior intact
+- কোনো DB schema, migration, RLS, edge function — কিছুই touch হবে না
+- `Import.tsx`, package selection logic — intact
 
-approve করলে এই একটি file-এ ৩টি ছোট change apply করব।
+approve করলে এই একটি file-এ ৭টি সংলগ্ন change apply করব।
 
