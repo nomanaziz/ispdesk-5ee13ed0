@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Hind Siliguri', 'Noto Sans Bengali', 'Inter', 'system-ui', 'sans-serif'],
+        bengali: ['Hind Siliguri', 'Noto Sans Bengali', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
