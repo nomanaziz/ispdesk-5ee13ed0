@@ -16,6 +16,7 @@ import {
 
 export function TopBar() {
   const { user, roles, signOut } = useAuth();
+  const { lang, setLang, t } = useLanguage();
   const navigate = useNavigate();
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const [searchOpen, setSearchOpen] = useState(false);
