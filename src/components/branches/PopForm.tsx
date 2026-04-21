@@ -248,7 +248,7 @@ export default function PopForm({ mode, pop }: Props) {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const lockTariff = mode === "edit" && !isAdmin;
+  const lockTariff = mode === "edit";
   const lockCode = mode === "edit" && !isAdmin;
   const lockPrefix = mode === "edit" && !isAdmin;
   const lockUsername = mode === "edit" && !isAdmin;
