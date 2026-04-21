@@ -255,9 +255,14 @@ export default function Import() {
             </Select>
             <Button variant="outline" size="sm" onClick={generateExcel}><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel জেনারেট</Button>
             {transferStatus === "pending" && (
-              <Button variant="default" size="sm" onClick={() => setTransferOpen(true)} disabled={selectedIds.size === 0}>
-                <ArrowRightLeft className="h-4 w-4 mr-1" /> POP-এ ট্রান্সফার ({selectedIds.size})
-              </Button>
+              <>
+                <Button variant="default" size="sm" onClick={() => setTransferOpen(true)} disabled={selectedIds.size === 0}>
+                  <ArrowRightLeft className="h-4 w-4 mr-1" /> POP-এ ট্রান্সফার ({selectedIds.size})
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => setBulkExportOpen(true)} disabled={selectedIds.size === 0}>
+                  <UserPlus className="h-4 w-4 mr-1" /> Client লিস্টে এক্সপোর্ট ({selectedIds.size})
+                </Button>
+              </>
             )}
           </div>
         </CardHeader>
