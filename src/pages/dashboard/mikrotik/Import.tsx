@@ -106,6 +106,50 @@ export default function Import() {
 
   // Transfer handled by TransferToPopDialog
 
+  const bulkExportToClientList = async () => {
+    if (selectedIds.size === 0) return;
+    setIsExporting(true);
+    try {
+      const rows = clients.filter((c: any) => selectedIds.has(c.id));
+      const payload = rows.map((c: any) => ({
+        name: c.name,
+        username: c.name,
+        password: c.password,
+        mac_address: c.caller_id || null,
+        profile: c.profile || null,
+        server_name: c.server_name || null,
+        mikrotik_id: c.mikrotik_id || null,
+        remote_address: c.remote_address || null,
+        protocol_type: c.service || null,
+        status: "unverified",
+        client_id: "TMP-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
+        documents: {},
+      }));
+      const { data: inserted, error } = await supabase.from("clients").insert(payload).select("id, username");
+      if (error) throw error;
+      const idMap = new Map<string, string>();
+      (inserted || []).forEach((row: any) => idMap.set(row.username?.toLowerCase(), row.id));
+      await Promise.all(
+        rows.map((c: any) => {
+          const cid = idMap.get(c.name?.toLowerCase());
+          return supabase
+            .from("mikrotik_clients")
+            .update({ exported: true, exported_to: "client_list", linked_client_id: cid })
+            .eq("id", c.id);
+        }),
+      );
+      toast.success(`${rows.length} জন ক্লায়েন্ট লিস্টে এক্সপোর্ট হয়েছে (unverified)`);
+      setSelectedIds(new Set());
+      setBulkExportOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["mikrotik_clients"] });
+      queryClient.invalidateQueries({ queryKey: ["existing_client_usernames"] });
+    } catch (e: any) {
+      toast.error("এক্সপোর্ট ব্যর্থ: " + (e.message || "অজানা ত্রুটি"));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const generateExcel = () => {
     const ws = XLSX.utils.json_to_sheet(
       clients.map((c: any) => ({
