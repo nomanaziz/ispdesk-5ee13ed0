@@ -1,94 +1,182 @@
 
-
 ## লক্ষ্য
-Admin → POP Profile page-এ "Exported Clients" ও "Unexported Clients" tab দুটোর meaning ঠিক করা, Revert action সঠিকভাবে কাজ করানো, এবং একটি নতুন "Left Clients" tab যোগ করা যেখান থেকে admin bulk delete করতে পারবে।
+তিনটা জিনিস একসাথে ঠিক করা:
+1. **Revert করা MikroTik user** আবার **Import from MikroTik** list-এ ফিরবে  
+2. **POP Manager list**-এ Nahid/Naeem-এর **running 3 / 4** zero হবে  
+3. **POP Profile → Unexported**-এ ভুলভাবে সব 13 user দেখানো বন্ধ হবে
 
-## এখনকার সমস্যা (uploaded screenshot vs আমাদের code)
-| Tab | এখন আমরা কী দেখাচ্ছি | আসলে কী দেখানো উচিত |
-|---|---|---|
-| **Exported** | `clients` table-এর সব row | যেসব `mikrotik_clients` কে POP **client-এ convert করেছে** (যাদের `linked_client_id` set আছে) |
-| **Unexported** | `mikrotik_ppp_secrets` থেকে raw filter | যেসব `mikrotik_clients` POP এর scope-এ আছে কিন্তু `linked_client_id IS NULL` |
-| **Revert button** | শুধু `clients.status='left'` row touch করে — MikroTik mapping ঠিক করে না | mikrotik_clients থেকে POP transfer clear করে দিতে হবে → user আবার admin "Import from MikroTik"-এ আসবে |
-| **Left Clients** | নেই | নতুন tab — bulk delete option সহ |
+## আসল সমস্যা
+এখানে ৩টা আলাদা logic bug একসাথে আছে:
 
-## নতুন tab structure (Admin POP Profile → ডান পাশে)
-1. **POP Info** (অপরিবর্তিত)
-2. **Exported Clients** — fixed
-3. **Unexported Clients** — fixed + working Revert
-4. **Left Clients** — নতুন
-5. বাকি tabs অপরিবর্তিত
+### ১) Import page ভুল filter ব্যবহার করছে
+`Import.tsx` এখন `clients.username` দেখে MikroTik user hide করছে।  
+তাই PPP user revert হলেও যদি একই username-এর `clients` row এখনো থাকে, user আর import list-এ আসে না।
+
+### ২) Revert half-done হচ্ছে
+এখন revert শুধু `mikrotik_clients` row reset করছে।  
+কিন্তু আগে POP থেকে তৈরি হওয়া `clients` row delete/rollback হচ্ছে না।  
+ফলাফল:
+- POP Manager list-এ running count থেকে যাচ্ছে
+- Import page-এ same username block হচ্ছে
+- data দুই table-এ mismatch হয়ে যাচ্ছে
+
+### ৩) POP Profile-এর Unexported logic ভুল table field-এর উপর দাঁড়ানো
+`PopUnexportedClients.tsx` এখন:
+- `branch_id == pop.branch_id`
+- অথবা `transferred_to_pop_id == popId`
+
+এই logic ব্যবহার করছে।
+
+কিন্তু `mikrotik_clients.branch_id` আসলে **device branch sync field** — POP ownership field না।  
+`fetch-mikrotik-ppp` sync-এর সময় device-এর `branch_id` সব PPP row-তে বসে যাচ্ছে।  
+তাই branch-scoped server-এর সব 13 user ভুল করে **Unexported**-এ ঢুকে যাচ্ছে।
 
 ---
 
 ## কী করা হবে
 
-### ১) Exported Clients tab — সঠিক definition
-Query বদল:
-- Source: `mikrotik_clients` যেখানে এই POP-এর scope (branch_id = pop.branch_id **OR** transferred_to_pop_id = pop.id) এবং `linked_client_id IS NOT NULL`
-- Join `clients` table-এ linked client-এর info আনার জন্য (name, package, status, online, mobile, MAC, IP)
-- Columns screenshot অনুযায়ী: ID, User ID/IP, Password (eye toggle), Customer Name, Mobile, Zone, Client Type, Package, Private IP, MAC, Server, B.Status, M.Status
+### ১) Revert-কে full rollback করা হবে
+Revert-এর সময় একসাথে ২টা table handle করা হবে:
 
-### ২) Unexported Clients tab — সঠিক definition + working Revert
-Query বদল:
-- Source: same `mikrotik_clients` scope কিন্তু `linked_client_id IS NULL`
-- Columns: Name, Password (eye toggle), Package/Profile, Protocol, Profile, Server Name, R.Days, Enabled, **Revert button**
+#### `mikrotik_clients`
+এই field গুলো clear হবে:
+- `transferred_to_pop_id = null`
+- `transferred_to_mikrotik_id = null`
+- `transferred_at = null`
+- `linked_client_id = null`
+- `exported = false`
+- `exported_to = null`
 
-**Revert action (নতুন edge function action):**
-নতুন `portal-data` action না — এটা admin side, তাই direct mutation:
-```ts
-// Revert: এই MT user-কে POP scope থেকে বের করো
-update mikrotik_clients
-  set transferred_to_pop_id = null,
-      transferred_to_mikrotik_id = null,
-      transferred_at = null,
-      branch_id = null
-  where id = ?
+#### related `clients`
+যদি POP conversion থেকে তৈরি হওয়া active client row থাকে, সেটা:
+- detect করা হবে by previous `linked_client_id`
+- fallback হিসেবে `username + branch_id + owner_scope='pop'`
+- তারপর delete বা rollback করা হবে
+
+এটা **single atomic server-side operation**-এ করা হবে, যাতে half-success state না থাকে।
+
+### ২) Import from MikroTik page-এর filter ঠিক করা হবে
+`existing_client_usernames`-based hard hide তুলে দেওয়া হবে।
+
+নতুন rule:
+- Import list show হবে `mikrotik_clients` state অনুযায়ী
+- username duplicate থাকলে চাইলে warning badge থাকবে
+- কিন্তু stale `clients` row-এর কারণে PPP user hide হবে না
+
+অর্থাৎ import eligibility হবে:
+- `transferred_to_pop_id IS NULL`
+- `linked_client_id IS NULL`
+- `exported = false`
+এর মতো record-state ভিত্তিক logic দিয়ে
+
+### ৩) POP Profile → Unexported tab নতুনভাবে define করা হবে
+**Unexported** মানে:
+- এই POP-এ **actually transferred** হয়েছে
+- কিন্তু এখনো client বানানো হয়নি
+
+তাই query হবে:
+- `transferred_to_pop_id = popId`
+- `linked_client_id IS NULL`
+
+`branch_id = pop.branch_id` দিয়ে আর Unexported ধরা হবে না।
+
+এতে AFTABNAGAR server-এর raw 13 user আর ভুল করে Nahid-এর Unexported list-এ আসবে না।
+
+### ৪) POP Profile → Exported tab-ও tighten করা হবে
+**Exported** মানে:
+- POP থেকে client-এ convert হয়েছে
+
+তাই source হবে:
+- `mikrotik_clients.linked_client_id IS NOT NULL`
+- linked `clients` row valid
+- linked client POP scope-এ আছে
+
+এতে stale linked/unlinked mismatch কমবে।
+
+### ৫) POP Manager list count logic robust করা হবে
+Running count শুধু `clients` table থেকে উঠবে, কিন্তু stricter rule-এ:
+- `owner_scope = 'pop'`
+- `status NOT IN ('left','inactive')`
+
+আর revert/left/delete হলে proper invalidation হবে:
+- `pop-client-counts`
+- `branch-managers`
+- `pop-detail`
+- `mikrotik_clients`
+- `existing_client_usernames`
+
+### ৬) Existing broken data repair করা হবে
+শুধু code fix দিলে পুরনো stale row ঠিক হবে না।  
+তাই current DB data-ও repair করতে হবে:
+
+#### Nahid branch
+এখন যেসব active POP client row পড়ে আছে এবং revert হওয়া PPP-এর orphan হয়ে আছে, সেগুলো clean করা হবে
+
+#### Naeem branch
+same cleanup
+
+Expected immediate effect:
+- Nahid running 3 → 0
+- Naeem running 4 → 0
+- reverted PPP user আবার Import page-এ visible
+
+---
+
+## টেকনিক্যাল approach
+সবচেয়ে safe implementation হবে একটি **database function / RPC** বা admin-side secure server operation:
+
+```text
+revert_mikrotik_client(mikrotik_client_id, pop_id)
+  1. locate mikrotik row
+  2. capture previous linked client / fallback client row
+  3. delete or rollback POP-created client row
+  4. clear transfer/export/link fields in mikrotik_clients
+  5. return summary
 ```
-ফলে user টা আবার admin Mikrotik Import page-এ "available / untransferred" হিসেবে আসবে এবং অন্য POP-এ assign করা যাবে।
 
-### ৩) নতুন **Left Clients** tab
-- Source: `clients` table যেখানে `branch_id = pop.branch_id` এবং `status IN ('left', 'inactive')`
-- Columns: Client ID, Name, Username, Mobile, Package, Left Date, Action (single delete) + checkbox
-- Top-এ buttons:
-  - **Bulk Delete** (selected rows)
-  - **Delete All Left Clients** (with confirmation dialog)
-- Single delete button প্রতি row-তে
-- Delete করলে: `clients` row delete → existing trigger (`process_credit_refund_on_client_left`) prepaid POP হলে refund handle করবে → ওই client-এর সাথে linked `mikrotik_clients` row থাকলে তার `linked_client_id = null, exported = false` করতে হবে যাতে চাইলে আবার convert করা যায়
-
-### ৪) Confirmation + safety
-- Bulk delete-এ AlertDialog ("X জন left client delete করবেন? এটা আর ফিরে আসবে না")
-- Revert-এ AlertDialog ("এই user MikroTik import pool-এ ফেরত যাবে — POP আর দেখতে পাবে না")
-- সব mutation success/error toast
-
-### ৫) UX details
-- প্রতিটা table-এ search box, page size, status filter
-- Password field-এ eye toggle (existing pattern)
-- Loading skeleton + empty state Bangla copy
-- Counts tab label-এ দেখাবে: `Exported (12)`, `Unexported (3)`, `Left (5)`
+কারণ browser থেকে ২টা table আলাদা mutate করলে আবার partial mismatch হতে পারে।
 
 ---
 
 ## কোন file বদলাবে
-| File | পরিবর্তন |
-|---|---|
-| `src/pages/dashboard/branches/PopProfile.tsx` | ৩টা tab-এর query + UI rewrite, নতুন Left tab যোগ |
-| `src/components/branches/PopExportedClients.tsx` *(নতুন)* | Exported tab component (table, filters, eye toggle) |
-| `src/components/branches/PopUnexportedClients.tsx` *(নতুন)* | Unexported tab + Revert flow |
-| `src/components/branches/PopLeftClients.tsx` *(নতুন)* | Left clients tab + bulk delete |
+- `src/pages/dashboard/mikrotik/Import.tsx`
+- `src/components/branches/PopUnexportedClients.tsx`
+- `src/components/branches/PopExportedClients.tsx`
+- `src/pages/dashboard/branches/Managers.tsx`
+- `src/pages/dashboard/branches/PopProfile.tsx` (query invalidation / counts if needed)
+- `supabase/migrations/...sql` (revert RPC / cleanup SQL)
+- প্রয়োজনে `src/integrations` touch না করে existing Supabase client দিয়েই RPC call
 
-## কোন file বদলাবে না
-- POP portal (reseller side) — শুধুমাত্র admin POP Profile page-এ পরিবর্তন
-- RLS policies, schema, edge functions
-- বর্তমান delete trigger (refund logic অপরিবর্তিত থাকবে)
+---
 
-## Database migration লাগবে?
-**না।** সব column ইতোমধ্যে আছে (`mikrotik_clients.linked_client_id`, `transferred_to_pop_id`, `branch_id`; `clients.status`)।
+## Data repair scope
+Current broken rows targeted:
+- Nahid branch-এর orphan active POP clients
+- Naeem branch-এর orphan active POP clients
+- corresponding reverted `mikrotik_clients` rows
 
 ---
 
 ## Apply-এর পরে expected ফলাফল
-1. ✅ **Exported Clients** tab → শুধু সেই MT user দেখাবে যাদের POP "ক্লায়েন্ট বানান" করেছে
-2. ✅ **Unexported Clients** tab → শুধু POP-এর scope-এ থাকা unconverted MT user
-3. ✅ **Revert** → user MikroTik Import pool-এ ফেরত, অন্য POP-এ পাঠানো যাবে
-4. ✅ **Left Clients** tab → admin bulk বা single delete করতে পারবে; prepaid POP হলে refund auto
+1. Revert করা user আবার **Import from MikroTik** list-এ আসবে  
+2. **POP Manager list**-এ Nahid/Naeem running count zero হবে  
+3. **POP Profile → Unexported**-এ আর branch-এর সব 13 raw user দেখাবে না  
+4. Exported/Unexported meaning বাস্তব business logic অনুযায়ী হবে  
+5. ভবিষ্যতে revert করলে stale client row পড়ে থাকবে না
 
+## Test cases
+1. **Nahid POP Profile → Unexported**
+   - expected: 13 raw branch users আর থাকবে না
+   - only truly transferred-but-not-converted rows দেখাবে
+
+2. **Admin → Import from MikroTik**
+   - reverted user আবার pending list-এ আসবে
+
+3. **POP Manager list**
+   - Nahid running = 0
+   - Naeem running = 0
+
+4. **Future revert flow**
+   - client row cleanup + mikrotik row reset
+   - import pool visible
+   - counts update without manual retry
