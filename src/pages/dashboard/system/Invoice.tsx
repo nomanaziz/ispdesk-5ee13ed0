@@ -8,7 +8,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
-import { FileText, Save, Plus, Trash2, Receipt } from "lucide-react";
+import { FileText, Save, Plus, Trash2, Receipt, Upload, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface InvoiceConfig {
   show_company_name: boolean;
@@ -18,7 +20,9 @@ interface InvoiceConfig {
   show_company_logo: boolean;
   show_company_address: boolean;
   invoice_title: string;
+  invoice_title_visible: boolean;
   invoice_position: string;
+  invoice_logo_url: string;
   per_page: string;
   margin_top: number;
   margin_bottom: number;
@@ -36,7 +40,8 @@ interface InvoiceConfig {
 const defaults: InvoiceConfig = {
   show_company_name: true, show_company_email: true, show_company_mobile: true,
   show_company_website: false, show_company_logo: true, show_company_address: true,
-  invoice_title: "INVOICE", invoice_position: "left", per_page: "1", margin_top: 0, margin_bottom: 0,
+  invoice_title: "INVOICE", invoice_title_visible: true, invoice_position: "left", invoice_logo_url: "",
+  per_page: "1", margin_top: 0, margin_bottom: 0,
   notes: [""],
   receipt_title: "MONEY RECEIPT", receipt_format: "a4", receipt_position: "left",
   receipt_margin_top: 0, receipt_margin_bottom: 0, receipt_notes: [""], receipt_show_company: true,
@@ -116,6 +121,49 @@ export default function Invoice() {
             </div>
             <div className="p-5 space-y-5 bg-card">
               <CompanyToggles prefix="invoice" />
+
+              <div className="flex flex-wrap items-end gap-4 p-3 border rounded-lg bg-muted/20">
+                <div className="shrink-0">
+                  <Label className="text-xs mb-1 block">ইনভয়েস লোগো</Label>
+                  {form.invoice_logo_url ? (
+                    <div className="relative w-28 h-20 border rounded bg-background overflow-hidden">
+                      <img src={form.invoice_logo_url} alt="logo" className="w-full h-full object-contain" />
+                      <button type="button" onClick={() => set("invoice_logo_url", "")}
+                        className="absolute top-1 right-1 p-0.5 rounded bg-destructive text-destructive-foreground">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-28 h-20 border-2 border-dashed rounded flex items-center justify-center text-muted-foreground text-xs">
+                      No Logo
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-[180px]">
+                  <input type="file" accept="image/*" id="inv-logo-upload" className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const ext = file.name.split(".").pop();
+                      const path = `invoice-logo/${Date.now()}.${ext}`;
+                      const { error } = await supabase.storage.from("pop-logos").upload(path, file, { upsert: true });
+                      if (error) { toast.error(error.message); return; }
+                      const { data } = supabase.storage.from("pop-logos").getPublicUrl(path);
+                      set("invoice_logo_url", data.publicUrl);
+                      toast.success("লোগো আপলোড হয়েছে");
+                    }} />
+                  <Button asChild variant="outline" size="sm" className="gap-2">
+                    <label htmlFor="inv-logo-upload" className="cursor-pointer">
+                      <Upload className="h-3.5 w-3.5" /> লোগো আপলোড
+                    </label>
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground mt-1">PNG/JPG, প্রস্তাবিত 300x100px</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={form.invoice_title_visible} onCheckedChange={(v) => set("invoice_title_visible", v)} />
+                  <Label className="text-xs font-normal">"Invoice" শিরোনাম দেখান</Label>
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label className="text-xs mb-1 block">ইনভয়েস শিরোনাম</Label>
