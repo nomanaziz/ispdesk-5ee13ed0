@@ -65,6 +65,7 @@ export default function DailyCollection() {
         .or(`client_id.ilike.%${clientSearch}%,name.ilike.%${clientSearch}%,contact.ilike.%${clientSearch}%`)
         .limit(20);
       if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      else q = q.eq("owner_scope", "admin");
       const { data } = await q;
       return data || [];
     },
