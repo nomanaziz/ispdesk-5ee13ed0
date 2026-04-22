@@ -11,6 +11,7 @@ import {
   UserCog, User, Activity, Clock,
   Phone, Mail, MapPin, IdCard, Hash, KeyRound,
   Calendar, Banknote, ArrowRightLeft, MessageSquare, Smartphone, ChevronRight, Inbox,
+  Building2, Globe,
 } from "lucide-react";
 
 const PortalDashboard = () => {
@@ -310,8 +311,62 @@ const PortalDashboard = () => {
         </CardContent>
       </Card>
 
+      <CompanyInfoCard />
+
       {isLoading && <div className="text-center text-xs text-muted-foreground">লোড হচ্ছে...</div>}
     </div>
+  );
+};
+
+const CompanyInfoCard = () => {
+  const { data } = useQuery({
+    queryKey: ["portal-company-info"],
+    queryFn: () => callPortal<any>("get_company"),
+    staleTime: 10 * 60 * 1000,
+  });
+  const c = data?.company;
+  if (!c) return null;
+  const items = [
+    { icon: Phone, label: "Hotline", value: c.hotline || c.mobile || c.phone, tint: "bg-emerald-100 text-emerald-700" },
+    { icon: Mail, label: "Email", value: c.email, tint: "bg-sky-100 text-sky-700" },
+    { icon: MapPin, label: "Address", value: c.address, tint: "bg-rose-100 text-rose-700" },
+    { icon: Globe, label: "Website", value: c.website, tint: "bg-violet-100 text-violet-700" },
+  ].filter((i) => i.value);
+
+  return (
+    <Card className="overflow-hidden border-0 shadow-sm">
+      <div className="bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 text-white p-4 flex items-center gap-3">
+        {c.logo_url ? (
+          <img src={c.logo_url} alt={c.name} className="h-10 w-10 rounded-lg bg-white/10 object-contain p-1" />
+        ) : (
+          <div className="h-10 w-10 rounded-lg bg-white/15 flex items-center justify-center">
+            <Building2 className="h-5 w-5" />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-sm truncate">{c.name}</div>
+          {c.tagline && <div className="text-xs text-white/75 truncate">{c.tagline}</div>}
+        </div>
+        <Link to="/portal/company">
+          <Button size="sm" variant="ghost" className="text-white hover:bg-white/15 h-8 text-xs">
+            View Full <ChevronRight className="h-3 w-3 ml-0.5" />
+          </Button>
+        </Link>
+      </div>
+      <CardContent className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {items.map((it) => (
+          <div key={it.label} className="flex items-start gap-2.5 p-2 rounded-lg border border-border/50 bg-card">
+            <span className={`h-7 w-7 rounded-md flex items-center justify-center shrink-0 ${it.tint}`}>
+              <it.icon className="h-3.5 w-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{it.label}</div>
+              <div className="text-xs font-medium text-foreground truncate" title={it.value}>{it.value}</div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 };
 

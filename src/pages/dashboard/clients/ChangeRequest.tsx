@@ -31,18 +31,39 @@ export default function ChangeRequest() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status, request }: { id: string; status: string; request: any }) => {
       const payload: any = { status };
       if (status === "approved") {
         payload.approved_at = new Date().toISOString();
       }
       const { error } = await supabase.from("change_requests").update(payload).eq("id", id);
       if (error) throw error;
+
+      // Auto-apply side effects on approval
+      if (status === "approved" && request?.client_id) {
+        if (request.request_type === "date_extend" && request.new_value) {
+          await supabase
+            .from("clients")
+            .update({ expire_date: request.new_value })
+            .eq("id", request.client_id);
+        } else if (request.request_type === "billing_date" && request.new_value) {
+          // Set billing_date to current month with the requested day
+          const day = Math.max(1, Math.min(28, Number(request.new_value)));
+          const today = new Date();
+          const target = new Date(today.getFullYear(), today.getMonth(), day);
+          await supabase
+            .from("clients")
+            .update({ billing_date: target.toISOString().slice(0, 10) })
+            .eq("id", request.client_id);
+        }
+        // package: admin manually updates profile via existing flow
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["change-requests"] });
       toast.success("রিকোয়েস্ট আপডেট হয়েছে");
     },
+    onError: (e: any) => toast.error(e?.message || "Failed"),
   });
 
   const filtered = useMemo(() => {
@@ -77,6 +98,7 @@ export default function ChangeRequest() {
               <SelectItem value="all">সব</SelectItem>
               <SelectItem value="package">Package</SelectItem>
               <SelectItem value="billing_date">Billing Date</SelectItem>
+              <SelectItem value="date_extend">Date Extend</SelectItem>
               <SelectItem value="status">Status</SelectItem>
             </SelectContent>
           </Select>
@@ -157,10 +179,10 @@ export default function ChangeRequest() {
                   <TableCell className="text-xs">
                     {r.status === "pending" && (
                       <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" className="h-7 text-green-600" onClick={() => updateStatusMutation.mutate({ id: r.id, status: "approved" })}>
+                        <Button size="sm" variant="ghost" className="h-7 text-green-600" onClick={() => updateStatusMutation.mutate({ id: r.id, status: "approved", request: r })}>
                           <CheckCircle className="h-3 w-3 mr-1" /> Approve
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-7 text-destructive" onClick={() => updateStatusMutation.mutate({ id: r.id, status: "rejected" })}>
+                        <Button size="sm" variant="ghost" className="h-7 text-destructive" onClick={() => updateStatusMutation.mutate({ id: r.id, status: "rejected", request: r })}>
                           <XCircle className="h-3 w-3 mr-1" /> Reject
                         </Button>
                       </div>
