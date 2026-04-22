@@ -41,11 +41,15 @@ export default function SendSMS() {
   });
 
   const { data: templates = [] } = useQuery({
-    queryKey: ["sms_templates"],
+    queryKey: ["sms_templates_effective_admin"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("sms_templates").select("*").eq("status", "active");
+      const { data, error } = await supabase
+        .from("sms_templates_effective")
+        .select("master_id, name, content, is_active, branch_id")
+        .eq("is_active", true)
+        .is("branch_id", null);
       if (error) throw error;
-      return data;
+      return (data || []).map((t: any) => ({ id: t.master_id, name: t.name, content: t.content }));
     },
   });
 
@@ -105,7 +109,7 @@ export default function SendSMS() {
         recipient: recipientLabel,
         message,
         gateway_id: gatewayId || null,
-        template_id: templateId || null,
+        template_id: null,
         sent_by: user?.id || null,
         sms_type: target,
         status: "sent",

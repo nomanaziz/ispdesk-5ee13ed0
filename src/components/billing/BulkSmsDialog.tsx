@@ -21,10 +21,14 @@ export default function BulkSmsDialog({ open, onOpenChange, selectedClients }: P
   const [message, setMessage] = useState("");
 
   const { data: templates = [] } = useQuery({
-    queryKey: ["sms-templates-active"],
+    queryKey: ["sms-templates-active-effective"],
     queryFn: async () => {
-      const { data } = await supabase.from("sms_templates").select("id, name, content").eq("status", "active");
-      return data || [];
+      const { data } = await supabase
+        .from("sms_templates_effective")
+        .select("master_id, name, content, is_active, branch_id")
+        .eq("is_active", true)
+        .is("branch_id", null);
+      return (data || []).map((t: any) => ({ id: t.master_id, name: t.name, content: t.content }));
     },
   });
   const { data: gateways = [] } = useQuery({
@@ -45,7 +49,7 @@ export default function BulkSmsDialog({ open, onOpenChange, selectedClients }: P
         recipient: recipients.join(","),
         message,
         gateway_id: gatewayId || null,
-        template_id: templateId || null,
+        template_id: null,
         sms_type: "bulk_clients",
         status: "sent",
         sent_at: new Date().toISOString(),

@@ -250,6 +250,7 @@ import ReportFinancial from "@/pages/dashboard/reports/Financial";
 
 // SMS
 import SmsIndividual from "@/pages/dashboard/sms/Individual";
+import PopSmsTemplates from "@/pages/reseller/PopSmsTemplates";
 import SmsTemplates from "@/pages/dashboard/sms/Templates";
 import SmsGroups from "@/pages/dashboard/sms/Groups";
 import SmsSend from "@/pages/dashboard/sms/Send";
@@ -769,7 +770,7 @@ const App = () => (
               <Route path="/pop-admin/billing/profile" element={<Navigate to="/pop-admin/clients/billing" replace />} />
               <Route path="/pop-admin/monitoring/online" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopOnlineMonitoring /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/monitoring/ping" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Ping Tools" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/sms/templates" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="SMS Templates" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/sms/templates" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSmsTemplates /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/individual" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Individual / Group SMS" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/send" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Send SMS" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/gateway" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="SMS Gateway" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
