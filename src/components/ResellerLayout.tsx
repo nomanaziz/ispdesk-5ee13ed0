@@ -12,6 +12,7 @@ import {
   MessageSquare, Send, Antenna, Radar, Wifi, History, TrendingUp, BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NotesButton } from "@/components/notes/NotesButton";
 
 type PermKey =
   | "dashboard" | "configuration" | "mikrotik" | "employee" | "client"
