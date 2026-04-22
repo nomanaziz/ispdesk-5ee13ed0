@@ -727,7 +727,7 @@ const App = () => (
               {/* POP Admin — Client (reuses Admin pages, auto-scoped via usePopScope) */}
               <Route path="/pop-admin/clients" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientList /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/clients/add" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientAdd /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/clients/billing" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><BillingList /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/clients/billing" element={<Navigate to="/pop-admin/billing/list" replace />} />
               <Route path="/pop-admin/clients/left" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientLeft /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/clients/scheduler" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientScheduler /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
