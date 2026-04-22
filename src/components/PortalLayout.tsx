@@ -178,7 +178,7 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={logout} className="text-destructive">
-                <LogOut className="h-4 w-4 mr-2" /> Logout
+                <LogOut className="h-4 w-4 mr-2" /> {t("লগআউট", "Logout")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
