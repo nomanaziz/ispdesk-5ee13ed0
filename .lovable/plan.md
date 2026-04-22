@@ -1,104 +1,76 @@
 
 
 ## লক্ষ্য (Goal)
-POP-এর জন্য **Debit History** (admin → POP fund) এবং **Credit History** (POP → daily client charges) — দুইটাই দুই side-এ:
 
-1. **Admin side** (`PopProfile.tsx` view): দুইটা নতুন tab — Debit Transactions + Credit Transactions
-2. **POP-Admin side** (`/pop-admin/*`): Fund History menu group → Debit History + Credit History
-3. Credit row-এ **eye / view** action → ওই দিনের সব active client-এর per-user breakdown popup
+Customer Portal Dashboard-কে আরো সহজ ও পরিচ্ছন্ন করা — ক্লায়েন্টের পূর্ণ নাম প্রাধান্য, duplicate service info সরিয়ে শুধু compact icon-chip strip, এবং reference image থেকে inspire হয়ে একটা **Activity / Quick-info side panel** যোগ।
 
-## Approach
+---
 
-### ১. Data backbone: per-day per-client charge log
-নতুন table `pop_daily_charges`:
-| column | type |
-|---|---|
-| id | uuid |
-| pop_id | uuid (branch_managers.id) |
-| branch_id | uuid |
-| client_id | uuid (clients.id) |
-| client_username | text |
-| client_name | text |
-| package_id | uuid |
-| package_name | text |
-| profile | text |
-| protocol_type | text |
-| server_name | text |
-| zone_id, zone_name | uuid/text |
-| sub_zone_id, sub_zone_name | uuid/text |
-| monthly_rate | numeric |
-| daily_rate | numeric |
-| charged_amount | numeric |
-| pop_balance_before, pop_balance_after | numeric |
-| charge_date | date |
-| created_at | timestamptz |
+## সমস্যা (এখন কী ভুল আছে)
 
-Index: `(pop_id, charge_date)`, `(branch_id, charge_date)`, `(client_id, charge_date)`. RLS: admin all, POP own rows (`branch_id = current pop branch`).
+1. "Welcome back" এর পরে `customer.name` token থেকে আসছে — এটা username/code হয়ে যাচ্ছে যখন pure name token-এ নেই। Profile change request approve হলেও token refresh হয় না।
+2. একই তথ্য (Package, Speed, Connection, Protocol) **দু'বার** দেখাচ্ছে — উপরে stat-cards-এ, নিচে "Service Overview" table-এ।
+3. Layout ভারী — অনেক জায়গা নিচ্ছে।
+4. Ledger / Payment status ছড়ানো — একসাথে নেই।
 
-### ২. Daily-charge engine
-Edge function `apply-pop-daily-charges` (নতুন), schedule `cron.schedule` দৈনিক ১টায়:
-- প্রতিটা **prepaid** POP-এর প্রতিটা active client (`billing_status` active/enabled) এর জন্য:
-  - daily_rate = monthly_bill ÷ 30
-  - `pop_daily_charges` row insert
-  - `branch_managers.balance` থেকে subtract
-- Transaction-safe, idempotent (একই date-pop-client unique constraint)
+---
 
-পুরাতন data backfill জন্য one-time SQL: যদি balance-এ আগে থেকে deduction হয়ে থাকে (existing trigger বা manual via FundDeductionDialog), সেগুলো `pop_transactions`-এ আছে — সেগুলো credit history-তে দেখানো হবে fallback হিসেবে।
+## সমাধান (পরিবর্তন)
 
-### ৩. Admin UI — `PopProfile.tsx`
-বর্তমান tabs-এ যোগ:
-- **Debit Transactions**: `branch_funding` থেকে POP-এর সব fund row + payment history (image-173 layout: Funding Date | Amount | Total Paid | Discount | Total Due | Payment Date | Paid Amount | Discount | Remarks | ReceivedBy)
-- **Credit Transactions**: `pop_daily_charges` থেকে date-grouped rollup (image-174/177 layout: Date | Total User | Total Credited User | Packages | Profiles | Protocol Types | Servers | Total Credited Amount | Action eye)
-- Eye click → modal (image-178 layout): Serial | UserName | Zone | Subzone | Package | Profile | Protocol | Server | Monthly Rate | Daily Rate | Credited Amount | Credited By | Remarks — totals row সহ। Filter: Zone, Sub-zone
+### 1. Hero card — পূর্ণ নাম + compact icon strip
+- "Welcome back" এর পরে **`clientRow.name` (DB থেকে fresh full name)** দেখাবে, fallback `customer.name`। এতে approved profile-update এর নতুন নাম সাথে সাথে দেখাবে (token refresh ছাড়াই)।
+- Hero-এর নিচে এক লাইনে **icon chips strip** — প্রতিটা item শুধু ছোট icon + value, কোনো big card নয়:
+  - 👤 Username · 📦 Package · ⚡ Speed · 🔌 Connection · 🛡️ Protocol · 🟢 Status
+- বড় ৫টা stat-card grid **সরিয়ে দেওয়া হবে**।
 
-দু'টা tab-এ from/to date filter, Generate PDF + CSV button (existing `reportExport` util reuse)।
+### 2. "Service Overview" card **পুরো remove**
+- কারণ সব data ওই icon strip-এই থাকবে।
 
-### ৪. POP-Admin UI — `/pop-admin/*`
-`ResellerLayout.tsx` sidebar-এ নতুন group "Fund History":
-- `/pop-admin/fund-history/debit` → `PopFundDebitHistory.tsx` (image-175 layout)
-- `/pop-admin/fund-history/credit` → `PopFundCreditHistory.tsx` (image-177 layout, eye → image-178 modal)
+### 3. "Client Details" card — শুধু এটাই থাকবে (কারণ এগুলোই unique info)
+- Customer Code, Name, Mobile, Email, Present Address, Zone, NID
+- উপরের image-এর "Client Code / Log In ID / User ID / Status / Registration Date" পদ্ধতির মতো — small label + icon prefix, পরিচ্ছন্ন column।
 
-দুইটা page admin-side wo same component reuse করবে — একটা `<PopDebitHistory popId={..} mode="admin|pop" />` ও `<PopCreditHistory popId={..} mode="admin|pop" />` shared component, `usePopScope()` দিয়ে POP-mode-এ auto branch_id detect।
+### 4. নতুন **"Activity & Ledger" side panel** (reference image-এর Activity panel concept থেকে)
+Right-side small card, design নতুন (image-এর design copy নয়), এতে থাকবে:
+- **Your ID/Username** (chip)
+- **Last Login** (portal_login_log থেকে)
+- **Ledger Balance / Due** — বড় highlighted number, "Pay Now" button সহ
+- **Last Invoice** (#bill_id + month + status badge)
+- Quick links: Change Password · My Profile · Notices
 
-POP-Admin login করলে শুধু own POP-এর data, admin login করলে selected POP-এর।
+Mobile (390px) — side panel hero-এর ঠিক নিচে full-width হয়ে আসবে; desktop-এ Client Details-এর পাশে 2-col grid।
 
-### ৫. Files
+### 5. Notice banner — অপরিবর্তিত (উপরে থাকবে)।
 
-**Migration:**
-- `supabase/migrations/<ts>_pop_daily_charges.sql` — নতুন table + RLS + unique index `(pop_id, client_id, charge_date)`
+---
 
-**Edge function:**
-- `supabase/functions/apply-pop-daily-charges/index.ts` — daily cron, idempotent insert + balance update
+## Technical Details
 
-**Shared components:**
-- `src/components/branches/PopDebitHistory.tsx` (image-173/175 layout, both modes)
-- `src/components/branches/PopCreditHistory.tsx` (image-174/177 + eye → modal image-178)
-- `src/components/branches/PopCreditDetailDialog.tsx` (per-day per-user breakdown popup)
+**File: `src/pages/portal/PortalDashboard.tsx`** (একমাত্র file edit)
 
-**Admin pages updated:**
-- `src/pages/dashboard/branches/PopProfile.tsx` — দুই নতুন tab যোগ
+- Hero name source: `clientRow?.name || customer?.name` (DB priority)।
+- `stats` array এবং stat-card grid (lines 47–53, 117–134) — **delete**।
+- "Service Overview" Card (lines 137–156) — **delete**।
+- Hero-এর ঠিক পরে নতুন `IconChipStrip` component — flex-wrap, prim-bg-foreground tone (dark text per existing memory), colorful icons (icon-গুলো colorful — recent পরিবর্তনের সাথে consistent)।
+- Bottom grid: 2-col (lg) — left = Client Details (current card retained); right = নতুন `ActivityLedgerPanel`।
+- Last login data: `data?.last_login` field — `portal-data` `get_dashboard` already returns? **Check needed** — যদি না থাকে, frontend থেকে আলাদা query করব না; বরং `customer.iat` কে fallback "this session" হিসেবে দেখাবো এবং `portal-data/get_dashboard`-এ `last_login` যোগ করব (1 line: `portal_login_log` থেকে previous এন্ট্রি pull)।
 
-**POP-Admin pages new:**
-- `src/pages/reseller/PopFundDebitHistory.tsx`
-- `src/pages/reseller/PopFundCreditHistory.tsx`
+**File: `supabase/functions/portal-data/index.ts`** (minor — `get_dashboard` response-এ `last_login` field যোগ করা — only if missing)।
 
-**Routing:**
-- `src/App.tsx` — দুইটা `/pop-admin/fund-history/*` route যোগ
-- `src/components/ResellerLayout.tsx` — sidebar-এ "Fund History" group যোগ (Debit + Credit)
-- `src/components/ResellerProtectedRoute.tsx` — `require="fund-history"` permission key যোগ
+---
 
-**Types:** `src/integrations/supabase/types.ts` (auto-regen)
+## Out of scope (এই কাজে নয়)
 
-## যা বদলাবে না
-- Existing `Funding.tsx` / `FundingHistory.tsx` admin pages — অপরিবর্তিত রাখব (parallel, supplemental)
-- Existing balance update triggers — অপরিবর্তিত
-- `credit_refund_logs` flow (left-client refund) — আলাদা concern
+- Reference image-এর exact dark-blue sidebar / Galaxy Net branding copy — শুধু *concept* (Activity panel idea) নেওয়া হচ্ছে।
+- Profile page redesign।
+- Token refresh flow।
+
+---
 
 ## Apply-এর পরে expected
-1. **Admin → POP view** এ "Debit Transactions" + "Credit Transactions" tab দেখাবে (নিচের two existing tabs-এর পাশে)
-2. **POP-Admin sidebar**-এ নতুন "Fund History" menu → Debit + Credit
-3. **Credit row-এর eye** click → ওই দিন কোন user-এর কত daily rate, total কত — পুরো breakdown
-4. Daily cron প্রতিদিন রাতে active client-প্রতি charge log করে balance update করবে
-5. PDF/CSV export button দু'টা history page-এ থাকবে
-6. From/To date + Zone/Sub-zone filter
+
+1. Hero-এ ক্লায়েন্টের পূর্ণ নাম (approved DB name)।
+2. Service info শুধু এক লাইনে compact colorful icon chips — duplicate table নেই।
+3. Client Details + নতুন Activity/Ledger panel side-by-side (mobile-এ stacked)।
+4. Mobile (390px) এ পরিচ্ছন্ন, কম scroll।
 
