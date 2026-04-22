@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -192,14 +192,19 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
-    const set = new Set<string>();
+  const [openGroup, setOpenGroup] = useState<string | null>(() => {
     for (const g of groups) {
-      if (g.items.some((i) => location.pathname.startsWith(i.to))) set.add(g.key);
+      if (g.items.some((i) => location.pathname.startsWith(i.to))) return g.key;
     }
-    if (set.size === 0) set.add("dashboard");
-    return set;
+    return "dashboard";
   });
+
+  // Auto-switch open group when route changes to a different group
+  useEffect(() => {
+    const active = groups.find((g) => g.items.some((i) => location.pathname.startsWith(i.to)));
+    if (active && active.key !== openGroup) setOpenGroup(active.key);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -207,12 +212,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
   };
 
   const toggleGroup = (k: string) => {
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(k)) next.delete(k);
-      else next.add(k);
-      return next;
-    });
+    setOpenGroup((prev) => (prev === k ? null : k));
   };
 
   const isSubUser = customer?.type === "reseller_sub";
@@ -279,7 +279,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
         <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
           {visibleGroups.map((g) => {
             const Icon = g.icon;
-            const isOpen = openGroups.has(g.key) || !!search;
+            const isOpen = openGroup === g.key || !!search;
             const isSingle = g.items.length === 1 && g.items[0].label === g.label;
             const groupActive = g.items.some((i) => location.pathname.startsWith(i.to));
 

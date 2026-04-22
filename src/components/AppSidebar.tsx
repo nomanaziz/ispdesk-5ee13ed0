@@ -570,7 +570,7 @@ function tr(label: string, lang: "bn" | "en"): string {
   return SIDEBAR_EN[label] ?? label;
 }
 
-function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: boolean }) {
+function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: MenuGroup; forceOpen?: boolean; openKey?: string | null; onToggle?: (key: string) => void }) {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -582,7 +582,15 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
   const isActiveGroup = group.items.some(item =>
     item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url)
   );
-  const [open, setOpen] = useState(group.defaultOpen || isActiveGroup);
+  // Parent-controlled single-open mode when openKey/onToggle provided; fallback to local state otherwise.
+  const isControlled = onToggle !== undefined;
+  const [localOpen, setLocalOpen] = useState(group.defaultOpen || isActiveGroup);
+  const controlledOpen = openKey === group.label;
+  const open = isControlled ? controlledOpen : localOpen;
+  const setOpen = (v: boolean) => {
+    if (isControlled) onToggle!(group.label);
+    else setLocalOpen(v);
+  };
   const effectiveOpen = forceOpen ?? open;
 
   // Sum of badge counts for items inside this group (used in collapsed mode + group label)
@@ -834,6 +842,30 @@ export function AppSidebar() {
   const [search, setSearch] = useState("");
   const [reorderOpen, setReorderOpen] = useState(false);
   const [savedOrder, setSavedOrder] = useState<string[]>(() => loadSavedOrder());
+  const location = useLocation();
+
+  // Determine which group contains the active route
+  const activeGroupLabel = useMemo(() => {
+    const found = menuGroups.find((g) =>
+      g.items.some((it) =>
+        it.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(it.url)
+      )
+    );
+    return found?.label ?? null;
+  }, [location.pathname]);
+
+  const [openGroupKey, setOpenGroupKey] = useState<string | null>(activeGroupLabel);
+
+  useEffect(() => {
+    if (activeGroupLabel && activeGroupLabel !== openGroupKey) {
+      setOpenGroupKey(activeGroupLabel);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeGroupLabel]);
+
+  const handleToggleGroup = (key: string) => {
+    setOpenGroupKey((prev) => (prev === key ? null : key));
+  };
 
   const orderedGroups = useMemo(() => {
     const allLabels = menuGroups.map((g) => g.label);
@@ -925,7 +957,13 @@ export function AppSidebar() {
         <ScrollArea className="flex-1">
           <SidebarContent className="bg-transparent py-2">
             {filteredGroups.map(({ group, matched }) => (
-              <CollapsibleGroup key={group.label} group={group} forceOpen={matched ? true : undefined} />
+              <CollapsibleGroup
+                key={group.label}
+                group={group}
+                forceOpen={matched ? true : undefined}
+                openKey={openGroupKey}
+                onToggle={handleToggleGroup}
+              />
             ))}
             {filteredGroups.length === 0 && (
               <div className="px-4 py-6 text-center text-xs text-muted-foreground">
