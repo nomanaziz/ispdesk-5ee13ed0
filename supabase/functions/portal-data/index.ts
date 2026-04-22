@@ -2089,7 +2089,138 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
 
-      default:
+      case "pop_dashboard_overview": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("id, branch_id, balance")
+          .eq("id", resellerId)
+          .maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+
+        const branchId = pop.branch_id;
+        const monthStart = new Date();
+        monthStart.setDate(1);
+        monthStart.setHours(0, 0, 0, 0);
+        const monthIso = monthStart.toISOString();
+        const last180 = new Date(Date.now() - 1000 * 60 * 60 * 24 * 180).toISOString();
+
+        const [
+          allClientsQ, billingQ, collectionsQ, zonesQ, newClientsQ,
+          ticketsQ, noticesQ, expensesQ
+        ] = await Promise.all([
+          sb.from("clients").select("id, status, billing_status, monthly_bill, zone_id, name")
+            .eq("branch_id", branchId),
+          sb.from("billing").select("amount, paid, due, discount, created_at, client_id")
+            .eq("branch_id", branchId).gte("created_at", monthIso),
+          sb.from("bill_collections").select("amount, created_at, client_id, payment_method")
+            .gte("created_at", monthIso),
+          sb.from("zones").select("id, name").eq("status", "active"),
+          sb.from("clients").select("created_at, status").eq("branch_id", branchId)
+            .gte("created_at", last180),
+          sb.from("support_tickets").select("id, ticket_no, subject, status, created_at")
+            .order("created_at", { ascending: false }).limit(5),
+          sb.from("client_notices").select("id, title, body, created_at")
+            .eq("active", true).order("created_at", { ascending: false }).limit(5),
+          sb.from("expense_entries").select("amount, expense_date, payment_method")
+            .eq("branch_id", branchId).gte("expense_date", monthStart.toISOString().slice(0, 10)),
+        ]);
+
+        const clients = allClientsQ.data || [];
+        const billing = billingQ.data || [];
+        const collections = collectionsQ.data || [];
+        const newClients = newClientsQ.data || [];
+        const expenses = expensesQ.data || [];
+
+        const totalClients = clients.length;
+        const activeClients = clients.filter((c: any) => c.status === "Active").length;
+        const onlineClients = clients.filter((c: any) => c.billing_status === "online").length;
+        const monthlyBillSum = clients.reduce((s: number, c: any) => s + Number(c.monthly_bill || 0), 0);
+
+        const today = new Date();
+        const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        const remainingDays = daysInMonth - today.getDate() + 1;
+        const dailyCharged = monthlyBillSum / daysInMonth;
+        const approxRechargeable = dailyCharged * remainingDays;
+
+        const billed = billing.reduce((s: number, b: any) => s + Number(b.amount || 0), 0);
+        const collectionsTotal = collections.reduce((s: number, c: any) => s + Number(c.amount || 0), 0);
+        const billingPaid = billing.reduce((s: number, b: any) => s + Number(b.paid || 0), 0);
+        const collected = billingPaid + collectionsTotal;
+        const totalDue = billing.reduce((s: number, b: any) => s + Number(b.due || 0), 0);
+        const totalDiscount = billing.reduce((s: number, b: any) => s + Number(b.discount || 0), 0);
+        const expenseTotal = expenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+
+        const newThisMonth = newClients
+          .filter((c: any) => new Date(c.created_at) >= monthStart).length;
+
+        const monthly: { month: string; count: number }[] = [];
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date();
+          d.setMonth(d.getMonth() - i);
+          d.setDate(1);
+          const next = new Date(d); next.setMonth(next.getMonth() + 1);
+          const count = newClients.filter((c: any) => {
+            const cd = new Date(c.created_at);
+            return cd >= d && cd < next;
+          }).length;
+          monthly.push({ month: d.toLocaleString("en-US", { month: "short" }), count });
+        }
+
+        const zoneMap: Record<string, { name: string; count: number }> = {};
+        (zonesQ.data || []).forEach((z: any) => (zoneMap[z.id] = { name: z.name, count: 0 }));
+        clients.forEach((c: any) => {
+          if (c.zone_id && zoneMap[c.zone_id]) zoneMap[c.zone_id].count++;
+        });
+        const zoneChart = Object.values(zoneMap).filter((z) => z.count > 0).slice(0, 6);
+
+        const unpaidByClient: Record<string, { name: string; due: number }> = {};
+        billing.forEach((b: any) => {
+          const due = Number(b.due || 0);
+          if (due <= 0) return;
+          const c = clients.find((x: any) => x.id === b.client_id);
+          if (!c) return;
+          if (!unpaidByClient[b.client_id]) unpaidByClient[b.client_id] = { name: c.name, due: 0 };
+          unpaidByClient[b.client_id].due += due;
+        });
+        const topUnpaid = Object.values(unpaidByClient).sort((a, b) => b.due - a.due).slice(0, 10);
+
+        // cash on hand = collected (cash method) - cash expenses
+        const cashCollected = collections
+          .filter((c: any) => !c.payment_method || c.payment_method === "cash")
+          .reduce((s: number, c: any) => s + Number(c.amount || 0), 0) + billingPaid;
+        const cashExpenses = expenses
+          .filter((e: any) => !e.payment_method || e.payment_method === "cash")
+          .reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+        const cashOnHand = cashCollected - cashExpenses;
+
+        return json({
+          balance: Number(pop.balance || 0),
+          totalClients,
+          activeClients,
+          onlineClients,
+          monthlyBillSum,
+          dailyCharged,
+          approxRechargeable,
+          billed,
+          collected,
+          totalDue,
+          totalDiscount,
+          expenseTotal,
+          newThisMonth,
+          monthly,
+          zoneChart,
+          topUnpaid,
+          cashOnHand,
+          tickets: ticketsQ.data || [],
+          notices: noticesQ.data || [],
+        });
+      }
+
         return json({ error: "Unknown action" }, 400);
     }
   } catch (e: any) {
