@@ -204,41 +204,19 @@ const ResellerDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Row 1 — Company-level (POP ↔ main company relationship) */}
-      <div>
-        <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-          মূল কোম্পানির সাথে সম্পর্ক
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
-          <Stat icon={<Mail className="h-5 w-5" />} label="SMS Balance" value={String(company?.smsBalance ?? 0)} sub="বাকি SMS" />
-          <Stat icon={<Wallet className="h-5 w-5" />} label="Remaining Balance" value={tk(company?.balance)} tone="primary" />
-          <Stat icon={<TrendingDown className="h-5 w-5" />} label="Daily Charge" value={tk(internal?.dailyCharged)} sub="approx per day" />
-          <Stat icon={<Banknote className="h-5 w-5" />} label="Approximate Rechargeable" value={tk(internal?.approxRechargeable)} sub="বাকি দিনের জন্য" />
-          <Stat icon={<BarChart3 className="h-5 w-5" />} label="Monthly Charged" value={tk(company?.monthlyCharged)} />
-          <Stat icon={<CheckCircle2 className="h-5 w-5" />} label="Monthly Payment" value={tk(company?.monthlyPaid)} tone="success" />
-          <Stat icon={<Gift className="h-5 w-5" />} label="Monthly Discount" value={tk(company?.monthlyDiscount)} />
-          <Stat icon={<AlertTriangle className="h-5 w-5" />} label="Balance Due" value={tk(company?.totalDue)} tone={company && company.totalDue > 0 ? "warning" : undefined} />
-        </div>
+      {/* Row 1 — Company-level stats */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
+        <Stat icon={<Mail className="h-5 w-5" />} label="SMS Balance" value={String(company?.smsBalance ?? 0)} sub="বাকি SMS" />
+        <Stat icon={<Wallet className="h-5 w-5" />} label="Remaining Balance" value={tk(company?.balance)} tone="primary" />
+        <Stat icon={<TrendingDown className="h-5 w-5" />} label="Daily Charge" value={tk(internal?.dailyCharged)} sub="approx per day" />
+        <Stat icon={<Banknote className="h-5 w-5" />} label="Approximate Rechargeable" value={tk(internal?.approxRechargeable)} sub="বাকি দিনের জন্য" />
+        <Stat icon={<BarChart3 className="h-5 w-5" />} label="Monthly Charged" value={tk(company?.monthlyCharged)} />
+        <Stat icon={<CheckCircle2 className="h-5 w-5" />} label="Monthly Payment" value={tk(company?.monthlyPaid)} tone="success" />
+        <Stat icon={<Gift className="h-5 w-5" />} label="Monthly Discount" value={tk(company?.monthlyDiscount)} />
+        <Stat icon={<AlertTriangle className="h-5 w-5" />} label="Balance Due" value={tk(company?.totalDue)} tone={company && company.totalDue > 0 ? "warning" : undefined} />
       </div>
 
-      {/* Row 2 — Internal POP info */}
-      <div>
-        <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-          আমার কোম্পানি (Internal)
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
-          <Stat icon={<UserPlus className="h-5 w-5" />} label="New Client (this month)" value={String(internal?.newThisMonth ?? 0)} tone="success" />
-          <Stat icon={<Users className="h-5 w-5" />} label="Total Client" value={String(internal?.totalClients ?? 0)} sub={`Active ${internal?.activeClients ?? 0}`} />
-          <Stat icon={<Wifi className="h-5 w-5" />} label="Online Clients" value={String(internal?.onlineClients ?? 0)} tone="success" />
-          <Stat icon={<Receipt className="h-5 w-5" />} label="Monthly Bill" value={tk(internal?.monthlyBillSum)} />
-          <Stat icon={<CheckCircle2 className="h-5 w-5" />} label="Collected" value={tk(internal?.collected)} tone="success" />
-          <Stat icon={<Gift className="h-5 w-5" />} label="Discount" value={tk(internal?.totalDiscount)} />
-          <Stat icon={<AlertTriangle className="h-5 w-5" />} label="Total Due" value={tk(internal?.totalDue)} tone={internal && internal.totalDue > 0 ? "warning" : undefined} />
-          <Stat icon={<Banknote className="h-5 w-5" />} label="Cash on Hand" value={tk(internal?.cashOnHand)} />
-        </div>
-      </div>
-
-      {/* Charts row */}
+      {/* Charts row (middle separator) */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
@@ -288,6 +266,18 @@ const ResellerDashboard = () => {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Row 2 — Internal POP stats */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
+        <Stat icon={<UserPlus className="h-5 w-5" />} label="New Client (this month)" value={String(internal?.newThisMonth ?? 0)} tone="success" />
+        <Stat icon={<Users className="h-5 w-5" />} label="Total Client" value={String(internal?.totalClients ?? 0)} sub={`Active ${internal?.activeClients ?? 0}`} />
+        <Stat icon={<Wifi className="h-5 w-5" />} label="Online Clients" value={String(internal?.onlineClients ?? 0)} tone="success" />
+        <Stat icon={<Receipt className="h-5 w-5" />} label="Monthly Bill" value={tk(internal?.monthlyBillSum)} />
+        <Stat icon={<CheckCircle2 className="h-5 w-5" />} label="Collected" value={tk(internal?.collected)} tone="success" />
+        <Stat icon={<Gift className="h-5 w-5" />} label="Discount" value={tk(internal?.totalDiscount)} />
+        <Stat icon={<AlertTriangle className="h-5 w-5" />} label="Total Due" value={tk(internal?.totalDue)} tone={internal && internal.totalDue > 0 ? "warning" : undefined} />
+        <Stat icon={<Banknote className="h-5 w-5" />} label="Cash on Hand" value={tk(internal?.cashOnHand)} />
       </div>
 
       {/* Bottom row */}
