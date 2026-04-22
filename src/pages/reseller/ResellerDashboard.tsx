@@ -27,8 +27,6 @@ const ResellerDashboard = () => {
   const { popId, branchId } = getPopScope(customer);
   const billingId = getBillingCustomerId(customer);
 
-  if (isMobile) return <PopMobileHome />;
-
   // ============ Company-level data (between POP and main company) ============
   const { data: company } = useQuery({
     queryKey: ["reseller-company", popId, billingId],
