@@ -440,13 +440,34 @@ Deno.serve(async (req) => {
 
       case "update_profile": {
         if (tok.type !== "client") return json({ error: "Not allowed" }, 403);
-        const allowed = ["present_address", "permanent_address", "contact", "email"];
+        const stringFields = [
+          "present_address", "permanent_address", "contact", "email",
+          "father_name", "mother_name", "occupation", "gender",
+          "road_number", "house_number", "phone_number",
+        ];
         const updates: Record<string, any> = {};
-        for (const k of allowed) {
+        for (const k of stringFields) {
           if (typeof payload[k] === "string") updates[k] = payload[k].slice(0, 500);
+        }
+        if (typeof payload.date_of_birth === "string" && payload.date_of_birth) {
+          updates.date_of_birth = payload.date_of_birth;
         }
         if (!Object.keys(updates).length) return json({ error: "No fields" }, 400);
         const { error } = await sb.from("clients").update(updates).eq("id", tok.sub);
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true });
+      }
+
+      case "change_password": {
+        if (tok.type !== "client") return json({ error: "Not allowed" }, 403);
+        const current = String(payload.current || "");
+        const next = String(payload.new || "");
+        if (next.length < 6) return json({ error: "নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে" }, 400);
+        if (next === current) return json({ error: "নতুন পাসওয়ার্ড পুরাতনের মত হতে পারবে না" }, 400);
+        const { data: row } = await sb.from("clients").select("password").eq("id", tok.sub).maybeSingle();
+        if (!row) return json({ error: "Client not found" }, 404);
+        if ((row.password || "") !== current) return json({ error: "বর্তমান পাসওয়ার্ড সঠিক নয়" }, 400);
+        const { error } = await sb.from("clients").update({ password: next }).eq("id", tok.sub);
         if (error) return json({ error: error.message }, 500);
         return json({ ok: true });
       }
