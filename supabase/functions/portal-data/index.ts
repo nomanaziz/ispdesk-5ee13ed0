@@ -426,16 +426,25 @@ Deno.serve(async (req) => {
         if (tok.type !== "client") return json({ client: null, requests: [] });
         const { data: client } = await sb
           .from("clients")
-          .select("id, name, client_id, username, contact, email, address, present_address, permanent_address, nid_number, photo_url, nid_front_url, nid_back_url, documents")
+          .select("id, name, client_id, username, contact, email, address, present_address, permanent_address, nid_number, photo_url, nid_front_url, nid_back_url, documents, joining_date, expire_date, billing_date, status, package_id, father_name, mother_name, date_of_birth, occupation, gender, road_number, house_number, phone_number, monthly_bill")
           .eq("id", tok.sub)
           .maybeSingle();
+        let pkg: any = null;
+        if (client?.package_id) {
+          const { data: p } = await sb
+            .from("isp_packages")
+            .select("id, name, bandwidth_down, bandwidth_up, price")
+            .eq("id", client.package_id)
+            .maybeSingle();
+          pkg = p;
+        }
         const { data: requests } = await sb
           .from("client_update_requests")
           .select("*")
           .eq("client_id", tok.sub)
           .order("created_at", { ascending: false })
           .limit(20);
-        return json({ client, requests: requests || [] });
+        return json({ client: client ? { ...client, package: pkg } : null, requests: requests || [] });
       }
 
       case "update_profile": {
