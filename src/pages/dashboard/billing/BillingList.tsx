@@ -94,6 +94,7 @@ export default function BillingList() {
         .gt("monthly_bill", 0)
         .order("client_id", { ascending: true });
       if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      else q = q.eq("owner_scope", "admin");
       const { data, error } = await q;
 
       if (error) throw error;
