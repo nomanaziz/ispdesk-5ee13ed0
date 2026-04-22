@@ -18,7 +18,7 @@ import { loginAsUser } from "@/lib/impersonate";
 const defaultPerms: ResellerPermissions = {
   dashboard: true,
   invoices: true,
-  purchases: true,
+  
   tickets: true,
   users: false,
   settings: false,

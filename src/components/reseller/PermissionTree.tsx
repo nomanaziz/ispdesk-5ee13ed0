@@ -5,7 +5,7 @@ import type { ResellerPermissions } from "@/contexts/PortalAuthContext";
 const MODULES: { key: keyof ResellerPermissions; label: string; desc: string }[] = [
   { key: "dashboard", label: "Dashboard", desc: "View dashboard summary" },
   { key: "invoices", label: "Billing Invoices", desc: "View & pay invoices" },
-  { key: "purchases", label: "Purchase Orders", desc: "Create & view purchase orders" },
+  
   { key: "tickets", label: "Support Tickets", desc: "Open & view tickets" },
   { key: "users", label: "User Management", desc: "Manage sub-users (cannot delete reseller)" },
   { key: "settings", label: "Company Settings", desc: "Edit company info" },
