@@ -198,6 +198,11 @@ export default function ResellerMikrotikBulkCreate() {
               <TableBody>
                 {isLoading ? (
                   <TableRow><TableCell colSpan={9} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+                ) : bulkQuery.isError ? (
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-destructive">
+                    <AlertTriangle className="h-5 w-5 inline mr-1" />
+                    লোড করতে সমস্যা হয়েছে: {(bulkQuery.error as any)?.message}
+                  </TableCell></TableRow>
                 ) : rows.length === 0 ? (
                   <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     কোনো transferred MikroTik user পাওয়া যায়নি যা এখনো client হয়নি।
