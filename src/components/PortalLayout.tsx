@@ -18,6 +18,8 @@ import {
 import { KeyRound } from "lucide-react";
 import NotificationBell from "@/components/portal/NotificationBell";
 import { NotesButton } from "@/components/notes/NotesButton";
+import { InstallAppBanner } from "@/components/InstallAppBanner";
+import { InstallAppButton } from "@/components/InstallAppButton";
 
 const menuItems = [
   { bn: "ড্যাশবোর্ড", en: "Dashboard", icon: LayoutDashboard, path: "/portal/dashboard", color: "text-indigo-600 dark:text-indigo-400" },
@@ -161,6 +163,7 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
             </Link>
 
             <NotesButton ownerType="client" variant="compact" />
+            <InstallAppButton variant="icon" />
             <NotificationBell />
 
           <DropdownMenu>
@@ -210,7 +213,10 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 pb-24 lg:pb-6 overflow-auto print:p-0 print:pb-0 print:overflow-visible">{children}</main>
+        <main className="flex-1 p-4 md:p-6 pb-24 lg:pb-6 overflow-auto print:p-0 print:pb-0 print:overflow-visible">
+          <InstallAppBanner className="mb-4" />
+          {children}
+        </main>
 
         {/* Bottom nav (mobile only) */}
         <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-card border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)] print:hidden">
