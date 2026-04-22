@@ -1,31 +1,63 @@
 
 
-## Dashboard Section Headings সরানো এবং পুনর্বিন্যাস
+## Client/Billing list-এ POP-এর client না দেখানোর সমাধান
 
-### সমস্যা
-`/pop-admin/dashboard` page এ দুটো section heading আছে যা unprofessional লাগছে:
-- "মূল কোম্পানির সাথে সম্পর্ক"
-- "আমার কোম্পানি (Internal)"
+### আসল কারণ (DB confirm করা)
 
-### সমাধান
+DB-তে ৩টা client ঠিকই আছে Nahid'র POP-এ (`MVP-000001/002/003`, branch `26973cfc-...`)। কিন্তু `clients` table-এর RLS policy:
 
-`src/pages/reseller/ResellerDashboard.tsx` এ পরিবর্তন:
+| Policy | Role | কাজ করে? |
+|--------|------|----------|
+| `Authenticated can view clients` (SELECT) | `authenticated` | ✅ Admin dashboard-এ |
+| `Admins can manage clients` (ALL) | `authenticated` + admin | ✅ |
+| **কোনো `anon` SELECT policy নেই** | `anon` | ❌ **POP portal block** |
 
-1. **দুটো `<h2>` heading পুরোপুরি remove** করবো (line 208-211 এবং line 225-228)। শুধু grid গুলো রাখবো — stat card গুলো আগের মতই দেখাবে, কোনো design ভাঙবে না।
+POP portal Supabase-এ **`anon` key** দিয়ে চলে (PortalAuthContext token JWT, Supabase auth session না)। তাই `ClientList.tsx` এবং `BillingList.tsx`-এর `supabase.from("clients").select(...).eq("branch_id", branchId)` query empty array return করে — list খালি দেখায়, যদিও create সফল হয় (create call `callPortal("create_client")` → service role দিয়ে insert হয়, সেটা RLS bypass করে)।
 
-2. **Section reordering** (আপনার "উপরেরটা উপরে রাখো, মাঝখানে অন্য কিছু ঢুকায়ে নিচে দিয়ে দাও" instruction অনুযায়ী):
-   - **উপরে:** Welcome card (POP Manager Dashboard) — যেমন আছে
-   - **তারপর:** "মূল কোম্পানির সাথে সম্পর্ক" এর stat grid (SMS Balance, Remaining Balance, Daily Charge, ইত্যাদি ৮টা card) — heading ছাড়া
-   - **মাঝখানে (নতুন position):** Charts row (Monthly New Client bar chart + অন্য chart গুলো) — যেটা আগে নিচে ছিল, সেটা মাঝে আনবো
-   - **নিচে:** "আমার কোম্পানি (Internal)" এর stat grid (New Client, Total Client, Online Clients, ইত্যাদি ৮টা card) — heading ছাড়া
+### সমাধান — Edge Function দিয়ে POP-scoped fetch
+
+POP portal-কে "anon-readable" করে দেওয়া দুটোই বিপজ্জনক (অন্য POP-এর clients leak হবে)। সঠিক pattern হলো admin pages-এর মতই — service-role edge function:
+
+#### ১. `portal-data` edge function-এ ২টা নতুন action
+
+| Action | কাজ |
+|--------|-----|
+| `list_pop_clients` | token-এর `branch_id` থেকে সব non-left clients (joins: zone, package, mikrotik) |
+| `list_pop_billing_clients` | একই কিন্তু `monthly_bill > 0` + month filter |
+
+দুটোই service role দিয়ে query করে `.eq("branch_id", token.branch_id)` apply করে — অন্য POP-এর data কখনোই leak হবে না।
+
+#### ২. `ClientList.tsx` ও `BillingList.tsx` — POP mode হলে edge function call
+
+```ts
+// Pseudocode
+queryFn: async () => {
+  if (isPopMode) {
+    const res = await callPortal("list_pop_clients", { /* filters */ });
+    return res.rows;
+  }
+  // existing admin path unchanged
+  ...
+}
+```
+
+Admin path (যেখানে `authenticated` Supabase session আছে) **একদম unchanged** — design/behavior কিছুই ভাঙবে না।
+
+#### ৩. একই pattern: update/disable/enable mutations
+
+POP mode-এ `update_client_expire`, `set_client_mikrotik_status` ইত্যাদি ছোট action edge function-এ যোগ করবো যাতে list থেকে edit-ও কাজ করে। (এই মুহূর্তে শুধু list দেখানোই priority — mutations ২য় ধাপে)।
 
 ### Files যেগুলো edit হবে
 
 | File | পরিবর্তন |
 |------|----------|
-| `src/pages/reseller/ResellerDashboard.tsx` | দুটো `<h2>` heading remove; Charts row কে দুটো stat grid এর মাঝে move |
+| `supabase/functions/portal-data/index.ts` | নতুন action: `list_pop_clients`, `list_pop_billing_clients` (service role + branch filter from token) |
+| `src/pages/dashboard/clients/ClientList.tsx` | `isPopMode` হলে `callPortal("list_pop_clients")` use; admin path unchanged |
+| `src/pages/dashboard/billing/BillingList.tsx` | `isPopMode` হলে `callPortal("list_pop_billing_clients", { month })` use; admin path unchanged |
 
 ### প্রতিশ্রুতি
 
-কোনো stat card, chart, color, বা layout পরিবর্তন হবে না — শুধু দুটো heading সরাবো এবং charts কে মাঝখানে আনবো। সব functionality আগের মতই থাকবে।
+- **Admin dashboard-এর design/behavior একদম unchanged** — শুধু POP mode-এ data fetch path আলাদা।
+- কোনো RLS policy public করছি না — security tight থাকছে।
+- এর পরেই Nahid'র already-created ৩টা client (MVP-000001/002/003) `/pop-admin/clients` এবং `/pop-admin/billing/list`-এ সাথে সাথে দেখা যাবে।
 
