@@ -352,6 +352,7 @@ const menuGroups: MenuGroup[] = [
       { title: "SMS গ্রুপ", url: "/dashboard/sms/groups", icon: Users2 },
       { title: "SMS পাঠান", url: "/dashboard/sms/send", icon: Send },
       { title: "SMS গেটওয়ে", url: "/dashboard/sms/gateway", icon: Cog },
+      { title: "Telegram বট", url: "/dashboard/sms/telegram", icon: Send },
     ],
   },
   {

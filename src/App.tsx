@@ -652,6 +652,7 @@ const App = () => (
               <Route path="/dashboard/sms/groups" element={<P><SmsGroups /></P>} />
               <Route path="/dashboard/sms/send" element={<P><SmsSend /></P>} />
               <Route path="/dashboard/sms/gateway" element={<P><SmsGateway /></P>} />
+              <Route path="/dashboard/sms/telegram" element={<P><TelegramSetup /></P>} />
 
               {/* System */}
               <Route path="/dashboard/notes" element={<P><AdminNotes /></P>} />
