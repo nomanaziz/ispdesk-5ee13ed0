@@ -1138,6 +1138,105 @@ Deno.serve(async (req) => {
         });
       }
 
+      case "get_pop_allotted_areas": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Forbidden" }, 403);
+        }
+        const popId = tok.type === "reseller_sub"
+          ? (tok as any).parent_reseller_id
+          : tok.sub;
+        const mode = String(payload.mode || "district");
+
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("district_id, upazila_id")
+          .eq("id", popId)
+          .maybeSingle();
+
+        const { data: assignments } = await sb
+          .from("pop_district_assignments")
+          .select("district_id, upazila_ids")
+          .eq("branch_manager_id", popId);
+
+        const districtIds = Array.from(
+          new Set([
+            ...(assignments || []).map((a: any) => a.district_id),
+            ...(pop?.district_id ? [pop.district_id] : []),
+          ]),
+        );
+        const allUpazilaIds = Array.from(
+          new Set([
+            ...(assignments || []).flatMap((a: any) => a.upazila_ids || []),
+            ...(pop?.upazila_id ? [pop.upazila_id] : []),
+          ]),
+        );
+
+        const [districtsRes, upazilasRes] = await Promise.all([
+          districtIds.length
+            ? sb.from("districts").select("id, name, code").in("id", districtIds)
+            : Promise.resolve({ data: [] } as any),
+          allUpazilaIds.length
+            ? sb.from("upazilas").select("id, name, district_id").in("id", allUpazilaIds)
+            : Promise.resolve({ data: [] } as any),
+        ]);
+        const districtMap = new Map((districtsRes.data || []).map((d: any) => [d.id, d]));
+        const upazilaMap = new Map((upazilasRes.data || []).map((u: any) => [u.id, u]));
+
+        if (mode === "district") {
+          const rows = (assignments || []).map((a: any) => {
+            const d: any = districtMap.get(a.district_id);
+            return {
+              id: a.district_id,
+              name: d?.name || "—",
+              code: d?.code || "—",
+              upazilaCount: (a.upazila_ids || []).length,
+              isDefault: a.district_id === pop?.district_id,
+            };
+          });
+          // Ensure default district is shown even if no assignment row
+          if (pop?.district_id && !rows.find((r: any) => r.id === pop.district_id)) {
+            const d: any = districtMap.get(pop.district_id);
+            rows.unshift({
+              id: pop.district_id,
+              name: d?.name || "—",
+              code: d?.code || "—",
+              upazilaCount: pop?.upazila_id ? 1 : 0,
+              isDefault: true,
+            });
+          }
+          return json({ rows });
+        }
+
+        // upazila mode
+        const upazilaRows: any[] = [];
+        const seen = new Set<string>();
+        for (const a of assignments || []) {
+          for (const uid of a.upazila_ids || []) {
+            if (seen.has(uid)) continue;
+            seen.add(uid);
+            const u: any = upazilaMap.get(uid);
+            const d: any = u ? districtMap.get(u.district_id) : null;
+            upazilaRows.push({
+              id: uid,
+              name: u?.name || "—",
+              districtName: d?.name || "—",
+              isDefault: uid === pop?.upazila_id,
+            });
+          }
+        }
+        if (pop?.upazila_id && !seen.has(pop.upazila_id)) {
+          const u: any = upazilaMap.get(pop.upazila_id);
+          const d: any = u ? districtMap.get(u.district_id) : null;
+          upazilaRows.unshift({
+            id: pop.upazila_id,
+            name: u?.name || "—",
+            districtName: d?.name || "—",
+            isDefault: true,
+          });
+        }
+        return json({ rows: upazilaRows });
+      }
+
       default:
         return json({ error: "Unknown action" }, 400);
     }

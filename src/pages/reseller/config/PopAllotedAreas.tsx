@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { usePortalAuth } from "@/contexts/PortalAuthContext";
+import { callPortal } from "@/lib/portalApi";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,85 +10,11 @@ import { MapPin, Info } from "lucide-react";
 interface Props { mode: "district" | "upazila" }
 
 export default function PopAllotedAreas({ mode }: Props) {
-  const { customer } = usePortalAuth();
-  const popId = customer?.type === "reseller_sub"
-    ? (customer as any)?.parent_reseller_id
-    : (customer as any)?.sub;
-  const popDistrictId = (customer as any)?.district_id;
-  const popUpazilaId = (customer as any)?.upazila_id;
-
   const { data, isLoading } = useQuery({
-    queryKey: ["pop-allotted", popId, mode, popDistrictId, popUpazilaId],
-    enabled: !!popId,
+    queryKey: ["pop-allotted-areas", mode],
     queryFn: async () => {
-      const { data: assignments, error } = await supabase
-        .from("pop_district_assignments")
-        .select("district_id, upazila_ids, districts(id, name, code)")
-        .eq("branch_manager_id", popId!);
-      if (error) throw error;
-
-      // ---- DISTRICT MODE ----
-      if (mode === "district") {
-        const rows = (assignments || []).map((a: any) => ({
-          id: a.district_id,
-          name: a.districts?.name || "—",
-          code: a.districts?.code || "—",
-          upazilaCount: (a.upazila_ids || []).length,
-          isDefault: false,
-        }));
-
-        // Fallback: if no allotment exists, show POP profile's own district
-        if (rows.length === 0 && popDistrictId) {
-          const { data: d } = await supabase
-            .from("districts")
-            .select("id, name, code")
-            .eq("id", popDistrictId)
-            .maybeSingle();
-          if (d) {
-            return [{
-              id: d.id,
-              name: d.name,
-              code: d.code || "—",
-              upazilaCount: popUpazilaId ? 1 : 0,
-              isDefault: true,
-            }];
-          }
-        }
-        return rows;
-      }
-
-      // ---- UPAZILA MODE ----
-      const allUpazilaIds = (assignments || []).flatMap((a: any) => a.upazila_ids || []);
-      if (allUpazilaIds.length > 0) {
-        const { data: upazilas } = await supabase
-          .from("upazilas")
-          .select("id, name, districts(name)")
-          .in("id", allUpazilaIds);
-        return (upazilas || []).map((u: any) => ({
-          id: u.id,
-          name: u.name,
-          districtName: u.districts?.name || "—",
-          isDefault: false,
-        }));
-      }
-
-      // Fallback: POP profile's own upazila
-      if (popUpazilaId) {
-        const { data: u } = await supabase
-          .from("upazilas")
-          .select("id, name, districts(name)")
-          .eq("id", popUpazilaId)
-          .maybeSingle();
-        if (u) {
-          return [{
-            id: u.id,
-            name: u.name,
-            districtName: (u as any).districts?.name || "—",
-            isDefault: true,
-          }];
-        }
-      }
-      return [];
+      const res = await callPortal<{ rows: any[] }>("get_pop_allotted_areas", { mode });
+      return res.rows || [];
     },
   });
 

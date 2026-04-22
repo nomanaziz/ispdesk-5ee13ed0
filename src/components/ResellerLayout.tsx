@@ -89,8 +89,12 @@ const groups: NavGroup[] = [
     key: "monitoring", label: "মনিটরিং", en: "Monitoring", icon: Antenna,
     items: [
       { to: "/pop-admin/monitoring/online", label: "অনলাইন ক্লায়েন্ট", en: "Online Clients", icon: Wifi },
-      { to: "/pop-admin/tickets", label: "ক্লায়েন্ট সাপোর্ট", en: "Client Support", icon: LifeBuoy },
-      { to: "/pop-admin/monitoring/ping", label: "পিং টুলস", en: "Ping Tools", icon: Radar },
+    ],
+  },
+  {
+    key: "support", label: "সাপোর্ট টিকেট", en: "Support Tickets", icon: LifeBuoy,
+    items: [
+      { to: "/pop-admin/tickets", label: "ক্লায়েন্ট টিকেট", en: "Client Tickets", icon: LifeBuoy },
     ],
   },
   {
@@ -427,15 +431,6 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                     EN
                   </button>
                 </div>
-                <Link to="/" target="_blank" title={t("ওয়েবসাইটে যান", "Open website")}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                  >
-                    <Globe className="h-4 w-4" />
-                  </Button>
-                </Link>
                 <NotesButton ownerType="pop" />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
