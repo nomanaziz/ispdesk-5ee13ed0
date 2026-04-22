@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { callPortal } from "@/lib/portalApi";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Download, Upload, Wifi, User, Hash, Phone, Clock, Gauge, WifiOff, Mail, MapPin, Shield } from "lucide-react";
+import { Activity, Download, Upload, Wifi, User, Hash, Phone, Clock, Gauge, WifiOff, Mail, MapPin, Shield, CalendarDays } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -14,7 +14,10 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  BarChart,
+  Bar,
 } from "recharts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const fmtBytes = (b: number) => {
   if (!b) return "0 B";
@@ -276,7 +279,169 @@ const PortalLiveUsage = () => {
           </div>
         </CardContent>
       </Card>}
+      <DailyUsageCard clientId={clientId} />
+      <MonthlySummaryCard clientId={clientId} />
     </div>
+  );
+};
+
+const fmtGB = (b: number) => {
+  if (!b) return "0";
+  return (b / (1024 ** 3)).toFixed(2);
+};
+
+const DailyUsageCard = ({ clientId }: { clientId?: string }) => {
+  const { data, isLoading } = useQuery({
+    queryKey: ["portal-daily-usage", clientId],
+    queryFn: () => callPortal<{ days: { day: string; up: number; dn: number }[] }>("get_daily_usage"),
+    enabled: !!clientId,
+    staleTime: 15 * 60 * 1000,
+  });
+  const days = data?.days || [];
+  const chart = days.map((d) => ({
+    day: new Date(d.day).getDate().toString(),
+    Download: Number((d.dn / (1024 ** 3)).toFixed(3)),
+    Upload: Number((d.up / (1024 ** 3)).toFixed(3)),
+  }));
+  const totalDn = days.reduce((s, d) => s + d.dn, 0);
+  const totalUp = days.reduce((s, d) => s + d.up, 0);
+  const monthLabel = new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+          <CalendarDays className="h-4 w-4 text-primary" /> This Month — Daily Usage
+          <span className="text-xs font-normal text-muted-foreground">({monthLabel})</span>
+          <div className="ml-auto flex flex-wrap items-center gap-2 text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold">
+              ↓ {fmtGB(totalDn)} GB
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-700 dark:text-sky-400 font-semibold">
+              ↑ {fmtGB(totalUp)} GB
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+              Total {fmtGB(totalDn + totalUp)} GB
+            </span>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-2">
+        {isLoading ? (
+          <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">Loading…</div>
+        ) : chart.length === 0 ? (
+          <div className="h-[260px] flex flex-col items-center justify-center text-center gap-2">
+            <Activity className="h-8 w-8 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">এখনও data সংগ্রহ হয়নি</p>
+          </div>
+        ) : (
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chart} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} unit=" GB" width={70} />
+                <Tooltip
+                  contentStyle={{
+                    background: "hsl(var(--background))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                  formatter={(v: number) => [`${v.toFixed(2)} GB`, ""]}
+                  labelFormatter={(l) => `Day ${l}`}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey="Download" stackId="a" fill="hsl(160 84% 39%)" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="Upload" stackId="a" fill="hsl(217 91% 60%)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+const MonthlySummaryCard = ({ clientId }: { clientId?: string }) => {
+  const [showAll, setShowAll] = useState(false);
+  const { data, isLoading } = useQuery({
+    queryKey: ["portal-monthly-usage", clientId],
+    queryFn: () =>
+      callPortal<{ months: { month: string; total_upload: number; total_download: number }[] }>("get_monthly_usage"),
+    enabled: !!clientId,
+    staleTime: 15 * 60 * 1000,
+  });
+  const allMonths = data?.months || [];
+  // Exclude current month (shown in daily card above)
+  const now = new Date();
+  const curKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const past = allMonths.filter((m) => !m.month.startsWith(curKey));
+  const visible = showAll ? past : past.slice(0, 6);
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Clock className="h-4 w-4 text-primary" /> Monthly Summary
+          <span className="text-xs font-normal text-muted-foreground ml-auto">Past months total</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-2">
+        {isLoading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+        ) : past.length === 0 ? (
+          <div className="py-8 flex flex-col items-center text-center gap-2">
+            <CalendarDays className="h-8 w-8 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">আগের মাসের কোনো record নেই</p>
+          </div>
+        ) : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Month</TableHead>
+                  <TableHead className="text-right">Download</TableHead>
+                  <TableHead className="text-right">Upload</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visible.map((m) => {
+                  const dn = Number(m.total_download || 0);
+                  const up = Number(m.total_upload || 0);
+                  const label = new Date(m.month).toLocaleString("en-US", { month: "short", year: "numeric" });
+                  return (
+                    <TableRow key={m.month}>
+                      <TableCell className="font-medium">{label}</TableCell>
+                      <TableCell className="text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+                        {fmtGB(dn)} GB
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-sky-700 dark:text-sky-400">
+                        {fmtGB(up)} GB
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold">
+                        {fmtGB(dn + up)} GB
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+            {past.length > 6 && (
+              <div className="pt-3 text-center">
+                <button
+                  onClick={() => setShowAll((v) => !v)}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
+                  {showAll ? "Show less" : `View more (${past.length - 6})`}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

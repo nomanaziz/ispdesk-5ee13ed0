@@ -721,6 +721,51 @@ Deno.serve(async (req) => {
         return json({ ok: true, id: inserted?.id });
       }
 
+      case "get_daily_usage": {
+        if (tok.type !== "client") return json({ days: [] });
+        const start = new Date();
+        start.setDate(1);
+        start.setHours(0, 0, 0, 0);
+        const { data: logs } = await sb
+          .from("client_traffic_logs")
+          .select("upload_bytes, download_bytes, recorded_at")
+          .eq("client_id", tok.sub)
+          .gte("recorded_at", start.toISOString())
+          .order("recorded_at", { ascending: true })
+          .limit(10000);
+        const map = new Map<string, { up: number; dn: number }>();
+        let prevUp: number | null = null;
+        let prevDn: number | null = null;
+        for (const r of logs || []) {
+          const up = Number(r.upload_bytes || 0);
+          const dn = Number(r.download_bytes || 0);
+          const dUp = prevUp === null || up < prevUp ? (prevUp === null ? 0 : up) : up - prevUp;
+          const dDn = prevDn === null || dn < prevDn ? (prevDn === null ? 0 : dn) : dn - prevDn;
+          const day = new Date(r.recorded_at).toISOString().slice(0, 10);
+          const cur = map.get(day) || { up: 0, dn: 0 };
+          cur.up += Math.max(0, dUp);
+          cur.dn += Math.max(0, dDn);
+          map.set(day, cur);
+          prevUp = up;
+          prevDn = dn;
+        }
+        const days = Array.from(map.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([day, v]) => ({ day, up: v.up, dn: v.dn }));
+        return json({ days });
+      }
+
+      case "get_monthly_usage": {
+        if (tok.type !== "client") return json({ months: [] });
+        const { data } = await sb
+          .from("client_traffic_monthly")
+          .select("month, total_upload, total_download")
+          .eq("client_id", tok.sub)
+          .order("month", { ascending: false })
+          .limit(12);
+        return json({ months: data || [] });
+      }
+
       default:
         return json({ error: "Unknown action" }, 400);
     }
