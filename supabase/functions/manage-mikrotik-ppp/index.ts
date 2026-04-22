@@ -150,6 +150,14 @@ async function insertClientLog(
   });
 }
 
+function safeClose(conn: Deno.TcpConn | null | undefined) {
+  try {
+    conn?.close();
+  } catch {
+    // Ignore already-closed socket errors from RouterOS sessions.
+  }
+}
+
 async function mikrotikLogin(conn: Deno.TcpConn, username: string, password: string): Promise<void> {
   await writeSentence(conn, ["/login", `=name=${username}`, `=password=${password}`]);
   const reply = await readSentence(conn);
@@ -231,7 +239,7 @@ Deno.serve(async (req) => {
       // Handle list-profiles action separately
       if (action === "list-profiles") {
         const profiles = await mikrotikCommand(conn, "/ppp/profile/print");
-        conn.close();
+        safeClose(conn);
         return new Response(
           JSON.stringify({ success: true, profiles }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -239,7 +247,7 @@ Deno.serve(async (req) => {
       }
 
       if (!username) {
-        conn.close();
+        safeClose(conn);
         return new Response(
           JSON.stringify({ error: "username is required for this action" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -252,7 +260,7 @@ Deno.serve(async (req) => {
       const secret = secrets[0];
 
       if (!secret && action === "status") {
-        conn.close();
+        safeClose(conn);
         return new Response(
           JSON.stringify({
             success: true,
@@ -285,7 +293,7 @@ Deno.serve(async (req) => {
         }
 
         if (!createPassword) {
-          conn.close();
+          safeClose(conn);
           return new Response(
             JSON.stringify({ error: `PPP secret '${username}' not found and no password was available to create it` }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -312,7 +320,7 @@ Deno.serve(async (req) => {
           `[PPP] ${username} secret was missing, so it was created automatically`
         );
 
-        conn.close();
+        safeClose(conn);
         return new Response(
           JSON.stringify({
             success: true,
@@ -325,7 +333,7 @@ Deno.serve(async (req) => {
       }
 
       if (!secret) {
-        conn.close();
+        safeClose(conn);
         return new Response(
           JSON.stringify({ error: `PPP secret '${username}' not found` }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
