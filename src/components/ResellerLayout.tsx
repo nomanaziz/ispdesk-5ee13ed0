@@ -25,7 +25,7 @@ import { QuickCreateClientDialog } from "@/components/QuickCreateClientDialog";
 type PermKey =
   | "dashboard" | "configuration" | "mikrotik" | "employee" | "client"
   | "billing" | "monitoring" | "sms" | "reports"
-  | "tickets" | "system" | "fund_history" | "settings" | "users" | "invoices" | "accounting";
+  | "tickets" | "support" | "system" | "fund_history" | "settings" | "users" | "invoices" | "accounting";
 
 interface NavLink { to: string; label: string; en: string; icon: any }
 interface NavGroup {
@@ -89,8 +89,12 @@ const groups: NavGroup[] = [
     key: "monitoring", label: "মনিটরিং", en: "Monitoring", icon: Antenna,
     items: [
       { to: "/pop-admin/monitoring/online", label: "অনলাইন ক্লায়েন্ট", en: "Online Clients", icon: Wifi },
-      { to: "/pop-admin/tickets", label: "ক্লায়েন্ট সাপোর্ট", en: "Client Support", icon: LifeBuoy },
-      { to: "/pop-admin/monitoring/ping", label: "পিং টুলস", en: "Ping Tools", icon: Radar },
+    ],
+  },
+  {
+    key: "support", label: "সাপোর্ট টিকেট", en: "Support Tickets", icon: LifeBuoy,
+    items: [
+      { to: "/pop-admin/tickets", label: "ক্লায়েন্ট টিকেট", en: "Client Tickets", icon: LifeBuoy },
     ],
   },
   {
@@ -154,7 +158,7 @@ function isGroupAllowed(g: NavGroup, customer: any): boolean {
   const isSub = customer.type === "reseller_sub";
 
   if (isBw) {
-    return ["dashboard", "billing", "purchases", "tickets", "settings", "system"].includes(g.key);
+    return ["dashboard", "billing", "purchases", "tickets", "support", "settings", "system"].includes(g.key);
   }
 
   if (!isSub) return true;
@@ -172,6 +176,7 @@ function isGroupAllowed(g: NavGroup, customer: any): boolean {
     reports: ["reports"],
     purchases: ["purchases"],
     tickets: ["tickets"],
+    support: ["tickets", "monitoring"],
     system: ["system", "settings"],
     accounting: ["accounting"],
     fund_history: ["fund_history", "settings"],
@@ -427,15 +432,6 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                     EN
                   </button>
                 </div>
-                <Link to="/" target="_blank" title={t("ওয়েবসাইটে যান", "Open website")}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                  >
-                    <Globe className="h-4 w-4" />
-                  </Button>
-                </Link>
                 <NotesButton ownerType="pop" />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
