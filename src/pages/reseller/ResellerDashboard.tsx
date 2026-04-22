@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { getPopScope } from "@/lib/popScope";
 import { getBillingCustomerId } from "@/lib/portalIdentity";
+import { callPortal } from "@/lib/portalApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -32,21 +33,14 @@ const ResellerDashboard = () => {
     queryKey: ["reseller-company", popId, billingId],
     enabled: !!popId,
     queryFn: async () => {
-      const [pop, lastInvs] = await Promise.all([
-        supabase
-          .from("branch_managers")
-          .select("balance")
-          .eq("id", popId!)
-          .maybeSingle(),
-        billingId
-          ? supabase
-              .from("bw_sales_invoices")
-              .select("amount, paid_amount, due, discount, created_at, status")
-              .eq("customer_id", billingId)
-              .order("created_at", { ascending: false })
-              .limit(20)
-          : Promise.resolve({ data: [] as any[] }),
-      ]);
+      const lastInvs = billingId
+        ? await supabase
+            .from("bw_sales_invoices")
+            .select("amount, paid_amount, due, discount, created_at, status")
+            .eq("customer_id", billingId)
+            .order("created_at", { ascending: false })
+            .limit(20)
+        : { data: [] as any[] };
       const monthStart = new Date();
       monthStart.setDate(1);
       monthStart.setHours(0, 0, 0, 0);
@@ -58,7 +52,6 @@ const ResellerDashboard = () => {
       const monthlyDiscount = thisMonth.reduce((s: number, r: any) => s + Number(r.discount || 0), 0);
       const totalDue = (lastInvs.data || []).reduce((s: number, r: any) => s + Number(r.due || 0), 0);
       return {
-        balance: Number(pop.data?.balance || 0),
         smsBalance: 0,
         monthlyCharged,
         monthlyPaid,
@@ -68,111 +61,14 @@ const ResellerDashboard = () => {
     },
   });
 
-  // ============ Internal POP data ============
+  // ============ Internal POP data via portal API (service-role; bypasses RLS) ============
   const { data: internal } = useQuery({
-    queryKey: ["reseller-internal", branchId],
-    enabled: !!branchId,
+    queryKey: ["reseller-internal-portal", popId],
+    enabled: !!popId,
     queryFn: async () => {
-      const monthStart = new Date();
-      monthStart.setDate(1);
-      monthStart.setHours(0, 0, 0, 0);
-      const monthIso = monthStart.toISOString();
-
-      const [allClients, billing, collections, zonesQ, newClients, tickets, notices] =
-        await Promise.all([
-          supabase.from("clients").select("id, status, billing_status, monthly_bill, zone_id, name, expire_date")
-            .eq("branch_id", branchId!),
-          supabase.from("billing").select("amount, paid, due, discount, created_at, client_id")
-            .eq("branch_id", branchId!).gte("created_at", monthIso),
-          supabase.from("bill_collections").select("amount, created_at, client_id")
-            .gte("created_at", monthIso),
-          supabase.from("zones").select("id, name").eq("status", "active"),
-          supabase.from("clients").select("created_at, status").eq("branch_id", branchId!)
-            .gte("created_at", new Date(Date.now() - 1000 * 60 * 60 * 24 * 180).toISOString()),
-          supabase.from("support_tickets").select("id, ticket_no, subject, status, created_at")
-            .order("created_at", { ascending: false }).limit(5),
-          supabase.from("client_notices").select("id, title, body, created_at")
-            .eq("active", true).order("created_at", { ascending: false }).limit(5),
-        ]);
-
-      const clients = allClients.data || [];
-      const totalClients = clients.length;
-      const activeClients = clients.filter((c: any) => c.status === "Active").length;
-      const onlineClients = clients.filter((c: any) => c.billing_status === "online").length;
-      const monthlyBillSum = clients.reduce((s: number, c: any) => s + Number(c.monthly_bill || 0), 0);
-
-      // Daily charge calculation
-      const today = new Date();
-      const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-      const remainingDays = daysInMonth - today.getDate() + 1;
-      const dailyCharged = monthlyBillSum / daysInMonth;
-      const approxRechargeable = dailyCharged * remainingDays;
-
-      // Billing aggregates this month
-      const billed = (billing.data || []).reduce((s: number, b: any) => s + Number(b.amount || 0), 0);
-      const collected = (billing.data || []).reduce((s: number, b: any) => s + Number(b.paid || 0), 0)
-        + (collections.data || []).reduce((s: number, c: any) => s + Number(c.amount || 0), 0);
-      const totalDue = (billing.data || []).reduce((s: number, b: any) => s + Number(b.due || 0), 0);
-      const totalDiscount = (billing.data || []).reduce((s: number, b: any) => s + Number(b.discount || 0), 0);
-
-      // New clients this month
-      const newThisMonth = (newClients.data || [])
-        .filter((c: any) => new Date(c.created_at) >= monthStart).length;
-
-      // Monthly new client trend (last 6 months)
-      const monthly: { month: string; count: number }[] = [];
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        d.setDate(1);
-        const next = new Date(d); next.setMonth(next.getMonth() + 1);
-        const count = (newClients.data || []).filter((c: any) => {
-          const cd = new Date(c.created_at);
-          return cd >= d && cd < next;
-        }).length;
-        monthly.push({ month: d.toLocaleString("en-US", { month: "short" }), count });
-      }
-
-      // Zone-wise client distribution
-      const zoneMap: Record<string, { name: string; count: number }> = {};
-      (zonesQ.data || []).forEach((z: any) => (zoneMap[z.id] = { name: z.name, count: 0 }));
-      clients.forEach((c: any) => {
-        if (c.zone_id && zoneMap[c.zone_id]) zoneMap[c.zone_id].count++;
-      });
-      const zoneChart = Object.values(zoneMap).filter((z) => z.count > 0).slice(0, 6);
-
-      // Top unpaid clients
-      const unpaidByClient: Record<string, { name: string; due: number }> = {};
-      (billing.data || []).forEach((b: any) => {
-        const due = Number(b.due || 0);
-        if (due <= 0) return;
-        const c = clients.find((x: any) => x.id === b.client_id);
-        if (!c) return;
-        if (!unpaidByClient[b.client_id]) unpaidByClient[b.client_id] = { name: c.name, due: 0 };
-        unpaidByClient[b.client_id].due += due;
-      });
-      const topUnpaid = Object.values(unpaidByClient).sort((a, b) => b.due - a.due).slice(0, 10);
-
-      return {
-        totalClients,
-        activeClients,
-        onlineClients,
-        monthlyBillSum,
-        dailyCharged,
-        approxRechargeable,
-        billed,
-        collected,
-        totalDue,
-        totalDiscount,
-        newThisMonth,
-        monthly,
-        zoneChart,
-        topUnpaid,
-        cashOnHand: collected,
-        paidSalary: 0,
-        tickets: tickets.data || [],
-        notices: notices.data || [],
-      };
+      const res = await callPortal<any>("pop_dashboard_overview", {});
+      if (res?.error) throw new Error(res.error);
+      return res;
     },
   });
 
