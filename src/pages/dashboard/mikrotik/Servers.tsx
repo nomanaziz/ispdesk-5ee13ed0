@@ -265,14 +265,15 @@ export default function Servers() {
                   <TableHead>টাইমআউট</TableHead>
                   <TableHead>সক্রিয়</TableHead>
                   <TableHead>স্ট্যাটাস</TableHead>
+                  <TableHead className="min-w-[200px]">Assigned POP</TableHead>
                   <TableHead>অ্যাকশন</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={12} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={13} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={12} className="text-center py-8">কোনো সার্ভার পাওয়া যায়নি</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={13} className="text-center py-8">কোনো সার্ভার পাওয়া যায়নি</TableCell></TableRow>
                 ) : filtered.map((d, i) => {
                   const statusInfo = getStatusDisplay(d);
                   return (
