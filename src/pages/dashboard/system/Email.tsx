@@ -3,11 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
 import { Save, Mail, Send, Server, User, Lock, AtSign } from "lucide-react";
 import { toast } from "sonner";
 
 interface EmailConfig {
+  protocol: "mail" | "smtp";
   smtp_host: string;
   smtp_port: number;
   smtp_username: string;
@@ -18,6 +20,7 @@ interface EmailConfig {
 }
 
 const defaults: EmailConfig = {
+  protocol: "smtp",
   smtp_host: "", smtp_port: 587, smtp_username: "", smtp_password: "",
   from_email: "", from_name: "", encryption: "tls",
 };
@@ -46,9 +49,22 @@ export default function Email() {
 
       <div className="border rounded-lg overflow-hidden">
         <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
-          <Mail className="h-4 w-4" /> SMTP কনফিগারেশন
+          <Mail className="h-4 w-4" /> Email Protocol & SMTP কনফিগারেশন
         </div>
         <div className="p-5 space-y-5 bg-card">
+          <div className="flex items-center gap-6 p-3 border rounded-lg bg-muted/30">
+            <Label className="text-sm font-medium">প্রোটোকল:</Label>
+            <RadioGroup value={form.protocol} onValueChange={(v) => set("protocol", v as any)} className="flex gap-6">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="mail" id="proto-mail" />
+                <Label htmlFor="proto-mail" className="font-normal text-sm cursor-pointer">Mail (PHP mail)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="smtp" id="proto-smtp" />
+                <Label htmlFor="proto-smtp" className="font-normal text-sm cursor-pointer">SMTP</Label>
+              </div>
+            </RadioGroup>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label className="text-xs mb-1 block">SMTP হোস্ট</Label>
