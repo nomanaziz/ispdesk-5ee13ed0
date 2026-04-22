@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 
 interface Props {
   children: React.ReactNode;
-  require?: "dashboard" | "invoices" | "purchases" | "tickets" | "users" | "settings";
+  require?: "dashboard" | "invoices" | "purchases" | "tickets" | "users" | "settings" | "system" | "accounting";
 }
 
 const ResellerProtectedRoute = ({ children, require }: Props) => {
