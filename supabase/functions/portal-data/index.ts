@@ -930,6 +930,54 @@ Deno.serve(async (req) => {
         return json({ clients: clients || [] });
       }
 
+      case "ensure_pop_client_bill": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const monthKey = String(payload.month || new Date().toISOString().slice(0, 7));
+        const monthStart = `${monthKey}-01`;
+        const clientId = String(payload.client_id || "");
+        if (!clientId) return json({ error: "Client is required" }, 400);
+
+        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+
+        const { data: client } = await sb
+          .from("clients")
+          .select("id, client_id, monthly_bill, branch_id")
+          .eq("id", clientId)
+          .eq("branch_id", pop.branch_id)
+          .maybeSingle();
+        if (!client) return json({ error: "Client not found" }, 404);
+
+        const { data: existing } = await sb
+          .from("billing")
+          .select("id")
+          .eq("client_id", clientId)
+          .gte("month", monthStart)
+          .lt("month", new Date(new Date(monthStart).getFullYear(), new Date(monthStart).getMonth() + 1, 1).toISOString().slice(0, 10))
+          .limit(1)
+          .maybeSingle();
+        if (existing?.id) return json({ ok: true, created: false, billing_id: existing.id });
+
+        const amount = Number(client.monthly_bill || 0);
+        if (amount <= 0) return json({ error: "Monthly bill is not set" }, 400);
+
+        const { data: inserted, error } = await sb.from("billing").insert({
+          bill_id: `BILL-${client.client_id}-${monthKey}`,
+          client_id: client.id,
+          branch_id: pop.branch_id,
+          month: monthStart,
+          amount,
+          due: amount,
+          paid: 0,
+          status: "unpaid",
+          generated: true,
+        }).select("id").single();
+        if (error) return json({ error: error.message }, 500);
+
+        return json({ ok: true, created: true, billing_id: inserted?.id || null });
+      }
+
       case "list_pop_daily_collections": {
         if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
         const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
