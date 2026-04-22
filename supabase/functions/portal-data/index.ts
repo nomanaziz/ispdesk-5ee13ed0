@@ -815,6 +815,7 @@ Deno.serve(async (req) => {
           branch_id: pop.branch_id,
           district_id: pop.district_id || null,
           upazila_id: pop.upazila_id || null,
+          owner_scope: "pop",
         };
 
         const { data: inserted, error } = await sb
