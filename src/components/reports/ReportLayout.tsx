@@ -105,7 +105,7 @@ export function ReportLayout({
       </div>
 
       <div className="border rounded-lg overflow-hidden bg-card">
-        <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
+        <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium flex items-center gap-2">
           <FileType2 className="h-4 w-4" /> Filters
         </div>
         <div className="p-4">{filters}</div>
@@ -130,14 +130,14 @@ export function ReportLayout({
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#1e3a5f] hover:bg-[#1e3a5f]">
+              <TableRow className="bg-primary hover:bg-primary">
                 {columns.map((c) => (
                   <TableHead
                     key={c.key}
                     onClick={() => c.sortable !== false && toggleSort(c.key)}
                     className={cn(
-                      "text-white whitespace-nowrap text-xs font-semibold",
-                      c.sortable !== false && "cursor-pointer select-none hover:bg-[#284a72]",
+                      "text-primary-foreground whitespace-nowrap text-xs font-semibold",
+                      c.sortable !== false && "cursor-pointer select-none hover:bg-primary/90",
                       c.align === "right" && "text-right",
                       c.align === "center" && "text-center",
                       c.className,
