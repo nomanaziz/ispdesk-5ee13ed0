@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Layers, ArrowLeft, Save, RefreshCw } from "lucide-react";
+import { Layers, ArrowLeft, Save, RefreshCw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 type Row = {
@@ -36,67 +37,20 @@ export default function ResellerMikrotikBulkCreate() {
   const { customer } = usePortalAuth();
   const qc = useQueryClient();
   const popId = customer?.type === "reseller_sub" ? (customer as any)?.parent_reseller_id : customer?.sub;
-  const branchId = (customer as any)?.branch_id;
-  const tariffId = (customer as any)?.tariff_id;
   const [rows, setRows] = useState<Row[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  const { data: tariffPackages = [] } = useQuery({
-    queryKey: ["pop_tariff_packages_bulk", tariffId],
+  const bulkQuery = useQuery({
+    queryKey: ["pop_mt_bulk_candidates", popId],
     queryFn: async () => {
-      if (!tariffId) return [];
-      const { data } = await supabase
-        .from("reseller_tariff_packages")
-        .select("id, package_id, selling_rate, isp_packages(id, name, bandwidth_down)")
-        .eq("tariff_id", tariffId)
-        .eq("status", "active");
-      return data || [];
-    },
-    enabled: !!tariffId,
-  });
-
-  const { data: zones = [] } = useQuery({
-    queryKey: ["pop_zones_bulk", branchId],
-    queryFn: async () => {
-      if (!branchId) return [];
-      const { data } = await supabase.from("zones").select("id, name").eq("branch_id", branchId).order("name");
-      return data || [];
-    },
-    enabled: !!branchId,
-  });
-
-  const { isLoading, refetch } = useQuery({
-    queryKey: ["bulk_mt_transferred", popId, branchId],
-    queryFn: async () => {
-      if (!popId) return [];
-      // POP-এর branch-এ অথবা POP-এ directly assigned সব MikroTik device-এর id-গুলো
-      const { data: mts } = await supabase
-        .from("mikrotik_devices")
-        .select("id, branch_id, assigned_to_pop_id");
-      const mtIds: string[] = (mts || [])
-        .filter((m: any) =>
-          (branchId && m.branch_id === branchId) || m.assigned_to_pop_id === popId,
-        )
-        .map((m: any) => m.id);
-
-      let q = supabase
-        .from("mikrotik_clients")
-        .select("id, name, password, profile, caller_id, remote_address, service, mikrotik_id, transferred_to_mikrotik_id, transferred_to_pop_id, linked_client_id")
-        .is("linked_client_id", null)
-        .order("name");
-
-      if (mtIds.length > 0) {
-        // assigned MT-এর সব users + পুরোনো transferred users
-        const inList = `(${mtIds.join(",")})`;
-        q = q.or(
-          `transferred_to_pop_id.eq.${popId},mikrotik_id.in.${inList},transferred_to_mikrotik_id.in.${inList}`,
-        );
-      } else {
-        q = q.eq("transferred_to_pop_id", popId);
-      }
-      const { data } = await q;
+      const data = await callPortal<{
+        users: any[];
+        tariff_packages: any[];
+        zones: any[];
+        branch_id: string | null;
+      }>("get_pop_mikrotik_bulk_candidates");
       const today = new Date().toISOString().slice(0, 10);
-      const mapped: Row[] = (data || []).map((u: any) => ({
+      const mapped: Row[] = (data.users || []).map((u: any) => ({
         id: u.id,
         username: u.name,
         password: u.password,
@@ -114,10 +68,16 @@ export default function ResellerMikrotikBulkCreate() {
         selected: false,
       }));
       setRows(mapped);
-      return data || [];
+      return data;
     },
     enabled: !!popId,
   });
+
+  const tariffPackages = bulkQuery.data?.tariff_packages || [];
+  const zones = bulkQuery.data?.zones || [];
+  const branchId = bulkQuery.data?.branch_id || null;
+  const isLoading = bulkQuery.isLoading;
+  const refetch = () => bulkQuery.refetch();
 
   const selectedCount = useMemo(() => rows.filter((r) => r.selected).length, [rows]);
   const allSelected = rows.length > 0 && selectedCount === rows.length;
