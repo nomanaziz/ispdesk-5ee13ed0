@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { getPopScope } from "@/lib/popScope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,8 +18,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
-  LifeBuoy, Plus, Search, Send, ShieldCheck, User as UserIcon, MessageSquare,
+  LifeBuoy, Plus, Search, Send, ShieldCheck, User as UserIcon, MessageSquare, Check, ChevronsUpDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
