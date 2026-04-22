@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { callPortal } from "@/lib/portalApi";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,7 @@ import {
   CheckCircle2, XCircle, Clock, ShieldAlert, IdCard, Calendar, MapPin, Eye, EyeOff,
 } from "lucide-react";
 
+/* ---------------- helpers (module-level, do NOT define inside parent — causes remount) ---------------- */
 const fileToBase64 = (file: File) =>
   new Promise<string>((resolve, reject) => {
     const r = new FileReader();
@@ -25,6 +26,43 @@ const fileToBase64 = (file: File) =>
     r.readAsDataURL(file);
   });
 
+const onlyAlpha = (s: string) => s.replace(/[^A-Za-z\u0980-\u09FF\s.'-]/g, "");
+const onlyDigits = (s: string, max = 11) => s.replace(/\D/g, "").slice(0, max);
+const onlyAlphaExt = (s: string) => s.replace(/[^A-Za-z\u0980-\u09FF\s.,'-]/g, "");
+const validBdMobile = (m: string) => /^01[3-9]\d{8}$/.test(m);
+
+const Row = ({ label, value }: { label: string; value: any }) => (
+  <div className="flex items-center justify-between gap-3">
+    <span className="text-xs text-muted-foreground">{label}</span>
+    <span className="text-xs font-medium text-right truncate max-w-[60%]">{value}</span>
+  </div>
+);
+
+const SectionTitle = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
+  <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b pb-2">
+    {icon} {title}
+  </div>
+);
+
+const BdPhoneInput = ({
+  value, onChange, placeholder = "01XXXXXXXXX",
+}: { value: string; onChange: (v: string) => void; placeholder?: string }) => (
+  <div className="flex">
+    <div className="flex items-center gap-1 px-2 border border-r-0 rounded-l-md bg-muted text-xs whitespace-nowrap">
+      🇧🇩 +880
+    </div>
+    <Input
+      className="rounded-l-none"
+      value={value}
+      maxLength={11}
+      inputMode="numeric"
+      placeholder={placeholder}
+      onChange={(e) => onChange(onlyDigits(e.target.value, 11))}
+    />
+  </div>
+);
+
+/* ---------------- Page ---------------- */
 const PortalProfile = () => {
   const qc = useQueryClient();
   const [params, setParams] = useSearchParams();
@@ -41,7 +79,6 @@ const PortalProfile = () => {
 
   return (
     <div className="space-y-5 animate-in fade-in duration-300">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow">
           <UserCog className="h-5 w-5" />
@@ -76,9 +113,13 @@ const PortalProfile = () => {
                     "bg-rose-100 text-rose-700 border-0"
                   }>{client?.status || "—"}</Badge>
                 } />
-                <Row label="Package" value={client?.package?.name || "—"} />
+                <Row label="Package" value={
+                  client?.package?.name
+                    ? `${client.package.name}${client.package.bandwidth_down ? ` (${client.package.bandwidth_down}M)` : ""}`
+                    : "—"
+                } />
                 <Row label="Joined" value={client?.joining_date ? new Date(client.joining_date).toLocaleDateString() : "—"} />
-                <Row label="Mobile" value={client?.contact || "—"} />
+                <Row label="Mobile" value={client?.contact ? `+880 ${client.contact}` : "—"} />
               </div>
 
               <Button asChild variant="outline" className="w-full mt-5 border-rose-200 text-rose-700 hover:bg-rose-50">
@@ -135,13 +176,6 @@ const PortalProfile = () => {
   );
 };
 
-const Row = ({ label, value }: any) => (
-  <div className="flex items-center justify-between gap-3">
-    <span className="text-xs text-muted-foreground">{label}</span>
-    <span className="text-xs font-medium text-right truncate max-w-[60%]">{value}</span>
-  </div>
-);
-
 /* ---------------- Personal Tab ---------------- */
 const PersonalTab = ({ client, qc }: any) => {
   const [form, setForm] = useState<any>({});
@@ -155,7 +189,7 @@ const PersonalTab = ({ client, qc }: any) => {
       mother_name: client.mother_name || "",
       occupation: client.occupation || "",
       gender: client.gender || "",
-      date_of_birth: client.date_of_birth || "",
+      date_of_birth: client.date_of_birth ? String(client.date_of_birth).slice(0, 10) : "",
       road_number: client.road_number || "",
       house_number: client.house_number || "",
       present_address: client.present_address || client.address || "",
@@ -164,8 +198,19 @@ const PersonalTab = ({ client, qc }: any) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client?.id]);
 
+  const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
+
   const save = useMutation({
-    mutationFn: () => callPortal("update_profile", form),
+    mutationFn: () => {
+      // validation
+      if (form.contact && !validBdMobile(form.contact))
+        throw new Error("সঠিক ১১ ডিজিট মোবাইল নম্বর দিন (01XXXXXXXXX)");
+      if (form.phone_number && !validBdMobile(form.phone_number))
+        throw new Error("Alternate phone সঠিক ১১ ডিজিট হতে হবে");
+      if (form.email && !/^\S+@\S+\.\S+$/.test(form.email))
+        throw new Error("সঠিক email দিন");
+      return callPortal("update_profile", form);
+    },
     onSuccess: () => {
       toast.success("প্রোফাইল আপডেট হয়েছে");
       qc.invalidateQueries({ queryKey: ["portal-profile"] });
@@ -173,34 +218,45 @@ const PersonalTab = ({ client, qc }: any) => {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const F = ({ k, label, type = "text" }: any) => (
-    <div>
-      <Label className="text-xs">{label}</Label>
-      <Input type={type} value={form[k] || ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />
-    </div>
-  );
-
   return (
     <div className="space-y-4">
       <SectionTitle icon={<UserCog className="h-4 w-4 text-blue-600" />} title="Contact Info" />
       <div className="grid sm:grid-cols-2 gap-3">
-        <F k="contact" label="Mobile" />
-        <F k="email" label="Email" type="email" />
-        <F k="phone_number" label="Alternate Phone" />
+        <div>
+          <Label className="text-xs">Mobile</Label>
+          <BdPhoneInput value={form.contact || ""} onChange={(v) => set("contact", v)} />
+        </div>
+        <div>
+          <Label className="text-xs">Email</Label>
+          <Input type="email" value={form.email || ""} onChange={(e) => set("email", e.target.value.trim())} />
+        </div>
+        <div>
+          <Label className="text-xs">Alternate Phone</Label>
+          <BdPhoneInput value={form.phone_number || ""} onChange={(v) => set("phone_number", v)} />
+        </div>
         <div>
           <Label className="text-xs">Date of Birth</Label>
-          <Input type="date" value={form.date_of_birth || ""} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} />
+          <Input type="date" value={form.date_of_birth || ""} onChange={(e) => set("date_of_birth", e.target.value)} />
         </div>
       </div>
 
       <SectionTitle icon={<IdCard className="h-4 w-4 text-violet-600" />} title="Personal Details" />
       <div className="grid sm:grid-cols-2 gap-3">
-        <F k="father_name" label="Father's Name" />
-        <F k="mother_name" label="Mother's Name" />
-        <F k="occupation" label="Occupation" />
+        <div>
+          <Label className="text-xs">Father's Name</Label>
+          <Input value={form.father_name || ""} onChange={(e) => set("father_name", onlyAlpha(e.target.value))} />
+        </div>
+        <div>
+          <Label className="text-xs">Mother's Name</Label>
+          <Input value={form.mother_name || ""} onChange={(e) => set("mother_name", onlyAlpha(e.target.value))} />
+        </div>
+        <div>
+          <Label className="text-xs">Occupation</Label>
+          <Input value={form.occupation || ""} onChange={(e) => set("occupation", onlyAlphaExt(e.target.value))} />
+        </div>
         <div>
           <Label className="text-xs">Gender</Label>
-          <Select value={form.gender || ""} onValueChange={(v) => setForm({ ...form, gender: v })}>
+          <Select value={form.gender || ""} onValueChange={(v) => set("gender", v)}>
             <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="male">Male</SelectItem>
@@ -213,16 +269,22 @@ const PersonalTab = ({ client, qc }: any) => {
 
       <SectionTitle icon={<MapPin className="h-4 w-4 text-emerald-600" />} title="Address" />
       <div className="grid sm:grid-cols-2 gap-3">
-        <F k="house_number" label="House No." />
-        <F k="road_number" label="Road No." />
+        <div>
+          <Label className="text-xs">House No.</Label>
+          <Input value={form.house_number || ""} onChange={(e) => set("house_number", e.target.value)} />
+        </div>
+        <div>
+          <Label className="text-xs">Road No.</Label>
+          <Input value={form.road_number || ""} onChange={(e) => set("road_number", e.target.value)} />
+        </div>
       </div>
       <div>
         <Label className="text-xs">Present Address</Label>
-        <Textarea rows={2} value={form.present_address || ""} onChange={(e) => setForm({ ...form, present_address: e.target.value })} />
+        <Textarea rows={2} value={form.present_address || ""} onChange={(e) => set("present_address", e.target.value)} />
       </div>
       <div>
         <Label className="text-xs">Permanent Address</Label>
-        <Textarea rows={2} value={form.permanent_address || ""} onChange={(e) => setForm({ ...form, permanent_address: e.target.value })} />
+        <Textarea rows={2} value={form.permanent_address || ""} onChange={(e) => set("permanent_address", e.target.value)} />
       </div>
 
       <Button onClick={() => save.mutate()} disabled={save.isPending} className="bg-emerald-600 hover:bg-emerald-700 text-white">
@@ -365,7 +427,7 @@ const MobileTab = ({ client, qc }: any) => {
   });
 
   const onSubmit = () => {
-    if (!/^01[3-9]\d{8}$/.test(mobile)) return toast.error("সঠিক ১১ ডিজিট মোবাইল নম্বর দিন");
+    if (!validBdMobile(mobile)) return toast.error("সঠিক ১১ ডিজিট মোবাইল নম্বর দিন");
     submit.mutate();
   };
 
@@ -373,11 +435,11 @@ const MobileTab = ({ client, qc }: any) => {
     <div className="space-y-4 max-w-md">
       <SectionTitle icon={<Phone className="h-4 w-4 text-cyan-600" />} title="Change Mobile Number" />
       <div className="bg-cyan-50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-900 rounded p-3 text-xs">
-        Current: <span className="font-semibold">{client?.contact || "—"}</span>
+        Current: <span className="font-semibold">{client?.contact ? `+880 ${client.contact}` : "—"}</span>
       </div>
       <div>
         <Label className="text-xs">New Mobile Number</Label>
-        <Input value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="01XXXXXXXXX" maxLength={11} />
+        <BdPhoneInput value={mobile} onChange={setMobile} />
       </div>
       <div>
         <Label className="text-xs">Reason (optional)</Label>
@@ -421,12 +483,6 @@ const HistoryTab = ({ requests }: any) => (
         ))}
       </div>
     )}
-  </div>
-);
-
-const SectionTitle = ({ icon, title }: any) => (
-  <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b pb-2">
-    {icon} {title}
   </div>
 );
 
