@@ -39,7 +39,7 @@ export default function DailyCollection() {
         .from("bill_collections")
         .select(`
           *, 
-          client:clients!inner(id, client_id, name, contact, username, monthly_bill, branch_id),
+          client:clients!inner(id, client_id, name, contact, username, monthly_bill, branch_id, owner_scope),
           billing:billing(id, month, amount, paid, due, status)
         `)
         .gte("created_at", `${fromDate}T00:00:00`)
@@ -48,6 +48,7 @@ export default function DailyCollection() {
       if (error) throw error;
       let rows = data || [];
       if (isPopMode && branchId) rows = rows.filter((r: any) => r.client?.branch_id === branchId);
+      else rows = rows.filter((r: any) => r.client?.owner_scope === "admin");
       return rows;
     },
   });
