@@ -351,6 +351,10 @@ import PopPaymentGateways from "@/pages/reseller/system/PopPaymentGateways";
 import PopProcessingFee from "@/pages/reseller/system/PopProcessingFee";
 import PopAutomaticProcess from "@/pages/reseller/system/PopAutomaticProcess";
 import PopActivityLog from "@/pages/reseller/system/PopActivityLog";
+import PopIncome from "@/pages/reseller/accounting/PopIncome";
+import PopExpense from "@/pages/reseller/accounting/PopExpense";
+import PopCashBook from "@/pages/reseller/accounting/PopCashBook";
+import PopEditEmployee from "@/pages/reseller/employee/PopEditEmployee";
 
 // Redirect helper: any /reseller/<rest> → /pop-admin/<rest>
 const LegacyResellerRedirect = () => {
