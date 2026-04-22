@@ -356,13 +356,14 @@ export default function Import() {
                     <TableHead>ট্রান্সফার গন্তব্য</TableHead>
                   )}
                   <TableHead>অ্যাকশন</TableHead>
+                  <TableHead>এক্সপোর্ট</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={11} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={12} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                  <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                     কোনো MikroTik-only ইউজার পাওয়া যায়নি। উপরের <b>"মাইক্রোটিক থেকে সিঙ্ক করুন"</b> বাটন চাপুন — তারপর pending ইউজার এখানে আসবে এবং POP-এ ট্রান্সফার করা যাবে।
                   </TableCell></TableRow>
                 ) : filtered.map((c: any) => (
