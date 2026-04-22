@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotesButton } from "@/components/notes/NotesButton";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { ResellerMobileShell } from "@/components/reseller/mobile/ResellerMobileShell";
 
 type PermKey =
   | "dashboard" | "configuration" | "mikrotik" | "employee" | "client"
