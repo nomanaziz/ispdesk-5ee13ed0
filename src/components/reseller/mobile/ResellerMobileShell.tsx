@@ -1,6 +1,6 @@
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, Bell, Plus, LogOut, Settings } from "lucide-react";
+import { Menu, Bell, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,7 +11,6 @@ import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { MobileBottomTabs } from "./MobileBottomTabs";
-import { QuickCreateClientDialog } from "@/components/QuickCreateClientDialog";
 import { NotesButton } from "@/components/notes/NotesButton";
 
 interface Props {
@@ -157,20 +156,7 @@ export function ResellerMobileShell({ children, onOpenSidebar }: Props) {
       {/* Page content */}
       <main className="flex-1 p-3 pb-24 overflow-x-hidden">{children}</main>
 
-      {/* Floating Quick Create FAB */}
-      <button
-        type="button"
-        onClick={() => setQuickOpen(true)}
-        className="fixed right-4 bottom-20 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform md:hidden"
-        style={{ marginBottom: "env(safe-area-inset-bottom)" }}
-        aria-label={lang === "bn" ? "দ্রুত ক্লায়েন্ট তৈরি" : "Quick create client"}
-      >
-        <Plus className="h-7 w-7" />
-      </button>
-
       <MobileBottomTabs />
-
-      <QuickCreateClientDialog open={quickOpen} onOpenChange={setQuickOpen} />
     </div>
   );
 }
