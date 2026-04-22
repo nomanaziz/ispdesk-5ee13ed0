@@ -73,6 +73,34 @@ export default function Servers() {
     },
   });
 
+  const { data: pops = [] } = useQuery({
+    queryKey: ["branch_managers_for_mt_assign"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("branch_managers")
+        .select("id, name, pop_code")
+        .eq("status", "active")
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const assignToPop = useMutation({
+    mutationFn: async ({ id, popId }: { id: string; popId: string | null }) => {
+      const { error } = await supabase
+        .from("mikrotik_devices")
+        .update({ assigned_to_pop_id: popId })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mikrotik_devices"] });
+      toast.success("POP assignment আপডেট হয়েছে");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const nextOrderNo = () => {
     const maxOrder = devices.reduce((m, d) => Math.max(m, d.order_no || 0), 0);
     return maxOrder + 1;
