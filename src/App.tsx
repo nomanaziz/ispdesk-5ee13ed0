@@ -343,6 +343,7 @@ import PopBillingClient from "@/pages/reseller/clients/PopBillingClient";
 import PopLeftClients from "@/pages/reseller/clients/PopLeftClients";
 import PopScheduler from "@/pages/reseller/clients/PopScheduler";
 import PopPlaceholder from "@/pages/reseller/PopPlaceholder";
+import PopOnlineMonitoring from "@/pages/reseller/PopOnlineMonitoring";
 import PopFundDebitHistory from "@/pages/reseller/PopFundDebitHistory";
 // POP Reports
 import PopBillCollection from "@/pages/reseller/reports/PopBillCollection";
@@ -766,7 +767,7 @@ const App = () => (
               <Route path="/pop-admin/billing/client/:id" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientProfile /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/billing/invoice" element={<Navigate to="/pop-admin/billing/list" replace />} />
               <Route path="/pop-admin/billing/profile" element={<Navigate to="/pop-admin/clients/billing" replace />} />
-              <Route path="/pop-admin/monitoring/online" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Online Client Monitoring" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/monitoring/online" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopOnlineMonitoring /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/monitoring/ping" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Ping Tools" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/templates" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="SMS Templates" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/individual" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Individual / Group SMS" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
