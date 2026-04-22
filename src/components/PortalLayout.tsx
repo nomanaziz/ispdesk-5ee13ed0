@@ -13,7 +13,9 @@ import {
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { KeyRound } from "lucide-react";
 
 const menuItems = [
   { bn: "ড্যাশবোর্ড", en: "Dashboard", icon: LayoutDashboard, path: "/portal/dashboard", color: "text-indigo-600 dark:text-indigo-400" },
@@ -111,15 +113,6 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
             })}
           </div>
 
-          <div className="px-2 pt-5 pb-2 text-[10px] uppercase tracking-wider text-sidebar-foreground/70 font-bold">
-            {t("অ্যাকাউন্ট", "Account")}
-          </div>
-          <button
-            onClick={logout}
-            className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            <LogOut className="h-4 w-4" /> {t("লগআউট", "Logout")}
-          </button>
         </nav>
 
         <div className="px-5 py-3 border-t border-sidebar-border text-[11px] text-sidebar-foreground/50">
@@ -168,17 +161,43 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 hover:opacity-80 px-2 py-1.5 rounded-lg hover:bg-muted">
-                <Avatar className="h-7 w-7">
+                <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-primary text-primary-foreground text-[11px]">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm hidden sm:inline font-medium">{customer?.username}</span>
+                <div className="hidden sm:flex flex-col items-start leading-tight">
+                  <span className="text-sm font-medium">{customer?.name || customer?.username}</span>
+                  <span className="text-[10px] text-muted-foreground">{customer?.username}</span>
+                </div>
                 <ChevronDown className="h-3 w-3 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={logout} className="text-destructive">
+            <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuLabel className="py-2">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold truncate">{customer?.name || customer?.username}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">{customer?.code || customer?.username}</div>
+                  </div>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/portal/profile" className="cursor-pointer">
+                  <UserCog className="h-4 w-4 mr-2 text-blue-600" /> {t("আমার প্রোফাইল", "My Profile")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/portal/profile?tab=password" className="cursor-pointer">
+                  <KeyRound className="h-4 w-4 mr-2 text-amber-600" /> {t("পাসওয়ার্ড পরিবর্তন", "Change Password")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout} className="text-destructive cursor-pointer">
                 <LogOut className="h-4 w-4 mr-2" /> {t("লগআউট", "Logout")}
               </DropdownMenuItem>
             </DropdownMenuContent>
