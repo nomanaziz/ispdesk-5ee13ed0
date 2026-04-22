@@ -1,120 +1,50 @@
 
 
-## কাজ — POP Admin Mobile-Friendly Layout + Global Quick Create
+## আপনার সমস্যা ও সমাধান
 
-POP admin সাধারণত mobile দিয়ে কাজ করে। তাই POP portal-এর জন্য একটা mobile-first shell তৈরি করব (web view অপরিবর্তিত), reference screenshot-এর মতো — উপরে header, মাঝে clickable shortcut grid + summary cards, নিচে fixed bottom-tab bar (Home / Billing / Collection / Monitoring / Support)। সাথে web + portal দুই জায়গায় একটা "Quick Create Client" floating dialog।
+আপনি ১০০% ঠিক বলেছেন — আমি ভুল করেছি। আগের সুন্দর Client List design টা replace করে একটা সাধারণ table বানিয়ে ফেলেছিলাম। সেটা ফেরত আনছি, আর আপনার বাকি ৩টা request ও একসাথে fix করছি।
 
-### ১) Mobile shell (auto-switch on viewport < 768px)
+### সমস্যাগুলো কী কী
 
-`ResellerLayout.tsx`-এ `useIsMobile()` দিয়ে detect করব। Mobile হলে নতুন `ResellerMobileShell` render হবে; desktop-এ existing sidebar layout ঠিক থাকবে।
+1. **Client তালিকার design ভেঙে গেছে** — `/pop-admin/clients` route এখন `PopClientList` নামের একটা plain table দেখাচ্ছে (border, badge, কোনো filter/bulk action নেই)। আগে এটা `ClientList` (dashboard এর full-featured page) দেখাতো — সেটাতে password show/hide, expire date pick, BillingFilterPanel, Bulk actions, Export সব ছিল।
+2. **Billing তালিকায় নতুন client নেই** — আসল `BillingList` page তে `gt("monthly_bill", 0)` filter আছে। নতুন quick-create client এ `monthly_bill` set হচ্ছে না (০ থাকছে), তাই billing তালিকায় আসছে না।
+3. **Logout উপরে নেই** — Sidebar এর নিচের কোনায় আছে। আপনি চাচ্ছেন user avatar এ click করলে dropdown থেকে logout হবে।
+4. **POP type (Prepaid/Postpaid) header এ দেখা যায় না** — `branch_managers.pop_type` field থেকে এটা fetch করে header এ badge হিসেবে দেখাতে হবে।
 
-**Mobile shell structure:**
-```
-┌──────────────────────────────────────┐
-│ Header (blue, sticky)                │
-│  avatar | popName + type | 🔍 🔔 ☰  │
-│  ENGLISH/বাংলা toggle               │
-├──────────────────────────────────────┤
-│ Page content (scrollable)           │
-│  pb-20 (space for bottom bar)       │
-├──────────────────────────────────────┤
-│ Bottom Tab Bar (fixed, 5 tabs)      │
-│  Home | Billing | Collection | Mon. | Support │
-└──────────────────────────────────────┘
-+ Floating "Quick Create" FAB (bottom-right, above tab bar)
-```
+### Plan
 
-- Header height 62px, primary blue, white text
-- Hamburger (☰) opens existing full sidebar drawer (already implemented)
-- Bottom tabs: routes resolve to `/pop-admin/dashboard`, `/pop-admin/billing/list`, `/pop-admin/billing/daily-collection`, `/pop-admin/monitoring/online`, `/pop-admin/tickets`
-- Active tab highlighted in primary color (icon + label)
+**Step 1 — Client তালিকার আগের design ফেরত আনা**
+- `src/App.tsx` এ `/pop-admin/clients` route কে আবার `<ClientList />` (dashboard এর version) এ ফেরত পাঠাবো।
+- `ClientList.tsx` already POP-aware (`usePopScope` use করে `branch_id` দিয়ে filter করে) — তাই POP admin এর জন্য শুধু সেই POP এর client ই দেখাবে।
+- নতুন তৈরি `PopClientList.tsx` file টা delete করবো (কাজে লাগবে না)।
 
-### ২) Mobile Dashboard (`PopMobileHome.tsx`) — ১ম screenshot replica
+**Step 2 — Billing তালিকায় নতুন client দেখানো**
+- `QuickCreateClientDialog` এ `monthly_bill` field add করবো (default ০, কিন্তু optional input)। অথবা package select করলে package এর rate auto fill হবে।
+- `AddClient` flow ইতিমধ্যে `monthly_bill` save করে — সেটার change লাগবে না।
+- Billing query invalidation ঠিক করবো যাতে নতুন client সাথে সাথে list এ আসে।
 
-Existing `ResellerDashboard.tsx` desktop-এ unchanged থাকে। Mobile-এ আলাদা component render হবে (same data hooks reuse):
+**Step 3 — Logout কে top-right user dropdown এ আনা**
+- `ResellerLayout.tsx` desktop header এ avatar (`{customer?.name?.[0]}`) এর উপর `DropdownMenu` wrap করবো।
+- Dropdown items: User name + username, **POP Type badge (Prepaid/Postpaid)**, Settings link, Logout button.
+- Sidebar এর নিচের logout button টা সরিয়ে দিবো (duplicate এড়াতে)।
+- Mobile shell এও একই ভাবে avatar dropdown এ logout আনবো।
 
-**Sections (top → bottom):**
-1. **Profile card** — avatar, name, "User Type: MAC Reseller", "Reseller Type: Active" badge, language toggle
-2. **Shortcut grid (4×2 = 8 icons)** — clickable square tiles, navigate to:
-   - Bill Receive → `/pop-admin/billing/list` (with pay action)
-   - Bill Approval → `/pop-admin/billing/list?tab=approval`
-   - Add Client → `/pop-admin/clients/add`
-   - Create Ticket → `/pop-admin/tickets?action=new`
-   - Fund Recharge → `/pop-admin/fund-history/credit?action=recharge`
-   - Debit History → `/pop-admin/fund-history/debit`
-   - Recharge Transaction → `/pop-admin/fund-history/credit`
-   - Credit Transaction → `/pop-admin/fund-history/credit`
-3. **Summary card** (rounded, light bg) — Monthly Bill / Collected / Due / Discount (2×2 grid)
-4. **Tickets card** — Ticket / Pending / Process counts (3 columns)
-5. **Bar chart** — Unpaid vs Paid per zone (reuse existing recharts data)
-6. **Bottom card** — Paid Salary / Remaining Balance / Cash on Hand / Approximate Rechargeable
+**Step 4 — POP Type header এ দেখানো**
+- `portal-auth/index.ts` Edge Function এ reseller token issue করার সময় `pop_type` field টাও payload এ যোগ করবো (`branch_managers.pop_type`)।
+- `PortalAuthContext` এ `pop_type` expose করবো।
+- Header এ POP code এর পাশে একটা badge: 🟢 **Prepaid** / 🟠 **Postpaid**।
 
-All data already available in `ResellerDashboard.tsx` queries — just restructured for mobile.
+### প্রতিশ্রুতি Design এর ব্যাপারে
 
-### ৩) Quick Create Client (web + mobile, global FAB)
+আমি বুঝতে পেরেছি আপনার design খুব important। **কোনো existing page এর design replace করবো না** — শুধু route এর mapping ঠিক করবো এবং ছোট addition (dropdown + badge) করবো। আপনার পুরো দেখতে ক্লায়েন্ট তালিকা / বিলিং তালিকা / dashboard সব **আগের মতই থাকবে**।
 
-নতুন `QuickCreateClientDialog.tsx` component যা:
+### Files যেগুলো edit হবে
 
-**Trigger:**
-- Mobile: floating "+" FAB button (bottom-right, above bottom-tab bar)
-- Desktop (both Admin + POP): TopBar-এ "Quick Add" button (Plus icon) — admin-এর `TopBar.tsx`-এও একই button
-
-**Form fields (only mandatory):**
-- Client name *
-- Mobile number *
-- PPP ID / Username *
-- Password *
-- Zone (dropdown, branch-scoped) *
-- Package (dropdown) *
-- Monthly bill (auto-fill from package, editable)
-
-**Submit:** `clients` table-এ insert with `branch_id` (POP scope) or admin-selected branch। Success toast + option to "Continue to full form" বা "Create another"।
-
-Reuses existing zone/package lookups via `usePopScope` + branch_id filter। Generates client_code automatically (existing helper if available, else timestamp-based).
-
-### ৪) Mobile-friendly tweaks for key existing pages
-
-প্রতিটা page-এর জন্য mobile-specific rewrite নয় — শুধু responsive utility classes adjust:
-
-- **Billing List** (`PopBillingList.tsx` or wherever): card layout < 768px, button-tap-friendly Pay button
-- **Receive Bill / Bill Collection**: full-width inputs, larger tap targets (min h-11)
-- **Add Client form**: stepper (Personal Info / Network) like 2nd screenshot — already largely OK, just adjust spacing
-- **Fund Recharge**: full-width amount input + payment method selector like 3rd screenshot
-- **Debit History**: card list with "Paid" badge like 1st screenshot
-- **Client Monitoring**: stat-row + card list like 5th screenshot
-- **Support Ticket**: search + empty state + FAB like 4th screenshot
-
-Global tweak: `.touch-target { min-height: 44px }` utility for buttons/links on mobile।
-
-### ৫) ফাইল পরিবর্তন
-
-**নতুন (৪টা):**
-- `src/components/reseller/mobile/ResellerMobileShell.tsx` — header + bottom tab bar wrapper
-- `src/components/reseller/mobile/MobileBottomTabs.tsx` — 5-tab fixed bar
-- `src/pages/reseller/PopMobileHome.tsx` — mobile dashboard (shortcut grid + cards)
-- `src/components/QuickCreateClientDialog.tsx` — shared dialog (POP + Admin)
-
-**Edit:**
-- `src/components/ResellerLayout.tsx` — `useIsMobile()` দিয়ে ResellerMobileShell render conditionally
-- `src/pages/reseller/ResellerDashboard.tsx` — mobile হলে `<PopMobileHome />` render
-- `src/components/dashboard/TopBar.tsx` — admin-এ "Quick Add" button যোগ
-- কয়েকটা list page-এ minor responsive class tweak (Billing List, Fund Recharge dialog)
-
-### কী বদলাবে না
-
-- Desktop POP layout, sidebar, all desktop pages — অপরিবর্তিত
-- Admin dashboard layout — শুধু TopBar-এ একটা Quick Add button যোগ
-- Database schema — কোনো migration নেই (Quick Create reuses existing `clients` insert)
-- BW customer / client portal — অপরিবর্তিত
-- Existing reports, notes, areas, bulk import — সব কাজ করবে যেমন আছে
-
-### Apply-এর পরে expected ফলাফল
-
-1. ✅ Mobile (< 768px) POP portal খুললেই — header + shortcut grid dashboard + fixed bottom tabs (Home/Billing/Collection/Monitoring/Support)
-2. ✅ Shortcut tile tap করলে relevant page-এ যাবে; bottom tab swap-এ instant nav
-3. ✅ Hamburger menu থেকে full sidebar drawer accessible (existing menu)
-4. ✅ "+" FAB → Quick Create dialog → ৬টা mandatory field → instant client save
-5. ✅ Admin desktop topbar-এ "Quick Add" button — same dialog (with branch selector)
-6. ✅ Bill collection / Fund recharge / Add Client mobile-এ thumb-friendly (44px tap targets, full-width)
-7. ✅ Desktop view, all existing features — কোনো regression নেই
+- `src/App.tsx` — route কে original `ClientList` এ ফেরত
+- `src/components/ResellerLayout.tsx` — avatar dropdown (logout + POP type badge), sidebar logout সরানো
+- `src/components/reseller/mobile/ResellerMobileShell.tsx` — mobile avatar dropdown
+- `src/components/QuickCreateClientDialog.tsx` — `monthly_bill` field add
+- `supabase/functions/portal-auth/index.ts` — token এ `pop_type` যোগ
+- `src/contexts/PortalAuthContext.tsx` — `pop_type` expose
+- **Delete:** `src/pages/reseller/clients/PopClientList.tsx` (use হবে না)
 
