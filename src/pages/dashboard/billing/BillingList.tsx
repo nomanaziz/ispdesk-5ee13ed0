@@ -30,6 +30,7 @@ import RemainingDaysCell from "@/components/billing/RemainingDaysCell";
 import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows } from "@/lib/exportClients";
 import { toast } from "sonner";
 import { usePopScope } from "@/hooks/usePopScope";
+import { callPortal } from "@/lib/portalApi";
 
 const currentMonth = () => {
   const d = new Date();
@@ -74,30 +75,34 @@ export default function BillingList() {
   const [payBilling, setPayBilling] = useState<any>(null);
 
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ["billing-list", filters.month, branchId || "all"],
+    queryKey: ["billing-list", filters.month, branchId || "all", isPopMode ? "pop" : "admin"],
     queryFn: async () => {
-      let q: any = supabase
-        .from("clients")
-        .select(`
-          id, client_id, name, contact, username, remote_address, status,
-          client_type, connection_type, monthly_bill, expire_date, speed,
-          server_name, mac_address, protocol_type, profile, password,
-          mikrotik_id, mikrotik_status, is_vip, billing_date, is_online,
-          zone_id, sub_zone_id, box_id, package_id, email, billing_status,
-          zone:zones(name),
-          package:isp_packages(name),
-          mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name),
-          billing!billing_client_id_fkey(id, bill_id, month, amount, paid, due, discount, advance, vat, status, pay_date)
-        `)
-        .eq("status", "active")
-        .ilike("billing_status", "active")
-        .gt("monthly_bill", 0)
-        .order("client_id", { ascending: true });
-      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
-      else q = q.eq("owner_scope", "admin");
-      const { data, error } = await q;
-
-      if (error) throw error;
+      let data: any[] | null = null;
+      if (isPopMode) {
+        const res = await callPortal<{ clients: any[] }>("list_pop_billing_clients", { month: filters.month });
+        data = res.clients || [];
+      } else {
+        const { data: rows, error } = await supabase
+          .from("clients")
+          .select(`
+            id, client_id, name, contact, username, remote_address, status,
+            client_type, connection_type, monthly_bill, expire_date, speed,
+            server_name, mac_address, protocol_type, profile, password,
+            mikrotik_id, mikrotik_status, is_vip, billing_date, is_online,
+            zone_id, sub_zone_id, box_id, package_id, email, billing_status,
+            zone:zones(name),
+            package:isp_packages(name),
+            mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name),
+            billing!billing_client_id_fkey(id, bill_id, month, amount, paid, due, discount, advance, vat, status, pay_date)
+          `)
+          .eq("status", "active")
+          .ilike("billing_status", "active")
+          .gt("monthly_bill", 0)
+          .eq("owner_scope", "admin")
+          .order("client_id", { ascending: true });
+        if (error) throw error;
+        data = rows;
+      }
 
       const monthKey = filters.month; // YYYY-MM
       return (data || []).map((c: any) => {
