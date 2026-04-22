@@ -75,9 +75,17 @@ export default function Zones() {
 
   const upsertMutation = useMutation({
     mutationFn: async () => {
+      // Auto-generate a code if user left it blank — DB requires NOT NULL.
+      const autoCode = () => {
+        const slug = (form.name || "ZONE")
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, "")
+          .slice(0, 6) || "ZONE";
+        return `${slug}-${Date.now().toString().slice(-5)}`;
+      };
       const data: any = {
         name: form.name,
-        code: form.code || null,
+        code: form.code?.trim() ? form.code.trim() : autoCode(),
         description: form.description || null,
         division_id: form.division_id || null,
         district_id: form.district_id || null,
