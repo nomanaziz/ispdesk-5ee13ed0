@@ -117,6 +117,15 @@ export const POP_MENU_GROUPS: PopMenuGroup[] = [
     ],
   },
   {
+    key: "accounting",
+    label: "Accounting",
+    items: [
+      { key: "/pop-admin/accounting/income", label: "Income" },
+      { key: "/pop-admin/accounting/expense", label: "Expense" },
+      { key: "/pop-admin/accounting/cashbook", label: "Cash Book" },
+    ],
+  },
+  {
     key: "fund_history",
     label: "Fund History",
     items: [
