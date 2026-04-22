@@ -104,9 +104,16 @@ export const POP_MENU_GROUPS: PopMenuGroup[] = [
     key: "system",
     label: "System",
     items: [
+      { key: "/pop-admin/system/setup", label: "System Setup" },
+      { key: "/pop-admin/system/bill-period", label: "Bill Period" },
+      { key: "/pop-admin/system/period", label: "Period Setup" },
       { key: "/pop-admin/settings", label: "Company Settings" },
-      { key: "/pop-admin/system/period", label: "Period" },
-      { key: "/pop-admin/users", label: "Users" },
+      { key: "/pop-admin/system/invoice", label: "Invoice Setup" },
+      { key: "/pop-admin/system/email", label: "Email Setup" },
+      { key: "/pop-admin/system/payment-gateways", label: "Payment Gateways" },
+      { key: "/pop-admin/system/processing-fee", label: "Processing Fee" },
+      { key: "/pop-admin/system/automatic-process", label: "Automatic Process" },
+      { key: "/pop-admin/system/activity-log", label: "Activity Log" },
     ],
   },
   {
