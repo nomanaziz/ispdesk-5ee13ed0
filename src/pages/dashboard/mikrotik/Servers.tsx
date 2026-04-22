@@ -304,6 +304,26 @@ export default function Servers() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <Select
+                          value={d.assigned_to_pop_id || "__none__"}
+                          onValueChange={(v) =>
+                            assignToPop.mutate({ id: d.id, popId: v === "__none__" ? null : v })
+                          }
+                        >
+                          <SelectTrigger className="h-8 min-w-[180px]">
+                            <SelectValue placeholder="POP নির্বাচন করুন" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">— Unassigned —</SelectItem>
+                            {pops.map((p: any) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name} {p.pop_code ? `(${p.pop_code})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(d)}><Pencil className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { if (confirm("মুছে ফেলতে চান?")) deleteMutation.mutate(d.id); }}><Trash2 className="h-4 w-4" /></Button>
