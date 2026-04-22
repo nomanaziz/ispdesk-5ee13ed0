@@ -287,6 +287,11 @@ import WebsiteMedia from "@/pages/dashboard/website/WebsiteMedia";
 import WebsiteAbout from "@/pages/dashboard/website/WebsiteAbout";
 import WebsiteSettings from "@/pages/dashboard/website/WebsiteSettings";
 
+// Notes
+import AdminNotes from "@/pages/notes/AdminNotes";
+import PopNotes from "@/pages/notes/PopNotes";
+import ClientNotes from "@/pages/notes/ClientNotes";
+
 // Portal
 import { PortalAuthProvider } from "@/contexts/PortalAuthContext";
 import { PortalLayout } from "@/components/PortalLayout";
