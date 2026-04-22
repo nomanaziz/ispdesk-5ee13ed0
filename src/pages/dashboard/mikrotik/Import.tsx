@@ -345,7 +345,16 @@ export default function Import() {
                         }}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span>{c.name}</span>
+                        {getServerCount(c.name) >= 2 && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 border-yellow-500 text-yellow-700">
+                            {getServerCount(c.name)} servers
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <span className="font-mono text-xs">{showPasswords[c.id] ? c.password : "••••"}</span>
