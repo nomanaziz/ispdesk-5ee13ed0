@@ -15,12 +15,15 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
+import { useIsMobile } from "@/hooks/use-mobile";
+import PopMobileHome from "./PopMobileHome";
 
 const tk = (n: number | null | undefined) =>
   `৳ ${(Number(n) || 0).toLocaleString("en-BD", { maximumFractionDigits: 0 })}`;
 
 const ResellerDashboard = () => {
   const { customer } = usePortalAuth();
+  const isMobile = useIsMobile();
   const { popId, branchId } = getPopScope(customer);
   const billingId = getBillingCustomerId(customer);
 
@@ -174,6 +177,8 @@ const ResellerDashboard = () => {
   });
 
   const COLORS = ["hsl(var(--primary))", "#22c55e", "#f59e0b", "#3b82f6", "#a855f7", "#ec4899"];
+
+  if (isMobile) return <PopMobileHome />;
 
   return (
     <div className="space-y-5">
