@@ -12,6 +12,11 @@ import {
   MessageSquare, Send, Antenna, Radar, Wifi, History, TrendingUp, BookOpen, Plus, FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { NotesButton } from "@/components/notes/NotesButton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ResellerMobileShell } from "@/components/reseller/mobile/ResellerMobileShell";
@@ -339,11 +344,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
           })}
         </nav>
 
-        <div className="p-3 border-t border-sidebar-border">
-          <Button variant="outline" size="sm" className="w-full" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" /> {t("লগআউট", "Logout")}
-          </Button>
-        </div>
+        {/* Logout moved to top-right user dropdown */}
       </aside>
 
       {mobileOpen && (
