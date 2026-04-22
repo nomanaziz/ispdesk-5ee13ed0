@@ -73,18 +73,21 @@ export default function PopBulkClientImport() {
   const [filter, setFilter] = useState<"all" | "valid" | "invalid">("all");
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  const tariffId = (customer as any)?.tariff_id;
   const { data: lookups } = useQuery({
-    queryKey: ["pop-bulk-lookups", branchId],
+    queryKey: ["pop-bulk-lookups", branchId, tariffId],
     enabled: !!branchId,
     queryFn: async () => {
       const [zonesRes, pkgsRes, clientsRes] = await Promise.all([
         supabase.from("zones").select("name").eq("branch_id", branchId!),
-        supabase.from("isp_packages").select("name").eq("branch_id", branchId!),
+        tariffId
+          ? supabase.from("reseller_tariff_packages").select("isp_packages(name)").eq("tariff_id", tariffId)
+          : Promise.resolve({ data: [] as any[] }),
         supabase.from("clients").select("username").eq("branch_id", branchId!),
       ]);
       return {
         zones: (zonesRes.data || []).map((z: any) => z.name),
-        packages: (pkgsRes.data || []).map((p: any) => p.name),
+        packages: (pkgsRes.data || []).map((p: any) => p.isp_packages?.name).filter(Boolean),
         usernames: new Set((clientsRes.data || []).map((c: any) => (c.username || "").toLowerCase())),
       };
     },
