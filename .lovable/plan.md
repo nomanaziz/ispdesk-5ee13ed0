@@ -1,73 +1,83 @@
 
 
-## লক্ষ্য
-দুটি সমস্যা ঠিক করা:
-1. POP admin MikroTik server-এর users দেখতে পারছে না (যদিও running 3, 4 user আছে) → bulk import করতে পারছে না
-2. POP admin sidebar-এ "বিলিং" আলাদা section, যা "ক্লায়েন্ট" section-এর সাথে merge করতে হবে
+## পরিস্থিতি Verify করার ফলাফল
+
+**ডেটা বাস্তবতা (DB থেকে confirmed):**
+- POP `Nahid` (id `de4cd202…`) এর `branch_id = 26973cfc…` ✅
+- MikroTik device `AFTABNAGAR` (id `d459e69b…`) → `branch_id = NULL` ⚠️
+- ওই MT-এ মোট **13 জন** mikrotik_clients আছে
+- শুধু **3 জন** এর `transferred_to_pop_id = Nahid`-এ set আছে (`abc`, `ppp1`, `e`)
+- বাকি 10 জনের কোনো POP assignment নেই
+
+**ফলে এখন কী দেখাচ্ছে:**
+- Users page-এ **3 জন** users আসছে (transferred 3 জন) — আপনার সমস্যা ছিল 0 দেখাচ্ছিল, সেটা আগের build cache-এর কারণে ছিল; current code 3 জন দেখাবে
+- কিন্তু আপনার expectation ছিল **পুরো MT-এর সব users** (13 জন বা MikroTik dashboard-এ "Running 3/4" যা দেখাচ্ছে) দেখার
+
+**আসল কারণ:** আগের plan-এর "branch-scoped MT হলে সব users দেখাও" branch তখনই কাজ করে যখন `mikrotik_devices.branch_id == pop.branch_id`। কিন্তু এই device-এ `branch_id = NULL`, তাই branch-scoping fail করে fallback হয়ে শুধু 3 transferred user দেখায়।
+
+এছাড়া আরও 2টি bug দেখা গেছে:
+1. **Bulk Create page-এ 400 error** — `isp_packages.speed` column query করছে কিন্তু DB-তে `speed` column **নেই** (আছে `bandwidth_down`)
+2. **MT device কখনো POP-কে assign-ই হয়নি** — admin manually assignment করেননি
 
 ---
 
-## 🔴 সমস্যা ১ — MikroTik Users খালি দেখাচ্ছে
+## প্রস্তাবিত সমাধান (3 ভাগ)
 
-### কারণ
-`ResellerMikrotikUsers.tsx` শুধু সেই rows fetch করে যেগুলা admin manually **TransferToPop** dialog দিয়ে এই POP-এ pushed:
+### ১. MikroTik device-এ POP/Branch assignment শক্ত করা
+যেহেতু "MT এই POP-এর" — admin-কে MT device-এ branch assign করতে হবে, অথবা POP-এর reseller_id assign করতে হবে। Code-এ এমন একটি secondary scoping যোগ করা হবে যা **mikrotik_devices.assigned_to_pop_id** (নতুন কলাম) match করলেও সেই MT-এর সব users POP-কে দেখাবে।
+
+```sql
+-- Migration
+ALTER TABLE mikrotik_devices 
+  ADD COLUMN assigned_to_pop_id uuid REFERENCES branch_managers(id);
+
+-- Backfill: যদি admin কোনো MT-তে অলরেডি transfer করে থাকে কোনো POP-এ,
+-- সেই MT-কে ওই POP-এর assigned হিসেবে set করো
+UPDATE mikrotik_devices md
+SET assigned_to_pop_id = sub.pop
+FROM (
+  SELECT mikrotik_id AS mt, transferred_to_pop_id AS pop, COUNT(*) c
+  FROM mikrotik_clients
+  WHERE transferred_to_pop_id IS NOT NULL
+  GROUP BY mikrotik_id, transferred_to_pop_id
+) sub
+WHERE md.id = sub.mt AND md.assigned_to_pop_id IS NULL;
+```
+
+### ২. ResellerMikrotikUsers + BulkCreate query update
+`isBranchScoped` ছাড়াও **`isPopAssigned`** check যোগ করা:
+
 ```typescript
-.eq("transferred_to_pop_id", popId)
-.eq("transferred_to_mikrotik_id", activeMt)
+const isPopAssigned = mtRow?.assigned_to_pop_id === popId;
+const isBranchScoped = !!pop?.branch_id && mtRow?.branch_id === pop.branch_id;
+
+if (isBranchScoped || isPopAssigned) {
+  // ওই MT-এর সব users দেখাও
+  q = q.eq("mikrotik_id", activeMt);
+} else {
+  // শুধু transferred users
+  q = q.eq("transferred_to_pop_id", popId).eq("transferred_to_mikrotik_id", activeMt);
+}
 ```
-কিন্তু POP-এর branch-এ assigned MikroTik device-এর actual `mikrotik_clients` rows (যেগুলা sync থেকে এসেছে) এই filter-এ ধরা পড়ছে না। তাই display "0 users" হলেও MikroTik dashboard-এ "Running 3 / 4" দেখাচ্ছে।
 
-### সমাধান
-`ResellerMikrotikUsers.tsx` query update — POP-এর branch-এ assigned কোনো MikroTik device-এর সব `mikrotik_clients` দেখানো হবে, plus পুরোনো transferred ones-ও:
+`reseller_mikrotiks` query-তেও MT তালিকায় `assigned_to_pop_id = popId` MT গুলো include করা হবে।
 
+### ৩. Bulk Create-এর 400 error fix
+`reseller_tariff_packages` query থেকে invalid `speed` column বাদ:
 ```typescript
-// নতুন query (OR condition)
-.or(
-  `mikrotik_id.eq.${activeMt},` +
-  `transferred_to_mikrotik_id.eq.${activeMt}`
-)
-// প্লাস: branch-scoped MT হলে সব দেখাও; না হলে শুধু transferred
+.select("id, package_id, selling_rate, isp_packages(id, name, bandwidth_down)")
 ```
+একই fix `ResellerMikrotikUsers.tsx`-এও (line 108)।
 
-একই logic `ResellerMikrotikBulkCreate.tsx`-এ — শুধু `transferred_to_pop_id` filter-এর বদলে: যে MT এই POP-এর branch-এ আছে, তার সব unlinked users দেখাও।
+### ৪. Admin UI-তে "POP assign" করার option
+Admin → MikroTik Devices তালিকায় প্রতিটি device-এর পাশে "Assign to POP" dropdown — যাতে admin চাইলে পুরো device কোনো POP-কে handover করতে পারে।
 
-### Status badge logic update
-- যদি `linked_client_id` থাকে → "Client" (সবুজ)
-- যদি `transferred_to_pop_id = popId` → "Transferred to POP"
-- নইলে → "Available" (gray) — POP চাইলে directly client বানাবে
-
----
-
-## 🟢 সমস্যা ২ — Billing section কে Client section-এ Merge
-
-### বর্তমান Sidebar (POP admin)
-```
-ক্লায়েন্ট
-  ├─ ক্লায়েন্ট যোগ
-  ├─ ক্লায়েন্ট তালিকা
-  ├─ বিলিং ক্লায়েন্ট        ← duplicate of /billing/list
-  ├─ চলে যাওয়া ক্লায়েন্ট
-  └─ শিডিউলার
-
-বিলিং                         ← এই পুরো section সরবে
-  ├─ বিলিং তালিকা
-  └─ দৈনিক সংগ্রহ
-```
-
-### নতুন Sidebar (merged)
-```
-ক্লায়েন্ট
-  ├─ ক্লায়েন্ট যোগ           (Add Client)
-  ├─ ক্লায়েন্ট তালিকা         (Client List)
-  ├─ বিলিং তালিকা             (Billing List)        ← from বিলিং
-  ├─ দৈনিক সংগ্রহ              (Daily Collection)    ← from বিলিং
-  ├─ চলে যাওয়া ক্লায়েন্ট
-  └─ শিডিউলার
-```
-
-- "বিলিং ক্লায়েন্ট" আর "বিলিং তালিকা" একই page (BillingList) → duplicate বাদ, একটাই থাকবে: "বিলিং তালিকা"
-- "বিলিং" group entirely সরবে
-- `/pop-admin/clients/billing` → backward-compat redirect to `/pop-admin/billing/list`
+### ৫. Test/Verification scenario
+Migration apply-এর পর:
+- AFTABNAGAR device → assigned_to_pop_id auto-backfill হবে `Nahid`-এ (কারণ ইতিমধ্যে 3 user transferred)
+- POP login → Mikrotik Users page → AFTABNAGAR tab-এ **13 জন** user দেখাবে (running + disabled সব)
+- Bulk Import-এ unlinked সব 13 user dropdown-এ আসবে, package list error ছাড়া load হবে
+- Status badges: linked → "Client", transferred → "Transferred", বাকি → "Available"
 
 ---
 
@@ -75,23 +85,20 @@
 
 | File | পরিবর্তন |
 |------|---------|
-| `src/pages/reseller/ResellerMikrotikUsers.tsx` | Mikrotik users query — branch-scoped MT হলে সব users দেখাও |
-| `src/pages/reseller/ResellerMikrotikBulkCreate.tsx` | Bulk import query — same logic, সব unlinked users আনো |
-| `src/components/ResellerLayout.tsx` | "বিলিং" group সরিয়ে "ক্লায়েন্ট" group-এ items merge |
-| `src/App.tsx` | `/pop-admin/clients/billing` কে `/pop-admin/billing/list`-এ redirect |
-
----
+| `supabase/migrations/<new>.sql` | `mikrotik_devices.assigned_to_pop_id` কলাম + backfill |
+| `src/pages/reseller/ResellerMikrotikUsers.tsx` | `isPopAssigned` check + `isp_packages.speed` → `bandwidth_down` |
+| `src/pages/reseller/ResellerMikrotikBulkCreate.tsx` | একই scoping + same column fix |
+| `src/pages/dashboard/mikrotik/Devices.tsx` (অথবা equivalent) | "Assign to POP" dropdown |
+| `src/integrations/supabase/types.ts` | auto-regen |
 
 ## পরিবর্তন হবে না
-- Admin portal sidebar / billing pages
-- Database schema (কোন migration লাগবে না)
-- Permission system / RLS
-
----
+- RLS / permissions
+- POP sidebar (পূর্ববর্তী merge অক্ষত)
+- Admin client list isolation logic
 
 ## Apply-এর পরে expected ফলাফল
-1. ✅ POP admin MikroTik Users page-এ এই POP-এর branch-এ assigned MT-এর সব user (3 / 4 জন) দেখাবে
-2. ✅ Bulk Hardware Import-এ সব unlinked users আসবে — checkbox দিয়ে select করে client বানানো যাবে
-3. ✅ POP sidebar-এ "বিলিং" আলাদা section আর থাকবে না; বিলিং তালিকা + দৈনিক সংগ্রহ "ক্লায়েন্ট"-এর under-এ আসবে
-4. ✅ পুরোনো URL `/pop-admin/clients/billing` খুললেও billing list-এ চলে যাবে (broken link হবে না)
+1. ✅ POP `Nahid` AFTABNAGAR-এ ১৩ জন user দেখাবে (বর্তমান 3-এর জায়গায়)
+2. ✅ Bulk Import dropdown 400 error ছাড়া load হবে; সব unlinked users select করা যাবে
+3. ✅ Admin চাইলে device-এ POP assign/unassign করতে পারবে — এক জায়গা থেকে control
+4. ✅ "Available" badge দিয়ে POP বুঝবে কোন user এখনো client হয়নি
 
