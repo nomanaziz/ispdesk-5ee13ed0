@@ -184,11 +184,11 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] transition-colors",
-                    active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                    "flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium transition-colors",
+                    active ? "text-primary" : "text-foreground hover:text-foreground"
                   )}
                 >
-                  <item.icon className={cn("h-5 w-5", active && "scale-110")} />
+                  <item.icon className={cn("h-5 w-5", active ? "scale-110" : item.color)} />
                   {item.label}
                 </Link>
               );
