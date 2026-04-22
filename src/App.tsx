@@ -129,7 +129,7 @@ import PowerDashboard from "@/pages/dashboard/olt/PowerDashboard";
 import UserDownCount from "@/pages/dashboard/olt/UserDownCount";
 import FiberDownFinder from "@/pages/dashboard/olt/FiberDownFinder";
 import OltSharing from "@/pages/dashboard/olt/OltSharing";
-import DevicePermissions from "@/pages/dashboard/system/DevicePermissions";
+
 import NetworkSwitchList from "@/pages/dashboard/network/SwitchList";
 import NetworkSwitchDetail from "@/pages/dashboard/network/SwitchDetail";
 
@@ -489,7 +489,6 @@ const App = () => (
               {/* Network — Switches */}
               <Route path="/dashboard/network/switches" element={<P><NetworkSwitchList /></P>} />
               <Route path="/dashboard/network/switches/:id" element={<P><NetworkSwitchDetail /></P>} />
-              <Route path="/dashboard/system/device-permissions" element={<P><DevicePermissions /></P>} />
 
               {/* Network Monitoring */}
               <Route path="/dashboard/monitoring/online" element={<P><OnlineClientMonitoring /></P>} />
