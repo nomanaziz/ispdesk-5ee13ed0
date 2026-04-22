@@ -864,6 +864,8 @@ Deno.serve(async (req) => {
         }
         const resellerId =
           tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const search = String(payload.search || "").trim();
+        const minimal = !!payload.minimal;
         const { data: pop } = await sb
           .from("branch_managers")
           .select("branch_id")
@@ -871,14 +873,23 @@ Deno.serve(async (req) => {
           .maybeSingle();
         if (!pop?.branch_id) return json({ clients: [] });
 
-        const { data: clients, error } = await sb
+        let q: any = sb
           .from("clients")
-          .select("*, zones:zone_id(name), isp_packages:package_id(name, bandwidth_down, price), mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name)")
+          .select(
+            minimal
+              ? "id, client_id, name, contact, username, monthly_bill, branch_id"
+              : "*, zones:zone_id(name), isp_packages:package_id(name, bandwidth_down, price), mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name)"
+          )
           .eq("branch_id", pop.branch_id)
           .neq("status", "left")
           .neq("billing_status", "Left")
           .order("created_at", { ascending: false });
 
+        if (search) {
+          q = q.or(`client_id.ilike.%${search}%,name.ilike.%${search}%,contact.ilike.%${search}%,username.ilike.%${search}%`).limit(20);
+        }
+
+        const { data: clients, error } = await q;
         if (error) return json({ error: error.message }, 500);
         return json({ clients: clients || [] });
       }
@@ -917,6 +928,219 @@ Deno.serve(async (req) => {
 
         if (error) return json({ error: error.message }, 500);
         return json({ clients: clients || [] });
+      }
+
+      case "list_pop_daily_collections": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const fromDate = String(payload.fromDate || new Date().toISOString().slice(0, 10));
+        const toDate = String(payload.toDate || new Date().toISOString().slice(0, 10));
+        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
+        if (!pop?.branch_id) return json({ collections: [] });
+        const { data: branchClients } = await sb.from("clients").select("id").eq("branch_id", pop.branch_id);
+        const clientIds = (branchClients || []).map((c: any) => c.id);
+        if (!clientIds.length) return json({ collections: [] });
+        const { data, error } = await sb
+          .from("bill_collections")
+          .select(`
+            *,
+            client:clients!inner(id, client_id, name, contact, username, monthly_bill, branch_id, owner_scope),
+            billing:billing(id, month, amount, paid, due, status)
+          `)
+          .in("client_id", clientIds)
+          .gte("created_at", `${fromDate}T00:00:00`)
+          .lte("created_at", `${toDate}T23:59:59`)
+          .order("created_at", { ascending: false });
+        if (error) return json({ error: error.message }, 500);
+        return json({ collections: data || [] });
+      }
+
+      case "receive_pop_bill": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+        const clientId = String(payload.client_id || "");
+        if (!clientId) return json({ error: "Client is required" }, 400);
+        const amount = Number(payload.amount || 0);
+        const discount = Number(payload.discount || 0);
+        const vat = Number(payload.vat || 0);
+        const totalReceived = amount - discount + vat;
+        if (totalReceived <= 0) return json({ error: "Invalid amount" }, 400);
+        const receivedDate = String(payload.received_date || new Date().toISOString().slice(0, 10));
+        const paymentMethod = payload.payment_method || "cash";
+        const { data: client } = await sb
+          .from("clients")
+          .select("id, name, client_id, username, monthly_bill, expire_date, billing_date, package_id, mikrotik_id")
+          .eq("id", clientId)
+          .eq("branch_id", pop.branch_id)
+          .maybeSingle();
+        if (!client) return json({ error: "Client not found" }, 404);
+
+        let bill = null as any;
+        if (payload.billing_id) {
+          const { data } = await sb.from("billing").select("*").eq("id", payload.billing_id).eq("client_id", clientId).maybeSingle();
+          bill = data;
+        } else {
+          const monthStart = `${receivedDate.slice(0, 7)}-01`;
+          const nextMonth = new Date(new Date(monthStart).getFullYear(), new Date(monthStart).getMonth() + 1, 1).toISOString().slice(0, 10);
+          const { data } = await sb.from("billing").select("*").eq("client_id", clientId).gte("month", monthStart).lt("month", nextMonth).order("month", { ascending: false }).limit(1).maybeSingle();
+          bill = data;
+        }
+
+        const monthlyBill = Number(bill?.amount ?? client.monthly_bill ?? 0);
+        const alreadyPaid = Number(bill?.paid || 0);
+        const newPaid = alreadyPaid + totalReceived;
+        const newDue = Math.max(0, monthlyBill - newPaid);
+        const newAdvance = newPaid > monthlyBill ? newPaid - monthlyBill : 0;
+        const newStatus = newDue <= 0 ? "paid" : "partial";
+
+        if (bill?.id) {
+          const { error } = await sb.from("billing").update({
+            paid: newPaid,
+            due: newDue,
+            advance: newAdvance,
+            status: newStatus,
+            pay_date: receivedDate,
+            payment_method: paymentMethod,
+            collected_by: payload.received_by || tok.sub,
+            discount,
+            vat,
+          }).eq("id", bill.id);
+          if (error) return json({ error: error.message }, 500);
+        }
+
+        const { error: collectionError } = await sb.from("bill_collections").insert({
+          client_id: client.id,
+          billing_id: bill?.id || null,
+          amount: totalReceived,
+          discount,
+          vat,
+          payment_method: paymentMethod,
+          note: payload.note || null,
+          transaction_id: payload.transaction_id || null,
+          received_by: payload.received_by || tok.sub,
+          status: "approved",
+        });
+        if (collectionError) return json({ error: collectionError.message }, 500);
+
+        const { error: incomeError } = await sb.from("income_entries").insert({
+          amount: totalReceived,
+          source: "bill_collection",
+          description: `বিল কালেকশন — ${client.name} (${client.client_id || ""})`,
+          income_date: receivedDate,
+          month: receivedDate.slice(0, 7),
+          client_id: client.id,
+          branch_id: pop.branch_id,
+          payment_method: paymentMethod,
+          reference: bill?.id || null,
+          received_by: payload.received_by || tok.sub,
+          status: "approved",
+        });
+        if (incomeError) return json({ error: incomeError.message }, 500);
+
+        if (payload.set_next_billing) {
+          let tariffType: "custom" | "date_to_date" = "date_to_date";
+          let validityDays = 0;
+          if (client.package_id) {
+            const { data: tpkg } = await sb
+              .from("reseller_tariff_packages")
+              .select("validity_days, reseller_tariffs(tariff_type)")
+              .eq("package_id", client.package_id)
+              .limit(1)
+              .maybeSingle();
+            const tt = (tpkg as any)?.reseller_tariffs?.tariff_type;
+            if (tt === "custom") {
+              tariffType = "custom";
+              validityDays = Number((tpkg as any)?.validity_days || 30);
+            }
+          }
+
+          let newExpire: string;
+          if (tariffType === "custom" && validityDays > 0) {
+            const base = client.expire_date ? new Date(client.expire_date) : new Date(receivedDate);
+            base.setDate(base.getDate() + validityDays);
+            newExpire = base.toISOString().slice(0, 10);
+          } else {
+            const bd = (client as any).billing_date || 1;
+            const now = new Date(receivedDate);
+            let year = now.getFullYear();
+            let month = now.getMonth() + 2;
+            if (month > 12) { month -= 12; year++; }
+            const lastDay = new Date(year, month, 0).getDate();
+            const day = Math.min(Number(bd) || 1, lastDay);
+            newExpire = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          }
+          await sb.from("clients").update({ expire_date: newExpire }).eq("id", client.id);
+        }
+
+        return json({ ok: true });
+      }
+
+      case "list_pop_client_schedulers": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
+        if (!pop?.branch_id) return json({ schedulers: [] });
+        const { data, error } = await sb
+          .from("client_schedulers")
+          .select("*, clients:client_id(client_id, name, contact, username, branch_id, zones:zone_id(name))")
+          .order("created_at", { ascending: false });
+        if (error) return json({ error: error.message }, 500);
+        return json({ schedulers: (data || []).filter((s: any) => s.clients?.branch_id === pop.branch_id) });
+      }
+
+      case "create_pop_scheduler": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+        const clientId = String(payload.client_id || "");
+        if (!clientId) return json({ error: "Client is required" }, 400);
+        const { data: client } = await sb.from("clients").select("id, branch_id").eq("id", clientId).maybeSingle();
+        if (!client || client.branch_id !== pop.branch_id) return json({ error: "Client not allowed" }, 403);
+
+        let executionTime = payload.execution_time || null;
+        const { data: popSetting } = await sb.from("system_settings").select("setting_value").eq("setting_key", `pop:${pop.branch_id}:client_billing_settings`).maybeSingle();
+        const settings: any = popSetting?.setting_value || {};
+        const statusTimes = settings?.statusTimes || {};
+        if (!executionTime && payload.scheduler_type === "status_scheduler") {
+          executionTime = statusTimes?.[String(payload.schedule_info || "").toLowerCase()] || null;
+        }
+        if (!executionTime && payload.scheduler_type === "package_scheduler") {
+          executionTime = "00:05";
+        }
+
+        const { error } = await sb.from("client_schedulers").insert({
+          client_id: clientId,
+          scheduler_type: payload.scheduler_type || "package_scheduler",
+          previous_info: payload.previous_info || null,
+          schedule_info: payload.schedule_info || null,
+          remarks: payload.remarks || null,
+          schedule_date: payload.schedule_date || null,
+          package_id: payload.package_id || null,
+          package_rate: payload.package_rate ?? null,
+          server_id: payload.server_id || null,
+          protocol_type: payload.protocol_type || null,
+          profile_speed: payload.profile_speed || null,
+          execution_time: executionTime,
+          created_by: tok.sub,
+          status: "pending",
+        });
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true });
+      }
+
+      case "cancel_pop_scheduler": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+        const { data: row } = await sb.from("client_schedulers").select("id, clients:client_id(branch_id)").eq("id", payload.id).maybeSingle();
+        if (!(row as any)?.clients || (row as any).clients.branch_id !== pop.branch_id) return json({ error: "Not allowed" }, 403);
+        const { error } = await sb.from("client_schedulers").update({ status: "cancelled" }).eq("id", payload.id);
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true });
       }
 
       case "create_employee": {
