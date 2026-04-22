@@ -45,18 +45,23 @@ export default function Managers() {
     queryFn: async () => {
       const { data } = await supabase
         .from("clients")
-        .select("branch_id, billing_status, is_online");
+        .select("branch_id, billing_status, status, is_online");
       const map: Record<string, { running: number; enabled: number; disabled: number; left: number; online: number }> = {};
       for (const c of data ?? []) {
         const bid = (c as any).branch_id;
         if (!bid) continue;
         if (!map[bid]) map[bid] = { running: 0, enabled: 0, disabled: 0, left: 0, online: 0 };
-        map[bid].running++;
+        const overall = (c as any).status;
         const st = (c as any).billing_status;
-        if (st === "active" || st === "enabled") map[bid].enabled++;
-        else if (st === "disabled" || st === "expired") map[bid].disabled++;
-        else if (st === "left") map[bid].left++;
-        if ((c as any).is_online) map[bid].online++;
+        const isLeft = overall === "left" || overall === "inactive";
+        if (isLeft) {
+          map[bid].left++;
+        } else {
+          map[bid].running++;
+          if (st === "active" || st === "enabled") map[bid].enabled++;
+          else if (st === "disabled" || st === "expired") map[bid].disabled++;
+          if ((c as any).is_online) map[bid].online++;
+        }
       }
       return { map };
     },

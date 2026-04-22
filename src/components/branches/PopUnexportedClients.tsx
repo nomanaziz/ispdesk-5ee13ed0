@@ -59,6 +59,9 @@ export default function PopUnexportedClients({ popId, branchId }: Props) {
           transferred_to_mikrotik_id: null,
           transferred_at: null,
           branch_id: null,
+          linked_client_id: null,
+          exported: false,
+          exported_to: null,
         })
         .eq("id", id);
       if (error) throw error;
@@ -66,6 +69,9 @@ export default function PopUnexportedClients({ popId, branchId }: Props) {
     onSuccess: () => {
       toast.success("Revert সম্পন্ন — user MikroTik Import pool-এ ফেরত গেছে");
       qc.invalidateQueries({ queryKey: ["pop-unexported-mt", popId] });
+      qc.invalidateQueries({ queryKey: ["mikrotik_clients"] });
+      qc.invalidateQueries({ queryKey: ["existing_client_usernames"] });
+      qc.invalidateQueries({ queryKey: ["pop-client-counts"] });
       setRevertId(null);
     },
     onError: (e: any) => toast.error(e.message),
