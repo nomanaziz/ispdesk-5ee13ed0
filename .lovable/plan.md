@@ -1,78 +1,134 @@
 
 
-## কাজ — সব portal-এ Basic Notes (Sticky Notes) system
+## কাজ — POP Admin: Allotted areas display + default seeds + Excel bulk import
 
-৪টা portal-এ একই simple notes feature — header-এর "Take a Note" button → dialog → title + color + content → save → list view।
+### ১) Assigned Districts/Upazilas POP-এর কাছে দৃশ্যমান করা
 
-### কোথায় add হবে
-1. **Admin Dashboard** — `TopBar.tsx`-এ "Take a Note" button + `/dashboard/notes` route
-2. **POP Admin Portal** — `ResellerLayout.tsx` header-এ button + `/pop-admin/notes` route
-3. **Client Portal** — `PortalLayout.tsx` header-এ button + `/portal/notes` route
-4. **BW Sale** — admin dashboard-এর অংশ, তাই TopBar-এ পাওয়া যাবে (আলাদা portal না)
+Admin PopAllotment-এ POP-এর জন্য `pop_district_assignments` table-এ districts/upazilas store হয়। POP নিজে এটা দেখতে পাচ্ছে না।
 
-### Database (নতুন table)
+**ফিক্স:**
+- নতুন read-only page **`/pop-admin/my-areas`** → `PopMyAreas.tsx`
+  - Sidebar-এ "আমার এরিয়া / My Allotted Areas" link (MapPin icon)
+  - Table: District | Upazilas (chips) | Default? badge
+  - Source: `pop_district_assignments` joined with `districts`+`upazilas`, plus default district/upazila from `branch_managers`
+  - Empty state: "Admin আপনার জন্য কোনো এরিয়া assign করেননি। Admin-কে যোগাযোগ করুন।"
+- POP Dashboard-এ একটা ছোট **"Assigned Areas" widget card** যোগ — top 3 districts + "View all" link
 
+### ২) প্রতিটি POP create-এর সময় default Department / Designation / Zone seed
+
+বর্তমানে `departments` + `zones` table আছে (branch-scoped)। `designations` table নেই — `employees.designation` simple text। তাই designation-এর জন্য নতুন `designations` table দরকার।
+
+**Migration:**
 ```sql
-CREATE TABLE public.user_notes (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  owner_type text NOT NULL,         -- 'admin' | 'pop' | 'client' | 'reseller_sub' | 'pop_sub'
-  owner_id text NOT NULL,           -- auth.uid() for admin, customer.sub for portal users
-  title text,
-  content text,
-  color text NOT NULL DEFAULT 'yellow',  -- yellow|blue|green|pink|purple|orange
-  pinned boolean NOT NULL DEFAULT false,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+CREATE TABLE public.designations (
+  id uuid PK DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  branch_id uuid REFERENCES branches(id),
+  status text DEFAULT 'active',
+  created_at timestamptz DEFAULT now()
 );
-CREATE INDEX idx_user_notes_owner ON public.user_notes(owner_type, owner_id, created_at DESC);
-ALTER TABLE public.user_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE designations ENABLE RLS;
+-- branch-scoped policies (admin all, POP own branch)
 ```
 
-**RLS:** Admin/super reads all. Portal users (non-auth.uid) — open INSERT/SELECT/UPDATE/DELETE policy filtered by `owner_type` + `owner_id` matched in app code (since portal uses custom JWT not Supabase auth, RLS can't enforce; we'll filter in queries). Actual hard isolation: portal CRUD goes through the existing `portal-data` edge function with the JWT verifying owner.
+**Default seed function:** `seed_pop_defaults(branch_id uuid)` SQL function যা insert করে only-if-not-exists:
+- Departments: **Admin**, **Technician**
+- Designations: **Manager**, **Technician**
+- Zones: **Default Zone**
 
-Simpler approach (chosen): admin uses Supabase auth + RLS; portal users (POP/client) call a small new edge function `portal-notes` that verifies the portal JWT and does CRUD with service role, scoping by `owner_type` + `customer.sub`.
+**Trigger কোথায়:**
+- যখন admin নতুন POP create করে (`branches` insert) → after-insert trigger → seed function call
+- Existing POPs-দের জন্য one-time backfill query (migration-এ): সব branches-এর জন্য `seed_pop_defaults(id)` call, আগে থেকে যেগুলো আছে সেগুলো skip হবে
 
-### Files
+**Frontend:** PopAddEmployee + PopEditEmployee-এ Department & Designation এখন text Input → Select dropdown (branch-scoped, "+ নতুন" option যা inline create করে)। `PopDesignations.tsx` config page already exists — সেটা enable করব designations CRUD-এর জন্য।
 
-**New:**
-- `src/components/notes/NoteDialog.tsx` — Take/Edit note modal (title input, 6 color swatches, content textarea, Save/Cancel)
-- `src/components/notes/NotesButton.tsx` — header button "📝 Note" + opens dialog (props: `ownerType`, `ownerId`)
-- `src/components/notes/NotesList.tsx` — masonry grid of colored sticky cards (pin, edit, delete actions)
-- `src/pages/notes/AdminNotes.tsx` — `/dashboard/notes` page wrapper
-- `src/pages/notes/PopNotes.tsx` — `/pop-admin/notes` page wrapper
-- `src/pages/notes/ClientNotes.tsx` — `/portal/notes` page wrapper
-- `src/lib/notesApi.ts` — small data-access helper: admin uses `supabase.from("user_notes")`, portal uses fetch to edge function
-- `supabase/functions/portal-notes/index.ts` — POST `{action, ...}` with portal JWT; supports list/create/update/delete/togglePin
+POP চাইলে এই default গুলো যেকোনো সময় delete/edit করতে পারবে (existing config pages থেকে)।
 
-**Edited:**
-- `src/components/TopBar.tsx` — add `<NotesButton ownerType="admin" />` next to existing icons
-- `src/components/ResellerLayout.tsx` — add `<NotesButton ownerType="pop" />` in header
-- `src/components/PortalLayout.tsx` — add `<NotesButton ownerType="client" />` in header
-- `src/App.tsx` — register the 3 new routes
-- `src/components/AppSidebar.tsx`, `ResellerLayout.tsx`, `PortalLayout.tsx` — add "Notes" sidebar entry (optional, low priority — primary entry is the header button)
+### ৩) POP-এর Excel-based Bulk Client Import (image-204 অনুযায়ী)
 
-### UI behaviour (simple)
+বর্তমান `/pop-admin/mikrotik-users/bulk-create` শুধু MikroTik-transferred users থেকে create করে — Excel upload নেই। নতুন একটা parallel page বানাব।
 
-**Header button:** small icon + "Note" label → opens `NoteDialog` in "create" mode → on save, inserts and toasts. Click "View All" link inside dialog → navigates to `/…/notes` list.
+**নতুন page: `/pop-admin/clients/bulk-import` → `PopBulkClientImport.tsx`**
 
-**NoteDialog fields:**
-- Title (optional, max 80)
-- Color picker — 6 swatches (yellow/blue/green/pink/purple/orange)
-- Content textarea (required)
-- Pin checkbox
-- Save / Cancel
+Layout (image-204 অনুযায়ী):
 
-**Notes list page:** masonry grid of colored cards, pinned ones first; each card shows title, content (clamped 6 lines), date, and hover actions: pin/unpin, edit, delete. Search box on top, color filter chips. Empty state with a "Take a Note" CTA.
+**উপরের section — Tab/Toggle:**
+- "MikroTik Bulk Create" (existing page-এ link)
+- "Bulk Clients Import" (current — Excel-based)
+
+**Instructions panel** (collapsible "Learn How to Import Clients..." toggle):
+1. Upload-করা data ২৪ ঘণ্টা পরে আর available থাকবে না
+2. MikroTik client available কিনা check করুন
+3. Zone create করুন (Configuration → Zones)
+4. Package create করুন (Configuration → Packages)
+5. Bill Period activate (System → Bill Period)
+6. Employee create করুন (যদি দরকার থাকে)
+7. Sample Excel download করুন
+8. Sample fill করে upload করুন
+9. Upload-এর পর invalid row edit/delete করুন
+10. "Transfer to Client List" → save
+
+**4 action button:**
+- 📥 **Download Importable Clients (Excel)** — sample template (POP-এর zones, packages, profiles সহ pre-filled lookup sheet)
+- 🧹 **Clear All Clients** — staging table empty
+- 📤 **Upload Importable Clients (Excel)** — file picker → parse + validate
+- 📥 **Download Edited Data** — current staging data Excel-এ export
+
+**Filter:** "Only Invalid Customers" dropdown (All / Invalid only / Valid only)
+
+**Table columns** (image-204 হুবহু):
+Name | Mobile | Email | NationalID | Address | Zone | Conn.Type | Server | Prot.Type | Profile | UserName | Password | C.Type | Package | Validity.Date | B.Status | M.Bill | Bill.Month | Join.Date | Exp.Date | **Action** (Edit ✏️ / Delete 🗑️)
+
+Invalid row → red highlight + tooltip showing reason (invalid zone name, missing package, duplicate username ইত্যাদি)
+
+**Bottom:** "✅ Transfer to Client List" big button — শুধু valid rows insert করে `clients` table-এ (POP-এর `branch_id` দিয়ে scoped), success-এ row count toast + redirect।
+
+**Staging:** in-memory state (no DB) for the 24-hour window simplicity; data lost on page reload. (Simple, matches reference behavior.)
+
+**Excel parsing:** `xlsx` (SheetJS) library ব্যবহার — already used in project (`exportClientsExcel`)। Sample template-এ ২টা sheet:
+- `Clients` — main data
+- `Lookup` — POP-এর zones / packages / profiles list (reference হিসেবে)
+
+**Validation rules:**
+- Name & Mobile required
+- Username unique (existing clients-এর সাথে check)
+- Zone name → POP-এর zones-এ exist করতে হবে
+- Package code → POP-এর tariff_packages-এ exist করতে হবে
+- Mobile format check (BD)
+- Join.Date / Exp.Date valid dates
+
+### ফাইল পরিবর্তন
+
+**Migration (database):**
+- নতুন `designations` table + RLS
+- `seed_pop_defaults(branch_id)` SQL function
+- `branches` after-insert trigger → seed call
+- One-time backfill: existing branches loop
+
+**নতুন (3 files):**
+- `src/pages/reseller/PopMyAreas.tsx` — assigned districts/upazilas list
+- `src/pages/reseller/clients/PopBulkClientImport.tsx` — Excel bulk import
+- `src/components/reseller/AssignedAreasWidget.tsx` — dashboard card
+
+**Edit:**
+- `src/components/ResellerLayout.tsx` — sidebar-এ "My Areas" + "Bulk Client Import" link
+- `src/App.tsx` — দুই নতুন route register
+- `src/pages/reseller/employee/PopAddEmployee.tsx` — Department/Designation text → Select w/ inline create
+- `src/pages/reseller/employee/PopEditEmployee.tsx` — same
+- `src/pages/reseller/config/PopDesignations.tsx` — full CRUD page (already exists as placeholder)
+- `src/pages/reseller/ResellerDashboard.tsx` — Assigned Areas widget যোগ
 
 ### কী বদলাবে না
-- Admin সব data, অন্যান্য module untouched
-- Existing tickets / employee / packages কিছুই ছোঁয়া হবে না
-- Public site untouched (visitors-এর জন্য notes দরকার নেই)
+- Admin dashboard-এর কোনো page
+- `pop_district_assignments` schema/logic (read-only জন্য ব্যবহার)
+- Existing MikroTik bulk create page (নতুন Excel import এর সাথে coexist করবে)
+- Notes / tickets / employees-এর salary module
 
 ### Apply-এর পরে expected ফলাফল
-1. ✅ চারটা portal-এর header-এ "Take a Note" button
-2. ✅ Color + title + content দিয়ে note save
-3. ✅ Notes list page — masonry grid, pin/edit/delete/search/filter
-4. ✅ প্রতিটা user শুধু নিজের notes দেখবে (admin auth.uid, portal user customer.sub দিয়ে scoped)
-5. ✅ Edge function `portal-notes` portal users-দের secure CRUD provide করবে
+1. ✅ POP sidebar-এ "My Areas" — assigned districts/upazilas দেখা যাবে; dashboard-এও widget
+2. ✅ নতুন POP create হলে Department (Admin/Technician), Designation (Manager/Technician), Zone (Default Zone) auto-seed হবে; existing POPs-দের জন্য one-time backfill
+3. ✅ POP চাইলে এগুলো যেকোনো সময় delete/edit করতে পারবে
+4. ✅ Add/Edit Employee-এ Department & Designation dropdown (inline "+ Create" সহ)
+5. ✅ "Bulk Client Import" page Excel template download + upload + validate + edit + transfer — image-204 হুবহু
+6. ✅ Invalid rows highlighted, valid rows-ই client list-এ যাবে, branch isolation বজায়
 
