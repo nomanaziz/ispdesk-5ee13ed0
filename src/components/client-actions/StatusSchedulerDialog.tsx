@@ -12,6 +12,8 @@ import { CalendarIcon, Save } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { usePopScope } from "@/hooks/usePopScope";
+import { callPortal } from "@/lib/portalApi";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "Active", time: "12:30 AM" },
@@ -30,6 +32,7 @@ interface Props {
 
 export default function StatusSchedulerDialog({ open, onOpenChange, client, invalidateKey = "clients-list" }: Props) {
   const queryClient = useQueryClient();
+  const { isPopMode } = usePopScope();
   const [status, setStatus] = useState("");
   const [remarks, setRemarks] = useState("");
   const [execDate, setExecDate] = useState<Date>();
@@ -37,6 +40,16 @@ export default function StatusSchedulerDialog({ open, onOpenChange, client, inva
 
   const mutation = useMutation({
     mutationFn: async () => {
+      if (isPopMode) {
+        return callPortal("create_pop_scheduler", {
+          client_id: client.id,
+          scheduler_type: "status_scheduler",
+          schedule_info: status,
+          execution_time: execTime,
+          remarks,
+          schedule_date: execDate ? format(execDate, "yyyy-MM-dd") : null,
+        });
+      }
       const { error } = await supabase.from("client_schedulers").insert({
         client_id: client.id,
         scheduler_type: "status_scheduler",
@@ -50,6 +63,7 @@ export default function StatusSchedulerDialog({ open, onOpenChange, client, inva
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [invalidateKey] });
+      queryClient.invalidateQueries({ queryKey: ["client-schedulers"] });
       toast.success("স্ট্যাটাস শিডিউলার সংরক্ষিত হয়েছে");
       onOpenChange(false);
       setStatus(""); setRemarks(""); setExecDate(undefined);

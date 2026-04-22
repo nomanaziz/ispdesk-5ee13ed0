@@ -12,10 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import {
-  Banknote, FileSpreadsheet, FileText, Plus, Trash2, CheckCircle2, Search, Clock, X
-} from "lucide-react";
+import { Banknote, FileSpreadsheet, FileText, Plus, Search, Clock, X, CheckCircle2 } from "lucide-react";
 import { usePopScope } from "@/hooks/usePopScope";
+import { callPortal } from "@/lib/portalApi";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -31,10 +30,13 @@ export default function DailyCollection() {
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [collectForm, setCollectForm] = useState({ amount: "", discount: "0", payment_method: "Cash", note: "" });
 
-  // Fetch collections
   const { data: collections = [], isLoading } = useQuery({
-    queryKey: ["bill-collections", fromDate, toDate, branchId || "all"],
+    queryKey: ["bill-collections", fromDate, toDate, branchId || "all", isPopMode ? "pop" : "admin"],
     queryFn: async () => {
+      if (isPopMode) {
+        const res = await callPortal<{ collections: any[] }>("list_pop_daily_collections", { fromDate, toDate });
+        return res.collections || [];
+      }
       const { data, error } = await supabase
         .from("bill_collections")
         .select(`
@@ -53,11 +55,14 @@ export default function DailyCollection() {
     },
   });
 
-  // Fetch clients for receive dialog
   const { data: clientsList = [] } = useQuery({
-    queryKey: ["clients-for-billing", clientSearch, branchId || "all"],
+    queryKey: ["clients-for-billing", clientSearch, branchId || "all", isPopMode ? "pop" : "admin"],
     enabled: receiveOpen && clientSearch.length >= 2,
     queryFn: async () => {
+      if (isPopMode) {
+        const res = await callPortal<{ clients: any[] }>("list_pop_clients", { search: clientSearch, minimal: true });
+        return res.clients || [];
+      }
       let q: any = supabase
         .from("clients")
         .select("id, client_id, name, contact, username, monthly_bill")
@@ -71,7 +76,6 @@ export default function DailyCollection() {
     },
   });
 
-  // Filter
   const filtered = useMemo(() => {
     return collections.filter((c: any) => {
       if (paymentMethodFilter !== "all" && c.payment_method !== paymentMethodFilter) return false;
@@ -80,7 +84,6 @@ export default function DailyCollection() {
     });
   }, [collections, paymentMethodFilter, statusFilter]);
 
-  // Summary
   const summary = useMemo(() => {
     let received = 0, discount = 0, due = 0;
     filtered.forEach((c: any) => {
@@ -91,7 +94,6 @@ export default function DailyCollection() {
     return { received, discount, due };
   }, [filtered]);
 
-  // Receive bill mutation
   const receiveMutation = useMutation({
     mutationFn: async () => {
       if (!selectedClient) throw new Error("ক্লায়েন্ট নির্বাচন করুন");
@@ -99,7 +101,18 @@ export default function DailyCollection() {
       const discount = Number(collectForm.discount || 0);
       if (!amount || amount <= 0) throw new Error("সঠিক পরিমাণ দিন");
 
-      // Get current month billing — month stored as YYYY-MM-01 date
+      if (isPopMode) {
+        return callPortal("receive_pop_bill", {
+          client_id: selectedClient.id,
+          amount,
+          discount,
+          payment_method: collectForm.payment_method,
+          note: collectForm.note,
+          received_date: today(),
+          set_next_billing: true,
+        });
+      }
+
       const now = new Date();
       const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
       const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10);
@@ -113,8 +126,6 @@ export default function DailyCollection() {
         .limit(1);
 
       const billing = billingRows?.[0];
-
-      // Update billing FIRST so we have valid billing_id
       let billingId = billing?.id || null;
       if (billing) {
         const newPaid = Number(billing.paid || 0) + amount;
@@ -132,7 +143,6 @@ export default function DailyCollection() {
         if (updErr) throw updErr;
       }
 
-      // Insert collection (linked to billing)
       const { error: insertErr } = await supabase.from("bill_collections").insert({
         billing_id: billingId,
         client_id: selectedClient.id,
@@ -144,9 +154,8 @@ export default function DailyCollection() {
       });
       if (insertErr) throw insertErr;
 
-      // Insert income entry for accounting
       const userId = (await supabase.auth.getUser()).data.user?.id;
-      await supabase.from("income_entries").insert({
+      const { error: incomeError } = await supabase.from("income_entries").insert({
         amount,
         source: "bill_collection",
         description: `বিল কালেকশন — ${selectedClient.name} (${selectedClient.client_id || ""})`,
@@ -158,6 +167,7 @@ export default function DailyCollection() {
         received_by: userId || null,
         status: "approved",
       });
+      if (incomeError) throw incomeError;
     },
     onSuccess: () => {
       toast({ title: "সফল", description: "বিল রিসিভ হয়েছে এবং আয়ে যোগ হয়েছে" });
