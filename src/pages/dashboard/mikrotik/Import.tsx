@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, XCircle, RefreshCw, ArrowRightLeft, UserPlus, Layers } from "lucide-react";
+import { FileSpreadsheet, Upload, Eye, EyeOff, ExternalLink, XCircle, RefreshCw, ArrowRightLeft, UserPlus, Layers, Power, PowerOff, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { TransferToPopDialog } from "@/components/mikrotik/TransferToPopDialog";
 import { BulkProfileChangeDialog } from "@/components/mikrotik/BulkProfileChangeDialog";
@@ -32,6 +32,38 @@ export default function Import() {
   const [bulkExportOpen, setBulkExportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [bulkProfileOpen, setBulkProfileOpen] = useState(false);
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+
+  const togglePppStatus = async (c: any) => {
+    if (!c.mikrotik_id || !c.name) {
+      toast.error("MikroTik server বা username পাওয়া যায়নি");
+      return;
+    }
+    const isDisabled = c.user_status === "disabled";
+    const action = isDisabled ? "enable" : "disable";
+    setTogglingIds((s) => new Set(s).add(c.id));
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
+        body: { mikrotik_id: c.mikrotik_id, username: c.name, action },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      await supabase
+        .from("mikrotik_clients")
+        .update({ user_status: isDisabled ? "unique" : "disabled" })
+        .eq("id", c.id);
+      toast.success(`${c.name} ${isDisabled ? "enable" : "disable"} হয়েছে`);
+      queryClient.invalidateQueries({ queryKey: ["mikrotik_clients"] });
+    } catch (e: any) {
+      toast.error("ব্যর্থ: " + (e.message || "অজানা ত্রুটি"));
+    } finally {
+      setTogglingIds((s) => {
+        const n = new Set(s);
+        n.delete(c.id);
+        return n;
+      });
+    }
+  };
 
   const { data: servers = [] } = useQuery({
     queryKey: ["mikrotik_devices_active"],
@@ -324,13 +356,14 @@ export default function Import() {
                     <TableHead>ট্রান্সফার গন্তব্য</TableHead>
                   )}
                   <TableHead>অ্যাকশন</TableHead>
+                  <TableHead>এক্সপোর্ট</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={11} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={12} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                  <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                     কোনো MikroTik-only ইউজার পাওয়া যায়নি। উপরের <b>"মাইক্রোটিক থেকে সিঙ্ক করুন"</b> বাটন চাপুন — তারপর pending ইউজার এখানে আসবে এবং POP-এ ট্রান্সফার করা যাবে।
                   </TableCell></TableRow>
                 ) : filtered.map((c: any) => (
@@ -380,8 +413,27 @@ export default function Import() {
                       </TableCell>
                     )}
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title="ক্লায়েন্ট লিস্টে এক্সপোর্ট" onClick={() => exportToClientList(c)}>
-                        <ExternalLink className="h-4 w-4" />
+                      {(() => {
+                        const isDisabled = c.user_status === "disabled";
+                        const busy = togglingIds.has(c.id);
+                        return (
+                          <Button
+                            variant={isDisabled ? "outline" : "ghost"}
+                            size="sm"
+                            className={`h-8 ${isDisabled ? "text-destructive border-destructive/40" : "text-green-600"}`}
+                            disabled={busy}
+                            onClick={() => togglePppStatus(c)}
+                            title={isDisabled ? "Enable PPP user" : "Disable PPP user"}
+                          >
+                            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : isDisabled ? <PowerOff className="h-4 w-4 mr-1" /> : <Power className="h-4 w-4 mr-1" />}
+                            {!busy && (isDisabled ? "Disabled" : "Enabled")}
+                          </Button>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="secondary" size="sm" className="h-8" title="ক্লায়েন্ট লিস্টে এক্সপোর্ট" onClick={() => exportToClientList(c)}>
+                        <ExternalLink className="h-4 w-4 mr-1" /> Export
                       </Button>
                     </TableCell>
                   </TableRow>
