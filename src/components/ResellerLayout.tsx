@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -200,7 +200,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
   });
 
   // Auto-switch open group when route changes to a different group
-  React.useEffect(() => {
+  useEffect(() => {
     const active = groups.find((g) => g.items.some((i) => location.pathname.startsWith(i.to)));
     if (active && active.key !== openGroup) setOpenGroup(active.key);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -279,7 +279,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
         <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
           {visibleGroups.map((g) => {
             const Icon = g.icon;
-            const isOpen = openGroups.has(g.key) || !!search;
+            const isOpen = openGroup === g.key || !!search;
             const isSingle = g.items.length === 1 && g.items[0].label === g.label;
             const groupActive = g.items.some((i) => location.pathname.startsWith(i.to));
 
