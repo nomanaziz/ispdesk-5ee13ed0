@@ -31,6 +31,7 @@ import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows 
 import { toast } from "sonner";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
+import { getBillStatus } from "@/lib/billingStatus";
 
 const currentMonth = () => {
   const d = new Date();
@@ -140,12 +141,12 @@ export default function BillingList() {
       if (f.customStatus !== "all" && c.status !== f.customStatus) return false;
       if (f.paymentStatus !== "all") {
         const b = c.currentBill;
-        const bs = b?.status?.toLowerCase() || "unpaid";
+        const derived = getBillStatus(b);
         const now = new Date();
         const expDate = c.expire_date ? new Date(c.expire_date) : null;
         if (f.paymentStatus === "overdue") {
-          if (!expDate || expDate >= now || bs === "paid") return false;
-        } else if (f.paymentStatus !== bs) return false;
+          if (!expDate || expDate >= now || derived === "paid") return false;
+        } else if (f.paymentStatus !== derived) return false;
       }
       if (f.billingStatus !== "all" && c.billing_status !== f.billingStatus) return false;
       if (f.fromExpireDate && c.expire_date && c.expire_date < f.fromExpireDate) return false;
@@ -161,15 +162,16 @@ export default function BillingList() {
     clients.forEach((c: any) => {
       if (c.status === "active") active++;
       const b = c.currentBill;
+      const derived = getBillStatus(b);
       monthlyBill += Number(c.monthly_bill || 0);
       if (b) {
         received += Number(b.paid || 0);
         due += Number(b.due || 0);
-        if (b.status?.toLowerCase() === "paid") paid++;
+        if (derived === "paid") paid++;
         else unpaid++;
       } else unpaid++;
       const expDate = c.expire_date ? new Date(c.expire_date) : null;
-      if (expDate && expDate < now && (!b || b.status !== "paid")) overdue++;
+      if (expDate && expDate < now && derived !== "paid") overdue++;
     });
     return { total, active, paid, unpaid, overdue, received, due, monthlyBill };
   }, [clients]);
@@ -411,11 +413,11 @@ export default function BillingList() {
                   <TableRow><TableCell colSpan={isPrepaidPop ? 20 : 19} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
                 ) : paginated.map((c: any, i: number) => {
                   const b = c.currentBill;
-                  const bs = (b?.status || "unpaid").toLowerCase();
                   const paidAmt = Number(b?.paid || 0);
                   const dueAmt = Number(b?.due || 0);
-                  const isPaid = bs === "paid" || (b && dueAmt <= 0 && paidAmt > 0);
-                  const isPartial = !isPaid && paidAmt > 0;
+                  const derived = getBillStatus(b);
+                  const isPaid = derived === "paid";
+                  const isPartial = derived === "partial";
                   return (
                     <TableRow key={c.id} data-state={selectedIds.has(c.id) ? "selected" : undefined}>
                       <TableCell>

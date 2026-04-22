@@ -894,6 +894,72 @@ Deno.serve(async (req) => {
         return json({ clients: clients || [] });
       }
 
+      case "get_pop_client_profile": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const clientId = String(payload.client_id || "");
+        if (!clientId) return json({ error: "Client is required" }, 400);
+
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("branch_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+
+        const { data: client, error: cErr } = await sb
+          .from("clients")
+          .select(`
+            *,
+            zone:zones(name),
+            sub_zone:sub_zones(name),
+            package:isp_packages(name),
+            box:boxes(name),
+            billing!billing_client_id_fkey(id, bill_id, month, amount, paid, due, discount, advance, vat, status, pay_date, created_at),
+            bill_collections!bill_collections_client_id_fkey(id, amount, discount, vat, payment_method, note, status, created_at, transaction_id, received_by)
+          `)
+          .eq("id", clientId)
+          .maybeSingle();
+        if (cErr) return json({ error: cErr.message }, 500);
+        if (!client) return json({ error: "Client not found" }, 404);
+        if (client.branch_id !== pop.branch_id) {
+          return json({ error: "Client not in your POP" }, 403);
+        }
+
+        const [traffic, changes, tickets, history] = await Promise.all([
+          sb.from("client_traffic_monthly")
+            .select("*")
+            .eq("client_id", clientId)
+            .order("month", { ascending: false })
+            .limit(12),
+          sb.from("change_requests")
+            .select("*")
+            .eq("client_id", clientId)
+            .order("created_at", { ascending: false })
+            .limit(20),
+          sb.from("support_tickets")
+            .select("*")
+            .eq("client_id", clientId)
+            .order("created_at", { ascending: false })
+            .limit(20),
+          sb.from("billing_history")
+            .select("*")
+            .eq("client_id", clientId)
+            .order("changed_at", { ascending: false }),
+        ]);
+
+        return json({
+          client,
+          traffic: traffic.data || [],
+          change_requests: changes.data || [],
+          support_tickets: tickets.data || [],
+          bill_history: history.data || [],
+        });
+      }
+
       case "list_pop_billing_clients": {
         if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
           return json({ error: "Not allowed" }, 403);

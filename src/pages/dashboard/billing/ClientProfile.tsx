@@ -20,6 +20,8 @@ import BillEditDialog from "@/components/billing/BillEditDialog";
 import { usePopScope } from "@/hooks/usePopScope";
 import { useAuth } from "@/contexts/AuthContext";
 import { loginAsUser } from "@/lib/impersonate";
+import { callPortal } from "@/lib/portalApi";
+import { getBillStatus, getBillStatusLabel, getBillStatusBadgeClass } from "@/lib/billingStatus";
 
 export default function ClientProfile() {
   const { id } = useParams<{ id: string }>();
@@ -35,7 +37,19 @@ export default function ClientProfile() {
   const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("service");
 
-  const { data: client, isLoading } = useQuery({
+  // POP mode: load client + related data via edge function (RLS-safe).
+  const { data: popBundle, isLoading: popLoading } = useQuery({
+    queryKey: ["pop-client-profile", id],
+    queryFn: async () => {
+      const res = await callPortal<any>("get_pop_client_profile", { client_id: id });
+      return res;
+    },
+    enabled: isPopMode && !!id,
+    retry: false,
+  });
+
+  // Admin mode: existing direct Supabase fetch.
+  const { data: adminClient, isLoading: adminLoading } = useQuery({
     queryKey: ["client-profile", id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -50,16 +64,20 @@ export default function ClientProfile() {
           bill_collections!bill_collections_client_id_fkey(id, amount, discount, vat, payment_method, note, status, created_at, transaction_id, received_by)
         `)
         .eq("id", id!)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!id,
+    enabled: !isPopMode && !!id,
   });
+
+  const client = isPopMode ? popBundle?.client : adminClient;
+  const isLoading = isPopMode ? popLoading : adminLoading;
 
   const { data: trafficData } = useQuery({
     queryKey: ["client-traffic", id],
     queryFn: async () => {
+      if (isPopMode) return popBundle?.traffic || [];
       const { data } = await supabase
         .from("client_traffic_monthly")
         .select("*")
@@ -68,12 +86,13 @@ export default function ClientProfile() {
         .limit(12);
       return data || [];
     },
-    enabled: !!id,
+    enabled: !!id && (!isPopMode || !!popBundle),
   });
 
   const { data: changeRequests = [] } = useQuery({
     queryKey: ["client-changes", id],
     queryFn: async () => {
+      if (isPopMode) return popBundle?.change_requests || [];
       const { data } = await supabase
         .from("change_requests")
         .select("*")
@@ -82,12 +101,13 @@ export default function ClientProfile() {
         .limit(20);
       return data || [];
     },
-    enabled: !!id,
+    enabled: !!id && (!isPopMode || !!popBundle),
   });
 
   const { data: supportTickets = [] } = useQuery({
     queryKey: ["client-tickets", id],
     queryFn: async () => {
+      if (isPopMode) return popBundle?.support_tickets || [];
       const { data } = await supabase
         .from("support_tickets" as any)
         .select("*")
@@ -96,7 +116,7 @@ export default function ClientProfile() {
         .limit(20);
       return (data as any[]) || [];
     },
-    enabled: !!id,
+    enabled: !!id && (!isPopMode || !!popBundle),
   });
 
   const { data: livePppData, isFetching: isPppFetching } = useQuery({
@@ -124,6 +144,7 @@ export default function ClientProfile() {
   const { data: billHistory = [] } = useQuery({
     queryKey: ["bill-history", id],
     queryFn: async () => {
+      if (isPopMode) return popBundle?.bill_history || [];
       const { data } = await supabase
         .from("billing_history" as any)
         .select("*")
@@ -131,22 +152,29 @@ export default function ClientProfile() {
         .order("changed_at", { ascending: false });
       return (data as any[]) || [];
     },
-    enabled: !!id,
+    enabled: !!id && (!isPopMode || !!popBundle),
   });
 
   const handleInlineSearch = useCallback(async (q: string) => {
     setInlineSearch(q);
     if (q.length < 2) { setSearchResults([]); setShowSearchResults(false); return; }
     setShowSearchResults(true);
+    if (isPopMode) {
+      try {
+        const res = await callPortal<{ clients: any[] }>("list_pop_clients", { search: q, minimal: true });
+        setSearchResults((res.clients || []).slice(0, 8));
+      } catch {
+        setSearchResults([]);
+      }
+      return;
+    }
     const { data } = await supabase
       .from("clients")
       .select("id, client_id, name, contact, status, branch_id")
       .or(`name.ilike.%${q}%,client_id.ilike.%${q}%,contact.ilike.%${q}%,username.ilike.%${q}%`)
       .limit(8);
-    let rows = data || [];
-    if (isPopMode && branchId) rows = rows.filter((r: any) => r.branch_id === branchId);
-    setSearchResults(rows);
-  }, [isPopMode, branchId]);
+    setSearchResults(data || []);
+  }, [isPopMode]);
 
   const selectSearchResult = (clientId: string) => {
     setInlineSearch("");
@@ -200,7 +228,8 @@ export default function ClientProfile() {
   const pppTraffic = pppData?.live_traffic ?? null;
   const totalDue = billings.reduce((s: number, b: any) => s + Number(b.due || 0), 0);
   const totalPaid = billings.reduce((s: number, b: any) => s + Number(b.paid || 0), 0);
-  const bs = billings[0]?.status || "unpaid";
+  const latestBill = billings[0] || null;
+  const latestStatus = getBillStatus(latestBill);
 
   return (
     <div className="p-4 space-y-4">
@@ -287,8 +316,8 @@ export default function ClientProfile() {
 
               <div className="space-y-2">
                 <SidebarInfo label="বিলিং স্ট্যাটাস">
-                  <Badge variant={bs === "paid" ? "default" : bs === "partial" ? "secondary" : "destructive"}>
-                    {bs === "paid" ? "Paid" : bs === "partial" ? "Partial" : "Due"}
+                  <Badge variant="outline" className={getBillStatusBadgeClass(latestStatus)}>
+                    {getBillStatusLabel(latestStatus)}
                   </Badge>
                 </SidebarInfo>
                 <SidebarInfo label="MikroTik">
@@ -497,9 +526,14 @@ export default function ClientProfile() {
                           <TableCell className="text-right">{Number(b.advance || 0).toLocaleString()}</TableCell>
                           <TableCell className="text-xs">{b.pay_date || "-"}</TableCell>
                           <TableCell>
-                            <Badge variant={b.status === "paid" ? "default" : b.status === "partial" ? "secondary" : "destructive"} className="text-xs">
-                              {b.status === "paid" ? "Paid" : b.status === "partial" ? "Partial" : "Due"}
-                            </Badge>
+                            {(() => {
+                              const s = getBillStatus(b);
+                              return (
+                                <Badge variant="outline" className={`text-xs ${getBillStatusBadgeClass(s)}`}>
+                                  {getBillStatusLabel(s)}
+                                </Badge>
+                              );
+                            })()}
                           </TableCell>
                         </TableRow>
                       ))}
