@@ -11,7 +11,7 @@ interface PopClientRow {
   id: string;
   name: string | null;
   username: string | null;
-  mobile: string | null;
+  contact: string | null;
   address: string | null;
   monthly_bill: number | null;
   status: string | null;
