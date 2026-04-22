@@ -284,6 +284,17 @@ export default function PopSalarySheet() {
               <Textarea value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} rows={2} />
             </div>
           </div>
+
+          <div className="rounded-md border bg-muted/40 p-3 text-sm">
+            <div className="flex justify-between"><span>Paid Salary</span><span>৳ {Number(form.paid_salary || 0).toLocaleString()}</span></div>
+            <div className="flex justify-between text-emerald-600"><span>+ Overtime</span><span>৳ {Number(form.overtime || 0).toLocaleString()}</span></div>
+            <div className="flex justify-between text-emerald-600"><span>+ Incentive</span><span>৳ {Number(form.incentive || 0).toLocaleString()}</span></div>
+            <div className="flex justify-between text-emerald-600"><span>+ Bonus</span><span>৳ {Number(form.bonus || 0).toLocaleString()}</span></div>
+            <div className="flex justify-between text-rose-600"><span>− Advance</span><span>৳ {Number(form.advance || 0).toLocaleString()}</span></div>
+            <div className="flex justify-between font-bold border-t mt-1 pt-1"><span>Total Payable</span><span>৳ {liveTotal.toLocaleString()}</span></div>
+            <p className="text-xs text-muted-foreground mt-1">Save করলে এই amount automatic <b>Expense → Salary</b>-এ যোগ হবে।</p>
+          </div>
+
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setForm(emptyForm)}>Clear</Button>
             <Button variant="outline" onClick={() => setOpen(false)}>Close</Button>
