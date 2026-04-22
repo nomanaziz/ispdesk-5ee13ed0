@@ -25,18 +25,15 @@ export default function PopUnexportedClients({ popId, branchId }: Props) {
   const [revertId, setRevertId] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["pop-unexported-mt", popId, branchId],
+    queryKey: ["pop-unexported-mt", popId],
     enabled: !!popId,
     queryFn: async () => {
-      let q = supabase
+      // Strict scope: only MT users explicitly transferred to this POP and not yet converted
+      const { data: rows, error: e } = await supabase
         .from("mikrotik_clients" as any)
-        .select("id, name, password, profile, service, server_name, remote_address, status, user_status, branch_id, transferred_to_pop_id, transferred_at");
-      if (branchId) {
-        q = q.or(`branch_id.eq.${branchId},transferred_to_pop_id.eq.${popId}`);
-      } else {
-        q = q.eq("transferred_to_pop_id", popId);
-      }
-      const { data: rows, error: e } = await q.is("linked_client_id", null);
+        .select("id, name, password, profile, service, server_name, remote_address, status, user_status, transferred_to_pop_id, transferred_at")
+        .eq("transferred_to_pop_id", popId)
+        .is("linked_client_id", null);
       if (e) throw e;
       return rows ?? [];
     },
@@ -52,26 +49,20 @@ export default function PopUnexportedClients({ popId, branchId }: Props) {
 
   const revertMut = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("mikrotik_clients" as any)
-        .update({
-          transferred_to_pop_id: null,
-          transferred_to_mikrotik_id: null,
-          transferred_at: null,
-          branch_id: null,
-          linked_client_id: null,
-          exported: false,
-          exported_to: null,
-        })
-        .eq("id", id);
+      // Atomic server-side revert: deletes linked client row + clears MT row
+      const { data, error } = await supabase.rpc("revert_mikrotik_client" as any, { _mt_id: id });
       if (error) throw error;
+      if (data && (data as any).ok === false) throw new Error((data as any).error || "Revert failed");
+      return data;
     },
     onSuccess: () => {
       toast.success("Revert সম্পন্ন — user MikroTik Import pool-এ ফেরত গেছে");
-      qc.invalidateQueries({ queryKey: ["pop-unexported-mt", popId] });
+      qc.invalidateQueries({ queryKey: ["pop-unexported-mt"] });
+      qc.invalidateQueries({ queryKey: ["pop-exported-mt"] });
       qc.invalidateQueries({ queryKey: ["mikrotik_clients"] });
       qc.invalidateQueries({ queryKey: ["existing_client_usernames"] });
       qc.invalidateQueries({ queryKey: ["pop-client-counts"] });
+      qc.invalidateQueries({ queryKey: ["branch-managers"] });
       setRevertId(null);
     },
     onError: (e: any) => toast.error(e.message),
