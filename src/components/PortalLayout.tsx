@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard, FileText, HeadphonesIcon, LogOut, Menu, X,
   Activity, Bell, Building2, Clapperboard, BookOpen, ChevronDown, Rocket,
-  ShoppingBag, Package, Receipt, Globe, UserCog, Languages,
+  ShoppingBag, Package, Receipt, Globe, UserCog, Languages, MessageSquare,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -28,6 +28,7 @@ const menuItems = [
   { bn: "ইনভয়েস", en: "Invoices", icon: FileText, path: "/portal/invoices", color: "text-teal-600 dark:text-teal-400" },
   { bn: "শপ", en: "Shop", icon: ShoppingBag, path: "/portal/shop", color: "text-pink-600 dark:text-pink-400" },
   { bn: "আমার অর্ডার", en: "My Orders", icon: Package, path: "/portal/my-orders", color: "text-orange-600 dark:text-orange-400" },
+  { bn: "আমার মেসেজ", en: "My Messages", icon: MessageSquare, path: "/portal/messages", color: "text-violet-600 dark:text-violet-400" },
   { bn: "সাপোর্ট টিকেট", en: "Support Tickets", icon: HeadphonesIcon, path: "/portal/support", color: "text-red-600 dark:text-red-400" },
 ];
 
