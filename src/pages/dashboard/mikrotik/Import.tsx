@@ -349,7 +349,7 @@ export default function Import() {
                       <div className="flex items-center gap-2">
                         <span>{c.name}</span>
                         {getServerCount(c.name) >= 2 && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0 border-yellow-500 text-yellow-700">
+                          <Badge variant="outline" className="text-[10px] px-1 py-0">
                             {getServerCount(c.name)} servers
                           </Badge>
                         )}
