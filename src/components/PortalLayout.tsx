@@ -159,6 +159,8 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
               </Button>
             </Link>
 
+            <NotificationBell />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 hover:opacity-80 px-2 py-1.5 rounded-lg hover:bg-muted">
