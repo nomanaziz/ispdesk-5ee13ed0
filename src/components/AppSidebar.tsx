@@ -842,6 +842,30 @@ export function AppSidebar() {
   const [search, setSearch] = useState("");
   const [reorderOpen, setReorderOpen] = useState(false);
   const [savedOrder, setSavedOrder] = useState<string[]>(() => loadSavedOrder());
+  const location = useLocation();
+
+  // Determine which group contains the active route
+  const activeGroupLabel = useMemo(() => {
+    const found = menuGroups.find((g) =>
+      g.items.some((it) =>
+        it.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(it.url)
+      )
+    );
+    return found?.label ?? null;
+  }, [location.pathname]);
+
+  const [openGroupKey, setOpenGroupKey] = useState<string | null>(activeGroupLabel);
+
+  useEffect(() => {
+    if (activeGroupLabel && activeGroupLabel !== openGroupKey) {
+      setOpenGroupKey(activeGroupLabel);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeGroupLabel]);
+
+  const handleToggleGroup = (key: string) => {
+    setOpenGroupKey((prev) => (prev === key ? null : key));
+  };
 
   const orderedGroups = useMemo(() => {
     const allLabels = menuGroups.map((g) => g.label);
@@ -933,7 +957,13 @@ export function AppSidebar() {
         <ScrollArea className="flex-1">
           <SidebarContent className="bg-transparent py-2">
             {filteredGroups.map(({ group, matched }) => (
-              <CollapsibleGroup key={group.label} group={group} forceOpen={matched ? true : undefined} />
+              <CollapsibleGroup
+                key={group.label}
+                group={group}
+                forceOpen={matched ? true : undefined}
+                openKey={openGroupKey}
+                onToggle={handleToggleGroup}
+              />
             ))}
             {filteredGroups.length === 0 && (
               <div className="px-4 py-6 text-center text-xs text-muted-foreground">
