@@ -1,79 +1,84 @@
 
 
 ## লক্ষ্য
-Customer Portal Dashboard-কে আরো সমৃদ্ধ ও clickable করা — গ্রাহক যেন এক জায়গা থেকেই সব দরকারি info দেখে এবং click করে সরাসরি সেই page-এ যেতে পারে। সাথে একটা **Messages Inbox** যোগ করা।
+Customer Portal-এর **Live Usage** page-এ গ্রাহক দেখতে পারবে:
+1. বর্তমান মাসে **কোন দিন কত GB** ডাটা use হয়েছে (daily breakdown)
+2. **এই মাসের মোট** + **আগের মাসগুলোর মোট** (monthly summary, দিনভিত্তিক ভাঙা ছাড়া)
 
 ---
 
-## সমাধান (পরিবর্তন)
+## সমাধান
 
-### 1. Hero stats — clickable mini summary cards (reference image-এর "PACKAGE / MONTHLY BILL / EXPIRY" concept থেকে)
-Hero-এর নিচে compact icon-strip-এর জায়গায় **৪টা clickable summary card**:
-- 📦 **Package** → `/portal/profile` (Migration/Update text সহ)
-- 💵 **Monthly Bill** ৳XXX → `/portal/bills`
-- 📅 **Expiry Date** (DD-MMM-YYYY) → `/portal/bills`
-- ⬆️⬇️ **Data Used** (UpTime থাকলে show) → `/portal/live-usage`
+### 1. Live Usage page-এ ২টা নতুন section যোগ
+বর্তমান page (Connectivity Info + Online status + Live speed + Real-time graph) এর **নিচে** যোগ হবে:
 
-প্রতিটা card-এ:
-- বড় colorful icon
-- Main value (বড় font)
-- ছোট helper text ("My Profile" / "Pay Bill" type CTA)
-- পুরো card hover + click → relevant page
+#### A. **This Month — Daily Usage** (current month)
+- Bar chart: X-axis = তারিখ (1-31), Y-axis = GB
+- প্রতিটা bar-এ Download + Upload stacked (or grouped)
+- উপরে summary chip: "এই মাসে মোট: ↓ XX GB · ↑ YY GB · মোট ZZ GB"
+- শুধু **চলতি মাসের** data দেখাবে (1 তারিখ থেকে আজ পর্যন্ত)
 
-### 2. Ledger highlight — already clickable (Pay Now button আছে), তবে পুরো ledger card-ও clickable করব → `/portal/bills`
-
-### 3. **নতুন Messages Inbox card** (image-এর "MESSAGE" + "NOTICES" concept থেকে)
-- Activity panel-এর নিচে full-width একটা new section: **Recent Messages**
-- Source: `customer_messages` table (channel: sms/email)
-- প্রতিটা row: channel icon (📱 SMS / ✉️ Email) + recipient + message preview + relative time
-- "View All" button → `/portal/messages` (নতুন page)
-- যদি খালি থাকে → friendly empty state ("কোনো message এখনও নেই")
-
-### 4. **নতুন `/portal/messages` page**
-- পূর্ণ inbox view: filter by channel (All / SMS / Email), search, pagination
-- প্রতিটা message: channel badge, status (sent/delivered/failed), full content, timestamp
-- Click করলে expand হয়ে full message + meta details
-
-### 5. Quick links update
-- Activity panel-এর Quick links-এ "Messages" যোগ — `BellRing` এর জায়গায় or পাশে।
+#### B. **Monthly Summary** (past months)
+- Compact table/list: প্রতি row = এক মাস
+- Columns: Month (Nov 2025), Download, Upload, Total
+- শেষ ৬ মাস দেখাবে, "View More" দিলে আরো load
+- পরের মাস শুরু হলে আগের মাস automatic এই list-এ চলে আসবে (daily breakdown আর show করব না সেই মাসের জন্য — শুধু total)
 
 ---
 
 ## Technical Details
 
-### Files to edit/create:
-1. **`src/pages/portal/PortalDashboard.tsx`** — icon-chip strip-কে clickable summary cards দিয়ে replace; recent messages preview section যোগ।
-2. **`src/pages/portal/PortalMessages.tsx`** *(new)* — full inbox page।
-3. **`src/App.tsx`** — `/portal/messages` route যোগ।
-4. **`src/components/PortalLayout.tsx`** — sidebar nav-এ "Messages" entry যোগ (Mail icon সহ, both bn/en)।
-5. **`supabase/functions/portal-data/index.ts`** — দুটো নতুন action:
-   - `get_dashboard` response-এ `recent_messages` (last 5) যোগ করব
-   - নতুন `get_messages` action — full list with optional channel filter
+### Data source
+- **Daily breakdown**: `client_traffic_logs` থেকে aggregate
+  - প্রতি tick-এ snapshot আছে (`upload_bytes`, `download_bytes` = session counter)
+  - **Delta computation**: একই day-এর consecutive rows-এর difference নিতে হবে; counter reset (current < prev) হলে current-কে delta ধরব
+  - SQL: window function `LAG()` দিয়ে delta বের করে date-wise SUM
+- **Monthly totals**: `client_traffic_monthly` (already populated by collector)
+  - Direct SELECT, order by month DESC
 
-### Data source:
-- Table: `customer_messages` (columns: id, customer_id, channel, message, recipient, status, created_at)
-- Filter: `customer_id = tok.sub` (client_id)
-- Note: Currently empty (0 rows) — UI empty-state handle করব। Future-এ admin SMS/email send হলে এই table-এ insert হলেই দেখাবে।
+### Backend changes
+**File: `supabase/functions/portal-data/index.ts`** — দুটো নতুন action:
 
-### Click behavior:
-- Card-এ `<Link>` wrap (Button asChild নয় — পুরো surface clickable)
-- `cursor-pointer` + hover scale subtle effect
+1. `get_daily_usage` — current month daily breakdown
+   ```sql
+   WITH ordered AS (
+     SELECT recorded_at::date AS day, upload_bytes, download_bytes,
+            LAG(upload_bytes) OVER (ORDER BY recorded_at) AS prev_up,
+            LAG(download_bytes) OVER (ORDER BY recorded_at) AS prev_dn
+     FROM client_traffic_logs
+     WHERE client_id = $1 AND recorded_at >= date_trunc('month', now())
+   )
+   SELECT day,
+          SUM(GREATEST(upload_bytes - COALESCE(prev_up, upload_bytes), 0)) AS up,
+          SUM(GREATEST(download_bytes - COALESCE(prev_dn, download_bytes), 0)) AS dn
+   FROM ordered GROUP BY day ORDER BY day;
+   ```
+   Note: edge function-এ raw SQL allowed না — তাই client-side aggregation: `client_traffic_logs` থেকে current month rows fetch করে JS-এ delta + group।
 
-### Design tokens:
-- বিদ্যমান colorful tints (violet/emerald/sky/amber/rose) ব্যবহার, dark text (per memory)।
+2. `get_monthly_usage` — last 12 months
+   - Direct query: `client_traffic_monthly` filter by client_id, order desc, limit 12
+
+### Frontend changes
+**File: `src/pages/portal/PortalLiveUsage.tsx`** — page-এর শেষে নতুন ২টা Card:
+- React Query (15-min staleTime, না polling — historical data)
+- Recharts BarChart (daily) + simple table (monthly)
+- Empty-state: "এখনও data সংগ্রহ হয়নি"
+
+### Files modified
+1. `supabase/functions/portal-data/index.ts` — 2 new actions
+2. `src/pages/portal/PortalLiveUsage.tsx` — 2 new sections at bottom
 
 ---
 
 ## Out of scope
-- Admin থেকে message send করার flow — already exists (sms/email modules)।
-- Real-time push notification।
-- Message-এ reply functionality।
+- Hour-by-hour breakdown
+- Per-day download করার option
+- Comparison chart (this month vs last month)
 
 ---
 
 ## Apply-এর পরে expected
-1. Dashboard-এ ৪টা boldly clickable summary cards (Package / Bill / Expiry / Usage)।
-2. সবগুলো metric click করলে সরাসরি relevant page-এ চলে যায়।
-3. Recent Messages preview card dashboard-এ থাকবে।
-4. পুরো inbox `/portal/messages`-এ accessible, sidebar থেকেও।
+1. Live Usage page-এ scroll down করলে চলতি মাসের প্রতিদিনের usage bar chart দেখাবে।
+2. তার নিচে আগের মাসগুলোর summary table থাকবে (শুধু মাসিক total)।
+3. মাস শেষ হলে সেই মাস automatically monthly summary-তে চলে যাবে।
 
