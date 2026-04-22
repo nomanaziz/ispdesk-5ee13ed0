@@ -159,15 +159,22 @@ export default function ClientProfile() {
     setInlineSearch(q);
     if (q.length < 2) { setSearchResults([]); setShowSearchResults(false); return; }
     setShowSearchResults(true);
+    if (isPopMode) {
+      try {
+        const res = await callPortal<{ clients: any[] }>("list_pop_clients", { search: q, minimal: true });
+        setSearchResults((res.clients || []).slice(0, 8));
+      } catch {
+        setSearchResults([]);
+      }
+      return;
+    }
     const { data } = await supabase
       .from("clients")
       .select("id, client_id, name, contact, status, branch_id")
       .or(`name.ilike.%${q}%,client_id.ilike.%${q}%,contact.ilike.%${q}%,username.ilike.%${q}%`)
       .limit(8);
-    let rows = data || [];
-    if (isPopMode && branchId) rows = rows.filter((r: any) => r.branch_id === branchId);
-    setSearchResults(rows);
-  }, [isPopMode, branchId]);
+    setSearchResults(data || []);
+  }, [isPopMode]);
 
   const selectSearchResult = (clientId: string) => {
     setInlineSearch("");
