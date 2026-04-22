@@ -119,10 +119,10 @@ Deno.serve(async (req) => {
     // admin bot
     const { data: adminCfg } = await supabase
       .from("system_settings")
-      .select("value")
-      .eq("key", "admin_telegram_bot")
+      .select("setting_value")
+      .eq("setting_key", "admin_telegram_bot")
       .maybeSingle();
-    const a = adminCfg?.value || {};
+    const a = (adminCfg as any)?.setting_value || {};
     if (a.active && a.token) {
       bots.push({ owner_type: "admin", owner_id: "global", token: a.token, username: a.username });
     }

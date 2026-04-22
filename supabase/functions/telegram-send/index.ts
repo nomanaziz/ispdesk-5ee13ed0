@@ -29,11 +29,11 @@ async function getBotToken(supabase: any, owner_type: string, owner_id: string) 
   } else {
     const { data, error } = await supabase
       .from("system_settings")
-      .select("value")
-      .eq("key", "admin_telegram_bot")
+      .select("setting_value")
+      .eq("setting_key", "admin_telegram_bot")
       .maybeSingle();
     if (error) throw error;
-    const val = data?.value || {};
+    const val = (data as any)?.setting_value || {};
     if (!val.active || !val.token) throw new Error("Admin-এর Telegram bot সক্রিয় নয়");
     return { token: val.token as string, username: val.username as string };
   }
