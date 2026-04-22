@@ -431,6 +431,62 @@ export type Database = {
         }
         Relationships: []
       }
+      automatic_processes: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          enabled: boolean
+          execute_at: string
+          execution_day: string | null
+          id: string
+          interval_type: string
+          last_run: string | null
+          next_run: string | null
+          notes: string | null
+          process_key: string
+          process_name: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          execute_at?: string
+          execution_day?: string | null
+          id?: string
+          interval_type?: string
+          last_run?: string | null
+          next_run?: string | null
+          notes?: string | null
+          process_key: string
+          process_name: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          execute_at?: string
+          execution_day?: string | null
+          id?: string
+          interval_type?: string
+          last_run?: string | null
+          next_run?: string | null
+          notes?: string | null
+          process_key?: string
+          process_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automatic_processes_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bill_collections: {
         Row: {
           amount: number
