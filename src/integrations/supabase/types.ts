@@ -4994,6 +4994,7 @@ export type Database = {
       mikrotik_devices: {
         Row: {
           api_port: number
+          assigned_to_pop_id: string | null
           branch_id: string | null
           created_at: string
           credentials_encrypted: string | null
@@ -5011,6 +5012,7 @@ export type Database = {
         }
         Insert: {
           api_port?: number
+          assigned_to_pop_id?: string | null
           branch_id?: string | null
           created_at?: string
           credentials_encrypted?: string | null
@@ -5028,6 +5030,7 @@ export type Database = {
         }
         Update: {
           api_port?: number
+          assigned_to_pop_id?: string | null
           branch_id?: string | null
           created_at?: string
           credentials_encrypted?: string | null
@@ -5044,6 +5047,13 @@ export type Database = {
           version?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "mikrotik_devices_assigned_to_pop_id_fkey"
+            columns: ["assigned_to_pop_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "mikrotik_devices_branch_id_fkey"
             columns: ["branch_id"]

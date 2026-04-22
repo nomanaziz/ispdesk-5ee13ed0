@@ -27,6 +27,8 @@ interface MikrotikDevice {
   enabled: boolean;
   order_no: number | null;
   created_at: string;
+  branch_id?: string | null;
+  assigned_to_pop_id?: string | null;
 }
 
 const defaultForm = {
@@ -69,6 +71,34 @@ export default function Servers() {
       if (error) throw error;
       return data as MikrotikDevice[];
     },
+  });
+
+  const { data: pops = [] } = useQuery({
+    queryKey: ["branch_managers_for_mt_assign"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("branch_managers")
+        .select("id, name, pop_code")
+        .eq("status", "active")
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const assignToPop = useMutation({
+    mutationFn: async ({ id, popId }: { id: string; popId: string | null }) => {
+      const { error } = await supabase
+        .from("mikrotik_devices")
+        .update({ assigned_to_pop_id: popId })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mikrotik_devices"] });
+      toast.success("POP assignment আপডেট হয়েছে");
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const nextOrderNo = () => {
@@ -235,14 +265,15 @@ export default function Servers() {
                   <TableHead>টাইমআউট</TableHead>
                   <TableHead>সক্রিয়</TableHead>
                   <TableHead>স্ট্যাটাস</TableHead>
+                  <TableHead className="min-w-[200px]">Assigned POP</TableHead>
                   <TableHead>অ্যাকশন</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={12} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={13} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={12} className="text-center py-8">কোনো সার্ভার পাওয়া যায়নি</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={13} className="text-center py-8">কোনো সার্ভার পাওয়া যায়নি</TableCell></TableRow>
                 ) : filtered.map((d, i) => {
                   const statusInfo = getStatusDisplay(d);
                   return (
@@ -271,6 +302,26 @@ export default function Servers() {
                           <span className={`inline-block h-3 w-3 rounded-full ${statusInfo.color}`} />
                           <span className={`text-xs font-medium ${statusInfo.textColor}`}>{statusInfo.text}</span>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={d.assigned_to_pop_id || "__none__"}
+                          onValueChange={(v) =>
+                            assignToPop.mutate({ id: d.id, popId: v === "__none__" ? null : v })
+                          }
+                        >
+                          <SelectTrigger className="h-8 min-w-[180px]">
+                            <SelectValue placeholder="POP নির্বাচন করুন" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">— Unassigned —</SelectItem>
+                            {pops.map((p: any) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name} {p.pop_code ? `(${p.pop_code})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">

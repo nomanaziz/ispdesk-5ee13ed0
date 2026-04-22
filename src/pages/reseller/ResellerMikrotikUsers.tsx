@@ -44,6 +44,7 @@ export default function ResellerMikrotikUsers() {
       const branchIdLocal = pop?.branch_id;
       const orFilters: string[] = [];
       if (branchIdLocal) orFilters.push(`branch_id.eq.${branchIdLocal}`);
+      if (popId) orFilters.push(`assigned_to_pop_id.eq.${popId}`);
       const { data: transferredMtIds } = await supabase
         .from("mikrotik_clients")
         .select("transferred_to_mikrotik_id")
@@ -51,7 +52,7 @@ export default function ResellerMikrotikUsers() {
         .not("transferred_to_mikrotik_id", "is", null);
       const ids = Array.from(new Set((transferredMtIds || []).map((r: any) => r.transferred_to_mikrotik_id).filter(Boolean)));
 
-      let q = supabase.from("mikrotik_devices").select("id, name, ip_address, status").order("name");
+      let q = supabase.from("mikrotik_devices").select("id, name, ip_address, status, branch_id, assigned_to_pop_id").order("name");
       if (orFilters.length > 0 && ids.length > 0) {
         q = q.or(`${orFilters.join(",")},id.in.(${ids.join(",")})`);
       } else if (orFilters.length > 0) {
@@ -75,17 +76,18 @@ export default function ResellerMikrotikUsers() {
     queryKey: ["reseller_mt_users", popId, activeMt, pop?.branch_id],
     queryFn: async () => {
       if (!activeMt) return [];
-      // POP-এর branch-এ assigned MikroTik হলে ওই MT-এর সব users দেখাও;
+      // POP-এর branch-এ assigned MikroTik OR POP-কে directly assigned হলে ওই MT-এর সব users দেখাও;
       // নইলে শুধু এই POP-এ transferred users দেখাও।
       const { data: mtRow } = await supabase
         .from("mikrotik_devices")
-        .select("branch_id")
+        .select("branch_id, assigned_to_pop_id")
         .eq("id", activeMt)
         .maybeSingle();
       const isBranchScoped = !!pop?.branch_id && mtRow?.branch_id === pop.branch_id;
+      const isPopAssigned = !!popId && mtRow?.assigned_to_pop_id === popId;
 
       let q = supabase.from("mikrotik_clients").select("*").order("name");
-      if (isBranchScoped) {
+      if (isBranchScoped || isPopAssigned) {
         q = q.or(
           `mikrotik_id.eq.${activeMt},transferred_to_mikrotik_id.eq.${activeMt}`,
         );
@@ -105,7 +107,7 @@ export default function ResellerMikrotikUsers() {
       if (!tariffId) return [];
       const { data } = await supabase
         .from("reseller_tariff_packages")
-        .select("id, package_id, selling_rate, isp_packages(id, name, speed)")
+        .select("id, package_id, selling_rate, isp_packages(id, name, bandwidth_down)")
         .eq("tariff_id", tariffId)
         .eq("status", "active");
       return data || [];
