@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Package, Wifi, Wallet, FileText, CreditCard, Bell, Sparkles,
-  UserCog, User, Gauge, Cable, ShieldCheck, Activity, Clock,
-  Phone, Mail, MapPin, IdCard, Hash, KeyRound, BellRing,
+  UserCog, User, Activity, Clock,
+  Phone, Mail, MapPin, IdCard, Hash, KeyRound,
+  Calendar, Banknote, ArrowRightLeft, MessageSquare, Smartphone, ChevronRight, Inbox,
 } from "lucide-react";
 
 const PortalDashboard = () => {
