@@ -18,19 +18,15 @@ export default function PopExportedClients({ popId, branchId }: Props) {
   const [showPwd, setShowPwd] = useState<Record<string, boolean>>({});
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["pop-exported-mt", popId, branchId],
+    queryKey: ["pop-exported-mt", popId],
     enabled: !!popId,
     queryFn: async () => {
-      // mikrotik_clients in this POP scope, that have been linked to a clients row
-      let q = supabase
+      // Only MT users transferred to this POP and already converted to a client row
+      const { data: mtRows, error: e1 } = await supabase
         .from("mikrotik_clients" as any)
-        .select("id, name, password, profile, server_name, remote_address, status, linked_client_id, branch_id, transferred_to_pop_id");
-      if (branchId) {
-        q = q.or(`branch_id.eq.${branchId},transferred_to_pop_id.eq.${popId}`);
-      } else {
-        q = q.eq("transferred_to_pop_id", popId);
-      }
-      const { data: mtRows, error: e1 } = await q.not("linked_client_id", "is", null);
+        .select("id, name, password, profile, server_name, remote_address, status, linked_client_id, transferred_to_pop_id")
+        .eq("transferred_to_pop_id", popId)
+        .not("linked_client_id", "is", null);
       if (e1) throw e1;
 
       const linkedIds = (mtRows ?? []).map((r: any) => r.linked_client_id).filter(Boolean);

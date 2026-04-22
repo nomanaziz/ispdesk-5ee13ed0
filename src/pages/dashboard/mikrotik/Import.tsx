@@ -57,8 +57,12 @@ export default function Import() {
         .from("mikrotik_clients")
         .select("*, mikrotik_devices:mikrotik_devices!mikrotik_clients_mikrotik_id_fkey(name), branches(name), transferred_pop:branch_managers!mikrotik_clients_transferred_to_pop_id_fkey(name, pop_code), transferred_mt:mikrotik_devices!mikrotik_clients_transferred_to_mikrotik_id_fkey(name)")
         .order("created_at", { ascending: false });
-      if (transferStatus === "pending") q = q.is("transferred_to_pop_id", null);
-      else q = q.not("transferred_to_pop_id", "is", null);
+      if (transferStatus === "pending") {
+        // Pending = not transferred to any POP, not converted, not exported
+        q = q.is("transferred_to_pop_id", null).is("linked_client_id", null).or("exported.is.null,exported.eq.false");
+      } else {
+        q = q.not("transferred_to_pop_id", "is", null);
+      }
       if (selectedServer !== "all") q = q.eq("mikrotik_id", selectedServer);
       if (protocolFilter !== "all") q = q.eq("service", protocolFilter);
       if (profileFilter !== "all") q = q.eq("profile", profileFilter);
@@ -188,7 +192,6 @@ export default function Import() {
   };
 
   const filtered = clients
-    .filter((c: any) => !existingUsernames.includes(c.name?.toLowerCase()))
     .filter((c: any) =>
       [c.name, c.caller_id, c.server_name].some((v) => v?.toLowerCase().includes(search.toLowerCase()))
     );

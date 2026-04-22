@@ -9885,6 +9885,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_super: { Args: { _user_id: string }; Returns: boolean }
+      revert_mikrotik_client: { Args: { _mt_id: string }; Returns: Json }
       seed_default_pop_hierarchy_for_branch: {
         Args: { _branch_id: string }
         Returns: undefined
