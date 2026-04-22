@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { callPortal } from "@/lib/portalApi";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Download, Upload, Wifi, User, Hash, Phone, Clock, Gauge, WifiOff, Mail, MapPin, Shield } from "lucide-react";
+import { Activity, Download, Upload, Wifi, User, Hash, Phone, Clock, Gauge, WifiOff, Mail, MapPin, Shield, CalendarDays } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -14,7 +14,10 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  BarChart,
+  Bar,
 } from "recharts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const fmtBytes = (b: number) => {
   if (!b) return "0 B";
