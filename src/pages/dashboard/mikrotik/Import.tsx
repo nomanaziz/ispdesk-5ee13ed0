@@ -413,8 +413,27 @@ export default function Import() {
                       </TableCell>
                     )}
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title="ক্লায়েন্ট লিস্টে এক্সপোর্ট" onClick={() => exportToClientList(c)}>
-                        <ExternalLink className="h-4 w-4" />
+                      {(() => {
+                        const isDisabled = c.user_status === "disabled";
+                        const busy = togglingIds.has(c.id);
+                        return (
+                          <Button
+                            variant={isDisabled ? "outline" : "ghost"}
+                            size="sm"
+                            className={`h-8 ${isDisabled ? "text-destructive border-destructive/40" : "text-green-600"}`}
+                            disabled={busy}
+                            onClick={() => togglePppStatus(c)}
+                            title={isDisabled ? "Enable PPP user" : "Disable PPP user"}
+                          >
+                            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : isDisabled ? <PowerOff className="h-4 w-4 mr-1" /> : <Power className="h-4 w-4 mr-1" />}
+                            {!busy && (isDisabled ? "Disabled" : "Enabled")}
+                          </Button>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="secondary" size="sm" className="h-8" title="ক্লায়েন্ট লিস্টে এক্সপোর্ট" onClick={() => exportToClientList(c)}>
+                        <ExternalLink className="h-4 w-4 mr-1" /> Export
                       </Button>
                     </TableCell>
                   </TableRow>
