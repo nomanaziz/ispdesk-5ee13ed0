@@ -753,7 +753,7 @@ const App = () => (
               <Route path="/pop-admin/employees/salary-sheet" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSalarySheet /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
               {/* POP Admin — Client (reuses Admin pages, auto-scoped via usePopScope) */}
-              <Route path="/pop-admin/clients" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientList /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/clients" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopClientList /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/clients/add" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientAdd /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/clients/bulk-import" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopBulkClientImport /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/clients/billing" element={<Navigate to="/pop-admin/billing/list" replace />} />
