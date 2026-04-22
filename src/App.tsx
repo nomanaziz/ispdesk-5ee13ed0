@@ -256,8 +256,6 @@ import SmsSend from "@/pages/dashboard/sms/Send";
 import SmsGateway from "@/pages/dashboard/sms/Gateway";
 
 // System
-import SystemUsers from "@/pages/dashboard/system/Users";
-import UserReview from "@/pages/dashboard/system/UserReview";
 import SystemCompany from "@/pages/dashboard/system/Company";
 import SystemInvoice from "@/pages/dashboard/system/Invoice";
 import SystemPeriods from "@/pages/dashboard/system/Periods";
@@ -265,9 +263,9 @@ import SystemPaymentGateways from "@/pages/dashboard/system/PaymentGateways";
 import SystemEmail from "@/pages/dashboard/system/Email";
 import SystemSetup from "@/pages/dashboard/system/Setup";
 import SystemProcessingFee from "@/pages/dashboard/system/SysProcessingFee";
-import SystemRoles from "@/pages/dashboard/system/Roles";
-import SystemOltPermissions from "@/pages/dashboard/system/OltPermissions";
 import SystemLog from "@/pages/dashboard/system/SystemLog";
+import SystemBillPeriodYears from "@/pages/dashboard/system/BillPeriodYears";
+import SystemAutomaticProcess from "@/pages/dashboard/system/AutomaticProcess";
 
 // Config (additional)
 import ConfigServiceTypes from "@/pages/dashboard/config/ServiceTypes";
@@ -621,8 +619,6 @@ const App = () => (
               <Route path="/dashboard/sms/gateway" element={<P><SmsGateway /></P>} />
 
               {/* System */}
-              <Route path="/dashboard/system/users" element={<P><SystemUsers /></P>} />
-              <Route path="/dashboard/system/users/:id" element={<P><UserReview /></P>} />
               <Route path="/dashboard/system/company" element={<P><SystemCompany /></P>} />
               <Route path="/dashboard/system/invoice" element={<P><SystemInvoice /></P>} />
               <Route path="/dashboard/system/periods" element={<P><SystemPeriods /></P>} />
@@ -630,9 +626,15 @@ const App = () => (
               <Route path="/dashboard/system/email" element={<P><SystemEmail /></P>} />
               <Route path="/dashboard/system/setup" element={<P><SystemSetup /></P>} />
               <Route path="/dashboard/system/processing-fee" element={<P><SystemProcessingFee /></P>} />
-              <Route path="/dashboard/system/roles" element={<P><SystemRoles /></P>} />
-              <Route path="/dashboard/system/olt-permissions" element={<P><SystemOltPermissions /></P>} />
               <Route path="/dashboard/system/system-log" element={<P><SystemLog /></P>} />
+              <Route path="/dashboard/system/bill-period-years" element={<P><SystemBillPeriodYears /></P>} />
+              <Route path="/dashboard/system/automatic-process" element={<P><SystemAutomaticProcess /></P>} />
+              {/* Removed: users, roles, olt-permissions, device-permissions */}
+              <Route path="/dashboard/system/users" element={<Navigate to="/dashboard/system/setup" replace />} />
+              <Route path="/dashboard/system/users/:id" element={<Navigate to="/dashboard/system/setup" replace />} />
+              <Route path="/dashboard/system/roles" element={<Navigate to="/dashboard/system/setup" replace />} />
+              <Route path="/dashboard/system/olt-permissions" element={<Navigate to="/dashboard/system/setup" replace />} />
+              <Route path="/dashboard/system/device-permissions" element={<Navigate to="/dashboard/system/setup" replace />} />
 
               {/* Config (additional) */}
               <Route path="/dashboard/config/service-types" element={<P><ConfigServiceTypes /></P>} />
