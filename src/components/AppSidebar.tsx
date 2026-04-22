@@ -570,7 +570,7 @@ function tr(label: string, lang: "bn" | "en"): string {
   return SIDEBAR_EN[label] ?? label;
 }
 
-function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: boolean }) {
+function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: MenuGroup; forceOpen?: boolean; openKey?: string | null; onToggle?: (key: string) => void }) {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -582,7 +582,15 @@ function CollapsibleGroup({ group, forceOpen }: { group: MenuGroup; forceOpen?: 
   const isActiveGroup = group.items.some(item =>
     item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url)
   );
-  const [open, setOpen] = useState(group.defaultOpen || isActiveGroup);
+  // Parent-controlled single-open mode when openKey/onToggle provided; fallback to local state otherwise.
+  const isControlled = onToggle !== undefined;
+  const [localOpen, setLocalOpen] = useState(group.defaultOpen || isActiveGroup);
+  const controlledOpen = openKey === group.label;
+  const open = isControlled ? controlledOpen : localOpen;
+  const setOpen = (v: boolean) => {
+    if (isControlled) onToggle!(group.label);
+    else setLocalOpen(v);
+  };
   const effectiveOpen = forceOpen ?? open;
 
   // Sum of badge counts for items inside this group (used in collapsed mode + group label)
