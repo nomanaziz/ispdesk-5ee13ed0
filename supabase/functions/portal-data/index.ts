@@ -856,6 +856,33 @@ Deno.serve(async (req) => {
         return json({ ok: true, id: inserted?.id });
       }
 
+      case "list_pop_clients": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Not allowed" }, 403);
+        }
+
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("branch_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+
+        if (!pop?.branch_id) return json({ clients: [] });
+
+        const { data: clients, error } = await sb
+          .from("clients")
+          .select("id, name, username, mobile, address, monthly_bill, status, expire_date, created_at")
+          .eq("branch_id", pop.branch_id)
+          .eq("owner_scope", "pop")
+          .in("status", ["active", "online", "offline"])
+          .order("created_at", { ascending: false });
+
+        if (error) return json({ error: error.message }, 500);
+        return json({ clients: clients || [] });
+      }
+
       case "create_employee": {
         if (tok.type !== "reseller" && tok.type !== "reseller_sub")
           return json({ error: "Not allowed" }, 403);
