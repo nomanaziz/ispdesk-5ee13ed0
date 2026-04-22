@@ -103,17 +103,77 @@ export default function Zones() {
 
   const deleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      for (const id of ids) {
-        const { error } = await supabase.from("zones").delete().eq("id", id);
+      if (ids.length === 0) return;
+
+      const { data: zoneSubZones, error: subZonesError } = await supabase
+        .from("sub_zones")
+        .select("id")
+        .in("zone_id", ids);
+      if (subZonesError) throw subZonesError;
+
+      const subZoneIds = zoneSubZones?.map((subZone) => subZone.id) ?? [];
+
+      const { count: zoneClientCount, error: zoneClientError } = await supabase
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .in("zone_id", ids);
+      if (zoneClientError) throw zoneClientError;
+
+      let subZoneClientCount = 0;
+      if (subZoneIds.length > 0) {
+        const { count, error } = await supabase
+          .from("clients")
+          .select("id", { count: "exact", head: true })
+          .in("sub_zone_id", subZoneIds);
         if (error) throw error;
+        subZoneClientCount = count ?? 0;
       }
+
+      const { count: branchManagerCount, error: branchManagerError } = await supabase
+        .from("branch_managers")
+        .select("id", { count: "exact", head: true })
+        .in("zone_id", ids);
+      if (branchManagerError) throw branchManagerError;
+
+      if ((zoneClientCount ?? 0) > 0 || subZoneClientCount > 0 || (branchManagerCount ?? 0) > 0) {
+        throw new Error("নির্বাচিত zone এখনও client বা POP assignment-এ ব্যবহৃত হচ্ছে, তাই delete করা যাচ্ছে না।");
+      }
+
+      const { error: boxesZoneError } = await supabase.from("boxes").update({ zone_id: null }).in("zone_id", ids);
+      if (boxesZoneError) throw boxesZoneError;
+
+      const { error: supportTicketsError } = await supabase.from("support_tickets").update({ zone_id: null }).in("zone_id", ids);
+      if (supportTicketsError) throw supportTicketsError;
+
+      const { error: clientNoticesError } = await supabase.from("client_notices").update({ zone_id: null }).in("zone_id", ids);
+      if (clientNoticesError) throw clientNoticesError;
+
+      const { error: clientRequestsZoneError } = await supabase.from("client_requests").update({ zone_id: null }).in("zone_id", ids);
+      if (clientRequestsZoneError) throw clientRequestsZoneError;
+
+      if (subZoneIds.length > 0) {
+        const { error: boxesSubZoneError } = await supabase.from("boxes").update({ sub_zone_id: null }).in("sub_zone_id", subZoneIds);
+        if (boxesSubZoneError) throw boxesSubZoneError;
+
+        const { error: clientRequestsSubZoneError } = await supabase.from("client_requests").update({ subzone_id: null }).in("subzone_id", subZoneIds);
+        if (clientRequestsSubZoneError) throw clientRequestsSubZoneError;
+
+        const { error: subZoneDeleteError } = await supabase.from("sub_zones").delete().in("id", subZoneIds);
+        if (subZoneDeleteError) throw subZoneDeleteError;
+      }
+
+      const { error } = await supabase.from("zones").delete().in("id", ids);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["config-zones"] });
+      queryClient.invalidateQueries({ queryKey: ["config-zones-options"] });
+      queryClient.invalidateQueries({ queryKey: ["config-sub-zones-options"] });
       toast.success("মুছে ফেলা হয়েছে");
       setSelected(new Set());
       setDeleteOpen(false);
     },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const toggleStatus = useMutation({
