@@ -1,81 +1,52 @@
 
 
-## ভেরিয়েবল chip clickable + POP-এ নতুন template add
+## Fix: POP Employee Add/Edit — column mismatch
 
-### আসল সমস্যা
-1. Variable list এখন শুধু text হিসেবে দেখায় — copy/type করতে হয়
-2. POP Admin শুধু existing template edit করতে পারে, **নতুন custom template add করতে পারে না**
+### সমস্যা
+`employees` table-এ `department_id` (uuid → `departments.id`) আর `position_id` (uuid → `positions.id`) আছে। কিন্তু কোড `department` / `designation` (text name) পাঠাচ্ছে — এই column গুলা table-এ নাই। তাই Edit save করলে error: *Could not find the 'department' column*।
 
----
+দ্বিতীয় সমস্যা: `PopEmployees` list-এ `positions(name)` join করা — এটা ঠিক, কিন্তু FK relation না থাকলে fail করতে পারে। (DB-তে `position_id` আছে, FK check করব migration লাগবে কিনা।)
 
 ### সমাধান
 
-#### ১) Reusable Variable Chip Component
-নতুন file: `src/components/sms/VariableChips.tsx`
-- `TEMPLATE_VARIABLES` থেকে সব variable badge/chip আকারে render
-- প্রতিটা chip ক্লিক করলে → textarea-এর current cursor position-এ `{Variable}` insert হবে
-- Props: `textareaRef`, `value`, `onChange`
-- Cursor position track করে after-insert focus restore হবে
-- Hover-এ "ক্লিক করে বসান" tooltip
-- Compact, wrap-friendly layout — small badge buttons
+#### ১) `BranchScopedSelect` — value হিসেবে ID return করবে
+- Query থেকে `id, name` দুটোই select
+- `value` prop = uuid, dropdown-এ `name` দেখাবে কিন্তু `<SelectItem value={id}>`
+- `onChange(id)` — parent UUID পাবে
+- "Add new"-এর পর insert করে নতুন row-এর `id` return করে select set হবে
 
-ব্যবহার:
-```tsx
-<Textarea ref={taRef} value={form.content} onChange={...} />
-<VariableChips textareaRef={taRef} value={form.content}
-  onChange={(v) => setForm({...form, content: v})} />
-```
+#### ২) `PopEditEmployee.tsx`
+- `form.designation` / `form.department` → `form.position_id` / `form.department_id`
+- `useEffect` initializer-এ `(emp as any).position_id` ও `department_id` পড়বে
+- `update` payload: `department_id`, `position_id` পাঠাবে — পুরোনো `designation`/`department` key বাদ
+- `BranchScopedSelect` কে UUID value pass করবে
 
-#### ২) যেসব জায়গায় integrate হবে
-| File | কাজ |
-|------|-----|
-| `src/pages/dashboard/sms/Templates.tsx` | পুরোনো plain text variable line replace → `<VariableChips/>` |
-| `src/pages/reseller/PopSmsTemplates.tsx` | একই replace + নতুন "Add" button + dialog mode |
-| `src/components/billing/BulkSmsDialog.tsx` | message textarea-এর নিচে chips |
-| `src/pages/dashboard/sms/Send.tsx` | message textarea-এর নিচে chips |
-| `src/pages/dashboard/sms/Individual.tsx` | message textarea-এর নিচে chips |
+#### ৩) `PopAddEmployee.tsx`
+- Form state: `department: ""` → `department_id: null`, `designation: ""` → `position_id: null`
+- Payload: `department_id`, `position_id` পাঠাবে
+- Edge function-এ already `...p` spread হয়, তাই নতুন key গুলা ঠিক column-এ যাবে
 
-#### ৩) POP নতুন custom template add করতে পারবে
-**Edge function** `supabase/functions/portal-data/index.ts` — নতুন action যোগ:
-- **`pop_create_template`**: POP/admin নিজের custom template create করবে
-  - Service role দিয়ে `sms_template_master`-এ insert
-  - Forced fields: `template_type='custom'`, `is_protected=false`, `template_key='pop_<branch_id_short>_<timestamp>'` (unique)
-  - `created_by_branch` column যোগ করতে হবে → কে create করেছে track করার জন্য
-  - POP শুধু নিজের তৈরি custom template **edit/delete** করতে পারবে (master default-এ override route আগের মতই থাকবে)
+#### ৪) Edge function `create_employee` (safety)
+- `...p` spread-এর পর explicitly delete ক্ষতিকর/নাই key (`department`, `designation`) যদি কোথাও থেকে আসে — protective strip
 
-- **`pop_delete_template`**: POP নিজের তৈরি custom template delete (only if `created_by_branch = own branch`, never protected)
+#### ৫) `PopEmployees.tsx` list verify
+- `positions(name)` / `departments(name)` join — FK exists কিনা check করে দরকার হলে FK migration:
+  ```sql
+  ALTER TABLE employees
+    ADD CONSTRAINT employees_department_id_fkey FOREIGN KEY (department_id) REFERENCES departments(id),
+    ADD CONSTRAINT employees_position_id_fkey FOREIGN KEY (position_id) REFERENCES positions(id);
+  ```
+  (যদি ইতিমধ্যেই থাকে → skip)
 
-**Database migration**:
-```sql
-ALTER TABLE sms_template_master 
-  ADD COLUMN created_by_branch uuid REFERENCES branches(id);
--- existing rows NULL = system-level (default behaviour preserved)
-```
-View `sms_templates_effective`-এ এই column expose হবে যাতে POP দেখতে পারে কোনগুলো তার নিজের।
-
-#### ৪) UI changes
-- **PopSmsTemplates.tsx**: top-right-এ "+ নতুন টেমপ্লেট" button
-- Dialog একই UI (নাম, কন্টেন্ট, ক্যাটাগরি, status) + variable chips
-- Table-এ যদি `created_by_branch === own branchId` → "নিজস্ব" badge দেখাবে আর delete button enable হবে
-- System default এবং অন্য POP-এর template untouchable
+### Files to edit
+- `src/components/reseller/BranchScopedSelect.tsx` — return id instead of name
+- `src/pages/reseller/employee/PopEditEmployee.tsx` — use `department_id` / `position_id`
+- `src/pages/reseller/employee/PopAddEmployee.tsx` — same
+- `supabase/functions/portal-data/index.ts` — strip stale keys in `create_employee`
+- Migration (conditional) — add FKs যদি missing
 
 ### ফলাফল
-- ১৫টা variable সব dialog/textarea-এ click-to-insert chips হিসেবে আসবে
-- POP Admin "+ নতুন টেমপ্লেট" দিয়ে নিজের template বানাতে পারবে — variable chips সহ
-- Admin/Super Admin আগের মতই full CRUD পাবে
-- Default protected templates একইভাবে delete-protected থাকবে
-- POP যেগুলো নিজে create করেছে শুধু সেগুলোই delete করতে পারবে
-
-### Files to create/edit
-- **New**: `src/components/sms/VariableChips.tsx`
-- **Migration**: `sms_template_master`-এ `created_by_branch` column add
-- `supabase/functions/portal-data/index.ts` — `pop_create_template`, `pop_delete_template` actions; `pop_list_templates`-এ `created_by_branch` return
-- `src/pages/reseller/PopSmsTemplates.tsx` — Add button, create/delete flow, chips
-- `src/pages/dashboard/sms/Templates.tsx` — chips integration
-- `src/components/billing/BulkSmsDialog.tsx`, `Send.tsx`, `Individual.tsx` — chips below textarea
-
-### Technical notes
-- Cursor-aware insert: `textarea.selectionStart`/`End` ব্যবহার করে exact position-এ insert
-- chips small-size `badge`-style buttons, wrap layout, theme-consistent
-- POP write path পুরোটাই edge function-এ branch-validated — RLS loosen হবে না
+- Edit save করলে আর error আসবে না
+- Add করলে department/designation correctly save হবে
+- List page-এ join properly resolve হবে
 
