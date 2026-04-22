@@ -110,14 +110,14 @@ export function QuickCreateClientDialog({ open, onOpenChange }: Props) {
       const payload: any = {
         client_id: code,
         name: name.trim(),
-        mobile: mobile.trim(),
+        contact: mobile.trim(),
         username: username.trim(),
         password,
         zone_id: zoneId,
         package_id: packageId,
         monthly_bill: Number(monthlyBill) || 0,
         billing_status: "Active",
-        status: "Active",
+        status: "active",
         joining_date: new Date().toISOString().slice(0, 10),
         branch_id: effectiveBranchId || null,
       };
@@ -135,6 +135,8 @@ export function QuickCreateClientDialog({ open, onOpenChange }: Props) {
     onSuccess: (id, _vars, _ctx) => {
       toast.success(t("ক্লায়েন্ট তৈরি হয়েছে", "Client created"));
       qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["portal-pop-clients"] });
+      qc.invalidateQueries({ queryKey: ["pop-list-clients"] });
       qc.invalidateQueries({ queryKey: ["pop-mobile-internal"] });
       onOpenChange(false);
     },
