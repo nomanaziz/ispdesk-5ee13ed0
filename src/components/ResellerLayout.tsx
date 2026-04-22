@@ -172,6 +172,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
   const { lang, setLang, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
