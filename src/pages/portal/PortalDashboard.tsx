@@ -44,17 +44,32 @@ const PortalDashboard = () => {
     : (clientRow?.speed || "—");
   const balance = data?.balance?.due ?? 0;
   const lastLogin = data?.last_login;
+  const recentMessages: any[] = data?.recent_messages || [];
+  const monthlyBill = clientRow?.monthly_bill ?? pkg?.price ?? 0;
+  const expireDate = clientRow?.expire_date;
+  const fmtDate = (d?: string | null) => {
+    if (!d) return "—";
+    try { return new Date(d).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }); }
+    catch { return String(d); }
+  };
+  const totalUp = Number(clientRow?.total_upload || 0);
+  const totalDn = Number(clientRow?.total_download || 0);
+  const fmtBytes = (n: number) => {
+    if (!n) return "0 MB";
+    const gb = n / (1024 ** 3);
+    if (gb >= 1) return `${gb.toFixed(2)} GB`;
+    const mb = n / (1024 ** 2);
+    return `${mb.toFixed(1)} MB`;
+  };
 
   const initials =
     fullName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
-  const chips = [
-    { icon: User, label: "Username", value: clientRow?.username || customer?.username || "—", tint: "text-violet-600 bg-violet-100" },
-    { icon: Package, label: "Package", value: pkgName, tint: "text-emerald-600 bg-emerald-100" },
-    { icon: Gauge, label: "Speed", value: speedStr, tint: "text-sky-600 bg-sky-100" },
-    { icon: Cable, label: "Connection", value: clientRow?.connection_type || "—", tint: "text-amber-600 bg-amber-100" },
-    { icon: ShieldCheck, label: "Protocol", value: clientRow?.protocol_type || "—", tint: "text-indigo-600 bg-indigo-100" },
-    { icon: Activity, label: "Status", value: status, tint: isOnline ? "text-green-600 bg-green-100" : "text-rose-600 bg-rose-100" },
+  const summaryCards = [
+    { to: "/portal/profile", icon: Package, label: "Package", value: pkgName, helper: speedStr, cta: "My Profile", tint: "from-violet-500 to-fuchsia-500", iconBg: "bg-violet-100 text-violet-700" },
+    { to: isClient ? "/portal/bills" : "/portal/invoices", icon: Banknote, label: "Monthly Bill", value: `৳${Number(monthlyBill).toLocaleString()}`, helper: balance > 0 ? `Due ৳${Number(balance).toLocaleString()}` : "All clear", cta: "Pay Bill", tint: "from-emerald-500 to-teal-500", iconBg: "bg-emerald-100 text-emerald-700" },
+    { to: isClient ? "/portal/bills" : "/portal/invoices", icon: Calendar, label: "Expiry Date", value: fmtDate(expireDate), helper: "View bills", cta: "Bills", tint: "from-amber-500 to-orange-500", iconBg: "bg-amber-100 text-amber-700" },
+    { to: "/portal/live-usage", icon: ArrowRightLeft, label: "Data Used", value: fmtBytes(totalUp + totalDn), helper: `↑ ${fmtBytes(totalUp)} · ↓ ${fmtBytes(totalDn)}`, cta: "Live Usage", tint: "from-sky-500 to-blue-500", iconBg: "bg-sky-100 text-sky-700" },
   ];
 
   return (
@@ -116,27 +131,33 @@ const PortalDashboard = () => {
         </div>
       </Card>
 
-      {/* Compact icon-chip strip (replaces stat cards + Service Overview) */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-3 sm:p-4">
-          <div className="flex flex-wrap gap-2">
-            {chips.map((c) => (
-              <div
-                key={c.label}
-                className="flex items-center gap-2 rounded-full bg-muted/40 hover:bg-muted/60 transition-colors px-2.5 py-1.5 min-w-0"
-              >
-                <span className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${c.tint}`}>
-                  <c.icon className="h-3.5 w-3.5" />
+      {/* Clickable summary cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {summaryCards.map((c) => (
+          <Link
+            key={c.label}
+            to={c.to}
+            className="group rounded-2xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer overflow-hidden relative"
+          >
+            <div className={`absolute -top-8 -right-8 h-20 w-20 rounded-full bg-gradient-to-br ${c.tint} opacity-10 blur-xl group-hover:opacity-20 transition-opacity`} />
+            <div className="relative">
+              <div className="flex items-center justify-between">
+                <span className={`h-10 w-10 rounded-xl flex items-center justify-center ${c.iconBg}`}>
+                  <c.icon className="h-5 w-5" />
                 </span>
-                <div className="min-w-0">
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground leading-none">{c.label}</div>
-                  <div className="text-xs font-semibold text-foreground truncate max-w-[140px]">{c.value}</div>
-                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 group-hover:text-foreground transition-all" />
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <div className="mt-3 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">{c.label}</div>
+              <div className="text-base sm:text-lg font-bold text-foreground truncate mt-0.5">{c.value}</div>
+              <div className="text-[11px] text-muted-foreground truncate mt-0.5">{c.helper}</div>
+              <div className={`text-[10px] font-semibold mt-1.5 inline-flex items-center gap-0.5 bg-gradient-to-r ${c.tint} bg-clip-text text-transparent`}>
+                {c.cta} →
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
 
       {/* Client Details + Activity & Ledger */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
