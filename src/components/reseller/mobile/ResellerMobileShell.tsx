@@ -74,6 +74,7 @@ export function ResellerMobileShell({ children, onOpenSidebar }: Props) {
               <Settings className="h-4 w-4 mr-2" />
               {t("সেটিংস", "Settings")}
             </DropdownMenuItem>
+            <InstallMenuItem />
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={handleLogout}
@@ -136,6 +137,9 @@ export function ResellerMobileShell({ children, onOpenSidebar }: Props) {
 
         <div className="text-primary-foreground">
           <NotesButton ownerType="pop" />
+        </div>
+        <div className="text-primary-foreground">
+          <InstallAppButton variant="icon" className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground" />
         </div>
         <Button
           variant="ghost"
