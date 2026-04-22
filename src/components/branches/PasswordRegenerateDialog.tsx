@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,16 +24,38 @@ function gen(len = 10) {
 export default function PasswordRegenerateDialog({ open, onOpenChange, pop }: Props) {
   const qc = useQueryClient();
   const [pwd, setPwd] = useState("");
+  const [username, setUsername] = useState("");
+
+  // Always reload the latest username from DB when the dialog opens — list cache may be stale.
+  useEffect(() => {
+    if (!open || !pop) return;
+    setPwd("");
+    setUsername(pop.username || "");
+    (async () => {
+      const { data } = await supabase
+        .from("branch_managers")
+        .select("username")
+        .eq("id", pop.id)
+        .maybeSingle();
+      if (data?.username !== undefined && data?.username !== null) {
+        setUsername(data.username);
+      }
+    })();
+  }, [open, pop]);
 
   const save = useMutation({
     mutationFn: async () => {
       if (!pop) return;
+      const trimmedUser = username.trim();
+      if (!trimmedUser) throw new Error("Username আবশ্যক");
       if (!pwd || pwd.length < 6) throw new Error("পাসওয়ার্ড কমপক্ষে ৬ অক্ষর");
-      const { error } = await supabase.from("branch_managers").update({ password: pwd }).eq("id", pop.id);
+      const patch: { password: string; username?: string } = { password: pwd };
+      if (trimmedUser !== (pop.username || "")) patch.username = trimmedUser;
+      const { error } = await supabase.from("branch_managers").update(patch).eq("id", pop.id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("পাসওয়ার্ড আপডেট হয়েছে");
+      toast.success("আপডেট হয়েছে");
       qc.invalidateQueries({ queryKey: ["branch-managers"] });
       onOpenChange(false);
       setPwd("");
@@ -48,7 +70,17 @@ export default function PasswordRegenerateDialog({ open, onOpenChange, pop }: Pr
           <DialogTitle>পাসওয়ার্ড পরিবর্তন — {pop?.name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="text-sm text-muted-foreground">Username: <strong className="text-foreground">{pop?.username || "-"}</strong></div>
+          <div>
+            <Label>Username</Label>
+            <Input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="username"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              চাইলে এখান থেকেই Username পরিবর্তন করতে পারেন।
+            </p>
+          </div>
           <div>
             <Label>নতুন পাসওয়ার্ড</Label>
             <div className="flex gap-2">
