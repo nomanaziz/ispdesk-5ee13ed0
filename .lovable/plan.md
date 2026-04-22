@@ -1,111 +1,123 @@
 
 
 ## লক্ষ্য
-POP Profile-এর **Exported**, **Unexported** tab-এ admin-এর জন্য reference image-এর মতো **filtering + bulk action toolbar + per-row actions** যোগ করা, এবং একটি নতুন **POP Online Clients** tab যোগ করা।
+POP admin (Settings) এর সব sub-page reference image অনুযায়ী **create + functional** করা, এবং Setting থেকে **User Management সরিয়ে দেওয়া**।
 
-## ১) Exported Clients tab (image-187 অনুযায়ী)
+## Reference image analysis (Galaxy Net portal এর সাথে mapping)
 
-### Toolbar
-- **Bulk Package Change** — select-করা client-এর package change
-- **Bulk Profile Change** — MikroTik profile bulk update
-- **Bulk Clients Enable** — billing + MT enable
-- **Bulk Clients Disable** — billing + MT disable
-- **Generate PDF / Generate CSV** export buttons
+| Galaxy Net page | আমাদের status | কাজ |
+|---|---|---|
+| Settings → Common System Settings | ✅ আছে (`Setup.tsx`) | Functional রাখব |
+| Settings → Clients & Billing Settings | ❌ নেই | নতুন tab/section বানাব (image-1 অনুযায়ী 11টা switch group) |
+| Bill Period (image-192) | ⚠️ আছে কিন্তু আলাদা logic | Year-toggle list যোগ করব নতুন `BillPeriodYears.tsx` |
+| Company Settings | ✅ আছে (`Company.tsx`) | অপরিবর্তিত |
+| EMail SetUp (image-193) | ✅ আছে (`Email.tsx`) | Mail/SMTP protocol toggle যোগ করব |
+| Invoice SetUp (image-194) | ✅ আছে (`Invoice.tsx`) | Logo upload + position toggle যোগ করব |
+| Payment Gateways | ✅ আছে | অপরিবর্তিত |
+| P. Processing Fee | ✅ আছে | অপরিবর্তিত |
+| Activity Loggers | ✅ আছে (`SystemLog.tsx`) | অপরিবর্তিত |
+| **Automatic Process** (image-190) | ❌ নেই | নতুন page বানাব |
+| **User Management** | ❌ remove করতে হবে | sidebar + route + file delete |
 
-### Filters (top bar)
-- Package (dropdown — POP-এর available packages)
-- Server (dropdown — MikroTik servers)
-- Protocol (pppoe / static / hotspot)
-- Profile (dropdown)
-- Search box (right side, existing)
-- Show entries (10/25/50/100)
+## কী কী হবে
 
-### Table changes
-- Left checkbox column (header = select all on page)
-- Per-row **B.Status toggle** (billing enable/disable)
-- Per-row **M.Status toggle** (MikroTik enable/disable — calls `manage-mikrotik-ppp`)
-- বাকি column অপরিবর্তিত
+### ১) User Management সরানো
+- **AppSidebar.tsx**: "অ্যাপ ইউজার" + "রোল" + "OLT পারমিশন" + "Device Permissions" এই ৪টা item "সিস্টেম" group থেকে remove
+- **App.tsx**: `/dashboard/system/users`, `/users/:id`, `/roles`, `/olt-permissions`, `/device-permissions` route remove + import remove
+- **Files delete**: `src/pages/dashboard/system/Users.tsx`, `UserReview.tsx`, `Roles.tsx`, `OltPermissions.tsx`, `DevicePermissions.tsx`
 
-## ২) Unexported Clients tab (image-188 অনুযায়ী)
+> Permission system (RBAC) underlying functions/tables অপরিবর্তিত থাকবে — শুধু Settings menu থেকে UI সরানো হচ্ছে।
 
-### Toolbar
-- **Clients Bulk Revert** — selected MT user-দের একসাথে revert (loops `revert_mikrotik_client` RPC)
-- **Bulk Recharge / Renewal** — selected user-দের package validity extend (admin-side helper; calls existing recharge logic)
-- **Bulk Clients Enable**
-- **Bulk Clients Disable**
-- **Generate PDF / Generate CSV**
+### ২) নতুন: **Bill Period (Year toggle)** — `BillPeriodYears.tsx`
+Image-192 অনুযায়ী একটা table — Year column + Show On List (Switch toggle column)। Default 2025/2026/2027।
+- Storage: `system_settings` key = `bill_period_years` → `{ "2025": false, "2026": true, "2027": false }`
+- Toggle on/off, save instant
+- Route: `/dashboard/system/bill-period-years`
+- বাকি বছর filter দেখাতে চাইলে এখান থেকেই enable/disable হবে
 
-### Filters
-- Package, Server, Protocol, Profile, **R. Days** (expired / 1-7 / 8-30 / >30)
-- Search box, Show entries
+> বর্তমান `Periods.tsx` (billing mode/cycle config) আলাদা থাকবে — এটা functional setting; নতুনটা শুধু year visibility।
 
-### Table changes
-- Left checkbox column
-- Per-row **Enabled toggle** (MT enable/disable)
-- Per-row **Revert button** (existing — অপরিবর্তিত)
-- Export column থাকবে না (এটা admin view, MT user-কে আবার client বানানোর জন্য আলাদা flow নেই এখানে — Revert is the inverse)
+### ৩) নতুন: **Automatic Process** — `AutomaticProcess.tsx`
+Image-190 অনুযায়ী scheduler list page।
+- Table columns: Branch, Process Name, Execute At, Interval, Execution Day, Action (info / view / status icon)
+- Default 6 rows seed: Package Scheduler, Status Scheduler, Validate Payments, Disable Unpaid, Send SMS Before Expiry, Prepaid Auto Renewal
+- Storage: নতুন table `automatic_processes` (id, branch_id, process_name, execute_at, interval_type, execution_day, enabled, last_run, next_run)
+- Edit dialog → time + interval পরিবর্তন
+- Action icons: Info popover, View last run logs, Toggle on/off
+- Route: `/dashboard/system/automatic-process`
 
-## ৩) নতুন **POP Online Clients** tab
+### ৪) **Settings** page এ Clients & Billing tab যোগ
+`Setup.tsx`-এ একটা TabsList — "Common System Settings" | "Clients & Billing Settings"। নতুন tab-এ image-1 এর ১১টা group বসবে (প্রতিটা card-এ Yes/No বা select + Save button + side-info panel):
+1. Payment Status Wise Client Enable/Disabled
+2. Allow InActive Process at last day of month
+3. Client Code Automatic / Customizable
+4. Due SMS — Billing Date / Remaining Days
+5. Send SMS To Unpaid Client — Before Days (1/2/3/5)
+6. Client Billing Expire Date Extensions Permission (Whom + Days)
+7. POP Client Automatic Scheduler Approval
+8. Client Billing Status Scheduler Time Customization (5 status × 2 time)
+9. POP Client Recharge Approval on PG Transactions
+10. POP Client Expiry Date Update Policy on Payment Date
+- প্রতিটা সেটিং `system_settings` table-এ key অনুযায়ী save (`useSystemSetting` hook reuse)
+- Right-side info panel (description text) প্রতিটা group-এর সাথে
 
-POP Profile-এর tab list-এ **Online Clients** নামে নতুন tab।
+### ৫) Email & Invoice page small enhancements
+- **Email.tsx**: উপরে Mail/SMTP radio protocol toggle যোগ (image-193)
+- **Invoice.tsx**: Logo upload (Supabase storage `pop-logos` bucket reuse) + "Invoice" word position Left/Right radio + Invoice Title visibility Yes/No (image-194)
 
-### Top stat strip
-- Total Clients
-- **Online** (green)
-- **Offline** (gray)
-- Last sync time
+### ৬) Sidebar update
+সিস্টেম group এর নতুন order:
+```
+- সিস্টেম সেটআপ (Setup — Common + Clients tabs)
+- বিল পিরিয়ড (BillPeriodYears — new)
+- পিরিয়ড সেটআপ (existing Periods)
+- কোম্পানি সেটআপ
+- ইনভয়েস সেটআপ
+- ইমেইল সেটআপ
+- পেমেন্ট গেটওয়ে
+- প্রসেসিং ফি
+- অটোমেটিক প্রসেস (new)
+- সিস্টেম লগ (Activity Loggers)
+- বিলিং সাইকেল সেটিংস (existing link)
+```
+User/Role/Permission menu items সরে যাবে।
 
-### Filter
-- Status: All / Online / Offline
-- Search (name / username / IP)
+## Database changes
+1. নতুন table: `automatic_processes`
+   ```
+   id uuid PK, branch_id uuid null, process_name text, execute_at time,
+   interval_type text ('daily'|'hourly'|'weekly'|'monthly'),
+   execution_day text, enabled bool default true,
+   last_run timestamptz, next_run timestamptz,
+   created_at, updated_at
+   ```
+   - RLS: admin/super_admin full access; POP admin SELECT own branch
+   - Seed 6 default rows
+2. কোনো schema migration `system_settings` এর জন্য লাগবে না — JSON value-তে সব বসবে
 
-### Table
-| Column | Source |
-|---|---|
-| User ID | `clients.username` |
-| Name | `clients.name` |
-| Mobile | `clients.contact` |
-| Package | `isp_packages.name` |
-| IP | `clients.remote_address` |
-| Server | `clients.server_name` |
-| Uptime | live snapshot (optional, blank if N/A) |
-| Status | green "Online" badge / gray "Offline" |
+## কোন file বদলাবে / তৈরি হবে
+- `src/pages/dashboard/system/Setup.tsx` *(rebuild with tabs)*
+- `src/pages/dashboard/system/BillPeriodYears.tsx` *(new)*
+- `src/pages/dashboard/system/AutomaticProcess.tsx` *(new)*
+- `src/pages/dashboard/system/Email.tsx` *(protocol toggle)*
+- `src/pages/dashboard/system/Invoice.tsx` *(logo + position toggles)*
+- `src/components/AppSidebar.tsx` *(menu update)*
+- `src/App.tsx` *(routes add/remove)*
 
-Source query: `clients` where `branch_id = pop.branch_id` AND `owner_scope = 'pop'`, joined with `isp_packages`. `is_online` field দিয়ে status।
-
-Auto-refresh every 30s (lightweight `useQuery` with `refetchInterval`).
-
-## ৪) Bulk action implementation details
-
-| Action | Backend |
-|---|---|
-| Bulk Enable / Disable (billing) | `clients` table update `billing_status` |
-| Bulk Enable / Disable (MikroTik) | loop `manage-mikrotik-ppp` invoke per client |
-| Bulk Package Change | `clients.package_id` update + `manage-mikrotik-ppp` profile update |
-| Bulk Profile Change | `manage-mikrotik-ppp` profile update only |
-| Bulk Revert | loop `revert_mikrotik_client` RPC per MT id |
-| Bulk Recharge / Renewal | `clients.expire_date` extend by package validity_days |
-| Generate PDF / CSV | client-side using existing libs (jsPDF/papaparse) |
-
-সব bulk action confirmation dialog-এর পরে চলবে এবং progress toast দেখাবে। শেষে relevant query-গুলো invalidate হবে।
-
-## ৫) UI pattern
-Reference image-এর মতো একটা reusable **`<BulkActionBar>`** component বানানো হবে যা ৩ জায়গাতেই use হবে — pill-shaped dark buttons + right-side export buttons, top filter row card-এর ভেতর।
-
-## কোন file বদলাবে
-- `src/components/branches/PopExportedClients.tsx` — toolbar + filters + bulk + checkboxes + per-row toggle
-- `src/components/branches/PopUnexportedClients.tsx` — toolbar + filters + bulk + checkboxes + per-row enable toggle
-- `src/components/branches/PopOnlineClients.tsx` *(new)* — Online clients tab
-- `src/components/branches/BulkActionBar.tsx` *(new, reusable)*
-- `src/pages/dashboard/branches/PopProfile.tsx` — add `Online Clients` tab
-- `src/lib/exporters.ts` *(new, small)* — CSV + PDF helpers (if not already present)
+## Delete হবে
+- `src/pages/dashboard/system/Users.tsx`
+- `src/pages/dashboard/system/UserReview.tsx`
+- `src/pages/dashboard/system/Roles.tsx`
+- `src/pages/dashboard/system/OltPermissions.tsx`
+- `src/pages/dashboard/system/DevicePermissions.tsx`
 
 ## কোন file বদলাবে না
-- DB schema, RLS, `manage-mikrotik-ppp` edge function, `revert_mikrotik_client` RPC, Import page
+- RLS policies on existing tables, edge functions, POP profile pages, billing logic
 
 ## Apply-এর পরে expected ফলাফল
-1. Exported tab-এ admin filter + bulk enable/disable/package/profile change + CSV/PDF export পাবে
-2. Unexported tab-এ bulk revert / bulk recharge / bulk enable/disable পাবে, প্রতিটা row-এ enable toggle থাকবে
-3. নতুন **Online Clients** tab POP-এর live online/offline client list দেখাবে, auto-refresh সহ
-4. Reference image-এর pill-shaped action button look match করবে
+1. Settings menu থেকে User/Role/Permission সরে যাবে
+2. সব 10টা Settings page reference image অনুযায়ী functional হবে — toggle/save সরাসরি `system_settings`-এ persist
+3. Bill Period year toggle list কাজ করবে
+4. Automatic Process page থেকে scheduler config view/edit হবে
+5. Email-এ Mail/SMTP, Invoice-এ logo upload + position toggle add হবে
 
