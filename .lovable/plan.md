@@ -1,104 +1,115 @@
 
+## লক্ষ্য
+POP admin MikroTik page-এ “আপনার POP-এ এখনো কোনো MikroTik server assign করা হয়নি” ভুলভাবে দেখানো বন্ধ করা, এবং MikroTik Users + Bulk Import দুটোই POP login থেকে সত্যি data দেখানো।
 
-## পরিস্থিতি Verify করার ফলাফল
+## আসল সমস্যা
+এখন POP portal-এর `ResellerMikrotikUsers.tsx` এবং `ResellerMikrotikBulkCreate.tsx` browser থেকে সরাসরি `supabase.from(...)` query করছে। কিন্তু POP portal login `portal-auth` custom token ব্যবহার করে, Supabase Auth session না। তাই browser-side direct query-গুলো `authenticated` policy পায় না।
 
-**ডেটা বাস্তবতা (DB থেকে confirmed):**
-- POP `Nahid` (id `de4cd202…`) এর `branch_id = 26973cfc…` ✅
-- MikroTik device `AFTABNAGAR` (id `d459e69b…`) → `branch_id = NULL` ⚠️
-- ওই MT-এ মোট **13 জন** mikrotik_clients আছে
-- শুধু **3 জন** এর `transferred_to_pop_id = Nahid`-এ set আছে (`abc`, `ppp1`, `e`)
-- বাকি 10 জনের কোনো POP assignment নেই
+ফলাফল:
+- query silently fail/empty return হচ্ছে
+- UI `error` handle করছে না
+- empty array দেখে “কোনো MikroTik server assign করা হয়নি” message দেখাচ্ছে
+- Bulk Import-এও same কারণে user list empty হচ্ছে
 
-**ফলে এখন কী দেখাচ্ছে:**
-- Users page-এ **3 জন** users আসছে (transferred 3 জন) — আপনার সমস্যা ছিল 0 দেখাচ্ছিল, সেটা আগের build cache-এর কারণে ছিল; current code 3 জন দেখাবে
-- কিন্তু আপনার expectation ছিল **পুরো MT-এর সব users** (13 জন বা MikroTik dashboard-এ "Running 3/4" যা দেখাচ্ছে) দেখার
+এজন্য admin-side page-এ running 3 / 4 দেখা গেলেও POP-side page empty দেখাতে পারে।
 
-**আসল কারণ:** আগের plan-এর "branch-scoped MT হলে সব users দেখাও" branch তখনই কাজ করে যখন `mikrotik_devices.branch_id == pop.branch_id`। কিন্তু এই device-এ `branch_id = NULL`, তাই branch-scoping fail করে fallback হয়ে শুধু 3 transferred user দেখায়।
+## কী করা হবে
 
-এছাড়া আরও 2টি bug দেখা গেছে:
-1. **Bulk Create page-এ 400 error** — `isp_packages.speed` column query করছে কিন্তু DB-তে `speed` column **নেই** (আছে `bandwidth_down`)
-2. **MT device কখনো POP-কে assign-ই হয়নি** — admin manually assignment করেননি
+### ১) POP MikroTik data browser query থেকে portal edge function-এ নেওয়া
+`portal-data` edge function-এ POP-specific নতুন actions যোগ করা হবে:
+- `get_pop_mikrotik_servers`
+- `get_pop_mikrotik_users`
+- `get_pop_mikrotik_bulk_candidates`
 
----
+এই actions token থেকে POP identity resolve করবে:
+- `reseller` → `tok.sub`
+- `reseller_sub` → `tok.parent_reseller_id`
 
-## প্রস্তাবিত সমাধান (3 ভাগ)
+তারপর server visibility determine করবে:
+- same `branch_id`
+- অথবা `assigned_to_pop_id = popId`
+- অথবা historical fallback: `mikrotik_clients.transferred_to_pop_id = popId`
 
-### ১. MikroTik device-এ POP/Branch assignment শক্ত করা
-যেহেতু "MT এই POP-এর" — admin-কে MT device-এ branch assign করতে হবে, অথবা POP-এর reseller_id assign করতে হবে। Code-এ এমন একটি secondary scoping যোগ করা হবে যা **mikrotik_devices.assigned_to_pop_id** (নতুন কলাম) match করলেও সেই MT-এর সব users POP-কে দেখাবে।
+### ২) Users page-এ direct Supabase query বাদ দিয়ে `callPortal(...)` ব্যবহার
+`src/pages/reseller/ResellerMikrotikUsers.tsx` এ:
+- `branch_managers`, `mikrotik_devices`, `mikrotik_clients`, `reseller_tariff_packages`, `zones` direct query replace করা হবে
+- সব data `portal-data` থেকে আসবে
+- loading / error / empty state আলাদা করা হবে
 
-```sql
--- Migration
-ALTER TABLE mikrotik_devices 
-  ADD COLUMN assigned_to_pop_id uuid REFERENCES branch_managers(id);
+নতুন UX:
+- server fetch fail হলে “assign করা হয়নি” না দেখিয়ে proper error দেখাবে
+- server zero হলে তবেই empty state দেখাবে
+- server থাকলে tab list + users list load হবে
 
--- Backfill: যদি admin কোনো MT-তে অলরেডি transfer করে থাকে কোনো POP-এ,
--- সেই MT-কে ওই POP-এর assigned হিসেবে set করো
-UPDATE mikrotik_devices md
-SET assigned_to_pop_id = sub.pop
-FROM (
-  SELECT mikrotik_id AS mt, transferred_to_pop_id AS pop, COUNT(*) c
-  FROM mikrotik_clients
-  WHERE transferred_to_pop_id IS NOT NULL
-  GROUP BY mikrotik_id, transferred_to_pop_id
-) sub
-WHERE md.id = sub.mt AND md.assigned_to_pop_id IS NULL;
-```
+### ৩) Bulk Import page-ও same secure flow-এ আনা
+`src/pages/reseller/ResellerMikrotikBulkCreate.tsx` এ:
+- direct `mikrotik_devices` + `mikrotik_clients` query বাদ
+- `callPortal("get_pop_mikrotik_bulk_candidates")` ব্যবহার
+- returned rows-এ only unlinked users থাকবে
+- package meta + zone meta edge function থেকে বা centralized portal meta endpoint থেকে আনা হবে
 
-### ২. ResellerMikrotikUsers + BulkCreate query update
-`isBranchScoped` ছাড়াও **`isPopAssigned`** check যোগ করা:
+### ৪) Shared POP scoping logic এক জায়গায় রাখা
+`portal-data` function-এর ভিতরে helper বানানো হবে:
+- POP resolve
+- visible MikroTik ids resolve
+- branch-scoped / assigned / transferred fallback logic
 
-```typescript
-const isPopAssigned = mtRow?.assigned_to_pop_id === popId;
-const isBranchScoped = !!pop?.branch_id && mtRow?.branch_id === pop.branch_id;
+এতে Users page আর Bulk page-এ আলাদা আলাদা logic drift হবে না।
 
-if (isBranchScoped || isPopAssigned) {
-  // ওই MT-এর সব users দেখাও
-  q = q.eq("mikrotik_id", activeMt);
-} else {
-  // শুধু transferred users
-  q = q.eq("transferred_to_pop_id", popId).eq("transferred_to_mikrotik_id", activeMt);
-}
-```
+### ৫) Error handling ঠিক করা
+এখন code অনেক জায়গায় `error` ignore করছে। এটা বদলানো হবে:
+- function error → toast / inline alert
+- no server vs no user vs fetch error — ৩টা state আলাদা
+- “Admin-এর সাথে যোগাযোগ করুন” message শুধু actual zero visible server হলে দেখাবে
 
-`reseller_mikrotiks` query-তেও MT তালিকায় `assigned_to_pop_id = popId` MT গুলো include করা হবে।
+### ৬) Bulk create submit flow compatible রাখা
+Current client creation flow থাকবে, কিন্তু data source secure করা হবে।
+প্রয়োজনে bulk create submit-ও পরে `portal-data` action-এ নেওয়া হবে যাতে POP token path consistent থাকে।
 
-### ৩. Bulk Create-এর 400 error fix
-`reseller_tariff_packages` query থেকে invalid `speed` column বাদ:
-```typescript
-.select("id, package_id, selling_rate, isp_packages(id, name, bandwidth_down)")
-```
-একই fix `ResellerMikrotikUsers.tsx`-এও (line 108)।
+## যেসব file বদলাবে
+- `src/pages/reseller/ResellerMikrotikUsers.tsx`
+- `src/pages/reseller/ResellerMikrotikBulkCreate.tsx`
+- `src/lib/portalApi.ts` (যদি typed helper দরকার হয়)
+- `supabase/functions/portal-data/index.ts`
 
-### ৪. Admin UI-তে "POP assign" করার option
-Admin → MikroTik Devices তালিকায় প্রতিটি device-এর পাশে "Assign to POP" dropdown — যাতে admin চাইলে পুরো device কোনো POP-কে handover করতে পারে।
+সম্ভব হলে shared helper:
+- `supabase/functions/portal-data/...` একই file-এর helper section
 
-### ৫. Test/Verification scenario
-Migration apply-এর পর:
-- AFTABNAGAR device → assigned_to_pop_id auto-backfill হবে `Nahid`-এ (কারণ ইতিমধ্যে 3 user transferred)
-- POP login → Mikrotik Users page → AFTABNAGAR tab-এ **13 জন** user দেখাবে (running + disabled সব)
-- Bulk Import-এ unlinked সব 13 user dropdown-এ আসবে, package list error ছাড়া load হবে
-- Status badges: linked → "Client", transferred → "Transferred", বাকি → "Available"
+## কী বদলাবে না
+- existing `assigned_to_pop_id` column
+- existing branch assignment data
+- admin MikroTik Servers page UI
+- RLS policy structure
 
----
+## Expected ফলাফল
+1. POP login থেকে wrong “no MikroTik server assigned” message আর দেখাবে না
+2. AFTABNAGAR branch-scoped server হিসেবে POP page-এ visible হবে
+3. MikroTik Users page-এ actual users দেখাবে
+4. Bulk Import page-এ unlinked users আসবে
+5. fetch problem হলে empty state না দেখিয়ে error state দেখাবে
 
-## পরিবর্তন হবে যেসব file
+## Test cases
+1. **Nahid POP login**
+   - route: `/pop-admin/mikrotik-users`
+   - expected: AFTABNAGAR visible
+   - expected: empty state না
 
-| File | পরিবর্তন |
-|------|---------|
-| `supabase/migrations/<new>.sql` | `mikrotik_devices.assigned_to_pop_id` কলাম + backfill |
-| `src/pages/reseller/ResellerMikrotikUsers.tsx` | `isPopAssigned` check + `isp_packages.speed` → `bandwidth_down` |
-| `src/pages/reseller/ResellerMikrotikBulkCreate.tsx` | একই scoping + same column fix |
-| `src/pages/dashboard/mikrotik/Devices.tsx` (অথবা equivalent) | "Assign to POP" dropdown |
-| `src/integrations/supabase/types.ts` | auto-regen |
+2. **Users list**
+   - selected server AFTABNAGAR
+   - expected: available/transferred/client badges সহ users show
 
-## পরিবর্তন হবে না
-- RLS / permissions
-- POP sidebar (পূর্ববর্তী merge অক্ষত)
-- Admin client list isolation logic
+3. **Bulk Import**
+   - route: `/pop-admin/mikrotik-users/bulk-create`
+   - expected: linked_client_id null users load
+   - expected: checkbox/select usable
 
-## Apply-এর পরে expected ফলাফল
-1. ✅ POP `Nahid` AFTABNAGAR-এ ১৩ জন user দেখাবে (বর্তমান 3-এর জায়গায়)
-2. ✅ Bulk Import dropdown 400 error ছাড়া load হবে; সব unlinked users select করা যাবে
-3. ✅ Admin চাইলে device-এ POP assign/unassign করতে পারবে — এক জায়গা থেকে control
-4. ✅ "Available" badge দিয়ে POP বুঝবে কোন user এখনো client হয়নি
+4. **Failure mode**
+   - edge function error simulate হলে
+   - expected: “লোড করতে সমস্যা হয়েছে” type message
+   - expected: misleading “assign করা হয়নি” না
 
+## Technical note
+এটা data problem না, access path problem:
+- POP portal uses custom portal token
+- browser direct Supabase queries need real Supabase authenticated session
+- তাই POP portal-এর sensitive/scoped data `portal-data` edge function দিয়ে আনাই correct pattern
