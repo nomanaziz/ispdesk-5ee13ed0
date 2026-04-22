@@ -55,7 +55,7 @@ export default function Import() {
     queryFn: async () => {
       let q = supabase
         .from("mikrotik_clients")
-        .select("*, mikrotik_devices:mikrotik_devices!mikrotik_clients_mikrotik_id_fkey(name), branches(name), transferred_pop:branch_managers!mikrotik_clients_transferred_to_pop_id_fkey(name, pop_code), transferred_mt:mikrotik_devices!mikrotik_clients_transferred_to_mikrotik_id_fkey(name)")
+        .select("*, mikrotik_devices:mikrotik_devices!mikrotik_clients_mikrotik_id_fkey(name), transferred_pop:branch_managers!mikrotik_clients_transferred_to_pop_id_fkey(name, pop_code), transferred_mt:mikrotik_devices!mikrotik_clients_transferred_to_mikrotik_id_fkey(name)")
         .order("created_at", { ascending: false });
       if (transferStatus === "pending") {
         // Pending = not transferred to any POP, not converted, not exported
@@ -191,7 +191,9 @@ export default function Import() {
     }
   };
 
+  const existingSet = new Set(existingUsernames);
   const filtered = clients
+    .filter((c: any) => transferStatus === "transferred" || !existingSet.has(c.name?.toLowerCase()))
     .filter((c: any) =>
       [c.name, c.caller_id, c.server_name].some((v) => v?.toLowerCase().includes(search.toLowerCase()))
     );
@@ -290,10 +292,8 @@ export default function Import() {
                   <TableHead>সার্ভার</TableHead>
                   <TableHead>Logout Time</TableHead>
                   <TableHead>স্ট্যাটাস</TableHead>
-                  {transferStatus === "transferred" ? (
+                  {transferStatus === "transferred" && (
                     <TableHead>ট্রান্সফার গন্তব্য</TableHead>
-                  ) : (
-                    <TableHead>ব্রাঞ্চ</TableHead>
                   )}
                   <TableHead>অ্যাকশন</TableHead>
                 </TableRow>
@@ -332,7 +332,7 @@ export default function Import() {
                     <TableCell>{c.mikrotik_devices?.name || "—"}</TableCell>
                     <TableCell className="text-xs">{c.logout_time ? new Date(c.logout_time).toLocaleString("bn-BD") : "—"}</TableCell>
                     <TableCell><span className={`text-xs px-2 py-0.5 rounded ${statusColor[c.user_status] || "bg-muted"}`}>{c.user_status}</span></TableCell>
-                    {transferStatus === "transferred" ? (
+                    {transferStatus === "transferred" && (
                       <TableCell className="text-xs">
                         {c.transferred_pop?.name ? (
                           <div>
@@ -341,8 +341,6 @@ export default function Import() {
                           </div>
                         ) : "—"}
                       </TableCell>
-                    ) : (
-                      <TableCell>{c.branches?.name || "—"}</TableCell>
                     )}
                     <TableCell>
                       <Button variant="ghost" size="icon" className="h-8 w-8" title="ক্লায়েন্ট লিস্টে এক্সপোর্ট" onClick={() => exportToClientList(c)}>
