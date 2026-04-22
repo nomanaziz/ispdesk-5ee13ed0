@@ -26,7 +26,7 @@ export default function PopAddEmployee() {
     marital_status: "", nid_number: "", facebook_link: "", reference: "",
     division_id: null, district_id: null, upazila_id: null, permanent_address: "",
     working_experience: "", last_degree: "", institution: "", passing_year: "",
-    joining_date: "", department: "", designation: "", salary: "", status: "active",
+    joining_date: "", department_id: null, position_id: null, salary: "", status: "active",
   });
 
   const [hasAccess, setHasAccess] = useState(false);
@@ -67,6 +67,8 @@ export default function PopAddEmployee() {
         institution: form.institution || null,
         passing_year: form.passing_year || null,
         joining_date: form.joining_date || null,
+        department_id: form.department_id || null,
+        position_id: form.position_id || null,
         salary: form.salary ? Number(form.salary) : null,
         status: form.status,
         has_user_access: hasAccess,
@@ -153,8 +155,8 @@ export default function PopAddEmployee() {
           <CardHeader><CardTitle className="text-base">Posting Information</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1.5"><Label>Joining Date</Label><Input type="date" value={form.joining_date} onChange={set("joining_date")} /></div>
-            <div className="space-y-1.5"><Label>Department</Label><BranchScopedSelect table="departments" branchId={branchId} value={form.department} onChange={(v) => setForm({ ...form, department: v })} /></div>
-            <div className="space-y-1.5"><Label>Designation</Label><BranchScopedSelect table="designations" branchId={branchId} value={form.designation} onChange={(v) => setForm({ ...form, designation: v })} /></div>
+            <div className="space-y-1.5"><Label>Department</Label><BranchScopedSelect table="departments" branchId={branchId} value={form.department_id} onChange={(v) => setForm({ ...form, department_id: v })} /></div>
+            <div className="space-y-1.5"><Label>Designation</Label><BranchScopedSelect table="positions" branchId={branchId} value={form.position_id} onChange={(v) => setForm({ ...form, position_id: v })} /></div>
             <div className="space-y-1.5"><Label>Salary</Label><Input type="number" value={form.salary} onChange={set("salary")} /></div>
             <div className="space-y-1.5">
               <Label>Status</Label>
