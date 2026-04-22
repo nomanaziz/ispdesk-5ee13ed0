@@ -807,13 +807,13 @@ Deno.serve(async (req) => {
         if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
 
         const p = payload || {};
+        const { mobile: legacyMobile, ...safePayload } = p;
         if (!p.name || !p.client_id) return json({ error: "নাম ও ক্লায়েন্ট কোড আবশ্যক" }, 400);
 
         // Force scope to this POP's branch
         const insertRow: any = {
-          ...p,
-          contact: p.contact ?? p.mobile ?? null,
-          mobile: undefined,
+          ...safePayload,
+          contact: p.contact ?? legacyMobile ?? null,
           branch_id: pop.branch_id,
           district_id: pop.district_id || null,
           upazila_id: pop.upazila_id || null,
