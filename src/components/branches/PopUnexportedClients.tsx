@@ -76,13 +76,6 @@ export default function PopUnexportedClients({ popId, branchId }: Props) {
     },
     onError: (e: any) => toast.error(e.message),
   });
-    onSuccess: () => {
-      toast.success("Revert সম্পন্ন — user MikroTik Import pool-এ ফেরত গেছে");
-      qc.invalidateQueries({ queryKey: ["pop-unexported-mt", popId] });
-      setRevertId(null);
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
 
   if (isLoading) return <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
   if (error) return <div className="text-sm text-destructive p-3 border border-destructive/30 rounded-md">লোড করতে সমস্যা হয়েছে: {(error as any).message}</div>;
