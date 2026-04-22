@@ -4,7 +4,8 @@ export default function PopDesignations() {
   return (
     <PopScopedCrud
       title="Designation"
-      tableName="positions"
+      subtitle="POP-এর জন্য পদবী management"
+      tableName="designations"
       fields={[{ key: "name", label: "Designation Name", required: true }]}
     />
   );

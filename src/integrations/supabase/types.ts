@@ -3433,6 +3433,38 @@ export type Database = {
           },
         ]
       }
+      designations: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          id: string
+          name: string
+          status: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          status?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "designations_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       destroyed_items: {
         Row: {
           asset_id: string | null
@@ -10064,6 +10096,7 @@ export type Database = {
         Args: { _branch_id: string }
         Returns: undefined
       }
+      seed_pop_defaults: { Args: { _branch_id: string }; Returns: undefined }
     }
     Enums: {
       alert_channel: "dashboard" | "telegram"
