@@ -8434,6 +8434,109 @@ export type Database = {
           },
         ]
       }
+      sms_template_master: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          is_protected: boolean
+          name: string
+          template_key: string
+          template_type: string
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_protected?: boolean
+          name: string
+          template_key: string
+          template_type?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_protected?: boolean
+          name?: string
+          template_key?: string
+          template_type?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: []
+      }
+      sms_template_overrides: {
+        Row: {
+          branch_id: string | null
+          content: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          master_id: string
+          name: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          master_id: string
+          name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          master_id?: string
+          name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_template_overrides_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_template_overrides_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "sms_template_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_template_overrides_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "sms_templates_effective"
+            referencedColumns: ["master_id"]
+          },
+        ]
+      }
       sms_templates: {
         Row: {
           content: string
@@ -10100,7 +10203,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      sms_templates_effective: {
+        Row: {
+          branch_id: string | null
+          category: string | null
+          content: string | null
+          created_at: string | null
+          is_active: boolean | null
+          is_overridden: boolean | null
+          is_protected: boolean | null
+          master_id: string | null
+          name: string | null
+          override_id: string | null
+          template_key: string | null
+          template_type: string | null
+          updated_at: string | null
+          variables: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_template_overrides_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_user_branch: { Args: { _user_id: string }; Returns: string }
