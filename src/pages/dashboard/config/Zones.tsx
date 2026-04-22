@@ -107,51 +107,60 @@ export default function Zones() {
 
       const { data: zoneSubZones, error: subZonesError } = await supabase
         .from("sub_zones")
-        .select("id, name, zone_id")
+        .select("id")
         .in("zone_id", ids);
       if (subZonesError) throw subZonesError;
 
       const subZoneIds = zoneSubZones?.map((subZone) => subZone.id) ?? [];
 
-      const [clientsOnZones, clientsOnSubZones, branchManagersOnZones] = await Promise.all([
-        supabase.from("clients").select("id", { count: "exact", head: true }).in("zone_id", ids),
-        subZoneIds.length
-          ? supabase.from("clients").select("id", { count: "exact", head: true }).in("sub_zone_id", subZoneIds)
-          : Promise.resolve({ count: 0, error: null } as const),
-        supabase.from("branch_managers").select("id", { count: "exact", head: true }).in("zone_id", ids),
-      ]);
+      const { count: zoneClientCount, error: zoneClientError } = await supabase
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .in("zone_id", ids);
+      if (zoneClientError) throw zoneClientError;
 
-      if (clientsOnZones.error) throw clientsOnZones.error;
-      if (clientsOnSubZones.error) throw clientsOnSubZones.error;
-      if (branchManagersOnZones.error) throw branchManagersOnZones.error;
-
-      if ((clientsOnZones.count ?? 0) > 0 || (clientsOnSubZones.count ?? 0) > 0 || (branchManagersOnZones.count ?? 0) > 0) {
-        const blockedNames = ids
-          .map((id) => zoneSubZones?.find((subZone) => subZone.zone_id === id)?.name)
-          .filter(Boolean);
-        throw new Error(
-          `${blockedNames.length ? blockedNames.join(", ") : "নির্বাচিত জোন"} এখনও client বা POP assignment-এ ব্যবহৃত হচ্ছে, তাই delete করা যাচ্ছে না।`
-        );
+      let subZoneClientCount = 0;
+      if (subZoneIds.length > 0) {
+        const { count, error } = await supabase
+          .from("clients")
+          .select("id", { count: "exact", head: true })
+          .in("sub_zone_id", subZoneIds);
+        if (error) throw error;
+        subZoneClientCount = count ?? 0;
       }
 
-      const cleanupOperations = [
-        supabase.from("boxes").update({ zone_id: null }).in("zone_id", ids),
-        supabase.from("support_tickets").update({ zone_id: null }).in("zone_id", ids),
-        supabase.from("client_notices").update({ zone_id: null }).in("zone_id", ids),
-        supabase.from("client_requests").update({ zone_id: null }).in("zone_id", ids),
-      ];
+      const { count: branchManagerCount, error: branchManagerError } = await supabase
+        .from("branch_managers")
+        .select("id", { count: "exact", head: true })
+        .in("zone_id", ids);
+      if (branchManagerError) throw branchManagerError;
+
+      if ((zoneClientCount ?? 0) > 0 || subZoneClientCount > 0 || (branchManagerCount ?? 0) > 0) {
+        throw new Error("নির্বাচিত zone এখনও client বা POP assignment-এ ব্যবহৃত হচ্ছে, তাই delete করা যাচ্ছে না।");
+      }
+
+      const { error: boxesZoneError } = await supabase.from("boxes").update({ zone_id: null }).in("zone_id", ids);
+      if (boxesZoneError) throw boxesZoneError;
+
+      const { error: supportTicketsError } = await supabase.from("support_tickets").update({ zone_id: null }).in("zone_id", ids);
+      if (supportTicketsError) throw supportTicketsError;
+
+      const { error: clientNoticesError } = await supabase.from("client_notices").update({ zone_id: null }).in("zone_id", ids);
+      if (clientNoticesError) throw clientNoticesError;
+
+      const { error: clientRequestsZoneError } = await supabase.from("client_requests").update({ zone_id: null }).in("zone_id", ids);
+      if (clientRequestsZoneError) throw clientRequestsZoneError;
 
       if (subZoneIds.length > 0) {
-        cleanupOperations.push(
-          supabase.from("boxes").update({ sub_zone_id: null }).in("sub_zone_id", subZoneIds),
-          supabase.from("client_requests").update({ subzone_id: null }).in("subzone_id", subZoneIds),
-          supabase.from("sub_zones").delete().in("id", subZoneIds),
-        );
-      }
+        const { error: boxesSubZoneError } = await supabase.from("boxes").update({ sub_zone_id: null }).in("sub_zone_id", subZoneIds);
+        if (boxesSubZoneError) throw boxesSubZoneError;
 
-      const cleanupResults = await Promise.all(cleanupOperations);
-      const cleanupError = cleanupResults.find((result) => result.error)?.error;
-      if (cleanupError) throw cleanupError;
+        const { error: clientRequestsSubZoneError } = await supabase.from("client_requests").update({ subzone_id: null }).in("subzone_id", subZoneIds);
+        if (clientRequestsSubZoneError) throw clientRequestsSubZoneError;
+
+        const { error: subZoneDeleteError } = await supabase.from("sub_zones").delete().in("id", subZoneIds);
+        if (subZoneDeleteError) throw subZoneDeleteError;
+      }
 
       const { error } = await supabase.from("zones").delete().in("id", ids);
       if (error) throw error;
