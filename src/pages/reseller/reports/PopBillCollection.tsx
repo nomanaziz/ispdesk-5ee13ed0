@@ -145,7 +145,7 @@ export default function PopBillCollection() {
           <div><Label className="text-xs">Receive From</Label><Input type="date" value={filters.receive_from} onChange={(e) => upd("receive_from", e.target.value)} className="h-9" /></div>
           <div><Label className="text-xs">Receive To</Label><Input type="date" value={filters.receive_to} onChange={(e) => upd("receive_to", e.target.value)} className="h-9" /></div>
           <div className="md:col-span-4 flex justify-end">
-            <Button onClick={() => setApplied({ ...filters })} className="bg-[#2c5f6e] hover:bg-[#245069] h-9">Apply Filters</Button>
+            <Button onClick={() => setApplied({ ...filters })} className="h-9">Apply Filters</Button>
           </div>
         </div>
       }

@@ -96,7 +96,7 @@ export default function PopBtrc() {
       enableExcel
       extraActions={<Button onClick={handleSync} size="sm" variant="outline" className="gap-2"><RefreshCw className="h-4 w-4" /> Sync Clients & Servers</Button>}
       filters={
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div><Label className="text-xs">User Type</Label>
             <Select value={f.user_type} onValueChange={(v) => setF({ ...f, user_type: v })}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
@@ -135,7 +135,9 @@ export default function PopBtrc() {
           </div>
           <div><Label className="text-xs">Activation From</Label><Input type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} className="h-9" /></div>
           <div><Label className="text-xs">Activation To</Label><Input type="date" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} className="h-9" /></div>
-          <Button onClick={() => setA({ ...f })} className="bg-[#2c5f6e] hover:bg-[#245069] h-9">Apply</Button>
+          <div className="md:col-span-4 flex justify-end">
+            <Button onClick={() => setA({ ...f })} className="h-9">Apply Filters</Button>
+          </div>
         </div>
       }
       columns={[

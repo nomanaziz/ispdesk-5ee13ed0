@@ -1,25 +1,28 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ReportLayout } from "@/components/reports/ReportLayout";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useState } from "react";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { fmtDate, fmtMoney } from "@/lib/reportExport";
 import { usePopScope } from "@/hooks/usePopScope";
 
 export default function PopFinancial() {
   const { branchId } = usePopScope();
-  const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
-  const monthStart = `${month}-01`;
-  const nextMonth = (() => { const d = new Date(`${month}-01`); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 10); })();
+  const [f, setF] = useState({
+    type: "all",
+    month: new Date().toISOString().slice(0, 7),
+  });
+  const [a, setA] = useState(f);
 
-  const { data: incomes, isLoading: li } = useQuery({
-    queryKey: ["pop-fin-income", branchId, month],
+  const monthStart = `${a.month}-01`;
+  const nextMonth = (() => { const d = new Date(`${a.month}-01`); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 10); })();
+
+  const { data: incomes = [], isLoading: li } = useQuery({
+    queryKey: ["pop-fin-income", branchId, a.month],
     enabled: !!branchId,
     queryFn: async () => {
       const { data } = await supabase.from("income_entries").select("*")
@@ -30,8 +33,8 @@ export default function PopFinancial() {
     },
   });
 
-  const { data: expenses, isLoading: le } = useQuery({
-    queryKey: ["pop-fin-expense", branchId, month],
+  const { data: expenses = [], isLoading: le } = useQuery({
+    queryKey: ["pop-fin-expense", branchId, a.month],
     enabled: !!branchId,
     queryFn: async () => {
       const { data } = await supabase.from("expense_entries").select("*")
@@ -42,87 +45,80 @@ export default function PopFinancial() {
     },
   });
 
-  const isLoading = li || le;
-  const all = [...(incomes ?? []), ...(expenses ?? [])].sort((a, b) => (b.txn_date || "").localeCompare(a.txn_date || ""));
+  const rows = useMemo(() => {
+    const all = [...incomes, ...expenses].sort((x, y) => (y.txn_date || "").localeCompare(x.txn_date || ""));
+    return (a.type === "all" ? all : all.filter(t => t.txn_type === a.type)).map((t, i) => ({
+      id: t.id,
+      sn: i + 1,
+      date: t.txn_date,
+      type: t.txn_type,
+      description: t.description || "-",
+      payment_method: t.payment_method || "-",
+      income: t.txn_type === "income" ? t.txn_amount : 0,
+      expense: t.txn_type === "expense" ? t.txn_amount : 0,
+    }));
+  }, [incomes, expenses, a.type]);
 
-  const filtered = all.filter(t => {
-    if (filterType !== "all" && t.txn_type !== filterType) return false;
-    if (search && !t.description?.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
-
-  const totalIncome = (incomes ?? []).reduce((s, e) => s + e.txn_amount, 0);
-  const totalExpense = (expenses ?? []).reduce((s, e) => s + e.txn_amount, 0);
+  const totals = useMemo(() => ({
+    income: rows.reduce((s, r) => s + r.income, 0),
+    expense: rows.reduce((s, r) => s + r.expense, 0),
+  }), [rows]);
+  const net = totals.income - totals.expense;
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">আর্থিক লেনদেন রিপোর্ট</h1>
-        <p className="text-muted-foreground text-sm">মাসভিত্তিক আর্থিক লেনদেন</p>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">মোট আয়</p><p className="text-xl font-bold text-green-600">৳{totalIncome.toLocaleString()}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">মোট ব্যয়</p><p className="text-xl font-bold text-destructive">৳{totalExpense.toLocaleString()}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">নেট</p><p className={`text-xl font-bold ${totalIncome - totalExpense >= 0 ? "text-green-600" : "text-destructive"}`}>৳{(totalIncome - totalExpense).toLocaleString()}</p></CardContent></Card>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Input type="month" value={month} onChange={e => setMonth(e.target.value)} className="w-[160px]" />
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-8" placeholder="বিবরণ খুঁজুন..." value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">সব</SelectItem>
-            <SelectItem value="income">আয়</SelectItem>
-            <SelectItem value="expense">ব্যয়</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs w-10">#</TableHead>
-                  <TableHead className="text-xs">তারিখ</TableHead>
-                  <TableHead className="text-xs">ধরন</TableHead>
-                  <TableHead className="text-xs">বিবরণ</TableHead>
-                  <TableHead className="text-xs">পেমেন্ট</TableHead>
-                  <TableHead className="text-xs text-right">পরিমাণ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
-                )) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">কোনো লেনদেন নেই</TableCell></TableRow>
-                ) : filtered.map((t, i) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="text-xs py-2">{i + 1}</TableCell>
-                    <TableCell className="text-xs py-2">{t.txn_date}</TableCell>
-                    <TableCell className="text-xs py-2">
-                      <Badge variant="outline" className={t.txn_type === "income" ? "bg-green-500/20 text-green-600" : "bg-destructive/20 text-destructive"}>
-                        {t.txn_type === "income" ? "আয়" : "ব্যয়"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs py-2">{t.description || "-"}</TableCell>
-                    <TableCell className="text-xs py-2">{t.payment_method || "-"}</TableCell>
-                    <TableCell className={`text-xs py-2 text-right font-medium ${t.txn_type === "income" ? "text-green-600" : "text-destructive"}`}>
-                      {t.txn_type === "income" ? "+" : "-"}৳{t.txn_amount.toLocaleString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+    <ReportLayout
+      title="Financial Transaction Report"
+      breadcrumb="Report > Financial"
+      filters={
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div><Label className="text-xs">Month</Label><Input type="month" value={f.month} onChange={(e) => setF({ ...f, month: e.target.value })} className="h-9" /></div>
+            <div><Label className="text-xs">Type</Label>
+              <Select value={f.type} onValueChange={(v) => setF({ ...f, type: v })}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
+                  <SelectItem value="expense">Expense</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2 flex justify-end items-end">
+              <Button onClick={() => setA({ ...f })} className="h-9">Apply Filters</Button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-md border bg-card p-3">
+              <p className="text-xs text-muted-foreground">Total Income</p>
+              <p className="text-lg font-bold text-success">৳ {totals.income.toLocaleString()}</p>
+            </div>
+            <div className="rounded-md border bg-card p-3">
+              <p className="text-xs text-muted-foreground">Total Expense</p>
+              <p className="text-lg font-bold text-destructive">৳ {totals.expense.toLocaleString()}</p>
+            </div>
+            <div className="rounded-md border bg-card p-3">
+              <p className="text-xs text-muted-foreground">Net</p>
+              <p className={`text-lg font-bold ${net >= 0 ? "text-success" : "text-destructive"}`}>৳ {net.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+      }
+      columns={[
+        { key: "sn", label: "SN" },
+        { key: "date", label: "Date", format: fmtDate },
+        {
+          key: "type", label: "Type",
+          format: (v: string) => <Badge variant={v === "income" ? "default" : "destructive"}>{v}</Badge> as any,
+        },
+        { key: "description", label: "Description" },
+        { key: "payment_method", label: "Payment Method" },
+        { key: "income", label: "Income", align: "right", format: (v) => v ? fmtMoney(v) : "-" },
+        { key: "expense", label: "Expense", align: "right", format: (v) => v ? fmtMoney(v) : "-" },
+      ]}
+      rows={rows}
+      loading={li || le}
+      totalsRow={{ sn: "Total", income: fmtMoney(totals.income), expense: fmtMoney(totals.expense) }}
+      rowKey={(r) => r.id}
+    />
   );
 }

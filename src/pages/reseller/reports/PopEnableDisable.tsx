@@ -58,7 +58,7 @@ export default function PopEnableDisable() {
       title="Enable/Disable Report"
       breadcrumb="Report > Enable/Disable"
       filters={
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div><Label className="text-xs">Action</Label>
             <Select value={f.action} onValueChange={(v) => setF({ ...f, action: v })}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
@@ -67,10 +67,12 @@ export default function PopEnableDisable() {
           </div>
           <div><Label className="text-xs">From</Label><Input type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} className="h-9" /></div>
           <div><Label className="text-xs">To</Label><Input type="date" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} className="h-9" /></div>
-          <Button onClick={() => setA({ ...f })} className="bg-[#2c5f6e] hover:bg-[#245069] h-9">Apply</Button>
+          <div className="flex items-end justify-end">
+            <Button onClick={() => setA({ ...f })} className="h-9 w-full md:w-auto">Apply Filters</Button>
+          </div>
           <div className="md:col-span-4 flex gap-3 text-xs text-muted-foreground">
             <span>Total: <b className="text-foreground">{counts.total}</b></span>
-            <span>Enabled: <b className="text-green-600">{counts.enabled}</b></span>
+            <span>Enabled: <b className="text-success">{counts.enabled}</b></span>
             <span>Disabled: <b className="text-destructive">{counts.disabled}</b></span>
           </div>
         </div>

@@ -57,10 +57,12 @@ export default function PopDueSms() {
       title="Due Customer SMS"
       breadcrumb="Report > Due Customer SMS"
       filters={
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div><Label className="text-xs">From</Label><Input type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} className="h-9" /></div>
           <div><Label className="text-xs">To</Label><Input type="date" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} className="h-9" /></div>
-          <Button onClick={() => setA({ ...f })} className="bg-[#2c5f6e] hover:bg-[#245069] h-9">Apply</Button>
+          <div className="md:col-span-4 flex justify-end">
+            <Button onClick={() => setA({ ...f })} className="h-9">Apply Filters</Button>
+          </div>
         </div>
       }
       columns={[

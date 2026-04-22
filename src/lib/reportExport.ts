@@ -33,7 +33,7 @@ export function exportPDF(title: string, columns: Column[], rows: any[], opts?: 
     head: [columns.map((c) => c.label)],
     body: rows.map((r) => columns.map((c) => (c.format ? c.format(r[c.key], r) : r[c.key] ?? ""))),
     styles: { fontSize: 7, cellPadding: 3 },
-    headStyles: { fillColor: [44, 95, 110], textColor: 255 },
+    headStyles: { fillColor: [109, 40, 217], textColor: 255 },
     alternateRowStyles: { fillColor: [245, 247, 250] },
   });
   doc.save(`${title.replace(/\s+/g, "_")}.pdf`);
