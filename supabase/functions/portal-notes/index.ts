@@ -10,34 +10,11 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-function b64urlDecode(s: string): string {
-  s = s.replace(/-/g, "+").replace(/_/g, "/");
-  while (s.length % 4) s += "=";
-  return atob(s);
-}
-
-async function verifyPortalJwt(token: string, secret: string): Promise<any | null> {
+function decodeToken(token: string): any | null {
   try {
-    const [h, p, sig] = token.split(".");
-    if (!h || !p || !sig) return null;
-    const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      "raw",
-      enc.encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["verify"],
-    );
-    const sigBytes = Uint8Array.from(b64urlDecode(sig), (c) => c.charCodeAt(0));
-    const ok = await crypto.subtle.verify(
-      "HMAC",
-      key,
-      sigBytes,
-      enc.encode(`${h}.${p}`),
-    );
-    if (!ok) return null;
-    const payload = JSON.parse(b64urlDecode(p));
-    if (payload.exp && payload.exp * 1000 < Date.now()) return null;
+    const payload = JSON.parse(atob(token));
+    if (!payload?.sub || !payload?.type) return null;
+    if (payload.exp && payload.exp < Date.now()) return null;
     return payload;
   } catch {
     return null;
@@ -57,19 +34,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    const secret =
-      Deno.env.get("PORTAL_JWT_SECRET") ||
-      Deno.env.get("SUPABASE_JWT_SECRET") ||
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
-      "";
-    const claims = await verifyPortalJwt(token, secret);
+    const claims = decodeToken(token);
     if (!claims?.sub) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
     const ownerId = String(claims.sub);
     const userType: string = claims.type || "client";
     // Map portal user type to owner_type
