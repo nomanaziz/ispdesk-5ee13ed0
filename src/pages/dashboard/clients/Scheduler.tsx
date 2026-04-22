@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, FileText, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { usePopScope } from "@/hooks/usePopScope";
+import { callPortal } from "@/lib/portalApi";
 
 export default function Scheduler() {
   const queryClient = useQueryClient();
@@ -25,25 +26,30 @@ export default function Scheduler() {
   const [form, setForm] = useState({ client_id: "", scheduler_type: "package_scheduler", previous_info: "", schedule_info: "", remarks: "", schedule_date: "" });
 
   const { data: schedulers, isLoading } = useQuery({
-    queryKey: ["client-schedulers", branchId || "all"],
+    queryKey: ["client-schedulers", branchId || "all", isPopMode ? "pop" : "admin"],
     queryFn: async () => {
+      if (isPopMode) {
+        const res = await callPortal<{ schedulers: any[] }>("list_pop_client_schedulers");
+        return res.schedulers || [];
+      }
       let q: any = supabase
         .from("client_schedulers")
         .select("*, clients:client_id(client_id, name, contact, username, branch_id, zones:zone_id(name))")
         .order("created_at", { ascending: false });
       const { data, error } = await q;
       if (error) throw error;
-      // Filter to clients in this branch (client_schedulers itself has no branch column)
-      if (isPopMode && branchId) {
-        return (data || []).filter((s: any) => s.clients?.branch_id === branchId);
-      }
+      if (isPopMode && branchId) return (data || []).filter((s: any) => s.clients?.branch_id === branchId);
       return data;
     },
   });
 
   const { data: clientsList } = useQuery({
-    queryKey: ["clients-for-select", branchId || "all"],
+    queryKey: ["clients-for-select", branchId || "all", isPopMode ? "pop" : "admin"],
     queryFn: async () => {
+      if (isPopMode) {
+        const res = await callPortal<{ clients: any[] }>("list_pop_clients", { minimal: true });
+        return res.clients || [];
+      }
       let q: any = supabase.from("clients").select("id, client_id, name, username, branch_id").eq("status", "active").limit(500);
       if (isPopMode && branchId) q = q.eq("branch_id", branchId);
       else q = q.eq("owner_scope", "admin");
@@ -55,6 +61,9 @@ export default function Scheduler() {
   const createMutation = useMutation({
     mutationFn: async (values: typeof form) => {
       if (!values.client_id || !values.scheduler_type) throw new Error("ক্লায়েন্ট ও শিডিউলার টাইপ আবশ্যক");
+      if (isPopMode) {
+        return callPortal("create_pop_scheduler", values);
+      }
       const { error } = await supabase.from("client_schedulers").insert({
         client_id: values.client_id,
         scheduler_type: values.scheduler_type,
@@ -76,6 +85,7 @@ export default function Scheduler() {
 
   const cancelMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (isPopMode) return callPortal("cancel_pop_scheduler", { id });
       const { error } = await supabase.from("client_schedulers").update({ status: "cancelled" }).eq("id", id);
       if (error) throw error;
     },

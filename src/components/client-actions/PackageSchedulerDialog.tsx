@@ -13,6 +13,8 @@ import { CalendarIcon, Save } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { usePopScope } from "@/hooks/usePopScope";
+import { callPortal } from "@/lib/portalApi";
 
 interface Props {
   open: boolean;
@@ -23,6 +25,7 @@ interface Props {
 
 export default function PackageSchedulerDialog({ open, onOpenChange, client, invalidateKey = "clients-list" }: Props) {
   const queryClient = useQueryClient();
+  const { isPopMode } = usePopScope();
   const [serverId, setServerId] = useState(client?.mikrotik_id || "");
   const [protocolType, setProtocolType] = useState("PPPoE");
   const [profileSpeed, setProfileSpeed] = useState("");
@@ -60,6 +63,19 @@ export default function PackageSchedulerDialog({ open, onOpenChange, client, inv
 
   const mutation = useMutation({
     mutationFn: async () => {
+      if (isPopMode) {
+        return callPortal("create_pop_scheduler", {
+          client_id: client.id,
+          scheduler_type: "package_scheduler",
+          server_id: serverId || null,
+          protocol_type: protocolType,
+          profile_speed: profileSpeed,
+          package_id: packageId || null,
+          package_rate: packageRate ? Number(packageRate) : null,
+          remarks,
+          schedule_date: execDate ? format(execDate, "yyyy-MM-dd") : null,
+        });
+      }
       const { error } = await supabase.from("client_schedulers").insert({
         client_id: client.id,
         scheduler_type: "package_scheduler",
@@ -76,6 +92,7 @@ export default function PackageSchedulerDialog({ open, onOpenChange, client, inv
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [invalidateKey] });
+      queryClient.invalidateQueries({ queryKey: ["client-schedulers"] });
       toast.success("প্যাকেজ শিডিউলার সংরক্ষিত হয়েছে");
       onOpenChange(false);
     },
