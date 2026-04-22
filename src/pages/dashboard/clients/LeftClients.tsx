@@ -37,6 +37,7 @@ export default function LeftClients() {
         .or("status.eq.left,billing_status.eq.Left")
         .order("left_date", { ascending: false });
       if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      else q = q.eq("owner_scope", "admin");
       const { data, error } = await q;
       if (error) throw error;
       return data;

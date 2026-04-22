@@ -144,6 +144,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
           monthly_bill: sellingRate,
           status: "active",
           mikrotik_status: "enabled",
+          owner_scope: "pop",
         }));
 
       let createdCount = 0;
