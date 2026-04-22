@@ -49,23 +49,9 @@ export default function PopProfile() {
     queryFn: async () => {
       const { data } = await supabase
         .from("clients")
-        .select("id, name, client_id, username, billing_status, is_online, monthly_bill, mikrotik_id")
+        .select("id, billing_status, status")
         .eq("branch_id", pop!.branch_id);
       return data ?? [];
-    },
-  });
-
-  // Unexported = MikroTik PPP secret rows for this POP's server, but NO matching client row
-  const { data: unexported } = useQuery({
-    queryKey: ["pop-unexported", id, pop?.server_id, pop?.branch_id],
-    enabled: !!pop?.server_id && !!pop?.branch_id,
-    queryFn: async () => {
-      const { data: pppSecrets } = await supabase
-        .from("mikrotik_ppp_secrets" as any)
-        .select("id, name, profile, disabled, comment")
-        .eq("server_id", pop!.server_id);
-      const usernames = new Set((clients ?? []).map((c: any) => (c.username || "").toLowerCase()));
-      return (pppSecrets ?? []).filter((s: any) => !usernames.has((s.name || "").toLowerCase()));
     },
   });
 
