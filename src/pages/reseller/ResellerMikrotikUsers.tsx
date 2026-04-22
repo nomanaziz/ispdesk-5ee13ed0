@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Server, Search, Power, PowerOff, Eye, EyeOff, UserPlus, Layers } from "lucide-react";
+import { Server, Search, Power, PowerOff, Eye, EyeOff, UserPlus, Layers, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ResellerMikrotikUsers() {
@@ -20,7 +21,6 @@ export default function ResellerMikrotikUsers() {
   const qc = useQueryClient();
   const popId = customer?.type === "reseller_sub" ? (customer as any)?.parent_reseller_id : customer?.sub;
   const branchId = (customer as any)?.branch_id;
-  const tariffId = (customer as any)?.tariff_id;
   const [activeMt, setActiveMt] = useState<string>("");
   const [search, setSearch] = useState("");
   const [showPwd, setShowPwd] = useState<Record<string, boolean>>({});
@@ -28,102 +28,31 @@ export default function ResellerMikrotikUsers() {
   const [target, setTarget] = useState<any>(null);
   const [form, setForm] = useState({ name: "", contact: "", address: "", package_id: "", zone_id: "", joining_date: new Date().toISOString().slice(0, 10) });
 
-  const { data: pop } = useQuery({
-    queryKey: ["reseller_pop", popId],
-    queryFn: async () => {
-      if (!popId) return null;
-      const { data } = await supabase.from("branch_managers").select("id, name, branch_id, pop_code").eq("id", popId).maybeSingle();
-      return data;
-    },
+  const serversQuery = useQuery({
+    queryKey: ["pop_mt_servers", popId],
+    queryFn: async () => await callPortal<{ pop: any; servers: any[] }>("get_pop_mikrotik_servers"),
     enabled: !!popId,
   });
-
-  const { data: mikrotiks = [] } = useQuery({
-    queryKey: ["reseller_mikrotiks", popId, pop?.branch_id],
-    queryFn: async () => {
-      const branchIdLocal = pop?.branch_id;
-      const orFilters: string[] = [];
-      if (branchIdLocal) orFilters.push(`branch_id.eq.${branchIdLocal}`);
-      if (popId) orFilters.push(`assigned_to_pop_id.eq.${popId}`);
-      const { data: transferredMtIds } = await supabase
-        .from("mikrotik_clients")
-        .select("transferred_to_mikrotik_id")
-        .eq("transferred_to_pop_id", popId!)
-        .not("transferred_to_mikrotik_id", "is", null);
-      const ids = Array.from(new Set((transferredMtIds || []).map((r: any) => r.transferred_to_mikrotik_id).filter(Boolean)));
-
-      let q = supabase.from("mikrotik_devices").select("id, name, ip_address, status, branch_id, assigned_to_pop_id").order("name");
-      if (orFilters.length > 0 && ids.length > 0) {
-        q = q.or(`${orFilters.join(",")},id.in.(${ids.join(",")})`);
-      } else if (orFilters.length > 0) {
-        q = q.or(orFilters.join(","));
-      } else if (ids.length > 0) {
-        q = q.in("id", ids);
-      } else {
-        return [];
-      }
-      const { data } = await q;
-      return data || [];
-    },
-    enabled: !!popId,
-  });
+  const pop = serversQuery.data?.pop;
+  const mikrotiks = serversQuery.data?.servers || [];
 
   useEffect(() => {
     if (mikrotiks.length > 0 && !activeMt) setActiveMt(mikrotiks[0].id);
   }, [mikrotiks, activeMt]);
 
-  const { data: users = [], isLoading } = useQuery({
-    queryKey: ["reseller_mt_users", popId, activeMt, pop?.branch_id],
-    queryFn: async () => {
-      if (!activeMt) return [];
-      // POP-এর branch-এ assigned MikroTik OR POP-কে directly assigned হলে ওই MT-এর সব users দেখাও;
-      // নইলে শুধু এই POP-এ transferred users দেখাও।
-      const { data: mtRow } = await supabase
-        .from("mikrotik_devices")
-        .select("branch_id, assigned_to_pop_id")
-        .eq("id", activeMt)
-        .maybeSingle();
-      const isBranchScoped = !!pop?.branch_id && mtRow?.branch_id === pop.branch_id;
-      const isPopAssigned = !!popId && mtRow?.assigned_to_pop_id === popId;
-
-      let q = supabase.from("mikrotik_clients").select("*").order("name");
-      if (isBranchScoped || isPopAssigned) {
-        q = q.or(
-          `mikrotik_id.eq.${activeMt},transferred_to_mikrotik_id.eq.${activeMt}`,
-        );
-      } else {
-        q = q.eq("transferred_to_pop_id", popId!).eq("transferred_to_mikrotik_id", activeMt);
-      }
-      const { data } = await q;
-      return data || [];
-    },
+  const usersQuery = useQuery({
+    queryKey: ["pop_mt_users", popId, activeMt],
+    queryFn: async () =>
+      await callPortal<{ users: any[]; tariff_packages: any[]; zones: any[] }>(
+        "get_pop_mikrotik_users",
+        { mikrotik_id: activeMt }
+      ),
     enabled: !!popId && !!activeMt,
   });
-
-  // POP-এর tariff থেকে packages
-  const { data: tariffPackages = [] } = useQuery({
-    queryKey: ["pop_tariff_packages", tariffId],
-    queryFn: async () => {
-      if (!tariffId) return [];
-      const { data } = await supabase
-        .from("reseller_tariff_packages")
-        .select("id, package_id, selling_rate, isp_packages(id, name, bandwidth_down)")
-        .eq("tariff_id", tariffId)
-        .eq("status", "active");
-      return data || [];
-    },
-    enabled: !!tariffId,
-  });
-
-  const { data: zones = [] } = useQuery({
-    queryKey: ["pop_zones", branchId],
-    queryFn: async () => {
-      if (!branchId) return [];
-      const { data } = await supabase.from("zones").select("id, name").eq("branch_id", branchId).order("name");
-      return data || [];
-    },
-    enabled: !!branchId,
-  });
+  const users = usersQuery.data?.users || [];
+  const tariffPackages = usersQuery.data?.tariff_packages || [];
+  const zones = usersQuery.data?.zones || [];
+  const isLoading = usersQuery.isLoading;
 
   const filtered = users.filter((u: any) =>
     [u.name, u.caller_id, u.profile, u.remote_address].some((v) => v?.toLowerCase().includes(search.toLowerCase())),
@@ -137,7 +66,7 @@ export default function ResellerMikrotikUsers() {
       return next;
     },
     onSuccess: (next) => {
-      qc.invalidateQueries({ queryKey: ["reseller_mt_users"] });
+      qc.invalidateQueries({ queryKey: ["pop_mt_users"] });
       toast.success(next === "disabled" ? "ইউজার ডিজেবল হয়েছে" : "ইউজার এনাবল হয়েছে");
     },
     onError: (e: any) => toast.error(e.message),
