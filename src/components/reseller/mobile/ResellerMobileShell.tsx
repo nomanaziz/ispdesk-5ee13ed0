@@ -74,7 +74,6 @@ export function ResellerMobileShell({ children, onOpenSidebar }: Props) {
               <Settings className="h-4 w-4 mr-2" />
               {t("সেটিংস", "Settings")}
             </DropdownMenuItem>
-            <InstallMenuItem />
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={handleLogout}
