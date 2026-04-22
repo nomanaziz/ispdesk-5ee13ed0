@@ -1609,6 +1609,262 @@ Deno.serve(async (req) => {
         return json({ rows: upazilaRows });
       }
 
+      // ===== POP Online Client Monitoring =====
+      case "pop_monitoring_filters":
+      case "pop_monitoring_clients":
+      case "pop_monitoring_sync_online":
+      case "pop_monitoring_active_sessions":
+      case "pop_live_traffic_snapshot":
+      case "pop_ping_client":
+      case "pop_manage_mikrotik_ppp":
+      case "pop_send_sms": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Forbidden" }, 403);
+        }
+        const t: any = tok;
+        const popId: string = t.type === "reseller_sub" ? t.parent_reseller_id : t.sub;
+        if (!popId) return json({ error: "POP not resolved" }, 400);
+
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("id, name, pop_code, branch_id, tariff_id")
+          .eq("id", popId)
+          .maybeSingle();
+        const branchId: string | null = pop?.branch_id || null;
+        if (!branchId) return json({ error: "POP-এর জন্য branch assign করা নেই" }, 400);
+
+        // Visible MikroTik devices for this POP
+        const { data: directDevices } = await sb
+          .from("mikrotik_devices")
+          .select("id, name, ip_address, status, branch_id, assigned_to_pop_id, enabled, order_no, created_at")
+          .order("order_no", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: true });
+        const visibleDevices = (directDevices || []).filter((d: any) =>
+          d.enabled !== false &&
+          ((branchId && d.branch_id === branchId) || d.assigned_to_pop_id === popId)
+        );
+        const visibleIds = new Set<string>(visibleDevices.map((d: any) => d.id));
+
+        const { data: transferRows } = await sb
+          .from("mikrotik_clients")
+          .select("transferred_to_mikrotik_id")
+          .eq("transferred_to_pop_id", popId)
+          .not("transferred_to_mikrotik_id", "is", null);
+        const transferredIds = new Set<string>(
+          (transferRows || []).map((r: any) => r.transferred_to_mikrotik_id).filter(Boolean)
+        );
+        const missingIds = [...transferredIds].filter((id) => !visibleIds.has(id));
+        if (missingIds.length > 0) {
+          const { data: extra } = await sb
+            .from("mikrotik_devices")
+            .select("id, name, ip_address, status, branch_id, assigned_to_pop_id, enabled, order_no, created_at")
+            .in("id", missingIds);
+          (extra || []).filter((d: any) => d.enabled !== false).forEach((d: any) => {
+            visibleDevices.push(d);
+            visibleIds.add(d.id);
+          });
+        }
+
+        const assertDeviceVisible = (mtId: string | undefined | null): boolean =>
+          !!mtId && visibleIds.has(mtId);
+        const assertClientInBranch = async (clientId: string | undefined | null): Promise<boolean> => {
+          if (!clientId) return false;
+          const { data } = await sb
+            .from("clients")
+            .select("id")
+            .eq("id", clientId)
+            .eq("branch_id", branchId)
+            .maybeSingle();
+          return !!data;
+        };
+
+        if (action === "pop_monitoring_filters") {
+          const [zonesRes, connRes] = await Promise.all([
+            sb.from("zones").select("id, name").eq("status", "active").eq("branch_id", branchId).order("name"),
+            sb.from("connection_types_config").select("id, name").eq("status", "active").order("name"),
+          ]);
+          return json({
+            servers: visibleDevices.map((d: any) => ({ id: d.id, name: d.name, order_no: d.order_no ?? null })),
+            zones: zonesRes.data || [],
+            connection_types: connRes.data || [],
+          });
+        }
+
+        if (action === "pop_monitoring_clients") {
+          const mtId: string | undefined = payload.mikrotik_id;
+          if (!mtId) return json({ clients: [] });
+          if (!assertDeviceVisible(mtId)) return json({ error: "MikroTik not visible to this POP" }, 403);
+
+          const { data } = await sb
+            .from("clients")
+            .select(
+              "id, client_id, name, contact, username, remote_address, connection_type, profile, status, mikrotik_id, server_name, total_upload, total_download, mac_address, is_online, mikrotik_status, zone_id, sub_zone_id, box_id"
+            )
+            .eq("branch_id", branchId)
+            .eq("mikrotik_id", mtId)
+            .eq("mikrotik_status", "enabled")
+            .neq("status", "left");
+
+          const rows = (data || []) as any[];
+          const zoneIds = [...new Set(rows.map((r) => r.zone_id).filter(Boolean))];
+          const subZoneIds = [...new Set(rows.map((r) => r.sub_zone_id).filter(Boolean))];
+          const boxIds = [...new Set(rows.map((r) => r.box_id).filter(Boolean))];
+          const [zonesRes, subZonesRes, boxesRes, devRes] = await Promise.all([
+            zoneIds.length ? sb.from("zones").select("id, name").in("id", zoneIds) : Promise.resolve({ data: [] } as any),
+            subZoneIds.length ? sb.from("sub_zones").select("id, name").in("id", subZoneIds) : Promise.resolve({ data: [] } as any),
+            boxIds.length ? sb.from("boxes").select("id, name").in("id", boxIds) : Promise.resolve({ data: [] } as any),
+            sb.from("mikrotik_devices").select("id, name").eq("id", mtId).maybeSingle(),
+          ]);
+          const zMap = new Map((zonesRes.data || []).map((z: any) => [z.id, z]));
+          const szMap = new Map((subZonesRes.data || []).map((z: any) => [z.id, z]));
+          const bxMap = new Map((boxesRes.data || []).map((z: any) => [z.id, z]));
+          const enriched = rows.map((c) => ({
+            ...c,
+            zone: c.zone_id ? zMap.get(c.zone_id) || null : null,
+            sub_zone: c.sub_zone_id ? szMap.get(c.sub_zone_id) || null : null,
+            box: c.box_id ? bxMap.get(c.box_id) || null : null,
+            mikrotik_device: devRes.data || null,
+          }));
+          return json({ clients: enriched });
+        }
+
+        if (action === "pop_monitoring_active_sessions") {
+          const mtId: string | undefined = payload.mikrotik_id;
+          if (!mtId) return json({ error: "mikrotik_id required" }, 400);
+          if (!assertDeviceVisible(mtId)) return json({ error: "MikroTik not visible to this POP" }, 403);
+
+          const url = `${SUPABASE_URL}/functions/v1/fetch-mikrotik-ppp`;
+          const r = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${SERVICE_KEY}`,
+            },
+            body: JSON.stringify({ action: "active-sessions", device_id: mtId }),
+          });
+          const data = await r.json();
+          if (!r.ok) return json({ error: data?.error || "MikroTik fetch failed" }, r.status);
+
+          const { data: branchClients } = await sb
+            .from("clients")
+            .select("username")
+            .eq("branch_id", branchId)
+            .eq("mikrotik_id", mtId);
+          const allowedNames = new Set(
+            (branchClients || []).map((c: any) => (c.username || "").toLowerCase()).filter(Boolean)
+          );
+          const filterByName = (arr: any[]) =>
+            (arr || []).filter((x: any) => allowedNames.has(String(x.username || x.name || "").toLowerCase()));
+
+          const sessions = (data?.sessions || []).filter((s: any) =>
+            allowedNames.has(String(s.name || "").toLowerCase())
+          );
+          const mismatch = data?.mismatch
+            ? {
+                disabledInSystem: filterByName(data.mismatch.disabledInSystem || []),
+                enabledInSystem: filterByName(data.mismatch.enabledInSystem || []),
+                profileMismatch: filterByName(data.mismatch.profileMismatch || []),
+              }
+            : { disabledInSystem: [], enabledInSystem: [], profileMismatch: [] };
+          return json({ sessions, mismatch });
+        }
+
+        if (action === "pop_monitoring_sync_online") {
+          const url = `${SUPABASE_URL}/functions/v1/fetch-mikrotik-ppp`;
+          let online = 0;
+          let offline = 0;
+          for (const d of visibleDevices) {
+            try {
+              const r = await fetch(url, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${SERVICE_KEY}`,
+                },
+                body: JSON.stringify({ action: "sync-online", device_id: (d as any).id }),
+              });
+              const dd = await r.json();
+              if (r.ok) {
+                online += Number(dd?.online || 0);
+                offline += Number(dd?.offline || 0);
+              }
+            } catch (_) { /* ignore */ }
+          }
+          return json({ ok: true, online, offline });
+        }
+
+        if (action === "pop_live_traffic_snapshot") {
+          const clientId: string | undefined = payload.client_id;
+          if (!clientId) return json({ error: "client_id required" }, 400);
+          if (!(await assertClientInBranch(clientId))) {
+            return json({ error: "Client not in this POP" }, 403);
+          }
+          const url = `${SUPABASE_URL}/functions/v1/live-traffic-snapshot`;
+          const r = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${SERVICE_KEY}`,
+            },
+            body: JSON.stringify({ client_id: clientId }),
+          });
+          const data = await r.json();
+          return json(data, r.ok ? 200 : r.status);
+        }
+
+        if (action === "pop_ping_client" || action === "pop_manage_mikrotik_ppp") {
+          const mtId: string | undefined = payload.mikrotik_id;
+          if (!assertDeviceVisible(mtId)) return json({ error: "MikroTik not visible to this POP" }, 403);
+          if (payload.client_id && !(await assertClientInBranch(payload.client_id))) {
+            return json({ error: "Client not in this POP" }, 403);
+          }
+          const url = `${SUPABASE_URL}/functions/v1/manage-mikrotik-ppp`;
+          const r = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${SERVICE_KEY}`,
+            },
+            body: JSON.stringify(payload),
+          });
+          const data = await r.json();
+          return json(data, r.ok ? 200 : r.status);
+        }
+
+        if (action === "pop_send_sms") {
+          const message: string = String(payload.message || "").trim();
+          if (!message) return json({ error: "Message required" }, 400);
+          const recipients: string[] = Array.isArray(payload.recipients)
+            ? payload.recipients.map((x: any) => String(x || "").trim()).filter(Boolean)
+            : [];
+          if (recipients.length === 0) return json({ error: "No recipients" }, 400);
+
+          const { data: contacts } = await sb
+            .from("clients")
+            .select("contact")
+            .eq("branch_id", branchId)
+            .in("contact", recipients);
+          const allowed = new Set((contacts || []).map((c: any) => c.contact));
+          const cleanRecipients = recipients.filter((r) => allowed.has(r));
+          if (cleanRecipients.length === 0) {
+            return json({ error: "No valid POP-scoped recipients" }, 400);
+          }
+
+          const { error: logErr } = await sb.from("sms_log").insert({
+            recipient: cleanRecipients.join(","),
+            message,
+            sms_type: cleanRecipients.length > 1 ? "online_bulk" : "individual",
+            status: "sent",
+            sent_at: new Date().toISOString(),
+            recipient_count: cleanRecipients.length,
+          });
+          if (logErr) return json({ error: logErr.message }, 500);
+          return json({ ok: true, sent: cleanRecipients.length });
+        }
+
+        return json({ error: "Unknown POP monitoring action" }, 400);
+      }
+
       default:
         return json({ error: "Unknown action" }, 400);
     }
