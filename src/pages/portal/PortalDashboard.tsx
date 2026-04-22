@@ -266,6 +266,50 @@ const PortalDashboard = () => {
         </Card>
       </div>
 
+      {/* Recent Messages */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="h-8 w-8 rounded-lg bg-violet-100 flex items-center justify-center">
+              <MessageSquare className="h-4 w-4 text-violet-600" />
+            </div>
+            <h3 className="font-semibold text-foreground">Recent Messages</h3>
+            <Button asChild size="sm" variant="ghost" className="ml-auto text-xs">
+              <Link to="/portal/messages">View all <ChevronRight className="h-3 w-3" /></Link>
+            </Button>
+          </div>
+          {recentMessages.length === 0 ? (
+            <div className="py-6 text-center">
+              <Inbox className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+              <div className="text-xs text-muted-foreground">কোনো মেসেজ এখনও নেই — পাঠানো SMS / Email এখানে দেখাবে</div>
+            </div>
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {recentMessages.map((m) => {
+                const Icon = m.channel === "email" ? Mail : Smartphone;
+                const tint = m.channel === "email" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700";
+                return (
+                  <li key={m.id}>
+                    <Link to="/portal/messages" className="flex items-start gap-3 py-2.5 hover:bg-muted/30 rounded-lg px-2 -mx-2 transition-colors">
+                      <span className={`h-8 w-8 shrink-0 rounded-lg flex items-center justify-center ${tint}`}>
+                        <Icon className="h-3.5 w-3.5" />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase font-semibold text-muted-foreground">{m.channel}</span>
+                          <span className="text-[11px] text-muted-foreground ml-auto">{new Date(m.created_at).toLocaleString()}</span>
+                        </div>
+                        <div className="text-sm text-foreground line-clamp-1 mt-0.5">{m.message}</div>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
       {isLoading && <div className="text-center text-xs text-muted-foreground">লোড হচ্ছে...</div>}
     </div>
   );
