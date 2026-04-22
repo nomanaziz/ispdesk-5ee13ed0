@@ -46,6 +46,7 @@ export default function Scheduler() {
     queryFn: async () => {
       let q: any = supabase.from("clients").select("id, client_id, name, username, branch_id").eq("status", "active").limit(500);
       if (isPopMode && branchId) q = q.eq("branch_id", branchId);
+      else q = q.eq("owner_scope", "admin");
       const { data } = await q;
       return data || [];
     },
