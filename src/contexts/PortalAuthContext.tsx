@@ -35,6 +35,7 @@ interface PortalCustomer {
   district_id?: string | null;
   upazila_id?: string | null;
   parent_reseller_id?: string | null;
+  pop_type?: string | null;
   permissions?: ResellerPermissions | null;
   iat: number;
   exp: number;

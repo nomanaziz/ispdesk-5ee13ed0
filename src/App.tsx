@@ -337,7 +337,7 @@ import PopDevicesConfig from "@/pages/reseller/config/PopDevices";
 import PopEmployees from "@/pages/reseller/employee/PopEmployees";
 import PopAddEmployee from "@/pages/reseller/employee/PopAddEmployee";
 // POP-scoped Client
-import PopClientList from "@/pages/reseller/clients/PopClientList";
+// PopClientList removed — /pop-admin/clients now reuses dashboard ClientList (POP-scoped via usePopScope)
 import PopAddClient from "@/pages/reseller/clients/PopAddClient";
 import PopBillingClient from "@/pages/reseller/clients/PopBillingClient";
 import PopLeftClients from "@/pages/reseller/clients/PopLeftClients";
