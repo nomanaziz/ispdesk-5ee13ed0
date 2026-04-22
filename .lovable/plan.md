@@ -1,50 +1,89 @@
 
 
-## Accordion Sidebar — একসাথে শুধু একটা group খোলা
+## POP Admin SMS পেজ — Send / Individual / Group / Gateway সব implement
 
 ### সমস্যা
-এখন POP Admin আর Main Admin sidebar-এ অনেকগুলো main menu (group) একসাথে expand করা যায়। ফলে sidebar অনেক লম্বা হয়ে scroll নিচে চলে যায়।
+POP Admin sidebar-এ SMS Service-এর ৪টা link আছে:
+- টেমপ্লেট ✅ (already done)
+- ইন্ডিভিজুয়াল / গ্রুপ ❌ placeholder
+- এসএমএস পাঠান ❌ placeholder
+- গেটওয়ে ❌ placeholder
 
-### সমাধান (Accordion behaviour)
-যে কোনো main group click → আগের সব group auto-close হবে, শুধু ক্লিক করা group-এর sub-menu open থাকবে। Active route যেই group-এ আছে সেটা by default open।
+Main admin-এ এই ৩টা পেজ পুরোপুরি built (`src/pages/dashboard/sms/Send.tsx`, `Individual.tsx`, `Gateway.tsx`)। POP-এর জন্য একই UX দরকার, শুধু:
+- Clients filter হবে POP-এর `branch_id`-তে
+- Gateways = main admin-এ যা configured আছে সেগুলাই **read-only** দেখাবে (POP add/edit করবে না)
+- Company name = `branch_managers.company_name` থেকে আসবে
 
-### Scope (যেসব portal-এ apply হবে)
-| Portal | File | পরিবর্তন |
+### Schema বাস্তবতা
+| Table | `branch_id` আছে? | মানে |
 |---|---|---|
-| Main Admin / Super Admin sidebar | `src/components/AppSidebar.tsx` | `CollapsibleGroup`-এর local `useState` সরিয়ে parent-controlled single-open state |
-| POP Admin (Reseller) sidebar | `src/components/ResellerLayout.tsx` | `openGroups: Set<string>` → `openGroup: string \| null` |
-| Client Portal | `src/components/PortalLayout.tsx` | এখানে collapsible group নাই — কোনো পরিবর্তন লাগবে না |
+| `sms_gateways` | না | global — admin manage, POP read-only |
+| `sms_groups` | না | global — POP read-only filters (paid/unpaid/due) |
+| `sms_log` | না (আছে: gateway_id, group_id, sent_by) | POP send → log row, recipient field-এ POP scope tag |
+| `clients` | হ্যাঁ | POP filter এখানেই apply হবে |
 
-### Technical changes
+`sms_gateways`/`sms_groups`-এ branch column add করা হবে **না** — user স্পষ্ট বলেছেন main admin-এর gateway গুলাই POP-এ আসবে।
 
-**১) `ResellerLayout.tsx`**
-- `openGroups` (Set) → `openGroup` (single string | null)
-- Initializer: active route যেই group-এ আছে সেটার key, না পেলে `"dashboard"`
-- `toggleGroup(k)`: `setOpenGroup(prev => prev === k ? null : k)`
-- `isOpen = openGroup === g.key || !!search` (search চললে আগের মতই সব expanded)
-- Route change হলে যদি active group ভিন্ন হয় → auto-switch (useEffect on `location.pathname`)
+---
 
-**২) `AppSidebar.tsx`**
-- বর্তমানে প্রতিটা `CollapsibleGroup`-এ নিজস্ব `useState` — তাই multi-open হয়
-- Parent (`AppSidebar` main component) যোগ করবে `const [openGroupKey, setOpenGroupKey] = useState<string|null>(activeGroupLabel)`
-- `CollapsibleGroup`-এ নতুন props: `openKey`, `onToggle(key)`
-- Internal `useState(open)` সরিয়ে `effectiveOpen = forceOpen ?? (openKey === group.label)`
-- `onClick={() => setOpen(!open)}` → `onClick={() => onToggle(group.label)}`
-- Search match থাকলে আগের মতই `forceOpen=true` (search বহাল)
-- Route change হলে active group auto-open (useEffect on `location.pathname`)
+### সমাধান
 
-**৩) Edge cases**
-- Search box-এ টাইপ → সব matched group খুলবে (debug-friendly), search clear করলে আবার single-open mode
-- Direct group (single item) — accordion logic apply হবে না, আগের মতই simple link
-- Collapsed (mini) sidebar mode — accordion irrelevant, আগের মতই icon-only
+#### ১) `src/pages/reseller/sms/PopSmsGateway.tsx` (নতুন, read-only)
+- `sms_gateways` থেকে সব active gateway list (read-only table)
+- কলাম: #, নাম, Sender ID, ধরন (বাংলা/English), ডিফল্ট ⭐, স্ট্যাটাস
+- উপরে info banner: *"গেটওয়ে কনফিগারেশন মূল অ্যাডমিন থেকে আসে — এডিট করতে পারবেন না"*
+- সাথে company name card (POP-এর own `company_name`) — sender identity reference
 
-### ফলাফল
-- যেকোনো main menu click করলে আগের open group auto-close, sidebar সবসময় ছোট থাকবে
-- Active route যেখানে আছে সেই group always pre-opened
-- Search-based exploration আগের মতই কাজ করবে
-- POP Admin + Main Admin দুই sidebar consistent behaviour
+#### ২) `src/pages/reseller/sms/PopSmsSend.tsx` (নতুন)
+Bulk SMS — `Send.tsx`-এর POP version:
+- Target dropdown: সকল ক্লায়েন্ট / পেইড / আনপেইড / বকেয়া / গ্রুপ
+- সব client query-তে `.eq("branch_id", branchId)` add (`usePopScope` hook)
+- Gateway dropdown = active `sms_gateways` (read-only list, POP select করে পাঠাবে)
+- Template dropdown = POP-এর effective templates (already pop_list_templates আছে)
+- VariableChips integration (already exists)
+- Recipient count live preview
+- Send → `sms_log` insert (recipient label-এ branch_id include করা হবে scoping audit-এর জন্য)
+- Recent SMS card: `sms_log` last 20 যেখানে `sent_by` = POP user OR recipient label-এ branch tag
+
+#### ৩) `src/pages/reseller/sms/PopSmsIndividual.tsx` (নতুন)
+Individual / Group SMS — `Individual.tsx`-এর POP version:
+- বাঁ পাশে: tabs (All/Paid/Unpaid/Due) → POP clients (branch-scoped)
+- Search box, checkbox select multiple
+- ডানে: number input (manual), gateway, template, message + VariableChips
+- Send → multiple `sms_log` rows insert per recipient
+- Selected client count visible
+
+#### ৪) Routes wire-up — `src/App.tsx`
+লাইন 774-776-এ placeholder replace:
+```tsx
+<Route path="/pop-admin/sms/individual" element={...<PopSmsIndividual/>} />
+<Route path="/pop-admin/sms/send" element={...<PopSmsSend/>} />
+<Route path="/pop-admin/sms/gateway" element={...<PopSmsGateway/>} />
+```
+
+#### ৫) POP scoping helper
+`usePopScope()` already returns `branchId`. সব ৩টা পেজ এটা ব্যবহার করবে clients query-তে `.eq("branch_id", branchId)`.
+
+#### ৬) Recent SMS log scoping
+POP যাতে শুধু নিজের পাঠানো SMS দেখে — `sms_log` insert-এ `sent_by` = POP user id, এবং query: `.eq("sent_by", popUserId)` OR recipient prefix match। Simplest: `sent_by` filter use করব।
+
+---
+
+### Files to create
+- `src/pages/reseller/sms/PopSmsGateway.tsx`
+- `src/pages/reseller/sms/PopSmsSend.tsx`
+- `src/pages/reseller/sms/PopSmsIndividual.tsx`
 
 ### Files to edit
-- `src/components/ResellerLayout.tsx`
-- `src/components/AppSidebar.tsx`
+- `src/App.tsx` — placeholder route গুলা replace + import
+
+### স্পষ্ট নয় যা — assume করছি
+- POP নিজের আলাদা gateway add করবে না; main admin-এর gateway POP দেখবে ও use করবে (user-এর কথা থেকে এটাই মানে দাঁড়ায়)
+- Recent SMS POP-নিজের পাঠানো গুলা `sent_by` দিয়ে filter
+
+### ফলাফল
+- POP Admin-এর ৩টা placeholder পেজ পূর্ণ functional
+- Main admin design-এর consistency বজায়
+- POP নিজের branch-এর clients-এই SMS পাঠাতে পারবে, অন্য POP-এর নয়
+- Gateway/company info auto-populate
 
