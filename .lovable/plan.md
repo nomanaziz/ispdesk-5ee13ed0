@@ -1,115 +1,94 @@
 
+
 ## লক্ষ্য
-POP admin MikroTik page-এ “আপনার POP-এ এখনো কোনো MikroTik server assign করা হয়নি” ভুলভাবে দেখানো বন্ধ করা, এবং MikroTik Users + Bulk Import দুটোই POP login থেকে সত্যি data দেখানো।
+Admin → POP Profile page-এ "Exported Clients" ও "Unexported Clients" tab দুটোর meaning ঠিক করা, Revert action সঠিকভাবে কাজ করানো, এবং একটি নতুন "Left Clients" tab যোগ করা যেখান থেকে admin bulk delete করতে পারবে।
 
-## আসল সমস্যা
-এখন POP portal-এর `ResellerMikrotikUsers.tsx` এবং `ResellerMikrotikBulkCreate.tsx` browser থেকে সরাসরি `supabase.from(...)` query করছে। কিন্তু POP portal login `portal-auth` custom token ব্যবহার করে, Supabase Auth session না। তাই browser-side direct query-গুলো `authenticated` policy পায় না।
+## এখনকার সমস্যা (uploaded screenshot vs আমাদের code)
+| Tab | এখন আমরা কী দেখাচ্ছি | আসলে কী দেখানো উচিত |
+|---|---|---|
+| **Exported** | `clients` table-এর সব row | যেসব `mikrotik_clients` কে POP **client-এ convert করেছে** (যাদের `linked_client_id` set আছে) |
+| **Unexported** | `mikrotik_ppp_secrets` থেকে raw filter | যেসব `mikrotik_clients` POP এর scope-এ আছে কিন্তু `linked_client_id IS NULL` |
+| **Revert button** | শুধু `clients.status='left'` row touch করে — MikroTik mapping ঠিক করে না | mikrotik_clients থেকে POP transfer clear করে দিতে হবে → user আবার admin "Import from MikroTik"-এ আসবে |
+| **Left Clients** | নেই | নতুন tab — bulk delete option সহ |
 
-ফলাফল:
-- query silently fail/empty return হচ্ছে
-- UI `error` handle করছে না
-- empty array দেখে “কোনো MikroTik server assign করা হয়নি” message দেখাচ্ছে
-- Bulk Import-এও same কারণে user list empty হচ্ছে
+## নতুন tab structure (Admin POP Profile → ডান পাশে)
+1. **POP Info** (অপরিবর্তিত)
+2. **Exported Clients** — fixed
+3. **Unexported Clients** — fixed + working Revert
+4. **Left Clients** — নতুন
+5. বাকি tabs অপরিবর্তিত
 
-এজন্য admin-side page-এ running 3 / 4 দেখা গেলেও POP-side page empty দেখাতে পারে।
+---
 
 ## কী করা হবে
 
-### ১) POP MikroTik data browser query থেকে portal edge function-এ নেওয়া
-`portal-data` edge function-এ POP-specific নতুন actions যোগ করা হবে:
-- `get_pop_mikrotik_servers`
-- `get_pop_mikrotik_users`
-- `get_pop_mikrotik_bulk_candidates`
+### ১) Exported Clients tab — সঠিক definition
+Query বদল:
+- Source: `mikrotik_clients` যেখানে এই POP-এর scope (branch_id = pop.branch_id **OR** transferred_to_pop_id = pop.id) এবং `linked_client_id IS NOT NULL`
+- Join `clients` table-এ linked client-এর info আনার জন্য (name, package, status, online, mobile, MAC, IP)
+- Columns screenshot অনুযায়ী: ID, User ID/IP, Password (eye toggle), Customer Name, Mobile, Zone, Client Type, Package, Private IP, MAC, Server, B.Status, M.Status
 
-এই actions token থেকে POP identity resolve করবে:
-- `reseller` → `tok.sub`
-- `reseller_sub` → `tok.parent_reseller_id`
+### ২) Unexported Clients tab — সঠিক definition + working Revert
+Query বদল:
+- Source: same `mikrotik_clients` scope কিন্তু `linked_client_id IS NULL`
+- Columns: Name, Password (eye toggle), Package/Profile, Protocol, Profile, Server Name, R.Days, Enabled, **Revert button**
 
-তারপর server visibility determine করবে:
-- same `branch_id`
-- অথবা `assigned_to_pop_id = popId`
-- অথবা historical fallback: `mikrotik_clients.transferred_to_pop_id = popId`
+**Revert action (নতুন edge function action):**
+নতুন `portal-data` action না — এটা admin side, তাই direct mutation:
+```ts
+// Revert: এই MT user-কে POP scope থেকে বের করো
+update mikrotik_clients
+  set transferred_to_pop_id = null,
+      transferred_to_mikrotik_id = null,
+      transferred_at = null,
+      branch_id = null
+  where id = ?
+```
+ফলে user টা আবার admin Mikrotik Import page-এ "available / untransferred" হিসেবে আসবে এবং অন্য POP-এ assign করা যাবে।
 
-### ২) Users page-এ direct Supabase query বাদ দিয়ে `callPortal(...)` ব্যবহার
-`src/pages/reseller/ResellerMikrotikUsers.tsx` এ:
-- `branch_managers`, `mikrotik_devices`, `mikrotik_clients`, `reseller_tariff_packages`, `zones` direct query replace করা হবে
-- সব data `portal-data` থেকে আসবে
-- loading / error / empty state আলাদা করা হবে
+### ৩) নতুন **Left Clients** tab
+- Source: `clients` table যেখানে `branch_id = pop.branch_id` এবং `status IN ('left', 'inactive')`
+- Columns: Client ID, Name, Username, Mobile, Package, Left Date, Action (single delete) + checkbox
+- Top-এ buttons:
+  - **Bulk Delete** (selected rows)
+  - **Delete All Left Clients** (with confirmation dialog)
+- Single delete button প্রতি row-তে
+- Delete করলে: `clients` row delete → existing trigger (`process_credit_refund_on_client_left`) prepaid POP হলে refund handle করবে → ওই client-এর সাথে linked `mikrotik_clients` row থাকলে তার `linked_client_id = null, exported = false` করতে হবে যাতে চাইলে আবার convert করা যায়
 
-নতুন UX:
-- server fetch fail হলে “assign করা হয়নি” না দেখিয়ে proper error দেখাবে
-- server zero হলে তবেই empty state দেখাবে
-- server থাকলে tab list + users list load হবে
+### ৪) Confirmation + safety
+- Bulk delete-এ AlertDialog ("X জন left client delete করবেন? এটা আর ফিরে আসবে না")
+- Revert-এ AlertDialog ("এই user MikroTik import pool-এ ফেরত যাবে — POP আর দেখতে পাবে না")
+- সব mutation success/error toast
 
-### ৩) Bulk Import page-ও same secure flow-এ আনা
-`src/pages/reseller/ResellerMikrotikBulkCreate.tsx` এ:
-- direct `mikrotik_devices` + `mikrotik_clients` query বাদ
-- `callPortal("get_pop_mikrotik_bulk_candidates")` ব্যবহার
-- returned rows-এ only unlinked users থাকবে
-- package meta + zone meta edge function থেকে বা centralized portal meta endpoint থেকে আনা হবে
+### ৫) UX details
+- প্রতিটা table-এ search box, page size, status filter
+- Password field-এ eye toggle (existing pattern)
+- Loading skeleton + empty state Bangla copy
+- Counts tab label-এ দেখাবে: `Exported (12)`, `Unexported (3)`, `Left (5)`
 
-### ৪) Shared POP scoping logic এক জায়গায় রাখা
-`portal-data` function-এর ভিতরে helper বানানো হবে:
-- POP resolve
-- visible MikroTik ids resolve
-- branch-scoped / assigned / transferred fallback logic
+---
 
-এতে Users page আর Bulk page-এ আলাদা আলাদা logic drift হবে না।
+## কোন file বদলাবে
+| File | পরিবর্তন |
+|---|---|
+| `src/pages/dashboard/branches/PopProfile.tsx` | ৩টা tab-এর query + UI rewrite, নতুন Left tab যোগ |
+| `src/components/branches/PopExportedClients.tsx` *(নতুন)* | Exported tab component (table, filters, eye toggle) |
+| `src/components/branches/PopUnexportedClients.tsx` *(নতুন)* | Unexported tab + Revert flow |
+| `src/components/branches/PopLeftClients.tsx` *(নতুন)* | Left clients tab + bulk delete |
 
-### ৫) Error handling ঠিক করা
-এখন code অনেক জায়গায় `error` ignore করছে। এটা বদলানো হবে:
-- function error → toast / inline alert
-- no server vs no user vs fetch error — ৩টা state আলাদা
-- “Admin-এর সাথে যোগাযোগ করুন” message শুধু actual zero visible server হলে দেখাবে
+## কোন file বদলাবে না
+- POP portal (reseller side) — শুধুমাত্র admin POP Profile page-এ পরিবর্তন
+- RLS policies, schema, edge functions
+- বর্তমান delete trigger (refund logic অপরিবর্তিত থাকবে)
 
-### ৬) Bulk create submit flow compatible রাখা
-Current client creation flow থাকবে, কিন্তু data source secure করা হবে।
-প্রয়োজনে bulk create submit-ও পরে `portal-data` action-এ নেওয়া হবে যাতে POP token path consistent থাকে।
+## Database migration লাগবে?
+**না।** সব column ইতোমধ্যে আছে (`mikrotik_clients.linked_client_id`, `transferred_to_pop_id`, `branch_id`; `clients.status`)।
 
-## যেসব file বদলাবে
-- `src/pages/reseller/ResellerMikrotikUsers.tsx`
-- `src/pages/reseller/ResellerMikrotikBulkCreate.tsx`
-- `src/lib/portalApi.ts` (যদি typed helper দরকার হয়)
-- `supabase/functions/portal-data/index.ts`
+---
 
-সম্ভব হলে shared helper:
-- `supabase/functions/portal-data/...` একই file-এর helper section
+## Apply-এর পরে expected ফলাফল
+1. ✅ **Exported Clients** tab → শুধু সেই MT user দেখাবে যাদের POP "ক্লায়েন্ট বানান" করেছে
+2. ✅ **Unexported Clients** tab → শুধু POP-এর scope-এ থাকা unconverted MT user
+3. ✅ **Revert** → user MikroTik Import pool-এ ফেরত, অন্য POP-এ পাঠানো যাবে
+4. ✅ **Left Clients** tab → admin bulk বা single delete করতে পারবে; prepaid POP হলে refund auto
 
-## কী বদলাবে না
-- existing `assigned_to_pop_id` column
-- existing branch assignment data
-- admin MikroTik Servers page UI
-- RLS policy structure
-
-## Expected ফলাফল
-1. POP login থেকে wrong “no MikroTik server assigned” message আর দেখাবে না
-2. AFTABNAGAR branch-scoped server হিসেবে POP page-এ visible হবে
-3. MikroTik Users page-এ actual users দেখাবে
-4. Bulk Import page-এ unlinked users আসবে
-5. fetch problem হলে empty state না দেখিয়ে error state দেখাবে
-
-## Test cases
-1. **Nahid POP login**
-   - route: `/pop-admin/mikrotik-users`
-   - expected: AFTABNAGAR visible
-   - expected: empty state না
-
-2. **Users list**
-   - selected server AFTABNAGAR
-   - expected: available/transferred/client badges সহ users show
-
-3. **Bulk Import**
-   - route: `/pop-admin/mikrotik-users/bulk-create`
-   - expected: linked_client_id null users load
-   - expected: checkbox/select usable
-
-4. **Failure mode**
-   - edge function error simulate হলে
-   - expected: “লোড করতে সমস্যা হয়েছে” type message
-   - expected: misleading “assign করা হয়নি” না
-
-## Technical note
-এটা data problem না, access path problem:
-- POP portal uses custom portal token
-- browser direct Supabase queries need real Supabase authenticated session
-- তাই POP portal-এর sensitive/scoped data `portal-data` edge function দিয়ে আনাই correct pattern
