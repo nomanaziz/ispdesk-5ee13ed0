@@ -74,6 +74,13 @@ export default function PopSalarySheet() {
 
   const totalAll = useMemo(() => rows.reduce((s: number, r: any) => s + Number(r.total_amount || 0), 0), [rows]);
 
+  const selectedEmp = employees.find((e: any) => e.id === form.employee_id);
+  const liveTotal = (Number(form.paid_salary || 0))
+    + Number(form.overtime || 0)
+    + Number(form.incentive || 0)
+    + Number(form.bonus || 0)
+    - Number(form.advance || 0);
+
   const save = useMutation({
     mutationFn: async () => {
       if (!branchId) throw new Error("Branch নেই");
@@ -103,12 +110,36 @@ export default function PopSalarySheet() {
         status: "paid",
       } as any);
       if (error) throw error;
+
+      // Auto-create accounting expense entry for the salary payment
+      if (total > 0) {
+        const monthLabel = format(new Date(form.month), "MMM-yy");
+        const note = [
+          `Salary — ${emp?.name || "Employee"} (${monthLabel})`,
+          overtime > 0 ? `OT ৳${overtime}` : null,
+          incentive > 0 ? `Incentive ৳${incentive}` : null,
+          bonus > 0 ? `Bonus ৳${bonus}` : null,
+          advance > 0 ? `Advance −৳${advance}` : null,
+          form.remarks ? form.remarks : null,
+        ].filter(Boolean).join(" • ");
+        await supabase.from("expense_entries").insert({
+          branch_id: branchId,
+          expense_date: form.paid_date || format(new Date(), "yyyy-MM-dd"),
+          category: "Salary",
+          amount: total,
+          payment_method: "cash",
+          paid_by: emp?.name || null,
+          reference: `SAL-${monthLabel}`,
+          description: note,
+        } as any);
+      }
     },
     onSuccess: () => {
-      toast.success("Salary saved");
+      toast.success("Salary saved & expense added");
       setOpen(false);
       setForm(emptyForm);
       qc.invalidateQueries({ queryKey: ["pop-salary-sheet"] });
+      qc.invalidateQueries({ queryKey: ["pop-expense"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
