@@ -812,6 +812,8 @@ Deno.serve(async (req) => {
         // Force scope to this POP's branch
         const insertRow: any = {
           ...p,
+          contact: p.contact ?? p.mobile ?? null,
+          mobile: undefined,
           branch_id: pop.branch_id,
           district_id: pop.district_id || null,
           upazila_id: pop.upazila_id || null,
@@ -876,7 +878,7 @@ Deno.serve(async (req) => {
           .select("id, name, username, contact, address, monthly_bill, status, expire_date, created_at")
           .eq("branch_id", pop.branch_id)
           .eq("owner_scope", "pop")
-          .in("status", ["active", "online", "offline"])
+          .in("status", ["active", "Active", "online", "Online", "offline", "Offline"])
           .order("created_at", { ascending: false });
 
         if (error) return json({ error: error.message }, 500);
