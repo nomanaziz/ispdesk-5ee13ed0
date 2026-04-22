@@ -359,6 +359,8 @@ import PopExpense from "@/pages/reseller/accounting/PopExpense";
 import PopCashBook from "@/pages/reseller/accounting/PopCashBook";
 import PopEditEmployee from "@/pages/reseller/employee/PopEditEmployee";
 import PopSalarySheet from "@/pages/reseller/employee/PopSalarySheet";
+import PopDesignations from "@/pages/reseller/config/PopDesignations";
+import PopBulkClientImport from "@/pages/reseller/clients/PopBulkClientImport";
 
 // Redirect helper: any /reseller/<rest> → /pop-admin/<rest>
 const LegacyResellerRedirect = () => {
@@ -732,7 +734,7 @@ const App = () => (
               <Route path="/pop-admin/config/districts" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopAllotedAreas mode="district" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/config/upazilas" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopAllotedAreas mode="upazila" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/config/departments" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><HrDepartments /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/config/designations" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><HrPositions /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/config/designations" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopDesignations /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/config/devices" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopDevicesConfig /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
               {/* POP Admin — Employee */}
@@ -743,6 +745,7 @@ const App = () => (
               {/* POP Admin — Client (reuses Admin pages, auto-scoped via usePopScope) */}
               <Route path="/pop-admin/clients" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientList /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/clients/add" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientAdd /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/clients/bulk-import" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopBulkClientImport /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/clients/billing" element={<Navigate to="/pop-admin/billing/list" replace />} />
               <Route path="/pop-admin/clients/left" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientLeft /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/clients/scheduler" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientScheduler /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
