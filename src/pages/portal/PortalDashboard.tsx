@@ -239,7 +239,7 @@ const PortalDashboard = () => {
             <div className="grid grid-cols-3 gap-2">
               <QuickLink to="/portal/profile" icon={KeyRound} label="Password" tint="text-amber-600 bg-amber-100" />
               <QuickLink to="/portal/profile" icon={UserCog} label="Profile" tint="text-indigo-600 bg-indigo-100" />
-              <QuickLink to="/portal/notices" icon={BellRing} label="Notices" tint="text-rose-600 bg-rose-100" />
+              <QuickLink to="/portal/messages" icon={MessageSquare} label="Messages" tint="text-rose-600 bg-rose-100" />
             </div>
           </CardContent>
         </Card>
