@@ -1,96 +1,97 @@
 
 
-## কাজ ৩টা — একসাথে
+## কাজ — POP Admin Employee module simplification
 
-### ১) Build error fix (দ্রুত)
-`ResellerProtectedRoute`-এর `require` prop type-এ `"system"` নেই, কিন্তু নতুন ১০টা route-এ `require="system"` ব্যবহার করা হয়েছিল।
+### ১) Sidebar cleanup (`ResellerLayout.tsx`)
+"কর্মচারী" group থেকে **Payroll** ও **Attendance** বাদ। শুধু থাকবে:
+- Add Employee
+- Employee List
+- Salary Sheet
 
-**Fix:** `src/components/ResellerProtectedRoute.tsx`-এ type union-এ `"system"` যোগ করব এবং sub-user `permissions` interface-এ `system?: boolean` যোগ করব। `App.tsx`-এ ১০টা route ইতিমধ্যে `require="settings"` ব্যবহার করছে (build error message অনুযায়ী আগের সংস্করণে `"system"` ছিল) — এগুলো `require="system"` করব এবং নতুন `system` permission key যোগ করব।
+### ২) Routes cleanup (`App.tsx`)
+বাদ:
+- `/pop-admin/employees/payroll`
+- `/pop-admin/employees/attendance`
 
-### ২) POP Admin Basic Accounting (Income / Expense / Cash Book)
+`/pop-admin/employees/salary-sheet` placeholder → নতুন real page `<PopSalarySheet />`।
 
-**Concept:** Bill collection automatically income → cash book। POP চাইলে manual income/expense add করতে পারবে। শেষে cash book-এ সব এক জায়গায়।
+### ৩) Add Employee form — Division/District/Upazila সরাসরি main DB থেকে (`PopAddEmployee.tsx` + `PopEditEmployee.tsx`)
+এখন District/Upazila plain `<Input>` text। বদলে cascading dropdown:
+- **Division** → `divisions` table থেকে (8টা already seeded)
+- **District** → `districts` table, selected division অনুযায়ী filter
+- **Upazila** → `upazilas` table, selected district অনুযায়ী filter
 
-**Sidebar group (নতুন):** "হিসাব / Accounting"
-- Income
-- Expense  
-- Cash Book
+কোনো নতুন table/seed না — existing main DB তিনটা table পুনঃব্যবহার। `employees` table-এ নতুন column যোগ:
+- `division_id uuid` (nullable, FK divisions)
+- `district_id uuid` (nullable, FK districts) — বর্তমানে `district` text আছে, এটা সাথে রাখব backward compat-এ; নতুন সব entry id দিয়ে save হবে
+- `upazila_id uuid` (nullable, FK upazilas)
 
-**Pages (নতুন `src/pages/reseller/accounting/`):**
-| File | কী করবে |
-|---|---|
-| `PopIncome.tsx` | Auto income (bill_collections, branch-scoped) + manual income (income_entries) — list + Add dialog |
-| `PopExpense.tsx` | Manual expense list (expense_entries, branch-scoped) + Add dialog (category, amount, date, payment method, note) |
-| `PopCashBook.tsx` | Date-range filter; merged ledger: opening balance + all incomes (+) + all expenses (−) + closing balance; print/export ready |
+নতুন reusable `<DivisionDistrictUpazilaSelect>` component বানাব, যেটা দুই form-এ ব্যবহার হবে।
 
-**Data source — সব branch_id দিয়ে scope:**
-- Auto income = `bill_collections WHERE branch_id = {pop branch}` (status='completed' or all paid)
-- Manual income = `income_entries WHERE branch_id = {pop}`
-- Expense = `expense_entries WHERE branch_id = {pop}`
+### ৪) Salary Sheet page (নতুন `PopSalarySheet.tsx`)
+Reference image-203 অনুযায়ী **simple** version:
 
-**Routes:** 3টা নতুন `/pop-admin/accounting/{income|expense|cashbook}`, `require="accounting"` permission gate দিয়ে।
+**Layout:**
+- Header: "Salary Sheet" + Month filter dropdown (Apr-26 style) + "**+ Pay Salary**" button (top-right)
+- Table columns: Name | Month | Basic Salary | Paid Salary | Overtime | Incentive | Bonus | Advance Salary | Due | Total Amount | Action
+- Bottom row: TOTAL (sum of Total Amount)
 
-**Permission key:** `popPermissions.ts`-এ নতুন group `accounting` (3 items) যোগ করব।
+**+ Pay Salary modal:** (image-203 দেখানো হয়েছে)
+- Employee Name * (dropdown — branch-scoped employees)
+- Month *
+- Paid Salary *
+- Overtime
+- Incentive
+- Bonus
+- Paid Date * (default: now)
+- Remarks/Note
+- Clear / Save / Close buttons
 
-### ৩) Employee → User Access (POP-only sub-user system)
+**Data:** existing `salary_sheets` table পুনঃব্যবহার + প্রয়োজনীয় column যোগ:
+- `branch_id uuid` (POP isolation)
+- `paid_salary numeric default 0`
+- `overtime numeric default 0`
+- `incentive numeric default 0`
+- `bonus numeric default 0`
+- `advance numeric default 0`
+- `due numeric default 0`
+- `paid_date timestamptz`
+- `remarks text`
+- `total_amount numeric` (computed: paid+overtime+incentive+bonus−advance)
 
-Reference image-201: Employee form-এ **"HAS USER ACCESS?"** checkbox। Tick করলে নিচে username/password + POP Menus tree appear করবে। Save করলে employee POP-এর sub-user হিসেবে portal-এ login করতে পারবে — এবং শুধু selected menu গুলো দেখবে।
+Branch-scoped query — `WHERE branch_id = {pop branch}`। RLS policy যোগ করব branch isolation এর জন্য।
 
-**Implementation:**
-
-**Database (migration):**
-- `employees` table-এ ৩টা column যোগ:
-  - `has_user_access boolean default false`
-  - `user_username text` (unique-ish per branch)
-  - `user_password_hash text` (bcrypt via edge function, প্ল্যান নয় — সরাসরি লেখা plaintext-এর বদলে existing `branch_managers` pattern follow করব যেটায় কোলামটা `password` text — same approach reuse)
-  - `user_permissions jsonb` (POP menu permission tree, same shape as `popPermissions`)
-
-**`PopAddEmployee.tsx` overhaul** (image-199/200/201 অনুযায়ী):
-- 3 sections: Employee information / Educational qualification / Posting information
-- নতুন full field set (date_of_birth, gender, personal_phone, office_phone, guardian_phone, marital_status, nid_number, facebook_link, reference, district, upazila, present_address, permanent_address, working_experience, last_degree, institution, passing_year, joining_date, department, designation, salary, status, image upload, **has_user_access checkbox**)
-- `has_user_access = true` হলে নিচে নতুন section render:
-  - "Employee User Info": username / password / confirm password
-  - "POP Menus": existing `<PermissionTreeSelector>` (image-201 অনুযায়ী 11 group checkbox) — same component already used for branch managers
-- Save করলে: employee row + (যদি user access on) `branch_managers`-এ একটা **sub-user** entry তৈরি হবে (`type='reseller_sub'`, `parent_reseller_id={pop_id}`, `branch_id={pop branch}`, `permissions={selected menus}`)
-
-**Login flow:** ইতিমধ্যে `portal-auth` edge function `reseller_sub` type support করে। নতুন কিছু না — শুধু sub-user row insert করলেই login কাজ করবে।
-
-**Scope:** এই entire feature **শুধু POP admin portal-এ** apply হবে। Admin dashboard-এর `HrEmployees` page অপরিবর্তিত — সেটায় user access checkbox দেখাবে না।
-
-**Edit existing:**
-- `PopEmployees.tsx` — list-এ "User Access" badge column যোগ
-- নতুন `PopEditEmployee.tsx` route + page (existing employees-এর জন্য user access toggle/permission edit)
+### ৫) Salary status field (form-এ)
+Add Employee form-এ ইতিমধ্যে "Status" আছে (active/inactive)। User বললেন **Salary status** আলাদা চান না — শুধু একটাই salary field থাকবে যেটা Posting Information section-এর "Salary"। এটা অপরিবর্তিত থাকছে। কোনো অতিরিক্ত salary status add করা হবে না।
 
 ## কোন file বদলাবে / নতুন
 
-**Database migration:**
-- `employees` table-এ user access column ৪টা যোগ
+**Migration (database):**
+- `employees` table-এ `division_id`, `district_id`, `upazila_id` column যোগ
+- `salary_sheets` table-এ `branch_id`, `paid_salary`, `overtime`, `incentive`, `bonus`, `advance`, `due`, `paid_date`, `remarks`, `total_amount` column যোগ
+- `salary_sheets` RLS — branch-scoped policy যোগ (POP portal access)
 
-**নতুন (5 files):**
-- `src/pages/reseller/accounting/PopIncome.tsx`
-- `src/pages/reseller/accounting/PopExpense.tsx`
-- `src/pages/reseller/accounting/PopCashBook.tsx`
-- `src/pages/reseller/employee/PopEditEmployee.tsx`
-- `src/components/reseller/EmployeeUserAccessSection.tsx` (reusable user-access form block)
+**নতুন (2 files):**
+- `src/components/reseller/DivisionDistrictUpazilaSelect.tsx` — reusable cascading dropdown
+- `src/pages/reseller/employee/PopSalarySheet.tsx` — list + Pay Salary dialog
 
 **Edit:**
-- `src/components/ResellerProtectedRoute.tsx` (type fix + `system`/`accounting` keys)
-- `src/contexts/PortalAuthContext.tsx` (`ResellerPermissions` interface optional `system`/`accounting`)
-- `src/pages/reseller/employee/PopAddEmployee.tsx` (full Galaxy-style form + user access section)
-- `src/pages/reseller/employee/PopEmployees.tsx` (user access badge column + edit link)
-- `src/components/ResellerLayout.tsx` (Accounting group যোগ sidebar-এ)
-- `src/lib/popPermissions.ts` (`accounting` group + sync `system` keys)
-- `src/App.tsx` (3 accounting routes + 1 employee edit route + 10 system routes-এ `require="settings"` → `"system"`)
+- `src/components/ResellerLayout.tsx` — Payroll/Attendance link সরানো
+- `src/App.tsx` — payroll/attendance route মুছে, salary-sheet placeholder → real component
+- `src/pages/reseller/employee/PopAddEmployee.tsx` — district/upazila text input → cascading select
+- `src/pages/reseller/employee/PopEditEmployee.tsx` — same select যোগ
 
 ## কোন file বদলাবে না
-- Admin dashboard pages, RLS, MikroTik, billing logic, edge functions (login already handles `reseller_sub`)
+- `divisions`/`districts`/`upazilas` table বা seed data
+- Admin dashboard এর HR/Employee/Salary pages
+- Employee user-access section (image-201 এর কাজ অপরিবর্তিত)
+- Accounting / packages / pricing / অন্য সব POP module
 
 ## Apply-এর পরে expected ফলাফল
-1. ✅ Build error gone — system routes কাজ করবে
-2. ✅ POP admin sidebar-এ "হিসাব" group — Income/Expense/Cash Book functional, branch-scoped
-3. ✅ Bill collection auto income হিসেবে cash book-এ আসবে
-4. ✅ Add Employee page reference image-এর মত full form
-5. ✅ "HAS USER ACCESS?" tick করলে username + permission tree show হবে
-6. ✅ Save করলে employee portal login করতে পারবে — শুধু allowed menu দেখবে
-7. ✅ এই সব শুধু POP admin-এ; admin dashboard untouched
+1. ✅ POP sidebar-এ "কর্মচারী" group-এ ৩টা item: Add / List / Salary Sheet
+2. ✅ Add Employee-এ Division → District → Upazila cascading dropdown — main DB থেকে data
+3. ✅ Salary Sheet page reference image-203 অনুযায়ী, "+ Pay Salary" modal কাজ করবে
+4. ✅ Branch isolation — এক POP-এর salary data অন্য POP দেখবে না
+5. ✅ Payroll / Attendance menu আর সাইডবারে নেই, route 404 হবে না (সরিয়ে দেওয়া হয়েছে)
+6. ✅ Admin dashboard untouched
 
