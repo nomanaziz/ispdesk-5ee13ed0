@@ -1,76 +1,79 @@
 
 
-## লক্ষ্য (Goal)
-
-Customer Portal Dashboard-কে আরো সহজ ও পরিচ্ছন্ন করা — ক্লায়েন্টের পূর্ণ নাম প্রাধান্য, duplicate service info সরিয়ে শুধু compact icon-chip strip, এবং reference image থেকে inspire হয়ে একটা **Activity / Quick-info side panel** যোগ।
-
----
-
-## সমস্যা (এখন কী ভুল আছে)
-
-1. "Welcome back" এর পরে `customer.name` token থেকে আসছে — এটা username/code হয়ে যাচ্ছে যখন pure name token-এ নেই। Profile change request approve হলেও token refresh হয় না।
-2. একই তথ্য (Package, Speed, Connection, Protocol) **দু'বার** দেখাচ্ছে — উপরে stat-cards-এ, নিচে "Service Overview" table-এ।
-3. Layout ভারী — অনেক জায়গা নিচ্ছে।
-4. Ledger / Payment status ছড়ানো — একসাথে নেই।
+## লক্ষ্য
+Customer Portal Dashboard-কে আরো সমৃদ্ধ ও clickable করা — গ্রাহক যেন এক জায়গা থেকেই সব দরকারি info দেখে এবং click করে সরাসরি সেই page-এ যেতে পারে। সাথে একটা **Messages Inbox** যোগ করা।
 
 ---
 
 ## সমাধান (পরিবর্তন)
 
-### 1. Hero card — পূর্ণ নাম + compact icon strip
-- "Welcome back" এর পরে **`clientRow.name` (DB থেকে fresh full name)** দেখাবে, fallback `customer.name`। এতে approved profile-update এর নতুন নাম সাথে সাথে দেখাবে (token refresh ছাড়াই)।
-- Hero-এর নিচে এক লাইনে **icon chips strip** — প্রতিটা item শুধু ছোট icon + value, কোনো big card নয়:
-  - 👤 Username · 📦 Package · ⚡ Speed · 🔌 Connection · 🛡️ Protocol · 🟢 Status
-- বড় ৫টা stat-card grid **সরিয়ে দেওয়া হবে**।
+### 1. Hero stats — clickable mini summary cards (reference image-এর "PACKAGE / MONTHLY BILL / EXPIRY" concept থেকে)
+Hero-এর নিচে compact icon-strip-এর জায়গায় **৪টা clickable summary card**:
+- 📦 **Package** → `/portal/profile` (Migration/Update text সহ)
+- 💵 **Monthly Bill** ৳XXX → `/portal/bills`
+- 📅 **Expiry Date** (DD-MMM-YYYY) → `/portal/bills`
+- ⬆️⬇️ **Data Used** (UpTime থাকলে show) → `/portal/live-usage`
 
-### 2. "Service Overview" card **পুরো remove**
-- কারণ সব data ওই icon strip-এই থাকবে।
+প্রতিটা card-এ:
+- বড় colorful icon
+- Main value (বড় font)
+- ছোট helper text ("My Profile" / "Pay Bill" type CTA)
+- পুরো card hover + click → relevant page
 
-### 3. "Client Details" card — শুধু এটাই থাকবে (কারণ এগুলোই unique info)
-- Customer Code, Name, Mobile, Email, Present Address, Zone, NID
-- উপরের image-এর "Client Code / Log In ID / User ID / Status / Registration Date" পদ্ধতির মতো — small label + icon prefix, পরিচ্ছন্ন column।
+### 2. Ledger highlight — already clickable (Pay Now button আছে), তবে পুরো ledger card-ও clickable করব → `/portal/bills`
 
-### 4. নতুন **"Activity & Ledger" side panel** (reference image-এর Activity panel concept থেকে)
-Right-side small card, design নতুন (image-এর design copy নয়), এতে থাকবে:
-- **Your ID/Username** (chip)
-- **Last Login** (portal_login_log থেকে)
-- **Ledger Balance / Due** — বড় highlighted number, "Pay Now" button সহ
-- **Last Invoice** (#bill_id + month + status badge)
-- Quick links: Change Password · My Profile · Notices
+### 3. **নতুন Messages Inbox card** (image-এর "MESSAGE" + "NOTICES" concept থেকে)
+- Activity panel-এর নিচে full-width একটা new section: **Recent Messages**
+- Source: `customer_messages` table (channel: sms/email)
+- প্রতিটা row: channel icon (📱 SMS / ✉️ Email) + recipient + message preview + relative time
+- "View All" button → `/portal/messages` (নতুন page)
+- যদি খালি থাকে → friendly empty state ("কোনো message এখনও নেই")
 
-Mobile (390px) — side panel hero-এর ঠিক নিচে full-width হয়ে আসবে; desktop-এ Client Details-এর পাশে 2-col grid।
+### 4. **নতুন `/portal/messages` page**
+- পূর্ণ inbox view: filter by channel (All / SMS / Email), search, pagination
+- প্রতিটা message: channel badge, status (sent/delivered/failed), full content, timestamp
+- Click করলে expand হয়ে full message + meta details
 
-### 5. Notice banner — অপরিবর্তিত (উপরে থাকবে)।
+### 5. Quick links update
+- Activity panel-এর Quick links-এ "Messages" যোগ — `BellRing` এর জায়গায় or পাশে।
 
 ---
 
 ## Technical Details
 
-**File: `src/pages/portal/PortalDashboard.tsx`** (একমাত্র file edit)
+### Files to edit/create:
+1. **`src/pages/portal/PortalDashboard.tsx`** — icon-chip strip-কে clickable summary cards দিয়ে replace; recent messages preview section যোগ।
+2. **`src/pages/portal/PortalMessages.tsx`** *(new)* — full inbox page।
+3. **`src/App.tsx`** — `/portal/messages` route যোগ।
+4. **`src/components/PortalLayout.tsx`** — sidebar nav-এ "Messages" entry যোগ (Mail icon সহ, both bn/en)।
+5. **`supabase/functions/portal-data/index.ts`** — দুটো নতুন action:
+   - `get_dashboard` response-এ `recent_messages` (last 5) যোগ করব
+   - নতুন `get_messages` action — full list with optional channel filter
 
-- Hero name source: `clientRow?.name || customer?.name` (DB priority)।
-- `stats` array এবং stat-card grid (lines 47–53, 117–134) — **delete**।
-- "Service Overview" Card (lines 137–156) — **delete**।
-- Hero-এর ঠিক পরে নতুন `IconChipStrip` component — flex-wrap, prim-bg-foreground tone (dark text per existing memory), colorful icons (icon-গুলো colorful — recent পরিবর্তনের সাথে consistent)।
-- Bottom grid: 2-col (lg) — left = Client Details (current card retained); right = নতুন `ActivityLedgerPanel`।
-- Last login data: `data?.last_login` field — `portal-data` `get_dashboard` already returns? **Check needed** — যদি না থাকে, frontend থেকে আলাদা query করব না; বরং `customer.iat` কে fallback "this session" হিসেবে দেখাবো এবং `portal-data/get_dashboard`-এ `last_login` যোগ করব (1 line: `portal_login_log` থেকে previous এন্ট্রি pull)।
+### Data source:
+- Table: `customer_messages` (columns: id, customer_id, channel, message, recipient, status, created_at)
+- Filter: `customer_id = tok.sub` (client_id)
+- Note: Currently empty (0 rows) — UI empty-state handle করব। Future-এ admin SMS/email send হলে এই table-এ insert হলেই দেখাবে।
 
-**File: `supabase/functions/portal-data/index.ts`** (minor — `get_dashboard` response-এ `last_login` field যোগ করা — only if missing)।
+### Click behavior:
+- Card-এ `<Link>` wrap (Button asChild নয় — পুরো surface clickable)
+- `cursor-pointer` + hover scale subtle effect
+
+### Design tokens:
+- বিদ্যমান colorful tints (violet/emerald/sky/amber/rose) ব্যবহার, dark text (per memory)।
 
 ---
 
-## Out of scope (এই কাজে নয়)
-
-- Reference image-এর exact dark-blue sidebar / Galaxy Net branding copy — শুধু *concept* (Activity panel idea) নেওয়া হচ্ছে।
-- Profile page redesign।
-- Token refresh flow।
+## Out of scope
+- Admin থেকে message send করার flow — already exists (sms/email modules)।
+- Real-time push notification।
+- Message-এ reply functionality।
 
 ---
 
 ## Apply-এর পরে expected
-
-1. Hero-এ ক্লায়েন্টের পূর্ণ নাম (approved DB name)।
-2. Service info শুধু এক লাইনে compact colorful icon chips — duplicate table নেই।
-3. Client Details + নতুন Activity/Ledger panel side-by-side (mobile-এ stacked)।
-4. Mobile (390px) এ পরিচ্ছন্ন, কম scroll।
+1. Dashboard-এ ৪টা boldly clickable summary cards (Package / Bill / Expiry / Usage)।
+2. সবগুলো metric click করলে সরাসরি relevant page-এ চলে যায়।
+3. Recent Messages preview card dashboard-এ থাকবে।
+4. পুরো inbox `/portal/messages`-এ accessible, sidebar থেকেও।
 
