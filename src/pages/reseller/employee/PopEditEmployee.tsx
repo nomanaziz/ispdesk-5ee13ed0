@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import EmployeeUserAccessSection from "@/components/reseller/EmployeeUserAccessSection";
+import DivisionDistrictUpazilaSelect from "@/components/reseller/DivisionDistrictUpazilaSelect";
 import { toast } from "sonner";
 
 export default function PopEditEmployee() {
@@ -60,6 +61,9 @@ export default function PopEditEmployee() {
         status: form.status || "active",
         designation: form.designation || null,
         department: form.department || null,
+        division_id: form.division_id || null,
+        district_id: form.district_id || null,
+        upazila_id: form.upazila_id || null,
         has_user_access: hasAccess,
         user_username: hasAccess ? username : null,
         user_permissions: hasAccess ? permissions : {},
@@ -110,6 +114,12 @@ export default function PopEditEmployee() {
             <div className="space-y-1.5"><Label>Designation</Label><Input value={form.designation || ""} onChange={set("designation")} /></div>
             <div className="space-y-1.5"><Label>Department</Label><Input value={form.department || ""} onChange={set("department")} /></div>
             <div className="space-y-1.5"><Label>Salary</Label><Input type="number" value={form.salary || ""} onChange={set("salary")} /></div>
+            <DivisionDistrictUpazilaSelect
+              divisionId={form.division_id}
+              districtId={form.district_id}
+              upazilaId={form.upazila_id}
+              onChange={(v) => setForm({ ...form, ...v })}
+            />
             <div className="space-y-1.5 md:col-span-3"><Label>Address</Label><Textarea value={form.address || ""} onChange={set("address")} rows={2} /></div>
           </CardContent>
         </Card>
