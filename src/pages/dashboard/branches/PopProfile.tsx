@@ -218,8 +218,9 @@ export default function PopProfile() {
             <Tabs defaultValue="info">
               <TabsList className="flex flex-wrap h-auto">
                 <TabsTrigger value="info">POP Info</TabsTrigger>
-                <TabsTrigger value="exported">Exported ({clients?.length ?? 0})</TabsTrigger>
-                <TabsTrigger value="unexported">Unexported ({unexported?.length ?? 0})</TabsTrigger>
+                <TabsTrigger value="exported">Exported</TabsTrigger>
+                <TabsTrigger value="unexported">Unexported</TabsTrigger>
+                <TabsTrigger value="left">Left Clients</TabsTrigger>
                 <TabsTrigger value="transactions">Transactions</TabsTrigger>
                 <TabsTrigger value="debit">Debit Transactions</TabsTrigger>
                 <TabsTrigger value="credit">Credit Transactions</TabsTrigger>
@@ -261,81 +262,15 @@ export default function PopProfile() {
               </TabsContent>
 
               <TabsContent value="exported" className="mt-4">
-                <p className="text-xs text-muted-foreground mb-2">
-                  MikroTik-এ আছে এবং POP তার client portal-এ import করেছে
-                </p>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Client ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Username</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Online</TableHead>
-                      <TableHead className="text-right">Bill</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {clients?.map((c: any) => (
-                      <TableRow key={c.id}>
-                        <TableCell className="font-mono text-xs">{c.client_id}</TableCell>
-                        <TableCell>{c.name}</TableCell>
-                        <TableCell className="font-mono text-xs">{c.username || "-"}</TableCell>
-                        <TableCell><Badge variant="secondary">{c.billing_status || "-"}</Badge></TableCell>
-                        <TableCell>{c.is_online ? "🟢" : "⚪"}</TableCell>
-                        <TableCell className="text-right">৳{c.monthly_bill ?? 0}</TableCell>
-                      </TableRow>
-                    ))}
-                    {(!clients || clients.length === 0) && (
-                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">কোনো ক্লায়েন্ট নেই</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                <PopExportedClients popId={id!} branchId={pop.branch_id} />
               </TabsContent>
 
               <TabsContent value="unexported" className="mt-4">
-                <p className="text-xs text-muted-foreground mb-2">
-                  MikroTik-এ user আছে কিন্তু POP তার client list-এ এখনো add করেনি — enabled থাকলে টাকা কাটছে।
-                  Recover করলে MikroTik untouched থাকবে, পরে অন্য POP-এ assign করা যাবে।
-                </p>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Username</TableHead>
-                      <TableHead>Profile</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Comment</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {unexported?.map((s: any) => (
-                      <TableRow key={s.id}>
-                        <TableCell className="font-mono text-xs">{s.name}</TableCell>
-                        <TableCell>{s.profile || "-"}</TableCell>
-                        <TableCell>
-                          <Badge variant={s.disabled ? "destructive" : "default"}>
-                            {s.disabled ? "Disabled" : "Enabled"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{s.comment || "-"}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => recoverMutation.mutate(s.name)}
-                            disabled={recoverMutation.isPending}
-                          >
-                            <RotateCcw className="h-3.5 w-3.5" /> Recover
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {(!unexported || unexported.length === 0) && (
-                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">কোনো unexported user নেই</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                <PopUnexportedClients popId={id!} branchId={pop.branch_id} />
+              </TabsContent>
+
+              <TabsContent value="left" className="mt-4">
+                <PopLeftClientsTab branchId={pop.branch_id} />
               </TabsContent>
 
               <TabsContent value="transactions" className="mt-4">
