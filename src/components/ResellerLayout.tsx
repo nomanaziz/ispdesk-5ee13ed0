@@ -92,11 +92,14 @@ const groups: NavGroup[] = [
     key: "reports", label: "রিপোর্ট", en: "Reports", icon: BarChart3,
     items: [
       { to: "/pop-admin/reports/bill-collection", label: "বিল সংগ্রহ", en: "Bill Collection", icon: BarChart3 },
+      { to: "/pop-admin/reports/customer", label: "কাস্টমার", en: "Customer", icon: BarChart3 },
       { to: "/pop-admin/reports/enable-disable", label: "চালু/বন্ধ", en: "Enable/Disable", icon: BarChart3 },
       { to: "/pop-admin/reports/messages", label: "মেসেজ", en: "Messages", icon: BarChart3 },
-      { to: "/pop-admin/reports/processing-fee", label: "প্রসেসিং ফি", en: "Processing Fee", icon: BarChart3 },
-      { to: "/pop-admin/reports/discount", label: "ডিসকাউন্ট", en: "Discount", icon: BarChart3 },
       { to: "/pop-admin/reports/due-sms", label: "ডিউ এসএমএস", en: "Due SMS", icon: BarChart3 },
+      { to: "/pop-admin/reports/discount", label: "ডিসকাউন্ট", en: "Discount", icon: BarChart3 },
+      { to: "/pop-admin/reports/processing-fee", label: "প্রসেসিং ফি", en: "Processing Fee", icon: BarChart3 },
+      { to: "/pop-admin/reports/btrc", label: "বিটিআরসি মাসিক", en: "BTRC Monthly", icon: BarChart3 },
+      { to: "/pop-admin/reports/financial", label: "আর্থিক", en: "Financial", icon: BarChart3 },
     ],
   },
   {

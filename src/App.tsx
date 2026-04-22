@@ -344,6 +344,16 @@ import PopLeftClients from "@/pages/reseller/clients/PopLeftClients";
 import PopScheduler from "@/pages/reseller/clients/PopScheduler";
 import PopPlaceholder from "@/pages/reseller/PopPlaceholder";
 import PopFundDebitHistory from "@/pages/reseller/PopFundDebitHistory";
+// POP Reports
+import PopBillCollection from "@/pages/reseller/reports/PopBillCollection";
+import PopReportCustomer from "@/pages/reseller/reports/PopCustomer";
+import PopReportMessages from "@/pages/reseller/reports/PopMessages";
+import PopReportDueSms from "@/pages/reseller/reports/PopDueSms";
+import PopReportProcessingFee from "@/pages/reseller/reports/PopProcessingFee";
+import PopReportDiscount from "@/pages/reseller/reports/PopDiscount";
+import PopReportBtrc from "@/pages/reseller/reports/PopBtrc";
+import PopReportFinancial from "@/pages/reseller/reports/PopFinancial";
+import PopReportEnableDisable from "@/pages/reseller/reports/PopEnableDisable";
 import PopFundCreditHistory from "@/pages/reseller/PopFundCreditHistory";
 import PopSetup from "@/pages/reseller/system/PopSetup";
 import PopBillPeriod from "@/pages/reseller/system/PopBillPeriod";
@@ -762,12 +772,15 @@ const App = () => (
               <Route path="/pop-admin/sms/individual" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Individual / Group SMS" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/send" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Send SMS" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/gateway" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="SMS Gateway" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/reports/bill-collection" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Bill Collection Report" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/reports/enable-disable" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Enable/Disable History" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/reports/messages" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Messages Report" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/reports/processing-fee" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Processing Fee Report" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/reports/discount" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Discount Report" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/reports/due-sms" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Due SMS Report" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/bill-collection" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopBillCollection /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/customer" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportCustomer /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/enable-disable" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportEnableDisable /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/messages" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportMessages /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/processing-fee" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportProcessingFee /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/discount" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportDiscount /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/due-sms" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportDueSms /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/btrc" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportBtrc /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/reports/financial" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportFinancial /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/system/setup" element={<PortalAuthProvider><ResellerProtectedRoute require="system"><ResellerLayout><PopSetup /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/system/bill-period" element={<PortalAuthProvider><ResellerProtectedRoute require="system"><ResellerLayout><PopBillPeriod /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/system/period" element={<PortalAuthProvider><ResellerProtectedRoute require="system"><ResellerLayout><PopPeriodSetup /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
