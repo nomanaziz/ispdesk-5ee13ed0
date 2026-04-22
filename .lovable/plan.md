@@ -1,65 +1,173 @@
 
 
-## POP Admin Tickets — Client dropdown + ISP category fix
+## SMS/Notification Template System — Default + Custom + Multi-tenant Override
 
-### আসল সমস্যা
-1. POP portal `anon` key + custom portal token-এ চলে → `supabase.from("clients")` সরাসরি query RLS-এ block হয়ে dropdown empty থাকছে।
-2. New Ticket dialog-এ Category field-ই নাই, common ISP issue presets-ও নাই।
+### বর্তমান অবস্থা
+- একটাই flat table `sms_templates` (id, name, content, type, status, variables) — branch/tenant scoping নেই
+- কোনো default seeded template নেই (table এখন empty)
+- POP Admin নিজের template দেখতে/বানাতে পারে না (RLS শুধু admin-এর জন্য, আর কোনো branch isolation নেই)
+- `BulkSmsDialog`, `Send`, `Individual`, `Templates` — সব direct supabase query করে
 
-### সমাধান
+### লক্ষ্য
+1. **Default templates** — system-protected, delete করা যাবে না, সব tenant-এ auto-load
+2. **Custom templates** — system pre-seeded, tenant edit করতে পারবে
+3. **POP override** — POP edit করলে তার নিজের copy হবে, master অপরিবর্তিত
+4. **Auto-injection** — নতুন POP তৈরি হলে সব default+custom auto-available (no duplication)
+5. **Future sync** — admin নতুন master template add করলে সব tenant-এ automatically দেখাবে
 
-#### ১) Client list portal API দিয়ে আনা
-`supabase/functions/portal-data/index.ts`-এ নতুন action যোগ:
-- **`pop_ticket_clients`** → token থেকে POP identify → `branch_id` validate → service-role দিয়ে সেই branch-এর সব client (`id, name, client_id, username, contact, mobile`) return করবে।
+---
 
-`ResellerTickets.tsx`-এ `pop-clients-min` query কে `callPortal("pop_ticket_clients")` দিয়ে replace করবো — RLS bypass হবে, কিন্তু server-side branch ownership enforce থাকবে।
+### Database Design (2-table model)
 
-#### ২) Support category dropdown যোগ
-`portal-data`-এ আরেকটা action:
-- **`pop_ticket_categories`** → `support_categories` table থেকে active categories return করবে (যেগুলো admin আগে সেট করেছে)।
+#### `sms_template_master` (System-level — single source of truth)
+| column | type | note |
+|--------|------|------|
+| `id` | uuid PK | |
+| `template_key` | text UNIQUE | e.g. `bill_reminder`, `otp_verify`, `welcome` — stable identifier |
+| `name` | text | display name |
+| `content` | text | message body with `{variables}` |
+| `template_type` | text | `default` / `custom` |
+| `category` | text | `billing`, `otp`, `registration`, `payment`, `support`, `general` |
+| `variables` | jsonb | `["UserName","MonthlyBillAmount",...]` |
+| `is_protected` | bool | true = cannot delete (default templates) |
+| `is_active` | bool | |
+| `created_by` | uuid | super admin who added |
+| `created_at`, `updated_at` | timestamptz | |
 
-Dialog-এ নতুন Category select field যোগ হবে।
+#### `sms_template_overrides` (Per-tenant override layer)
+| column | type | note |
+|--------|------|------|
+| `id` | uuid PK | |
+| `master_id` | uuid FK → master | which master template this overrides |
+| `branch_id` | uuid FK → branches | NULL = admin-level override; set = POP-level |
+| `name` | text | overridden name (nullable → fallback to master) |
+| `content` | text | overridden content |
+| `is_active` | bool | tenant can disable a template locally |
+| `updated_by` | uuid | |
+| `created_at`, `updated_at` | timestamptz | |
+| UNIQUE | (master_id, branch_id) | one override per tenant per master |
 
-#### ৩) ISP-common preset issues seed করা
-Migration দিয়ে কিছু default category insert হবে যদি table-এ না থাকে:
-- ইন্টারনেট স্লো (Internet Slow)
-- লাইন শিফটিং (Line Shifting)
-- ফাইবার কাট (Fiber Cut)
-- রাউটার শিফটিং (Router Shifting)
-- প্যাকেজ পরিবর্তন (Package Change)
-- কানেকশন ডিসকানেক্টেড (No Internet / Disconnected)
-- পাসওয়ার্ড পরিবর্তন (Password Change)
-- ONU/Device সমস্যা (ONU/Device Issue)
-- পেমেন্ট/বিল সমস্যা (Billing Issue)
-- নতুন কানেকশন (New Connection Request)
+**কেন এই design**: master কখনো duplicate হয় না, override-table শুধু changed rows রাখে। নতুন master add হলে auto সব tenant দেখবে (no sync job লাগবে — read-time merge)। Tenant edit করলে শুধু override row insert/update হয়।
 
-`ON CONFLICT DO NOTHING` দিয়ে — যাতে existing data overwrite না হয়।
+#### `sms_templates` (legacy table)
+- পুরোনো data (যদি থাকে) one-time migrate করে `sms_template_master`-এ move হবে
+- table পরে drop হবে (এই plan-এ deprecation only — actual drop পরের step-এ)
 
-#### ৪) Dialog-এ searchable client dropdown
-Client সংখ্যা বেশি হলে scroll/search সুবিধা দিতে — Combobox (existing `Command` + `Popover` pattern) ব্যবহার করবো যাতে নাম/client_id/contact দিয়ে instant search করা যায়। সাধারণ Select-ও ঠিক আছে যদি অল্প client থাকে — দুটোর মধ্যে searchable Combobox বেশি usable, সেটাই use করবো।
+---
 
-#### ৫) Insert-ও portal API দিয়ে (security)
-নতুন action:
-- **`pop_create_ticket`** → POP-এর branch-এর client কিনা verify → ticket + initial message insert → `category_id`, `client_id`, `subject`, `description`, `priority`, `source: pop_admin` set।
+### Auto-injection Logic
+**নতুন POP তৈরি হলে কোনো row insert হয় না** — কারণ override-table empty থাকলেও POP master-এর সব template দেখবে (read-time merge)। ফলে:
+- কোনো duplication নেই
+- নতুন master add হলে instantly সব tenant দেখবে
+- POP যখন edit করবে শুধু তখনই override row তৈরি হবে
 
-ফলে কেউ অন্য POP-এর `client_id` দিয়ে ticket তৈরি করতে পারবে না।
+এটাই scalable approach — explicit "seed on POP create" trigger লাগবে না।
 
-### Files যেগুলো create/edit হবে
+---
 
+### Read-time Merge Logic (single SQL view)
+```sql
+CREATE VIEW sms_templates_effective AS
+SELECT 
+  m.id as master_id,
+  m.template_key,
+  COALESCE(o.name, m.name) as name,
+  COALESCE(o.content, m.content) as content,
+  m.template_type,
+  m.category,
+  m.variables,
+  m.is_protected,
+  COALESCE(o.is_active, m.is_active) as is_active,
+  o.branch_id,
+  (o.id IS NOT NULL) as is_overridden
+FROM sms_template_master m
+LEFT JOIN sms_template_overrides o ON o.master_id = m.id;
+```
+Frontend একটাই query করবে, branch_id filter দিয়ে। NULL branch + own branch overrides merge হবে।
+
+---
+
+### Default Templates Seed (master-এ initial insert)
+| key | category | content snippet |
+|-----|----------|-----------------|
+| `welcome` | registration | প্রিয় {UserName}, আমাদের ISP-এ স্বাগতম। ID: {ClientId}, Pass: {Password} |
+| `bill_reminder` | billing | প্রিয় {UserName}, আপনার {Month} মাসের বিল {MonthlyBillAmount} টাকা — শেষ তারিখ {BillingLastDate} |
+| `bill_overdue` | billing | প্রিয় {UserName}, {Due} টাকা বকেয়া — দ্রুত পরিশোধ করুন |
+| `payment_received` | payment | {UserName}, {Amount} টাকা পেমেন্ট গৃহীত। বাকি: {Due} |
+| `otp_verify` | otp | আপনার OTP: {OTP} — ৫ মিনিট valid |
+| `connection_active` | registration | {UserName}, আপনার connection active। Username: {Username}, Password: {Password} |
+| `connection_disabled` | billing | {UserName}, বিল বকেয়ার কারণে আপনার connection disabled |
+| `ticket_created` | support | Ticket #{TicketId} — {Subject} — শীঘ্রই যোগাযোগ করা হবে |
+| `ticket_resolved` | support | Ticket #{TicketId} resolved — ধন্যবাদ |
+| `package_change` | billing | {UserName}, package পরিবর্তন: {OldPackage} → {NewPackage} |
+
+সবগুলো `template_type='default'`, `is_protected=true`।
+
+---
+
+### RLS Policies
+- **`sms_template_master`**: SELECT = সবাই (admin + portal); INSERT/UPDATE/DELETE = super_admin/admin only। DELETE-এ trigger যা `is_protected=true` হলে raise exception দেবে।
+- **`sms_template_overrides`**: 
+  - Admin: full access on rows where `branch_id IS NULL`
+  - POP: full access on rows where `branch_id = own branch_id` (via portal edge function — RLS check via has_role + branch match)
+
+---
+
+### Edge Function actions (in `portal-data/index.ts`)
+| Action | কাজ |
+|--------|-----|
+| `pop_list_templates` | master + own override merge → effective list |
+| `pop_save_template_override` | master_id + new content/name/is_active → upsert override (own branch) |
+| `pop_reset_template` | own branch override delete → fallback to master |
+
+POP delete করতে পারবে না (master untouchable); শুধু override remove করে reset পাবে।
+
+---
+
+### Frontend Changes
 | File | কাজ |
 |------|-----|
-| `supabase/functions/portal-data/index.ts` | ৩টি নতুন action: `pop_ticket_clients`, `pop_ticket_categories`, `pop_create_ticket` |
-| `src/pages/reseller/ResellerTickets.tsx` | clients/categories `callPortal` দিয়ে fetch, Combobox client picker, Category select, ticket create-ও portal API দিয়ে |
-| Migration | Default ISP categories seed (existing থাকলে skip) |
+| `src/pages/dashboard/sms/Templates.tsx` | new master + override UI; "Default" badge; protected ones-এ delete disable |
+| `src/pages/reseller/PopSmsTemplates.tsx` (new) | POP-side template manager — same UI, callPortal-based |
+| `src/pages/dashboard/sms/Send.tsx`, `Individual.tsx`, `BulkSmsDialog.tsx` | switch from `sms_templates` table → `sms_templates_effective` view (admin) / `pop_list_templates` action (POP) |
+| `src/App.tsx` | wire `/pop-admin/sms/templates` route |
+| Reseller sidebar | "এসএমএস টেমপ্লেট" link |
+
+---
+
+### Variable system
+Centralized list:
+```
+{UserName} {ClientId} {Username} {Password}
+{MonthlyBillAmount} {Due} {BillingLastDate} {Month}
+{Amount} {OTP} {TicketId} {Subject} {Package} {OldPackage} {NewPackage}
+```
+Render time-এ token replace হবে (utility function `src/lib/templateVars.ts`).
+
+---
 
 ### ফলাফল
-- New Ticket → Client dropdown-এ POP-এর সব client list আসবে, search করা যাবে
-- Category select-এ Internet Slow / Line Shifting / Fiber Cut ইত্যাদি প্রস্তুত থাকবে
-- অন্য POP-এর client/category leak হবে না — সব server-side validated
-- Admin module ও অন্যান্য POP page অপরিবর্তিত
+- নতুন POP তৈরি হলে instantly সব default + custom template available — কোনো manual setup নেই, কোনো duplicate row নেই
+- POP edit করলে master অপরিবর্তিত — শুধু তার override layer change হয়
+- Admin master update করলে সব POP যাদের override নেই, তারা নতুন version দেখবে (auto-sync)
+- Default templates protected — POP/admin কেউ delete করতে পারবে না, শুধু edit (override) বা disable
+- Scalable: 1000 POP × 50 template = 50,000 row নয়, শুধু যেগুলো actually customize হয়েছে সেগুলোই rows
+- Use cases: Billing reminder, OTP, registration, payment receipt, support — সব pre-seeded
+
+### Files to create/edit
+- **Migration**: create `sms_template_master`, `sms_template_overrides`, view `sms_templates_effective`, RLS policies, protect-trigger, seed 10 default templates
+- **Insert (data)**: legacy `sms_templates` rows (যদি থাকে) → master-এ port
+- `supabase/functions/portal-data/index.ts` — 3 new actions
+- `src/pages/dashboard/sms/Templates.tsx` — master+override aware UI
+- `src/pages/reseller/PopSmsTemplates.tsx` — new POP page
+- `src/pages/dashboard/sms/Send.tsx`, `Individual.tsx` — use effective view
+- `src/components/billing/BulkSmsDialog.tsx` — POP-aware fetch
+- `src/lib/templateVars.ts` — variable list + render utility
+- `src/App.tsx` — POP template route
 
 ### Technical notes
-- DB schema change লাগবে না (শুধু default rows seed)
-- RLS loosen হচ্ছে না
-- Existing `support_categories` admin-এর জন্যও same data — শুধু POP read access portal-এর মাধ্যমে দিচ্ছি
+- Old `sms_templates` table data port হবে, table এই step-এ drop হবে না (safety)
+- RLS loosen না — POP write portal edge function-এ branch enforced
+- View use করায় frontend code minimal change
+- `sms_templates` foreign key (e.g. `sms_log.template_id`) কাজ চালু রাখতে FK migrate হয়ে master_id-তে point করবে
 
