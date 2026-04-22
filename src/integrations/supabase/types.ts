@@ -8440,6 +8440,7 @@ export type Database = {
           content: string
           created_at: string
           created_by: string | null
+          created_by_branch: string | null
           id: string
           is_active: boolean
           is_protected: boolean
@@ -8454,6 +8455,7 @@ export type Database = {
           content: string
           created_at?: string
           created_by?: string | null
+          created_by_branch?: string | null
           id?: string
           is_active?: boolean
           is_protected?: boolean
@@ -8468,6 +8470,7 @@ export type Database = {
           content?: string
           created_at?: string
           created_by?: string | null
+          created_by_branch?: string | null
           id?: string
           is_active?: boolean
           is_protected?: boolean
@@ -8477,7 +8480,15 @@ export type Database = {
           updated_at?: string
           variables?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sms_template_master_created_by_branch_fkey"
+            columns: ["created_by_branch"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sms_template_overrides: {
         Row: {
@@ -10208,19 +10219,24 @@ export type Database = {
           branch_id: string | null
           category: string | null
           content: string | null
-          created_at: string | null
+          created_by_branch: string | null
           is_active: boolean | null
           is_overridden: boolean | null
           is_protected: boolean | null
           master_id: string | null
           name: string | null
-          override_id: string | null
           template_key: string | null
           template_type: string | null
-          updated_at: string | null
           variables: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sms_template_master_created_by_branch_fkey"
+            columns: ["created_by_branch"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sms_template_overrides_branch_id_fkey"
             columns: ["branch_id"]

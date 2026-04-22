@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,12 +14,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { Send, Search, MessageSquare } from "lucide-react";
+import VariableChips from "@/components/sms/VariableChips";
 
 export default function Individual() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [number, setNumber] = useState("");
   const [message, setMessage] = useState("");
+  const messageRef = useRef<HTMLTextAreaElement>(null);
   const [gatewayId, setGatewayId] = useState("");
   const [templateId, setTemplateId] = useState("");
   const [clientTab, setClientTab] = useState("all");
@@ -140,8 +142,9 @@ export default function Individual() {
             </div>
             <div className="grid gap-2">
               <Label>মেসেজ *</Label>
-              <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="আপনার মেসেজ লিখুন..." />
+              <Textarea ref={messageRef} rows={4} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="আপনার মেসেজ লিখুন..." />
               <p className="text-xs text-muted-foreground">{message.length} অক্ষর</p>
+              <VariableChips textareaRef={messageRef} value={message} onChange={setMessage} />
             </div>
             {selectedClients.length > 0 && (
               <p className="text-sm font-medium text-primary">{selectedClients.length} জন ক্লায়েন্ট নির্বাচিত</p>

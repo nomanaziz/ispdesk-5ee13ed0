@@ -1992,24 +1992,155 @@ Deno.serve(async (req) => {
           overrides = ovs || [];
         }
         const ovByMaster = new Map(overrides.map((o) => [o.master_id, o]));
-        const merged = (masters || []).map((m: any) => {
-          const o = ovByMaster.get(m.id);
-          return {
-            master_id: m.id,
-            template_key: m.template_key,
-            name: o?.name ?? m.name,
-            content: o?.content ?? m.content,
-            template_type: m.template_type,
-            category: m.category,
-            variables: m.variables,
-            is_protected: m.is_protected,
-            is_active: o?.is_active ?? m.is_active,
-            branch_id: branchId,
-            is_overridden: !!o,
-            override_id: o?.id || null,
-          };
-        });
+        const merged = (masters || [])
+          // Hide other POPs' custom templates; keep system-level (created_by_branch NULL) and own
+          .filter((m: any) => !m.created_by_branch || m.created_by_branch === branchId)
+          .map((m: any) => {
+            const o = ovByMaster.get(m.id);
+            return {
+              master_id: m.id,
+              template_key: m.template_key,
+              name: o?.name ?? m.name,
+              content: o?.content ?? m.content,
+              template_type: m.template_type,
+              category: m.category,
+              variables: m.variables,
+              is_protected: m.is_protected,
+              is_active: o?.is_active ?? m.is_active,
+              branch_id: branchId,
+              is_overridden: !!o,
+              override_id: o?.id || null,
+              created_by_branch: m.created_by_branch || null,
+              is_own: m.created_by_branch === branchId,
+            };
+          });
         return json({ templates: merged });
+      }
+
+      case "pop_create_template": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("branch_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+
+        const name = String(payload.name || "").trim();
+        const content = String(payload.content || "").trim();
+        const category = String(payload.category || "general");
+        const is_active = typeof payload.is_active === "boolean" ? payload.is_active : true;
+        if (!name || !content) return json({ error: "name এবং content আবশ্যক" }, 400);
+
+        const variables = Array.from(
+          new Set(Array.from(content.matchAll(/\{(\w+)\}/g)).map((m) => m[1])),
+        );
+        const shortBranch = String(pop.branch_id).replace(/-/g, "").slice(0, 8);
+        const template_key = `pop_${shortBranch}_${Date.now()}`;
+
+        const { data, error } = await sb
+          .from("sms_template_master")
+          .insert({
+            template_key,
+            name,
+            content,
+            category,
+            variables,
+            is_active,
+            is_protected: false,
+            template_type: "custom",
+            created_by_branch: pop.branch_id,
+          })
+          .select()
+          .single();
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true, template: data });
+      }
+
+      case "pop_update_own_template": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("branch_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+
+        const masterId = String(payload.master_id || "");
+        if (!masterId) return json({ error: "master_id required" }, 400);
+
+        const { data: master } = await sb
+          .from("sms_template_master")
+          .select("id, created_by_branch, is_protected")
+          .eq("id", masterId)
+          .maybeSingle();
+        if (!master) return json({ error: "Template not found" }, 404);
+        if (master.is_protected || master.created_by_branch !== pop.branch_id) {
+          return json({ error: "শুধু নিজের তৈরি টেমপ্লেট edit করা যাবে" }, 403);
+        }
+
+        const updates: any = {};
+        if (payload.name != null) updates.name = String(payload.name);
+        if (payload.content != null) {
+          updates.content = String(payload.content);
+          updates.variables = Array.from(
+            new Set(Array.from(String(payload.content).matchAll(/\{(\w+)\}/g)).map((m) => m[1])),
+          );
+        }
+        if (payload.category != null) updates.category = String(payload.category);
+        if (typeof payload.is_active === "boolean") updates.is_active = payload.is_active;
+
+        const { error } = await sb
+          .from("sms_template_master")
+          .update(updates)
+          .eq("id", masterId);
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true });
+      }
+
+      case "pop_delete_template": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("branch_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+
+        const masterId = String(payload.master_id || "");
+        if (!masterId) return json({ error: "master_id required" }, 400);
+
+        const { data: master } = await sb
+          .from("sms_template_master")
+          .select("id, created_by_branch, is_protected")
+          .eq("id", masterId)
+          .maybeSingle();
+        if (!master) return json({ error: "Template not found" }, 404);
+        if (master.is_protected) {
+          return json({ error: "প্রটেক্টেড টেমপ্লেট ডিলিট করা যাবে না" }, 403);
+        }
+        if (master.created_by_branch !== pop.branch_id) {
+          return json({ error: "শুধু নিজের তৈরি টেমপ্লেট ডিলিট করা যাবে" }, 403);
+        }
+
+        const { error } = await sb
+          .from("sms_template_master")
+          .delete()
+          .eq("id", masterId);
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true });
       }
 
       case "pop_save_template_override": {
