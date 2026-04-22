@@ -44,6 +44,7 @@ export default function ResellerMikrotikUsers() {
       const branchIdLocal = pop?.branch_id;
       const orFilters: string[] = [];
       if (branchIdLocal) orFilters.push(`branch_id.eq.${branchIdLocal}`);
+      if (popId) orFilters.push(`assigned_to_pop_id.eq.${popId}`);
       const { data: transferredMtIds } = await supabase
         .from("mikrotik_clients")
         .select("transferred_to_mikrotik_id")
@@ -51,7 +52,7 @@ export default function ResellerMikrotikUsers() {
         .not("transferred_to_mikrotik_id", "is", null);
       const ids = Array.from(new Set((transferredMtIds || []).map((r: any) => r.transferred_to_mikrotik_id).filter(Boolean)));
 
-      let q = supabase.from("mikrotik_devices").select("id, name, ip_address, status").order("name");
+      let q = supabase.from("mikrotik_devices").select("id, name, ip_address, status, branch_id, assigned_to_pop_id").order("name");
       if (orFilters.length > 0 && ids.length > 0) {
         q = q.or(`${orFilters.join(",")},id.in.(${ids.join(",")})`);
       } else if (orFilters.length > 0) {
