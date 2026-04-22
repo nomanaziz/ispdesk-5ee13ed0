@@ -347,83 +347,110 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-[62px] border-b border-border/40 bg-card/95 backdrop-blur-sm px-4 sm:px-6 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden text-muted-foreground hover:text-foreground"
-              onClick={() => setMobileOpen(true)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <div className="hidden sm:block">
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                {t("পপ কোড", "POP Code")}
+        {isMobile ? (
+          <ResellerMobileShell onOpenSidebar={() => setMobileOpen(true)}>
+            {children}
+          </ResellerMobileShell>
+        ) : (
+          <>
+            <header className="h-[62px] border-b border-border/40 bg-card/95 backdrop-blur-sm px-4 sm:px-6 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="md:hidden text-muted-foreground hover:text-foreground"
+                  onClick={() => setMobileOpen(true)}
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+                <div className="hidden sm:block">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    {t("পপ কোড", "POP Code")}
+                  </div>
+                  <div className="text-sm font-semibold">{customer?.code || "—"}</div>
+                </div>
               </div>
-              <div className="text-sm font-semibold">{customer?.code || "—"}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Language Toggle */}
-            <div
-              className="inline-flex items-center rounded-full border border-border/60 bg-muted/30 p-0.5 h-8"
-              role="group"
-              aria-label="Language"
-            >
-              <button
-                type="button"
-                onClick={() => setLang("bn")}
-                className={cn(
-                  "px-2.5 h-7 rounded-full text-[11px] font-semibold transition-colors",
-                  lang === "bn"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-                title="বাংলা"
-              >
-                বাং
-              </button>
-              <button
-                type="button"
-                onClick={() => setLang("en")}
-                className={cn(
-                  "px-2.5 h-7 rounded-full text-[11px] font-semibold transition-colors",
-                  lang === "en"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-                title="English"
-              >
-                EN
-              </button>
-            </div>
-            <Link to="/" target="_blank" title={t("ওয়েবসাইটে যান", "Open website")}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 text-muted-foreground hover:text-foreground"
-              >
-                <Globe className="h-4 w-4" />
-              </Button>
-            </Link>
-            <NotesButton ownerType="pop" />
-            <div className="text-right hidden sm:block">
-              <div className="text-sm font-medium leading-tight">{customer?.name}</div>
-              <div className="text-[11px] text-muted-foreground leading-tight">
-                {customer?.username}
-                {isSub ? (lang === "bn" ? " (সাব-ইউজার)" : " (Sub-user)") : ""}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <QuickAddButton />
+                <div
+                  className="inline-flex items-center rounded-full border border-border/60 bg-muted/30 p-0.5 h-8"
+                  role="group"
+                  aria-label="Language"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setLang("bn")}
+                    className={cn(
+                      "px-2.5 h-7 rounded-full text-[11px] font-semibold transition-colors",
+                      lang === "bn"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    title="বাংলা"
+                  >
+                    বাং
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLang("en")}
+                    className={cn(
+                      "px-2.5 h-7 rounded-full text-[11px] font-semibold transition-colors",
+                      lang === "en"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    title="English"
+                  >
+                    EN
+                  </button>
+                </div>
+                <Link to="/" target="_blank" title={t("ওয়েবসাইটে যান", "Open website")}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                  >
+                    <Globe className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <NotesButton ownerType="pop" />
+                <div className="text-right hidden sm:block">
+                  <div className="text-sm font-medium leading-tight">{customer?.name}</div>
+                  <div className="text-[11px] text-muted-foreground leading-tight">
+                    {customer?.username}
+                    {isSub ? (lang === "bn" ? " (সাব-ইউজার)" : " (Sub-user)") : ""}
+                  </div>
+                </div>
+                <div className="h-9 w-9 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-sm">
+                  {customer?.name?.[0]?.toUpperCase() || "R"}
+                </div>
               </div>
-            </div>
-            <div className="h-9 w-9 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-sm">
-              {customer?.name?.[0]?.toUpperCase() || "R"}
-            </div>
-          </div>
-        </header>
-        <main className="flex-1 p-4 md:p-6 overflow-x-hidden">{children}</main>
+            </header>
+            <main className="flex-1 p-4 md:p-6 overflow-x-hidden">{children}</main>
+          </>
+        )}
       </div>
     </div>
   );
 };
+
+function QuickAddButton() {
+  const [open, setOpen] = useState(false);
+  const { t } = useLanguage();
+  return (
+    <>
+      <Button
+        variant="default"
+        size="sm"
+        className="h-9 gap-1.5"
+        onClick={() => setOpen(true)}
+      >
+        <Plus className="h-4 w-4" />
+        <span className="hidden md:inline">{t("দ্রুত যোগ", "Quick Add")}</span>
+      </Button>
+      <QuickCreateClientDialog open={open} onOpenChange={setOpen} />
+    </>
+  );
+}
 
 export default ResellerLayout;
