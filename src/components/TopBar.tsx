@@ -59,6 +59,15 @@ export function TopBar() {
           </Button>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          <Button
+            size="sm"
+            className="h-9 gap-1.5"
+            onClick={() => setQuickAddOpen(true)}
+            title={t("দ্রুত ক্লায়েন্ট যোগ", "Quick Add Client")}
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden md:inline text-xs">{t("দ্রুত যোগ", "Quick Add")}</span>
+          </Button>
           {/* Language Toggle */}
           <div className="inline-flex items-center rounded-full border border-border/60 bg-muted/30 p-0.5 h-8" role="group" aria-label="Language">
             <button
@@ -142,6 +151,7 @@ export function TopBar() {
       <GlobalClientSearch open={searchOpen} onOpenChange={setSearchOpen} />
       <ThemeCustomizer open={themeOpen} onOpenChange={setThemeOpen} />
       <QuickSettings open={quickOpen} onOpenChange={setQuickOpen} />
+      <QuickCreateClientDialog open={quickAddOpen} onOpenChange={setQuickAddOpen} />
     </>
   );
 }
