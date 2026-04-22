@@ -5,7 +5,7 @@ export type PortalUserType = "client" | "bw_customer" | "reseller" | "reseller_s
 export interface ResellerPermissions {
   dashboard: boolean;
   invoices: boolean;
-  purchases: boolean;
+  
   tickets: boolean;
   users: boolean;
   settings: boolean;

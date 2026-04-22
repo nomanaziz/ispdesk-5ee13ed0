@@ -1,145 +1,526 @@
-import { useState } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
-import { getBillingCustomerId } from "@/lib/portalIdentity";
+import { getPopScope } from "@/lib/popScope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  LifeBuoy, Plus, Search, Send, ShieldCheck, User as UserIcon, MessageSquare,
+} from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+const statusBadge: Record<string, string> = {
+  open: "bg-sky-100 text-sky-700",
+  pending: "bg-amber-100 text-amber-700",
+  solved: "bg-emerald-100 text-emerald-700",
+  closed: "bg-slate-100 text-slate-700",
+};
+
+const priorityBadge: Record<string, string> = {
+  low: "bg-slate-100 text-slate-700",
+  normal: "bg-sky-100 text-sky-700",
+  medium: "bg-sky-100 text-sky-700",
+  high: "bg-amber-100 text-amber-700",
+  urgent: "bg-rose-100 text-rose-700",
+};
 
 const ResellerTickets = () => {
   const { customer } = usePortalAuth();
-  const resellerId = getBillingCustomerId(customer);
+  const { branchId } = getPopScope(customer);
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ subject: "", description: "", priority: "medium" });
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [activeTicket, setActiveTicket] = useState<any | null>(null);
+
+  // POP-scoped client list (used both for filtering tickets & the create dialog)
+  const { data: clients = [] } = useQuery({
+    queryKey: ["pop-clients-min", branchId],
+    enabled: !!branchId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("clients")
+        .select("id, name, client_id, username, contact")
+        .eq("branch_id", branchId!)
+        .order("name");
+      return data || [];
+    },
+  });
+
+  const clientIdSet = useMemo(() => new Set(clients.map((c: any) => c.id)), [clients]);
+  const clientsById = useMemo(() => {
+    const m: Record<string, any> = {};
+    clients.forEach((c: any) => (m[c.id] = c));
+    return m;
+  }, [clients]);
 
   const { data: tickets = [] } = useQuery({
-    queryKey: ["reseller-tickets", resellerId],
-    enabled: !!resellerId,
+    queryKey: ["pop-support-tickets", branchId],
+    enabled: !!branchId && clients.length >= 0,
     queryFn: async () => {
+      const ids = Array.from(clientIdSet);
+      if (ids.length === 0) return [];
       const { data } = await supabase
         .from("support_tickets")
         .select("*")
-        .eq("source", "bw_reseller")
-        .eq("complain_no", resellerId!)
+        .in("client_id", ids)
         .order("created_at", { ascending: false });
       return data || [];
     },
   });
 
-  const create = useMutation({
-    mutationFn: async () => {
-      if (!form.subject.trim()) throw new Error("Subject required");
-      if (!resellerId) throw new Error("Account not loaded");
-      const ticketNo = `TKT-${Date.now().toString().slice(-6)}`;
-      const { error } = await supabase.from("support_tickets").insert({
-        ticket_no: ticketNo,
-        subject: form.subject,
-        description: form.description || null,
-        priority: form.priority,
-        status: "pending",
-        source: "bw_reseller",
-        complain_no: resellerId, // identifier for filtering by reseller
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Ticket created");
-      qc.invalidateQueries({ queryKey: ["reseller-tickets"] });
-      setOpen(false);
-      setForm({ subject: "", description: "", priority: "medium" });
-    },
-    onError: (e: any) => toast.error(e.message || "Failed to create ticket"),
-  });
+  const filtered = useMemo(() => {
+    return tickets.filter((t: any) => {
+      if (statusFilter !== "all" && t.status !== statusFilter) return false;
+      if (!search) return true;
+      const c = clientsById[t.client_id];
+      const blob = `${t.ticket_no} ${t.subject} ${c?.name || ""} ${c?.client_id || ""} ${c?.contact || ""}`.toLowerCase();
+      return blob.includes(search.toLowerCase());
+    });
+  }, [tickets, statusFilter, search, clientsById]);
+
+  const counts = useMemo(() => {
+    const c = { all: tickets.length, open: 0, pending: 0, solved: 0, closed: 0 };
+    tickets.forEach((t: any) => { (c as any)[t.status] = ((c as any)[t.status] || 0) + 1; });
+    return c;
+  }, [tickets]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-in fade-in duration-300">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center text-white shadow">
+            <LifeBuoy className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold">Client Support Tickets</h1>
+            <p className="text-sm text-muted-foreground">Tickets opened by your clients · {counts.all} total</p>
+          </div>
+        </div>
+        <Button onClick={() => setCreateOpen(true)} className="bg-gradient-to-r from-violet-500 to-indigo-600 shadow">
+          <Plus className="h-4 w-4 mr-1" /> New Ticket
+        </Button>
+      </div>
+
       <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-lg">Support Tickets</CardTitle>
-          <Button size="sm" onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Open New Ticket
-          </Button>
+        <CardHeader className="space-y-3 pb-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <CardTitle className="text-base">All Tickets</CardTitle>
+            <div className="flex gap-2 flex-wrap items-center">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search ticket, client…"
+                  className="pl-8 h-9 w-56"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All ({counts.all})</SelectItem>
+                  <SelectItem value="open">Open ({counts.open || 0})</SelectItem>
+                  <SelectItem value="pending">Pending ({counts.pending || 0})</SelectItem>
+                  <SelectItem value="solved">Solved ({counts.solved || 0})</SelectItem>
+                  <SelectItem value="closed">Closed ({counts.closed || 0})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">#</TableHead>
                   <TableHead>Ticket No</TableHead>
+                  <TableHead>Client</TableHead>
                   <TableHead>Subject</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tickets.length === 0 && (
+                {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      No tickets
+                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                      <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground/30 mb-2" />
+                      No tickets found
                     </TableCell>
                   </TableRow>
                 )}
-                {tickets.map((t: any) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="font-mono">{t.ticket_no}</TableCell>
-                    <TableCell>{t.subject}</TableCell>
-                    <TableCell><Badge variant="outline" className="capitalize">{t.priority}</Badge></TableCell>
-                    <TableCell><Badge className="capitalize">{t.status}</Badge></TableCell>
-                    <TableCell>{format(new Date(t.created_at), "dd MMM yyyy HH:mm")}</TableCell>
-                  </TableRow>
-                ))}
+                {filtered.map((t: any, i: number) => {
+                  const c = clientsById[t.client_id];
+                  return (
+                    <TableRow key={t.id} className="hover:bg-muted/40">
+                      <TableCell className="text-muted-foreground">{i + 1}</TableCell>
+                      <TableCell className="font-mono text-xs">{t.ticket_no}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-sm">{c?.name || "—"}</span>
+                          <span className="text-[11px] text-muted-foreground">
+                            {c?.client_id} {c?.contact && `· ${c.contact}`}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="truncate text-sm">{t.subject}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${priorityBadge[t.priority] || priorityBadge.normal} border-0 capitalize`}>
+                          {t.priority}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${statusBadge[t.status] || statusBadge.open} border-0 capitalize`}>
+                          {t.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {format(new Date(t.created_at), "dd MMM yyyy HH:mm")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="outline" onClick={() => setActiveTicket(t)}>
+                          Open
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Open New Ticket</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Subject</Label>
-              <Input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
-            </div>
-            <div>
-              <Label>Priority</Label>
-              <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Description</Label>
-              <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={() => create.mutate()} disabled={create.isPending}>
-              {create.isPending ? "Submitting..." : "Submit"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PopCreateTicketDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        clients={clients}
+        onCreated={() => qc.invalidateQueries({ queryKey: ["pop-support-tickets"] })}
+      />
+      <PopTicketConversation
+        ticket={activeTicket}
+        client={activeTicket ? clientsById[activeTicket.client_id] : null}
+        onOpenChange={(v) => !v && setActiveTicket(null)}
+      />
     </div>
   );
 };
 
 export default ResellerTickets;
+
+/* ----------------------------- Create dialog ---------------------------- */
+
+const PopCreateTicketDialog = ({
+  open, onOpenChange, clients, onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  clients: any[];
+  onCreated: () => void;
+}) => {
+  const { customer } = usePortalAuth();
+  const [clientId, setClientId] = useState<string | undefined>();
+  const [subject, setSubject] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState("normal");
+
+  const create = useMutation({
+    mutationFn: async () => {
+      if (!clientId) throw new Error("Please select a client");
+      if (!subject.trim()) throw new Error("Subject is required");
+      const ticket_no = `TK${Date.now().toString().slice(-8)}`;
+      const { data, error } = await supabase
+        .from("support_tickets")
+        .insert({
+          ticket_no,
+          subject,
+          description,
+          priority,
+          client_id: clientId,
+          status: "open",
+          source: "pop_admin",
+          created_by: customer?.sub,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      if (data) {
+        await supabase.from("support_ticket_messages").insert({
+          ticket_id: data.id,
+          sender_type: "agent",
+          sender_id: customer?.sub,
+          sender_name: customer?.name || "POP Admin",
+          message: description || subject,
+        });
+      }
+    },
+    onSuccess: () => {
+      toast.success("Ticket created");
+      onCreated();
+      onOpenChange(false);
+      setClientId(undefined); setSubject(""); setDescription(""); setPriority("normal");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Open Ticket for Client</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Client *</Label>
+            <Select value={clientId} onValueChange={setClientId}>
+              <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {clients.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name} {c.client_id && `(${c.client_id})`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Subject *</Label>
+            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Briefly describe the issue" />
+          </div>
+          <div>
+            <Label>Priority</Label>
+            <Select value={priority} onValueChange={setPriority}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Description</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              placeholder="Details…"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button
+            onClick={() => create.mutate()}
+            disabled={create.isPending}
+            className="bg-gradient-to-r from-violet-500 to-indigo-600"
+          >
+            {create.isPending ? "Submitting…" : "Submit"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+/* ---------------------- Conversation / reply panel ---------------------- */
+
+const PopTicketConversation = ({
+  ticket, client, onOpenChange,
+}: {
+  ticket: any | null;
+  client: any | null;
+  onOpenChange: (v: boolean) => void;
+}) => {
+  const { customer } = usePortalAuth();
+  const qc = useQueryClient();
+  const [reply, setReply] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { data: messages } = useQuery({
+    queryKey: ["pop-ticket-messages", ticket?.id],
+    enabled: !!ticket?.id,
+    refetchInterval: 8000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("support_ticket_messages")
+        .select("*")
+        .eq("ticket_id", ticket.id)
+        .order("created_at");
+      return data || [];
+    },
+  });
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+
+  const send = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("support_ticket_messages").insert({
+        ticket_id: ticket.id,
+        sender_type: "agent",
+        sender_id: customer?.sub,
+        sender_name: customer?.name || "POP Admin",
+        message: reply,
+      });
+      if (error) throw error;
+      // bump status to pending if currently open
+      if (ticket.status === "open") {
+        await supabase.from("support_tickets").update({ status: "pending" }).eq("id", ticket.id);
+      }
+    },
+    onSuccess: () => {
+      setReply("");
+      qc.invalidateQueries({ queryKey: ["pop-ticket-messages", ticket?.id] });
+      qc.invalidateQueries({ queryKey: ["pop-support-tickets"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const setStatus = useMutation({
+    mutationFn: async (status: string) => {
+      const patch: any = { status };
+      if (status === "solved") {
+        patch.solved_at = new Date().toISOString();
+        patch.solved_by = customer?.sub;
+      }
+      const { error } = await supabase.from("support_tickets").update(patch).eq("id", ticket.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Status updated");
+      qc.invalidateQueries({ queryKey: ["pop-support-tickets"] });
+      onOpenChange(false);
+    },
+  });
+
+  if (!ticket) return null;
+
+  return (
+    <Dialog open={!!ticket} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden gap-0 max-h-[90vh] flex flex-col">
+        <DialogHeader className="p-5 border-b bg-gradient-to-r from-violet-50 to-indigo-50 space-y-0">
+          <DialogTitle className="text-base">{ticket.subject}</DialogTitle>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <Badge className={`${statusBadge[ticket.status] || statusBadge.open} border-0 capitalize`}>{ticket.status}</Badge>
+            <span className="text-xs text-muted-foreground">#{ticket.ticket_no}</span>
+            <span className="text-xs text-muted-foreground">·</span>
+            <span className="text-xs text-muted-foreground">{client?.name || "Unknown client"}</span>
+            {client?.contact && <>
+              <span className="text-xs text-muted-foreground">·</span>
+              <span className="text-xs text-muted-foreground">{client.contact}</span>
+            </>}
+          </div>
+        </DialogHeader>
+
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/30">
+          {messages?.length === 0 && (
+            <div className="text-center text-xs text-muted-foreground py-8">No messages yet</div>
+          )}
+          {messages?.map((m: any) => {
+            const isAgent = m.sender_type === "agent";
+            return (
+              <div key={m.id} className={cn("flex gap-2", isAgent ? "justify-end" : "justify-start")}>
+                {!isAgent && (
+                  <Avatar className="h-7 w-7 shrink-0">
+                    <AvatarFallback className="bg-violet-100 text-violet-700 text-[10px]">
+                      <UserIcon className="h-3.5 w-3.5" />
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+                <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm shadow-sm",
+                  isAgent
+                    ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-br-sm"
+                    : "bg-white border rounded-bl-sm"
+                )}>
+                  <div className={cn("text-[10px] font-medium mb-0.5", isAgent ? "text-white/70" : "text-muted-foreground")}>
+                    {isAgent ? (m.sender_name || "Support") : (m.sender_name || client?.name || "Client")}
+                  </div>
+                  <div className="whitespace-pre-wrap break-words">{m.message}</div>
+                  <div className={cn("text-[9px] mt-1", isAgent ? "text-white/60" : "text-muted-foreground")}>
+                    {new Date(m.created_at).toLocaleString()}
+                  </div>
+                </div>
+                {isAgent && (
+                  <Avatar className="h-7 w-7 shrink-0">
+                    <AvatarFallback className="bg-emerald-100 text-emerald-700 text-[10px]">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="border-t bg-white">
+          {ticket.status !== "solved" && ticket.status !== "closed" ? (
+            <>
+              <div className="p-3 flex gap-2 items-end">
+                <Textarea
+                  value={reply}
+                  onChange={(e) => setReply(e.target.value)}
+                  placeholder="Type your reply…"
+                  rows={2}
+                  className="resize-none flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (reply.trim()) send.mutate();
+                    }
+                  }}
+                />
+                <Button
+                  size="icon"
+                  onClick={() => send.mutate()}
+                  disabled={!reply.trim() || send.isPending}
+                  className="bg-gradient-to-br from-emerald-500 to-teal-600 h-10 w-10 shrink-0"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="px-3 pb-3 flex gap-2 justify-end">
+                <Button size="sm" variant="outline" onClick={() => setStatus.mutate("solved")}>
+                  Mark Solved
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setStatus.mutate("closed")}>
+                  Close
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="p-3 flex justify-end">
+              <Button size="sm" variant="outline" onClick={() => setStatus.mutate("open")}>
+                Re-open
+              </Button>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};

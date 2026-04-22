@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 type PermKey =
   | "dashboard" | "configuration" | "mikrotik" | "employee" | "client"
-  | "billing" | "monitoring" | "sms" | "reports" | "purchases"
+  | "billing" | "monitoring" | "sms" | "reports"
   | "tickets" | "system" | "fund_history" | "settings" | "users" | "invoices" | "accounting";
 
 interface NavLink { to: string; label: string; en: string; icon: any }
@@ -96,10 +96,6 @@ const groups: NavGroup[] = [
       { to: "/pop-admin/reports/discount", label: "ডিসকাউন্ট", en: "Discount", icon: BarChart3 },
       { to: "/pop-admin/reports/due-sms", label: "ডিউ এসএমএস", en: "Due SMS", icon: BarChart3 },
     ],
-  },
-  {
-    key: "purchases", label: "ক্রয় অর্ডার", en: "Purchase Orders", icon: ShoppingCart,
-    items: [{ to: "/pop-admin/purchases", label: "ক্রয় অর্ডার", en: "Purchase Orders", icon: ShoppingCart }],
   },
   {
     key: "system", label: "সিস্টেম", en: "System", icon: Settings,

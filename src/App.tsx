@@ -294,7 +294,7 @@ import PortalProtectedRoute from "@/components/PortalProtectedRoute";
 import PortalLogin from "@/pages/portal/PortalLogin";
 import PortalDashboard from "@/pages/portal/PortalDashboard";
 import PortalInvoices from "@/pages/portal/PortalInvoices";
-import PortalPurchaseOrders from "@/pages/portal/PortalPurchaseOrders";
+
 import PortalSupport from "@/pages/portal/PortalSupport";
 import PortalNotices from "@/pages/portal/PortalNotices";
 import PortalCompanyInfo from "@/pages/portal/PortalCompanyInfo";
@@ -319,8 +319,6 @@ import ResellerDashboard from "@/pages/reseller/ResellerDashboard";
 import ResellerInvoices from "@/pages/reseller/ResellerInvoices";
 import ResellerInvoiceDetail from "@/pages/reseller/ResellerInvoiceDetail";
 import ResellerInvoicePrint from "@/pages/reseller/ResellerInvoicePrint";
-import ResellerPurchaseOrders from "@/pages/reseller/ResellerPurchaseOrders";
-import ResellerPurchaseOrderForm from "@/pages/reseller/ResellerPurchaseOrderForm";
 import ResellerTickets from "@/pages/reseller/ResellerTickets";
 import ResellerUsers from "@/pages/reseller/ResellerUsers";
 import ResellerSettings from "@/pages/reseller/ResellerSettings";
@@ -691,7 +689,7 @@ const App = () => (
               <Route path="/portal/invoices" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalInvoices /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/bills" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalBills /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/bills/:id" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalBillInvoice /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
-              <Route path="/portal/purchase-orders" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalPurchaseOrders /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              
               <Route path="/portal/support" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalSupport /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/notices" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalNotices /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/company" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalCompanyInfo /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
@@ -713,8 +711,6 @@ const App = () => (
               <Route path="/pop-admin/invoices" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerLayout><ResellerInvoices /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/invoices/:id" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerLayout><ResellerInvoiceDetail /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/invoices/:id/print" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerInvoicePrint /></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/purchases" element={<PortalAuthProvider><ResellerProtectedRoute require="purchases"><ResellerLayout><ResellerPurchaseOrders /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/purchases/new" element={<PortalAuthProvider><ResellerProtectedRoute require="purchases"><ResellerLayout><ResellerPurchaseOrderForm /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/tickets" element={<PortalAuthProvider><ResellerProtectedRoute require="tickets"><ResellerLayout><ResellerTickets /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/users" element={<PortalAuthProvider><ResellerProtectedRoute require="users"><ResellerLayout><ResellerUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/settings" element={<PortalAuthProvider><ResellerProtectedRoute require="settings"><ResellerLayout><ResellerSettings /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
