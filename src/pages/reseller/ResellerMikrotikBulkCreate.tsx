@@ -47,7 +47,7 @@ export default function ResellerMikrotikBulkCreate() {
       if (!tariffId) return [];
       const { data } = await supabase
         .from("reseller_tariff_packages")
-        .select("id, package_id, selling_rate, isp_packages(id, name)")
+        .select("id, package_id, selling_rate, isp_packages(id, name, bandwidth_down)")
         .eq("tariff_id", tariffId)
         .eq("status", "active");
       return data || [];
@@ -69,15 +69,15 @@ export default function ResellerMikrotikBulkCreate() {
     queryKey: ["bulk_mt_transferred", popId, branchId],
     queryFn: async () => {
       if (!popId) return [];
-      // POP-এর branch-এ assigned সব MikroTik device-এর id-গুলো
-      let mtIds: string[] = [];
-      if (branchId) {
-        const { data: mts } = await supabase
-          .from("mikrotik_devices")
-          .select("id")
-          .eq("branch_id", branchId);
-        mtIds = (mts || []).map((m: any) => m.id);
-      }
+      // POP-এর branch-এ অথবা POP-এ directly assigned সব MikroTik device-এর id-গুলো
+      const { data: mts } = await supabase
+        .from("mikrotik_devices")
+        .select("id, branch_id, assigned_to_pop_id");
+      const mtIds: string[] = (mts || [])
+        .filter((m: any) =>
+          (branchId && m.branch_id === branchId) || m.assigned_to_pop_id === popId,
+        )
+        .map((m: any) => m.id);
 
       let q = supabase
         .from("mikrotik_clients")
@@ -86,7 +86,7 @@ export default function ResellerMikrotikBulkCreate() {
         .order("name");
 
       if (mtIds.length > 0) {
-        // branch-এর সব MT-এর users + পুরোনো transferred users
+        // assigned MT-এর সব users + পুরোনো transferred users
         const inList = `(${mtIds.join(",")})`;
         q = q.or(
           `transferred_to_pop_id.eq.${popId},mikrotik_id.in.${inList},transferred_to_mikrotik_id.in.${inList}`,
