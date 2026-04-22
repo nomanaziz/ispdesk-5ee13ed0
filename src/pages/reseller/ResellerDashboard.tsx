@@ -10,6 +10,7 @@ import {
   Bell, MessageSquare, Mail, TrendingDown, AlertTriangle, Gift,
   Users, UserPlus, BarChart3, Wifi, Banknote,
 } from "lucide-react";
+import AssignedAreasWidget from "@/components/reseller/AssignedAreasWidget";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, Legend,
@@ -285,6 +286,11 @@ const ResellerDashboard = () => {
       </div>
 
       {/* Bottom row */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2"><AssignedAreasWidget /></div>
+        <div></div>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2 flex-row items-center gap-2 space-y-0">
