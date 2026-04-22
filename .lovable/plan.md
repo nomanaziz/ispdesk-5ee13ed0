@@ -1,101 +1,65 @@
 
 
-## POP Admin — Online Client Monitoring (Admin parity)
+## POP Admin Tickets — Client dropdown + ISP category fix
 
-### লক্ষ্য
-Admin-এর `/dashboard/monitoring/online` (`OnlineClientMonitoring.tsx` — ১৪৫২ লাইনের পূর্ণাঙ্গ module) এর exact same UI ও feature POP portal-এর `/pop-admin/monitoring/online`-এ আনবো — শুধুমাত্র সেই POP-এর নিজের branch-এর client/server/zone-এ scoped। এখন ওইখানে শুধু `PopPlaceholder` বসানো আছে।
+### আসল সমস্যা
+1. POP portal `anon` key + custom portal token-এ চলে → `supabase.from("clients")` সরাসরি query RLS-এ block হয়ে dropdown empty থাকছে।
+2. New Ticket dialog-এ Category field-ই নাই, common ISP issue presets-ও নাই।
 
-### কী কী feature আসবে (admin module থেকে hubohu)
+### সমাধান
 
-1. **Online / Offline tabs** — DB `is_online` থেকে instant render, পরে live MikroTik sync
-2. **Server selector** (mandatory) — শুধু POP-এর tariff-এ assigned MikroTik device গুলো দেখাবে
-3. **Zone / Connection-type filter** — শুধু POP-এর branch-এর zone
-4. **Search, sort, status filter**
-5. **Stats**: Total / Online / Offline / Sync indicator
-6. **Per-row actions**:
-   - Live Traffic dialog (snapshot polling প্রতি 2s, monthly history, recent logs)
-   - Ping tool dialog
-   - Single SMS
-7. **Bulk SMS** for selected rows
-8. **Mismatch tabs** (3টি):
-   - System=disabled / MK=enabled
-   - System=enabled / MK=disabled
-   - Profile mismatch (DB vs MK)
-   - Bulk: sync MK→DB or DB→MK
-9. **"Sync Online" button** — fetch fresh state from MikroTik
-10. **Mobile responsive** — admin-এর মতই collapsible filters
+#### ১) Client list portal API দিয়ে আনা
+`supabase/functions/portal-data/index.ts`-এ নতুন action যোগ:
+- **`pop_ticket_clients`** → token থেকে POP identify → `branch_id` validate → service-role দিয়ে সেই branch-এর সব client (`id, name, client_id, username, contact, mobile`) return করবে।
 
-### POP scoping (কোথায় কী filter হবে)
+`ResellerTickets.tsx`-এ `pop-clients-min` query কে `callPortal("pop_ticket_clients")` দিয়ে replace করবো — RLS bypass হবে, কিন্তু server-side branch ownership enforce থাকবে।
 
-| জিনিস | কীভাবে scope হবে |
-|------|------------------|
-| Clients query | `.eq("branch_id", branchId).eq("owner_scope","pop")` |
-| MikroTik server dropdown | শুধু POP-এর tariff-এ allocated server, অথবা branch-linked devices |
-| Zone dropdown | `.eq("branch_id", branchId)` |
-| Mismatch records | একই branch filter |
-| SMS gateway | POP-এর configured gateway / fallback admin gateway |
-| Live traffic / ping | client validation → branch ownership check |
+#### ২) Support category dropdown যোগ
+`portal-data`-এ আরেকটা action:
+- **`pop_ticket_categories`** → `support_categories` table থেকে active categories return করবে (যেগুলো admin আগে সেট করেছে)।
 
-### Architecture
+Dialog-এ নতুন Category select field যোগ হবে।
 
-POP portal `anon` key + custom portal token-এ চলে → direct `supabase.from("clients")` RLS-blocked। তাই hybrid approach:
+#### ৩) ISP-common preset issues seed করা
+Migration দিয়ে কিছু default category insert হবে যদি table-এ না থাকে:
+- ইন্টারনেট স্লো (Internet Slow)
+- লাইন শিফটিং (Line Shifting)
+- ফাইবার কাট (Fiber Cut)
+- রাউটার শিফটিং (Router Shifting)
+- প্যাকেজ পরিবর্তন (Package Change)
+- কানেকশন ডিসকানেক্টেড (No Internet / Disconnected)
+- পাসওয়ার্ড পরিবর্তন (Password Change)
+- ONU/Device সমস্যা (ONU/Device Issue)
+- পেমেন্ট/বিল সমস্যা (Billing Issue)
+- নতুন কানেকশন (New Connection Request)
 
-- **Read paths** (clients list, zones, servers, mismatch rows) → `portal-data` edge function-এ নতুন actions, service-role দিয়ে fetch + branch validation
-- **Action paths** (sync-online, live-traffic-snapshot, manage-mikrotik-ppp, ping, send SMS) → existing edge functions; POP-mode-এ wrapper edge action হয়ে call হবে যাতে server-side branch ownership verify হয়
+`ON CONFLICT DO NOTHING` দিয়ে — যাতে existing data overwrite না হয়।
 
-### নতুন edge function actions (in `portal-data/index.ts`)
+#### ৪) Dialog-এ searchable client dropdown
+Client সংখ্যা বেশি হলে scroll/search সুবিধা দিতে — Combobox (existing `Command` + `Popover` pattern) ব্যবহার করবো যাতে নাম/client_id/contact দিয়ে instant search করা যায়। সাধারণ Select-ও ঠিক আছে যদি অল্প client থাকে — দুটোর মধ্যে searchable Combobox বেশি usable, সেটাই use করবো।
 
-| Action | কাজ |
-|--------|-----|
-| `pop_monitoring_filters` | servers + zones + connection-types (POP scope) |
-| `pop_monitoring_clients` | enabled clients with mikrotik_id + relations |
-| `pop_monitoring_sync_online` | proxy → `fetch-mikrotik-ppp` (validate device belongs to POP) |
-| `pop_monitoring_active_sessions` | proxy → `fetch-mikrotik-ppp` action `active-sessions` + mismatch (validate device) |
-| `pop_live_traffic_snapshot` | proxy → `live-traffic-snapshot` (validate client branch) |
-| `pop_ping_client` | proxy → ping logic (validate client branch) |
-| `pop_manage_mikrotik_ppp` | proxy → `manage-mikrotik-ppp` (enable/disable/update; validate) |
-| `pop_send_sms` | single + bulk SMS to POP's clients |
+#### ৫) Insert-ও portal API দিয়ে (security)
+নতুন action:
+- **`pop_create_ticket`** → POP-এর branch-এর client কিনা verify → ticket + initial message insert → `category_id`, `client_id`, `subject`, `description`, `priority`, `source: pop_admin` set।
 
-প্রতিটা action token verify → branch_id resolve → target resource same branch কিনা check → তারপর service-role দিয়ে execute।
-
-### Frontend changes
-
-**নতুন ফাইল**: `src/pages/reseller/PopOnlineMonitoring.tsx`
-- Admin `OnlineClientMonitoring.tsx` থেকে structure copy
-- সব `supabase.from(...)` call → `callPortal("pop_monitoring_*", ...)`
-- সব `supabase.functions.invoke("...")` → `callPortal("pop_*", ...)`
-- UI/labels/Bengali text/styling পুরো same রাখা হবে
-
-**App.tsx** edit:
-```tsx
-// Replace the placeholder
-<Route path="/pop-admin/monitoring/online"
-  element={<PortalAuthProvider><ResellerProtectedRoute>
-    <ResellerLayout><PopOnlineMonitoring /></ResellerLayout>
-  </ResellerProtectedRoute></PortalAuthProvider>} />
-```
+ফলে কেউ অন্য POP-এর `client_id` দিয়ে ticket তৈরি করতে পারবে না।
 
 ### Files যেগুলো create/edit হবে
 
 | File | কাজ |
 |------|-----|
-| `src/pages/reseller/PopOnlineMonitoring.tsx` | **নতুন** — admin module-এর POP-scoped clone |
-| `src/App.tsx` | placeholder সরিয়ে নতুন page wire-up |
-| `supabase/functions/portal-data/index.ts` | উপরের ৮টি নতুন action যোগ |
-| Admin `OnlineClientMonitoring.tsx` | **অপরিবর্তিত** |
-| Existing edge functions (`fetch-mikrotik-ppp`, `live-traffic-snapshot`, `manage-mikrotik-ppp`) | **অপরিবর্তিত** |
+| `supabase/functions/portal-data/index.ts` | ৩টি নতুন action: `pop_ticket_clients`, `pop_ticket_categories`, `pop_create_ticket` |
+| `src/pages/reseller/ResellerTickets.tsx` | clients/categories `callPortal` দিয়ে fetch, Combobox client picker, Category select, ticket create-ও portal API দিয়ে |
+| Migration | Default ISP categories seed (existing থাকলে skip) |
 
-### প্রতিশ্রুতি
-
-- POP admin শুধু **নিজের branch-এর client** দেখবেন, অন্য POP-এর data leak হবে না
-- Admin module 100% অপরিবর্তিত — তাই admin-side কিছু ভাঙবে না
-- Same UI / Bengali labels / actions / mismatch flow / live traffic / SMS — সব admin-এর মতই
-- RLS loosen করা হচ্ছে না — সব POP read/write portal edge function দিয়ে validated
+### ফলাফল
+- New Ticket → Client dropdown-এ POP-এর সব client list আসবে, search করা যাবে
+- Category select-এ Internet Slow / Line Shifting / Fiber Cut ইত্যাদি প্রস্তুত থাকবে
+- অন্য POP-এর client/category leak হবে না — সব server-side validated
+- Admin module ও অন্যান্য POP page অপরিবর্তিত
 
 ### Technical notes
-
-- DB schema change লাগবে না
-- Mobile bottom-tab-এ আগে থেকেই "মনিটর" entry আছে → কাজ করতে শুরু করবে
-- POP-এর কোনো MikroTik device assigned না থাকলে empty state friendly message দেখাবে
-- `usePopScope()` দিয়ে `isPopMode` detect হবে; non-POP mode-এ এই page render হবে না (route POP-only)
+- DB schema change লাগবে না (শুধু default rows seed)
+- RLS loosen হচ্ছে না
+- Existing `support_categories` admin-এর জন্যও same data — শুধু POP read access portal-এর মাধ্যমে দিচ্ছি
 
