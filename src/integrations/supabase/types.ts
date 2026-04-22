@@ -2926,6 +2926,8 @@ export type Database = {
           device_recovered: boolean
           device_serial: string | null
           device_type: string | null
+          district_id: string | null
+          division_id: string | null
           documents: Json
           email: string | null
           expire_date: string | null
@@ -2978,6 +2980,7 @@ export type Database = {
           sub_zone_id: string | null
           total_download: number
           total_upload: number
+          upazila_id: string | null
           updated_at: string
           user_id: string | null
           username: string | null
@@ -3007,6 +3010,8 @@ export type Database = {
           device_recovered?: boolean
           device_serial?: string | null
           device_type?: string | null
+          district_id?: string | null
+          division_id?: string | null
           documents?: Json
           email?: string | null
           expire_date?: string | null
@@ -3059,6 +3064,7 @@ export type Database = {
           sub_zone_id?: string | null
           total_download?: number
           total_upload?: number
+          upazila_id?: string | null
           updated_at?: string
           user_id?: string | null
           username?: string | null
@@ -3088,6 +3094,8 @@ export type Database = {
           device_recovered?: boolean
           device_serial?: string | null
           device_type?: string | null
+          district_id?: string | null
+          division_id?: string | null
           documents?: Json
           email?: string | null
           expire_date?: string | null
@@ -3140,6 +3148,7 @@ export type Database = {
           sub_zone_id?: string | null
           total_download?: number
           total_upload?: number
+          upazila_id?: string | null
           updated_at?: string
           user_id?: string | null
           username?: string | null
@@ -3169,6 +3178,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "clients_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "districts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "clients_mikrotik_id_fkey"
             columns: ["mikrotik_id"]
             isOneToOne: false
@@ -3194,6 +3217,13 @@ export type Database = {
             columns: ["sub_zone_id"]
             isOneToOne: false
             referencedRelation: "sub_zones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_upazila_id_fkey"
+            columns: ["upazila_id"]
+            isOneToOne: false
+            referencedRelation: "upazilas"
             referencedColumns: ["id"]
           },
           {
