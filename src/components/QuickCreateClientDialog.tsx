@@ -135,6 +135,9 @@ export function QuickCreateClientDialog({ open, onOpenChange }: Props) {
     onSuccess: (id, _vars, _ctx) => {
       toast.success(t("ক্লায়েন্ট তৈরি হয়েছে", "Client created"));
       qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["clients-list"] });
+      qc.invalidateQueries({ queryKey: ["billing"] });
+      qc.invalidateQueries({ queryKey: ["billing-list"] });
       qc.invalidateQueries({ queryKey: ["portal-pop-clients"] });
       qc.invalidateQueries({ queryKey: ["pop-list-clients"] });
       qc.invalidateQueries({ queryKey: ["pop-mobile-internal"] });
