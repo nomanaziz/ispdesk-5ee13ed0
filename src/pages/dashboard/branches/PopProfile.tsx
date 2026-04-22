@@ -19,6 +19,7 @@ import PopDebitHistory from "@/components/branches/PopDebitHistory";
 import PopCreditHistory from "@/components/branches/PopCreditHistory";
 import PopExportedClients from "@/components/branches/PopExportedClients";
 import PopUnexportedClients from "@/components/branches/PopUnexportedClients";
+import PopOnlineClients from "@/components/branches/PopOnlineClients";
 import PopLeftClientsTab from "@/components/branches/PopLeftClientsTab";
 import { loginAsUser } from "@/lib/impersonate";
 
@@ -220,6 +221,7 @@ export default function PopProfile() {
                 <TabsTrigger value="info">POP Info</TabsTrigger>
                 <TabsTrigger value="exported">Exported</TabsTrigger>
                 <TabsTrigger value="unexported">Unexported</TabsTrigger>
+                <TabsTrigger value="online">Online Clients</TabsTrigger>
                 <TabsTrigger value="left">Left Clients</TabsTrigger>
                 <TabsTrigger value="transactions">Transactions</TabsTrigger>
                 <TabsTrigger value="debit">Debit Transactions</TabsTrigger>
@@ -267,6 +269,10 @@ export default function PopProfile() {
 
               <TabsContent value="unexported" className="mt-4">
                 <PopUnexportedClients popId={id!} branchId={pop.branch_id} />
+              </TabsContent>
+
+              <TabsContent value="online" className="mt-4">
+                <PopOnlineClients branchId={pop.branch_id} />
               </TabsContent>
 
               <TabsContent value="left" className="mt-4">
