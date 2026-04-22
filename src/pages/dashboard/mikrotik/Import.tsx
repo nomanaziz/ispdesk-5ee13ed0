@@ -50,6 +50,22 @@ export default function Import() {
     },
   });
 
+  // Cross-server username map: lowercase username -> Set of distinct mikrotik_id
+  const { data: crossServerMap = new Map<string, Set<string>>() } = useQuery({
+    queryKey: ["mikrotik_username_server_map"],
+    queryFn: async () => {
+      const { data } = await supabase.from("mikrotik_clients").select("name, mikrotik_id");
+      const m = new Map<string, Set<string>>();
+      (data || []).forEach((r: any) => {
+        const key = r.name?.toLowerCase();
+        if (!key || !r.mikrotik_id) return;
+        if (!m.has(key)) m.set(key, new Set());
+        m.get(key)!.add(r.mikrotik_id);
+      });
+      return m;
+    },
+  });
+
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["mikrotik_clients", selectedServer, protocolFilter, profileFilter, userTypeFilter, transferStatus],
     queryFn: async () => {
