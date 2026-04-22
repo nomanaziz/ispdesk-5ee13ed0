@@ -8,7 +8,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
-import { FileText, Save, Plus, Trash2, Receipt } from "lucide-react";
+import { FileText, Save, Plus, Trash2, Receipt, Upload, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface InvoiceConfig {
   show_company_name: boolean;
@@ -18,7 +20,9 @@ interface InvoiceConfig {
   show_company_logo: boolean;
   show_company_address: boolean;
   invoice_title: string;
+  invoice_title_visible: boolean;
   invoice_position: string;
+  invoice_logo_url: string;
   per_page: string;
   margin_top: number;
   margin_bottom: number;
@@ -36,7 +40,8 @@ interface InvoiceConfig {
 const defaults: InvoiceConfig = {
   show_company_name: true, show_company_email: true, show_company_mobile: true,
   show_company_website: false, show_company_logo: true, show_company_address: true,
-  invoice_title: "INVOICE", invoice_position: "left", per_page: "1", margin_top: 0, margin_bottom: 0,
+  invoice_title: "INVOICE", invoice_title_visible: true, invoice_position: "left", invoice_logo_url: "",
+  per_page: "1", margin_top: 0, margin_bottom: 0,
   notes: [""],
   receipt_title: "MONEY RECEIPT", receipt_format: "a4", receipt_position: "left",
   receipt_margin_top: 0, receipt_margin_bottom: 0, receipt_notes: [""], receipt_show_company: true,
