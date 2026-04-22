@@ -37,7 +37,19 @@ export default function ClientProfile() {
   const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("service");
 
-  const { data: client, isLoading } = useQuery({
+  // POP mode: load client + related data via edge function (RLS-safe).
+  const { data: popBundle, isLoading: popLoading } = useQuery({
+    queryKey: ["pop-client-profile", id],
+    queryFn: async () => {
+      const res = await callPortal<any>("get_pop_client_profile", { client_id: id });
+      return res;
+    },
+    enabled: isPopMode && !!id,
+    retry: false,
+  });
+
+  // Admin mode: existing direct Supabase fetch.
+  const { data: adminClient, isLoading: adminLoading } = useQuery({
     queryKey: ["client-profile", id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -52,16 +64,20 @@ export default function ClientProfile() {
           bill_collections!bill_collections_client_id_fkey(id, amount, discount, vat, payment_method, note, status, created_at, transaction_id, received_by)
         `)
         .eq("id", id!)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!id,
+    enabled: !isPopMode && !!id,
   });
+
+  const client = isPopMode ? popBundle?.client : adminClient;
+  const isLoading = isPopMode ? popLoading : adminLoading;
 
   const { data: trafficData } = useQuery({
     queryKey: ["client-traffic", id],
     queryFn: async () => {
+      if (isPopMode) return popBundle?.traffic || [];
       const { data } = await supabase
         .from("client_traffic_monthly")
         .select("*")
@@ -70,12 +86,13 @@ export default function ClientProfile() {
         .limit(12);
       return data || [];
     },
-    enabled: !!id,
+    enabled: !!id && (!isPopMode || !!popBundle),
   });
 
   const { data: changeRequests = [] } = useQuery({
     queryKey: ["client-changes", id],
     queryFn: async () => {
+      if (isPopMode) return popBundle?.change_requests || [];
       const { data } = await supabase
         .from("change_requests")
         .select("*")
@@ -84,12 +101,13 @@ export default function ClientProfile() {
         .limit(20);
       return data || [];
     },
-    enabled: !!id,
+    enabled: !!id && (!isPopMode || !!popBundle),
   });
 
   const { data: supportTickets = [] } = useQuery({
     queryKey: ["client-tickets", id],
     queryFn: async () => {
+      if (isPopMode) return popBundle?.support_tickets || [];
       const { data } = await supabase
         .from("support_tickets" as any)
         .select("*")
@@ -98,7 +116,7 @@ export default function ClientProfile() {
         .limit(20);
       return (data as any[]) || [];
     },
-    enabled: !!id,
+    enabled: !!id && (!isPopMode || !!popBundle),
   });
 
   const { data: livePppData, isFetching: isPppFetching } = useQuery({
@@ -126,6 +144,7 @@ export default function ClientProfile() {
   const { data: billHistory = [] } = useQuery({
     queryKey: ["bill-history", id],
     queryFn: async () => {
+      if (isPopMode) return popBundle?.bill_history || [];
       const { data } = await supabase
         .from("billing_history" as any)
         .select("*")
@@ -133,7 +152,7 @@ export default function ClientProfile() {
         .order("changed_at", { ascending: false });
       return (data as any[]) || [];
     },
-    enabled: !!id,
+    enabled: !!id && (!isPopMode || !!popBundle),
   });
 
   const handleInlineSearch = useCallback(async (q: string) => {
