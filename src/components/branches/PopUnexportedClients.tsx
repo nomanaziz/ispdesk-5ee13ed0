@@ -49,7 +49,7 @@ export default function PopUnexportedClients({ popId, branchId }: Props) {
         .eq("transferred_to_pop_id", popId)
         .is("linked_client_id", null);
       if (e) throw e;
-      return rows ?? [];
+      return (rows ?? []) as any[];
     },
   });
 
