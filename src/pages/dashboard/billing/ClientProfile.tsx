@@ -526,9 +526,14 @@ export default function ClientProfile() {
                           <TableCell className="text-right">{Number(b.advance || 0).toLocaleString()}</TableCell>
                           <TableCell className="text-xs">{b.pay_date || "-"}</TableCell>
                           <TableCell>
-                            <Badge variant={b.status === "paid" ? "default" : b.status === "partial" ? "secondary" : "destructive"} className="text-xs">
-                              {b.status === "paid" ? "Paid" : b.status === "partial" ? "Partial" : "Due"}
-                            </Badge>
+                            {(() => {
+                              const s = getBillStatus(b);
+                              return (
+                                <Badge variant="outline" className={`text-xs ${getBillStatusBadgeClass(s)}`}>
+                                  {getBillStatusLabel(s)}
+                                </Badge>
+                              );
+                            })()}
                           </TableCell>
                         </TableRow>
                       ))}
