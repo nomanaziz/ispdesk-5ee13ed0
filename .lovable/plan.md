@@ -1,38 +1,85 @@
+<final-text>## POP Admin billing status + client view fix plan
 
+### কী ঠিক হবে
+1. আংশিক payment হলে status সব জায়গায় `আংশিক` দেখাবে, `পরিশোধিত` না  
+2. POP Admin থেকে client view খুললে আর দীর্ঘ load হয়ে `ক্লায়েন্ট পাওয়া যায়নি` দেখাবে না
 
-## "দ্রুত ক্লায়েন্ট তৈরি" (Quick Create Client) সম্পূর্ণ সরানো — POP Admin Portal থেকে
+### আসল সমস্যা
+- `ClientProfile.tsx` এখনো POP mode-এ সরাসরি `supabase.from("clients")` দিয়ে data তোলে। POP portal `anon` key + custom portal token-এ চলে, তাই এই query RLS-এ block হয়ে profile empty/failed হচ্ছে।
+- Billing UI-র কিছু জায়গায় status raw `b.status` থেকে দেখানো হচ্ছে, আবার কিছু জায়গায় `paid/due` থেকে হিসাব করা হচ্ছে। ফলে main admin আর POP/admin view-এর মধ্যে inconsistency হচ্ছে।
+- `receive_pop_bill` edge logic-ও admin daily collection logic-এর সঙ্গে পুরোপুরি aligned না; status/due calculation এক জায়গায় raw status-এর ওপর ভর করছে।
 
-### লক্ষ্য
-POP Admin portal-এ যেখানেই "Quick Create Client" / `QuickCreateClientDialog` আছে, সব trigger সরিয়ে দেবো। Admin portal-এ যদি থাকে, সেটা **অটুট রাখবো** (user শুধু POP-এর কথা বলেছেন, কিন্তু component-টা যেহেতু shared, আমি POP-side trigger গুলোই disable করবো এবং component file নিজেই রেখে দেবো যাতে Admin-এর কিছু না ভাঙে)।
+### implementation
+#### ১) billing status এক জায়গায় normalize করা
+একটা shared helper যোগ করা হবে, যেটা bill row থেকে effective status বের করবে:
+- `paid` যখন due `<= 0` এবং paid `> 0`
+- `partial` যখন paid `> 0` এবং due `> 0`
+- `unpaid/due` যখন paid `<= 0` এবং due `> 0`
 
-### পরিকল্পিত পরিবর্তন
+এই helper use হবে:
+- `src/pages/dashboard/billing/BillingList.tsx`
+- `src/pages/dashboard/billing/ClientProfile.tsx`
+- দরকার হলে `DailyCollection.tsx`-এর status badge / derived UI-তেও
 
-আমি প্রথমে কোডবেইসে `QuickCreateClientDialog` এর সব usage খুঁজে বের করবো (`code--search_files`), বিশেষ করে:
-- `ResellerLayout.tsx` / `ResellerMobileShell.tsx` (POP sidebar / mobile FAB)
-- `ResellerDashboard.tsx` (POP dashboard quick action)
-- যেকোনো POP-related page যেখানে এই dialog open করার button আছে
+এতে stale `b.status` থাকলেও UI main admin-এর মত consistent দেখাবে:
+- `আংশিক` = yellow
+- `পরিশোধিত` = green
+- `বকেয়া` = red
 
-তারপর প্রতিটি POP-context ফাইল থেকে:
-1. `<QuickCreateClientDialog ... />` JSX সরাবো
-2. সংশ্লিষ্ট state (`const [quickOpen, setQuickOpen] = useState(false)`) সরাবো
-3. ওই dialog খোলার button/menu-item/FAB সরাবো
-4. unused import সরাবো
+#### ২) POP bill receive logic main admin-এর সাথে align করা
+`supabase/functions/portal-data/index.ts`-এর `receive_pop_bill` action update করা হবে যাতে:
+- due/status calculation admin-side logic-এর same rule follow করে
+- bill row update, collection insert, income entry insert আগের মতই থাকে
+- partial payment হলে persisted status-ও `partial` হয়
 
-### Files যেগুলো edit হবে (প্রাথমিক estimate — exploration-এর পর confirm হবে)
+এতে future reload-এও status mismatch হবে না।
 
-| File | পরিবর্তন |
-|------|----------|
-| `src/components/ResellerLayout.tsx` | QuickCreate trigger + import সরানো |
-| `src/components/reseller/mobile/ResellerMobileShell.tsx` | mobile FAB / trigger থাকলে সরানো |
-| `src/pages/reseller/ResellerDashboard.tsx` | Quick Create button + dialog mount সরানো |
-| অন্য কোনো POP page যেখানে usage পাওয়া যাবে | একই pattern |
-| `src/components/QuickCreateClientDialog.tsx` | **অপরিবর্তিত রেখে দেবো** (Admin-side ব্যবহারের জন্য safe থাকবে; কেউ use না করলে dead code হবে কিন্তু কিছু ভাঙবে না) |
+#### ৩) POP client profile fetch server-side করা
+`portal-data` edge function-এ নতুন action যোগ হবে, যেমন:
+- `get_pop_client_profile`
 
-### POP user-এর জন্য বিকল্প
-নতুন client তৈরি করতে POP admin "Add Client" পূর্ণ ফর্ম (`/pop-admin/clients/add`) ব্যবহার করবেন — যেটা ইতিমধ্যে কাজ করছে।
+এই action:
+- portal token থেকে POP identify করবে
+- `branch_id` validate করবে
+- requested client ওই POP-এর branch-এর কিনা check করবে
+- client + billing + bill_collections + needed relations return করবে
 
-### প্রতিশ্রুতি
-- POP portal থেকে "দ্রুত ক্লায়েন্ট তৈরি" সব entry-point (sidebar, FAB, dashboard, যেকোনো page) সরে যাবে
-- Admin portal-এর কোনো feature ভাঙবে না
-- `/pop-admin/clients/add` (Full Form) আগের মতই কাজ করবে
+প্রয়োজনে একই response-এ basic related data-ও দেওয়া হবে:
+- zone / sub-zone / package / box
+- bill history
+- traffic summary
+- change requests / tickets (যতটুকু view page-এ লাগে)
 
+#### ৪) ClientProfile-এ POP branch fetch path আলাদা করা
+`src/pages/dashboard/billing/ClientProfile.tsx`-এ:
+- admin mode: existing Supabase flow unchanged
+- POP mode: `callPortal("get_pop_client_profile", { client_id: id })`
+- POP mode-এ RLS-blocked direct queries বন্ধ/disable করা হবে
+- empty state আর loading state clean করা হবে যাতে false “ক্লায়েন্ট পাওয়া যায়নি” না দেখায়
+
+#### ৫) same display rule profile page-এও apply করা
+`ClientProfile.tsx`-এর:
+- sidebar billing badge
+- invoice table status badge
+- যেকোনো summary status text
+
+সবগুলো shared helper থেকে status নেবে, raw `b.status` থেকে না।
+
+### files likely to change
+- `supabase/functions/portal-data/index.ts`
+- `src/pages/dashboard/billing/ClientProfile.tsx`
+- `src/pages/dashboard/billing/BillingList.tsx`
+- সম্ভব হলে একটি shared helper file, যেমন `src/lib/billingStatus.ts`
+
+### ফলাফল
+- POP Admin bill partial হলে সব জায়গায় `আংশিক` দেখাবে
+- full paid হলে `পরিশোধিত` দেখাবে
+- client view POP portal-এ reliably খুলবে
+- main admin আর POP admin billing behavior একই rule follow করবে
+- security ঠিক থাকবে, কোনো public RLS leak লাগবে না
+
+### technical notes
+- DB schema change লাগবে না
+- RLS loosen করা হবে না
+- POP mode-এর জন্য service-role edge function path ব্যবহার হবে
+- `ClientProfile`-এ `.single()`-ভিত্তিক direct POP fetch বাদ দিয়ে portal action-based fetch use হবে যাতে false not-found না আসে</final-text>
