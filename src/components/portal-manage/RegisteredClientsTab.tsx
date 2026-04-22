@@ -28,6 +28,7 @@ export default function RegisteredClientsTab() {
       const { data } = await supabase
         .from("clients")
         .select("id, client_id, name, username, password, contact, status")
+        .eq("owner_scope", "admin")
         .order("client_id")
         .limit(2000);
       return data || [];
