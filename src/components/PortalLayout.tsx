@@ -15,27 +15,27 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const menuItems = [
-  { label: "Dashboard", icon: LayoutDashboard, path: "/portal/dashboard" },
-  { label: "My Profile", icon: UserCog, path: "/portal/profile" },
-  { label: "Live Usage", icon: Activity, path: "/portal/live-usage" },
-  { label: "Notices", icon: Bell, path: "/portal/notices" },
-  { label: "Company Info", icon: Building2, path: "/portal/company" },
-  { label: "Movie/FTP Servers", icon: Clapperboard, path: "/portal/media" },
-  { label: "Speed Test", icon: Rocket, path: "/portal/speed-test" },
-  { label: "My Ledger", icon: BookOpen, path: "/portal/ledger" },
-  { label: "মাসিক বিল", icon: Receipt, path: "/portal/bills" },
-  { label: "Invoices", icon: FileText, path: "/portal/invoices" },
-  { label: "Shop", icon: ShoppingBag, path: "/portal/shop" },
-  { label: "My Orders", icon: Package, path: "/portal/my-orders" },
-  { label: "Support Tickets", icon: HeadphonesIcon, path: "/portal/support" },
+  { label: "Dashboard", icon: LayoutDashboard, path: "/portal/dashboard", color: "text-indigo-600 dark:text-indigo-400" },
+  { label: "My Profile", icon: UserCog, path: "/portal/profile", color: "text-blue-600 dark:text-blue-400" },
+  { label: "Live Usage", icon: Activity, path: "/portal/live-usage", color: "text-green-600 dark:text-green-400" },
+  { label: "Notices", icon: Bell, path: "/portal/notices", color: "text-amber-600 dark:text-amber-400" },
+  { label: "Company Info", icon: Building2, path: "/portal/company", color: "text-slate-600 dark:text-slate-300" },
+  { label: "Movie/FTP Servers", icon: Clapperboard, path: "/portal/media", color: "text-purple-600 dark:text-purple-400" },
+  { label: "Speed Test", icon: Rocket, path: "/portal/speed-test", color: "text-rose-600 dark:text-rose-400" },
+  { label: "My Ledger", icon: BookOpen, path: "/portal/ledger", color: "text-cyan-600 dark:text-cyan-400" },
+  { label: "মাসিক বিল", icon: Receipt, path: "/portal/bills", color: "text-emerald-600 dark:text-emerald-400" },
+  { label: "Invoices", icon: FileText, path: "/portal/invoices", color: "text-teal-600 dark:text-teal-400" },
+  { label: "Shop", icon: ShoppingBag, path: "/portal/shop", color: "text-pink-600 dark:text-pink-400" },
+  { label: "My Orders", icon: Package, path: "/portal/my-orders", color: "text-orange-600 dark:text-orange-400" },
+  { label: "Support Tickets", icon: HeadphonesIcon, path: "/portal/support", color: "text-red-600 dark:text-red-400" },
 ];
 
 const bottomNav = [
-  { label: "Home", icon: LayoutDashboard, path: "/portal/dashboard" },
-  { label: "Bills", icon: Receipt, path: "/portal/bills" },
-  { label: "Tickets", icon: HeadphonesIcon, path: "/portal/support" },
-  { label: "Ledger", icon: BookOpen, path: "/portal/ledger" },
-  { label: "Notices", icon: Bell, path: "/portal/notices" },
+  { label: "Home", icon: LayoutDashboard, path: "/portal/dashboard", color: "text-indigo-600 dark:text-indigo-400" },
+  { label: "Bills", icon: Receipt, path: "/portal/bills", color: "text-emerald-600 dark:text-emerald-400" },
+  { label: "Tickets", icon: HeadphonesIcon, path: "/portal/support", color: "text-red-600 dark:text-red-400" },
+  { label: "Ledger", icon: BookOpen, path: "/portal/ledger", color: "text-cyan-600 dark:text-cyan-400" },
+  { label: "Notices", icon: Bell, path: "/portal/notices", color: "text-amber-600 dark:text-amber-400" },
 ];
 
 export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
