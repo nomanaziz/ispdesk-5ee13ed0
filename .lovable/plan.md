@@ -1,182 +1,58 @@
 
+
 ## লক্ষ্য
-তিনটা জিনিস একসাথে ঠিক করা:
-1. **Revert করা MikroTik user** আবার **Import from MikroTik** list-এ ফিরবে  
-2. **POP Manager list**-এ Nahid/Naeem-এর **running 3 / 4** zero হবে  
-3. **POP Profile → Unexported**-এ ভুলভাবে সব 13 user দেখানো বন্ধ হবে
+Import from MikroTik page-এ **USER TYPE** filter-এর meaning ঠিক করে ৩টা logical option করা: **Unique**, **Duplicate**, **Unlisted** — যাতে admin দ্রুত বুঝতে পারে কোন PPP user কোথায় আছে।
 
-## আসল সমস্যা
-এখানে ৩টা আলাদা logic bug একসাথে আছে:
+## নতুন definition
 
-### ১) Import page ভুল filter ব্যবহার করছে
-`Import.tsx` এখন `clients.username` দেখে MikroTik user hide করছে।  
-তাই PPP user revert হলেও যদি একই username-এর `clients` row এখনো থাকে, user আর import list-এ আসে না।
+| Option | মানে |
+|---|---|
+| **Unique** | এই username শুধু **একটাই MikroTik server**-এ আছে (cross-server গণনা = 1) |
+| **Duplicate** | একই username **একাধিক MikroTik server**-এ exist করছে (cross-server গণনা ≥ 2) |
+| **Unlisted** | এই PPP user **কোনো POP/Client list-এ নেই** — মানে `clients` table-এ এই username নেই, এবং `mikrotik_clients`-এও `transferred_to_pop_id IS NULL` ও `linked_client_id IS NULL` |
+| **All** | সব দেখাবে (default) |
 
-### ২) Revert half-done হচ্ছে
-এখন revert শুধু `mikrotik_clients` row reset করছে।  
-কিন্তু আগে POP থেকে তৈরি হওয়া `clients` row delete/rollback হচ্ছে না।  
-ফলাফল:
-- POP Manager list-এ running count থেকে যাচ্ছে
-- Import page-এ same username block হচ্ছে
-- data দুই table-এ mismatch হয়ে যাচ্ছে
+> পুরনো `unique/duplicate/disabled` (যেটা `user_status` column থেকে আসত — এটা actually MikroTik-এর enabled/disabled flag) আর filter হিসেবে ব্যবহার হবে না। সেটার দরকার হলে আলাদা ছোট badge হিসেবে রাখা যাবে, কিন্তু dropdown থেকে সরবে।
 
-### ৩) POP Profile-এর Unexported logic ভুল table field-এর উপর দাঁড়ানো
-`PopUnexportedClients.tsx` এখন:
-- `branch_id == pop.branch_id`
-- অথবা `transferred_to_pop_id == popId`
+## কী কী করা হবে
 
-এই logic ব্যবহার করছে।
+### ১) `Import.tsx`-এ User Type filter rebuild
+- Dropdown options: `All`, `Unique`, `Duplicate`, `Unlisted`
+- `clients` table থেকে username set আনা (already আছে: `existingUsernames`)
+- সব `mikrotik_clients` row থেকে username → কতগুলো server-এ আছে map বানানো (client-side aggregation, lowercase username + distinct `mikrotik_id`)
+- Filter logic:
+  - `unique` → server count == 1
+  - `duplicate` → server count ≥ 2
+  - `unlisted` → username `clients` table-এ নেই AND এখনো কোনো POP-এ transfer হয়নি
 
-কিন্তু `mikrotik_clients.branch_id` আসলে **device branch sync field** — POP ownership field না।  
-`fetch-mikrotik-ppp` sync-এর সময় device-এর `branch_id` সব PPP row-তে বসে যাচ্ছে।  
-তাই branch-scoped server-এর সব 13 user ভুল করে **Unexported**-এ ঢুকে যাচ্ছে।
+### ২) Username duplicate count efficiently আনা
+দরকার হবে সব server-এর সব PPP user-এর `(name, mikrotik_id)` জোড়া। তাই একটা hালকা parallel query:
+- `mikrotik_clients` থেকে শুধু `name, mikrotik_id` select করে cross-server map তৈরি
+- এই query একবারই run হবে (cached) — list filter তার পরে memoize করে চলবে
 
----
-
-## কী করা হবে
-
-### ১) Revert-কে full rollback করা হবে
-Revert-এর সময় একসাথে ২টা table handle করা হবে:
-
-#### `mikrotik_clients`
-এই field গুলো clear হবে:
-- `transferred_to_pop_id = null`
-- `transferred_to_mikrotik_id = null`
-- `transferred_at = null`
-- `linked_client_id = null`
-- `exported = false`
-- `exported_to = null`
-
-#### related `clients`
-যদি POP conversion থেকে তৈরি হওয়া active client row থাকে, সেটা:
-- detect করা হবে by previous `linked_client_id`
-- fallback হিসেবে `username + branch_id + owner_scope='pop'`
-- তারপর delete বা rollback করা হবে
-
-এটা **single atomic server-side operation**-এ করা হবে, যাতে half-success state না থাকে।
-
-### ২) Import from MikroTik page-এর filter ঠিক করা হবে
-`existing_client_usernames`-based hard hide তুলে দেওয়া হবে।
-
-নতুন rule:
-- Import list show হবে `mikrotik_clients` state অনুযায়ী
-- username duplicate থাকলে চাইলে warning badge থাকবে
-- কিন্তু stale `clients` row-এর কারণে PPP user hide হবে না
-
-অর্থাৎ import eligibility হবে:
+### ৩) Pending filter logic অপরিবর্তিত
+আগের core rule যেটা ঠিক হয়েছিল সেটা থাকবে:
 - `transferred_to_pop_id IS NULL`
 - `linked_client_id IS NULL`
-- `exported = false`
-এর মতো record-state ভিত্তিক logic দিয়ে
+- `exported = false / null`
+- AND username `clients` table-এ নেই (existing hide rule)
 
-### ৩) POP Profile → Unexported tab নতুনভাবে define করা হবে
-**Unexported** মানে:
-- এই POP-এ **actually transferred** হয়েছে
-- কিন্তু এখনো client বানানো হয়নি
+User Type filter এই base list-এর উপর extra layer হবে।
 
-তাই query হবে:
-- `transferred_to_pop_id = popId`
-- `linked_client_id IS NULL`
-
-`branch_id = pop.branch_id` দিয়ে আর Unexported ধরা হবে না।
-
-এতে AFTABNAGAR server-এর raw 13 user আর ভুল করে Nahid-এর Unexported list-এ আসবে না।
-
-### ৪) POP Profile → Exported tab-ও tighten করা হবে
-**Exported** মানে:
-- POP থেকে client-এ convert হয়েছে
-
-তাই source হবে:
-- `mikrotik_clients.linked_client_id IS NOT NULL`
-- linked `clients` row valid
-- linked client POP scope-এ আছে
-
-এতে stale linked/unlinked mismatch কমবে।
-
-### ৫) POP Manager list count logic robust করা হবে
-Running count শুধু `clients` table থেকে উঠবে, কিন্তু stricter rule-এ:
-- `owner_scope = 'pop'`
-- `status NOT IN ('left','inactive')`
-
-আর revert/left/delete হলে proper invalidation হবে:
-- `pop-client-counts`
-- `branch-managers`
-- `pop-detail`
-- `mikrotik_clients`
-- `existing_client_usernames`
-
-### ৬) Existing broken data repair করা হবে
-শুধু code fix দিলে পুরনো stale row ঠিক হবে না।  
-তাই current DB data-ও repair করতে হবে:
-
-#### Nahid branch
-এখন যেসব active POP client row পড়ে আছে এবং revert হওয়া PPP-এর orphan হয়ে আছে, সেগুলো clean করা হবে
-
-#### Naeem branch
-same cleanup
-
-Expected immediate effect:
-- Nahid running 3 → 0
-- Naeem running 4 → 0
-- reverted PPP user আবার Import page-এ visible
-
----
-
-## টেকনিক্যাল approach
-সবচেয়ে safe implementation হবে একটি **database function / RPC** বা admin-side secure server operation:
-
-```text
-revert_mikrotik_client(mikrotik_client_id, pop_id)
-  1. locate mikrotik row
-  2. capture previous linked client / fallback client row
-  3. delete or rollback POP-created client row
-  4. clear transfer/export/link fields in mikrotik_clients
-  5. return summary
-```
-
-কারণ browser থেকে ২টা table আলাদা mutate করলে আবার partial mismatch হতে পারে।
-
----
+### ৪) Visual polish
+- Filter label বাংলায়: **ইউজার টাইপ**
+- Each row-এ ছোট badge: যদি duplicate হয় → `Duplicate (3 servers)` ছোট badge দেখানো (optional, helpful)
+- "Branch" column আগেই সরানো হয়েছে — অপরিবর্তিত
 
 ## কোন file বদলাবে
-- `src/pages/dashboard/mikrotik/Import.tsx`
-- `src/components/branches/PopUnexportedClients.tsx`
-- `src/components/branches/PopExportedClients.tsx`
-- `src/pages/dashboard/branches/Managers.tsx`
-- `src/pages/dashboard/branches/PopProfile.tsx` (query invalidation / counts if needed)
-- `supabase/migrations/...sql` (revert RPC / cleanup SQL)
-- প্রয়োজনে `src/integrations` touch না করে existing Supabase client দিয়েই RPC call
+- `src/pages/dashboard/mikrotik/Import.tsx` (filter dropdown + logic + duplicate count query)
 
----
-
-## Data repair scope
-Current broken rows targeted:
-- Nahid branch-এর orphan active POP clients
-- Naeem branch-এর orphan active POP clients
-- corresponding reverted `mikrotik_clients` rows
-
----
+## কোন file বদলাবে না
+- DB schema, RLS, edge functions, অন্য pages
 
 ## Apply-এর পরে expected ফলাফল
-1. Revert করা user আবার **Import from MikroTik** list-এ আসবে  
-2. **POP Manager list**-এ Nahid/Naeem running count zero হবে  
-3. **POP Profile → Unexported**-এ আর branch-এর সব 13 raw user দেখাবে না  
-4. Exported/Unexported meaning বাস্তব business logic অনুযায়ী হবে  
-5. ভবিষ্যতে revert করলে stale client row পড়ে থাকবে না
+1. **Unique** select করলে → শুধু সেই PPP user যাদের username একটাই server-এ আছে
+2. **Duplicate** select করলে → multiple server-এ থাকা username গুলো (যেমন "moron" 3 server-এ থাকলে 3 row-ই আসবে)
+3. **Unlisted** select করলে → যেগুলো কোনো client list / POP-এ নেই — pure raw MT user
+4. Pending tab-এর base behavior অপরিবর্তিত (already-listed user hidden থাকবে)
 
-## Test cases
-1. **Nahid POP Profile → Unexported**
-   - expected: 13 raw branch users আর থাকবে না
-   - only truly transferred-but-not-converted rows দেখাবে
-
-2. **Admin → Import from MikroTik**
-   - reverted user আবার pending list-এ আসবে
-
-3. **POP Manager list**
-   - Nahid running = 0
-   - Naeem running = 0
-
-4. **Future revert flow**
-   - client row cleanup + mikrotik row reset
-   - import pool visible
-   - counts update without manual retry
