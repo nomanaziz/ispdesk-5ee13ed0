@@ -9,14 +9,14 @@ import {
   Search, Menu, Activity, Server, Globe, ChevronDown, ChevronRight,
   Cog, MapPin, Box, Package, Layers, Briefcase, BadgeCheck, Cpu,
   UserPlus, Wallet, BarChart3, FileText, Calendar,
-  MessageSquare, Send, Antenna, Radar, Wifi, History,
+  MessageSquare, Send, Antenna, Radar, Wifi, History, TrendingUp, BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type PermKey =
   | "dashboard" | "configuration" | "mikrotik" | "employee" | "client"
   | "billing" | "monitoring" | "sms" | "reports" | "purchases"
-  | "tickets" | "system" | "fund_history" | "settings" | "users" | "invoices";
+  | "tickets" | "system" | "fund_history" | "settings" | "users" | "invoices" | "accounting";
 
 interface NavLink { to: string; label: string; en: string; icon: any }
 interface NavGroup {
@@ -119,6 +119,14 @@ const groups: NavGroup[] = [
     ],
   },
   {
+    key: "accounting", label: "হিসাব", en: "Accounting", icon: Wallet,
+    items: [
+      { to: "/pop-admin/accounting/income", label: "Income", en: "Income", icon: TrendingUp as any },
+      { to: "/pop-admin/accounting/expense", label: "Expense", en: "Expense", icon: Wallet },
+      { to: "/pop-admin/accounting/cashbook", label: "Cash Book", en: "Cash Book", icon: BookOpen as any },
+    ],
+  },
+  {
     key: "fund_history", label: "ফান্ড হিস্ট্রি", en: "Fund History", icon: History,
     items: [
       { to: "/pop-admin/fund-history/credit", label: "ক্রেডিট হিস্ট্রি", en: "Credit History", icon: History },
@@ -152,6 +160,7 @@ function isGroupAllowed(g: NavGroup, customer: any): boolean {
     purchases: ["purchases"],
     tickets: ["tickets"],
     system: ["system", "settings"],
+    accounting: ["accounting"],
     fund_history: ["fund_history", "settings"],
   };
   return (legacyMap[g.key] || [g.key]).some((k) => perms[k]);

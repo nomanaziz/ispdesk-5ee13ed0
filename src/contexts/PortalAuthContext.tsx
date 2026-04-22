@@ -9,6 +9,9 @@ export interface ResellerPermissions {
   tickets: boolean;
   users: boolean;
   settings: boolean;
+  system?: boolean;
+  accounting?: boolean;
+  [key: string]: boolean | undefined;
 }
 
 interface PortalCustomer {

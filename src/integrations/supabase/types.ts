@@ -4033,6 +4033,7 @@ export type Database = {
           facebook_link: string | null
           gender: string | null
           guardian_phone: string | null
+          has_user_access: boolean
           id: string
           image_url: string | null
           institution: string | null
@@ -4053,8 +4054,12 @@ export type Database = {
           salary: number | null
           show_on_website: boolean | null
           status: string
+          sub_user_id: string | null
           upazila: string | null
           updated_at: string
+          user_password: string | null
+          user_permissions: Json
+          user_username: string | null
           working_experience: string | null
           zkteco_device_id: string | null
         }
@@ -4073,6 +4078,7 @@ export type Database = {
           facebook_link?: string | null
           gender?: string | null
           guardian_phone?: string | null
+          has_user_access?: boolean
           id?: string
           image_url?: string | null
           institution?: string | null
@@ -4093,8 +4099,12 @@ export type Database = {
           salary?: number | null
           show_on_website?: boolean | null
           status?: string
+          sub_user_id?: string | null
           upazila?: string | null
           updated_at?: string
+          user_password?: string | null
+          user_permissions?: Json
+          user_username?: string | null
           working_experience?: string | null
           zkteco_device_id?: string | null
         }
@@ -4113,6 +4123,7 @@ export type Database = {
           facebook_link?: string | null
           gender?: string | null
           guardian_phone?: string | null
+          has_user_access?: boolean
           id?: string
           image_url?: string | null
           institution?: string | null
@@ -4133,8 +4144,12 @@ export type Database = {
           salary?: number | null
           show_on_website?: boolean | null
           status?: string
+          sub_user_id?: string | null
           upazila?: string | null
           updated_at?: string
+          user_password?: string | null
+          user_permissions?: Json
+          user_username?: string | null
           working_experience?: string | null
           zkteco_device_id?: string | null
         }
