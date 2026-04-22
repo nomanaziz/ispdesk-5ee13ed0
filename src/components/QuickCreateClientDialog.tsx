@@ -27,10 +27,8 @@ export function QuickCreateClientDialog({ open, onOpenChange }: Props) {
   const qc = useQueryClient();
 
   const isPopMode = !!customer && (customer.type === "reseller" || customer.type === "reseller_sub");
-  const branchId =
-    customer?.type === "reseller_sub"
-      ? (customer as any)?.branch_id
-      : (customer as any)?.branch_id;
+  const branchId = (customer as any)?.branch_id;
+  const tariffId = (customer as any)?.tariff_id;
 
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
