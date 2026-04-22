@@ -12,6 +12,11 @@ import {
   MessageSquare, Send, Antenna, Radar, Wifi, History, TrendingUp, BookOpen, Plus, FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { NotesButton } from "@/components/notes/NotesButton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ResellerMobileShell } from "@/components/reseller/mobile/ResellerMobileShell";
@@ -339,11 +344,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
           })}
         </nav>
 
-        <div className="p-3 border-t border-sidebar-border">
-          <Button variant="outline" size="sm" className="w-full" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" /> {t("লগআউট", "Logout")}
-          </Button>
-        </div>
+        {/* Logout moved to top-right user dropdown */}
       </aside>
 
       {mobileOpen && (
@@ -370,11 +371,26 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                 >
                   <Menu className="h-5 w-5" />
                 </Button>
-                <div className="hidden sm:block">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    {t("পপ কোড", "POP Code")}
+                <div className="hidden sm:flex items-center gap-2">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {t("পপ কোড", "POP Code")}
+                    </div>
+                    <div className="text-sm font-semibold">{customer?.code || "—"}</div>
                   </div>
-                  <div className="text-sm font-semibold">{customer?.code || "—"}</div>
+                  {(customer as any)?.pop_type && (
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "uppercase text-[10px] tracking-wide font-bold",
+                        String((customer as any).pop_type).toLowerCase() === "prepaid"
+                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                          : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+                      )}
+                    >
+                      {String((customer as any).pop_type)}
+                    </Badge>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
@@ -421,16 +437,64 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                   </Button>
                 </Link>
                 <NotesButton ownerType="pop" />
-                <div className="text-right hidden sm:block">
-                  <div className="text-sm font-medium leading-tight">{customer?.name}</div>
-                  <div className="text-[11px] text-muted-foreground leading-tight">
-                    {customer?.username}
-                    {isSub ? (lang === "bn" ? " (সাব-ইউজার)" : " (Sub-user)") : ""}
-                  </div>
-                </div>
-                <div className="h-9 w-9 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-sm">
-                  {customer?.name?.[0]?.toUpperCase() || "R"}
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 rounded-full pl-2 pr-1 py-1 hover:bg-accent transition-colors"
+                      aria-label="User menu"
+                    >
+                      <div className="text-right hidden sm:block">
+                        <div className="text-sm font-medium leading-tight">{customer?.name}</div>
+                        <div className="text-[11px] text-muted-foreground leading-tight">
+                          {customer?.username}
+                          {isSub ? (lang === "bn" ? " (সাব-ইউজার)" : " (Sub-user)") : ""}
+                        </div>
+                      </div>
+                      <div className="h-9 w-9 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-sm">
+                        {customer?.name?.[0]?.toUpperCase() || "R"}
+                      </div>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-60">
+                    <DropdownMenuLabel className="flex flex-col gap-1">
+                      <span className="font-semibold leading-tight">{customer?.name}</span>
+                      <span className="text-xs font-normal text-muted-foreground leading-tight">
+                        {customer?.username}
+                      </span>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Badge variant="outline" className="text-[10px]">{customer?.code}</Badge>
+                        {(customer as any)?.pop_type && (
+                          <Badge
+                            className={cn(
+                              "uppercase text-[10px] tracking-wide font-bold border",
+                              String((customer as any).pop_type).toLowerCase() === "prepaid"
+                                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                                : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+                            )}
+                          >
+                            {String((customer as any).pop_type)}
+                          </Badge>
+                        )}
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/pop-admin/settings">
+                        <Settings className="h-4 w-4 mr-2" />
+                        {t("সেটিংস", "Settings")}
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      {t("লগআউট", "Logout")}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </header>
             <main className="flex-1 p-4 md:p-6 overflow-x-hidden">{children}</main>

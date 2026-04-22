@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     // 2. RESELLER
     const { data: resellers } = await supabase
       .from("branch_managers")
-      .select("id, name, username, password, client_code, contact, email, branch_id, balance, tariff_id, status, portal_enabled, district_id, upazila_id")
+      .select("id, name, username, password, client_code, contact, email, branch_id, balance, tariff_id, status, portal_enabled, district_id, upazila_id, pop_type")
       .or(`username.eq.${username},client_code.eq.${username},contact.eq.${username},email.eq.${username}`)
       .limit(1);
 
@@ -118,6 +118,7 @@ Deno.serve(async (req) => {
         tariff_id: reseller.tariff_id,
         district_id: (reseller as any).district_id,
         upazila_id: (reseller as any).upazila_id,
+        pop_type: (reseller as any).pop_type,
         permissions: { dashboard: true, invoices: true, purchases: true, tickets: true, users: true, settings: true },
       });
       await supabase.from("portal_login_log").insert({
@@ -134,7 +135,7 @@ Deno.serve(async (req) => {
     // 2b. RESELLER SUB-USER
     const { data: subUser } = await supabase
       .from("bw_reseller_users")
-      .select("id, reseller_id, name, username, password, email, mobile, status, permissions, branch_managers!inner(id, name, client_code, balance, tariff_id, branch_id, district_id, upazila_id)")
+      .select("id, reseller_id, name, username, password, email, mobile, status, permissions, branch_managers!inner(id, name, client_code, balance, tariff_id, branch_id, district_id, upazila_id, pop_type)")
       .eq("username", username)
       .maybeSingle();
 
@@ -156,6 +157,7 @@ Deno.serve(async (req) => {
         tariff_id: parent?.tariff_id,
         district_id: parent?.district_id,
         upazila_id: parent?.upazila_id,
+        pop_type: parent?.pop_type,
         permissions: subUser.permissions,
       });
       await supabase.from("portal_login_log").insert({
