@@ -27,10 +27,8 @@ export function QuickCreateClientDialog({ open, onOpenChange }: Props) {
   const qc = useQueryClient();
 
   const isPopMode = !!customer && (customer.type === "reseller" || customer.type === "reseller_sub");
-  const branchId =
-    customer?.type === "reseller_sub"
-      ? (customer as any)?.branch_id
-      : (customer as any)?.branch_id;
+  const branchId = (customer as any)?.branch_id;
+  const tariffId = (customer as any)?.tariff_id;
 
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
@@ -74,9 +72,24 @@ export function QuickCreateClientDialog({ open, onOpenChange }: Props) {
   });
 
   const { data: packages = [] } = useQuery({
-    queryKey: ["qc-packages"],
-    enabled: open,
+    queryKey: ["qc-packages", isPopMode, tariffId],
+    enabled: open && (!isPopMode || !!tariffId),
     queryFn: async () => {
+      if (isPopMode && tariffId) {
+        // Only show packages assigned to this POP's tariff
+        const { data } = await supabase
+          .from("reseller_tariff_packages")
+          .select("package_id, selling_rate, status, isp_packages(id, name, price)")
+          .eq("tariff_id", tariffId)
+          .eq("status", "active");
+        return (data || [])
+          .filter((r: any) => r.isp_packages)
+          .map((r: any) => ({
+            id: r.isp_packages.id,
+            name: r.isp_packages.name,
+            price: r.selling_rate ?? r.isp_packages.price,
+          }));
+      }
       const { data } = await supabase
         .from("isp_packages")
         .select("id, name, price")
