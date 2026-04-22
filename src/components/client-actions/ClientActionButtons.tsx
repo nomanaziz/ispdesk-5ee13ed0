@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,12 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Trash2, CalendarClock, Package, MessageSquare, Edit, Eye, MoreVertical, LogIn } from "lucide-react";
+import { Trash2, CalendarClock, Package, MessageSquare, Edit, Eye, MoreVertical, LogIn, CreditCard, FilePlus, FileText } from "lucide-react";
 import { toast } from "sonner";
 import StatusSchedulerDialog from "./StatusSchedulerDialog";
 import PackageSchedulerDialog from "./PackageSchedulerDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { loginAsUser } from "@/lib/impersonate";
+import { usePopScope } from "@/hooks/usePopScope";
+import BillReceiveDialog from "@/components/billing/BillReceiveDialog";
+import { exportInvoicesPdf } from "@/lib/exportClients";
+import { callPortal } from "@/lib/portalApi";
 
 interface Props {
   client: any;
@@ -19,13 +23,26 @@ interface Props {
   invalidateKey?: string;
 }
 
+const currentMonthKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
 export default function ClientActionButtons({ client, mode, invalidateKey = "clients-list" }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isAdmin } = useAuth();
+  const { isPopMode } = usePopScope();
   const [statusOpen, setStatusOpen] = useState(false);
   const [packageOpen, setPackageOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [receiveOpen, setReceiveOpen] = useState(false);
+
+  const currentBill = useMemo(() => {
+    if (client?.currentBill) return client.currentBill;
+    const monthKey = currentMonthKey();
+    return (client?.billing || []).find((bill: any) => String(bill?.month || "").slice(0, 7) === monthKey) || null;
+  }, [client]);
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -51,11 +68,55 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
   };
 
   const handleEdit = () => {
-    navigate("/dashboard/clients/add", { state: { prefill: client, editMode: true } });
+    navigate(isPopMode ? "/pop-admin/clients/add" : "/dashboard/clients/add", { state: { prefill: client, editMode: true } });
   };
 
   const handleView = () => {
-    navigate(`/dashboard/billing/client/${client.id}`);
+    navigate(isPopMode ? `/pop-admin/billing/client/${client.id}` : `/dashboard/billing/client/${client.id}`);
+  };
+
+  const generateBillMutation = useMutation({
+    mutationFn: async () => {
+      const monthKey = currentMonthKey();
+      if (Number(client.monthly_bill || 0) <= 0) throw new Error("এই ক্লায়েন্টের মাসিক বিল সেট করা নেই");
+
+      if (isPopMode) {
+        return callPortal<{ created?: boolean }>("ensure_pop_client_bill", { client_id: client.id, month: monthKey });
+      }
+
+      const existingBill = client?.currentBill || (client?.billing || []).find((bill: any) => String(bill?.month || "").slice(0, 7) === monthKey);
+      if (existingBill) return { created: false };
+
+      const { error } = await supabase.from("billing").insert({
+        bill_id: `BILL-${client.client_id}-${monthKey}`,
+        client_id: client.id,
+        month: `${monthKey}-01`,
+        amount: Number(client.monthly_bill || 0),
+        due: Number(client.monthly_bill || 0),
+        paid: 0,
+        status: "unpaid",
+        generated: true,
+      });
+      if (error) throw error;
+      return { created: true };
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: [invalidateKey] });
+      queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+      toast.success(res?.created ? "এই মাসের বিল তৈরি হয়েছে" : "এই মাসের বিল আগেই তৈরি আছে");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const handleInvoiceDownload = () => {
+    const bill = currentBill;
+    if (!bill) {
+      toast.error("ইনভয়েস ডাউনলোডের আগে বিল তৈরি করুন");
+      return;
+    }
+    exportInvoicesPdf([{ ...client, currentBill: bill }], `invoice-${client.client_id || client.id}`);
+    toast.success("ইনভয়েস ডাউনলোড হয়েছে");
   };
 
   return (
@@ -84,9 +145,21 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
               </TooltipTrigger>
               <TooltipContent>আরও অপশন</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="w-44 z-50 bg-popover">
+            <DropdownMenuContent align="end" className="w-56 z-50 bg-popover">
+              <DropdownMenuItem onSelect={handleView}>
+                <Eye className="mr-2 h-4 w-4" /> ভিউ প্রোফাইল
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={handleEdit}>
                 <Edit className="mr-2 h-4 w-4" /> এডিট
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setReceiveOpen(true)}>
+                <CreditCard className="mr-2 h-4 w-4" /> বিল রিসিভ
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => generateBillMutation.mutate()}>
+                <FilePlus className="mr-2 h-4 w-4" /> বিল তৈরি
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleInvoiceDownload}>
+                <FileText className="mr-2 h-4 w-4" /> ইনভয়েস
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={handleSMS}>
                 <MessageSquare className="mr-2 h-4 w-4" /> SMS পাঠান
@@ -138,6 +211,7 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
 
       <StatusSchedulerDialog open={statusOpen} onOpenChange={setStatusOpen} client={client} invalidateKey={invalidateKey} />
       <PackageSchedulerDialog open={packageOpen} onOpenChange={setPackageOpen} client={client} invalidateKey={invalidateKey} />
+      <BillReceiveDialog open={receiveOpen} onOpenChange={setReceiveOpen} client={client} billing={currentBill} invalidateKey={invalidateKey} />
     </>
   );
 }
