@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import EmployeeUserAccessSection from "@/components/reseller/EmployeeUserAccessSection";
+import DivisionDistrictUpazilaSelect from "@/components/reseller/DivisionDistrictUpazilaSelect";
 import { toast } from "sonner";
 
 export default function PopAddEmployee() {
@@ -22,7 +23,7 @@ export default function PopAddEmployee() {
     name: "", email: "", phone: "", address: "",
     date_of_birth: "", gender: "", personal_phone: "", office_phone: "", guardian_phone: "",
     marital_status: "", nid_number: "", facebook_link: "", reference: "",
-    district: "", upazila: "", permanent_address: "",
+    division_id: null, district_id: null, upazila_id: null, permanent_address: "",
     working_experience: "", last_degree: "", institution: "", passing_year: "",
     joining_date: "", department: "", designation: "", salary: "", status: "active",
   });
@@ -59,8 +60,9 @@ export default function PopAddEmployee() {
         nid_number: form.nid_number || null,
         facebook_link: form.facebook_link || null,
         reference: form.reference || null,
-        district: form.district || null,
-        upazila: form.upazila || null,
+        division_id: form.division_id || null,
+        district_id: form.district_id || null,
+        upazila_id: form.upazila_id || null,
         permanent_address: form.permanent_address || null,
         working_experience: form.working_experience || null,
         last_degree: form.last_degree || null,
@@ -142,8 +144,12 @@ export default function PopAddEmployee() {
             <div className="space-y-1.5"><Label>NID Number</Label><Input value={form.nid_number} onChange={set("nid_number")} /></div>
             <div className="space-y-1.5"><Label>Facebook Link</Label><Input value={form.facebook_link} onChange={set("facebook_link")} /></div>
             <div className="space-y-1.5"><Label>Reference</Label><Input value={form.reference} onChange={set("reference")} /></div>
-            <div className="space-y-1.5"><Label>District</Label><Input value={form.district} onChange={set("district")} /></div>
-            <div className="space-y-1.5"><Label>Upazila</Label><Input value={form.upazila} onChange={set("upazila")} /></div>
+            <DivisionDistrictUpazilaSelect
+              divisionId={form.division_id}
+              districtId={form.district_id}
+              upazilaId={form.upazila_id}
+              onChange={(v) => setForm({ ...form, ...v })}
+            />
             <div className="space-y-1.5 md:col-span-3"><Label>Present Address</Label><Textarea value={form.address} onChange={set("address")} rows={2} /></div>
             <div className="space-y-1.5 md:col-span-3"><Label>Permanent Address</Label><Textarea value={form.permanent_address} onChange={set("permanent_address")} rows={2} /></div>
           </CardContent>

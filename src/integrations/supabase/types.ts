@@ -4028,6 +4028,8 @@ export type Database = {
           department_id: string | null
           device_user_id: string | null
           district: string | null
+          district_id: string | null
+          division_id: string | null
           email: string | null
           employee_id: string
           facebook_link: string | null
@@ -4056,6 +4058,7 @@ export type Database = {
           status: string
           sub_user_id: string | null
           upazila: string | null
+          upazila_id: string | null
           updated_at: string
           user_password: string | null
           user_permissions: Json
@@ -4073,6 +4076,8 @@ export type Database = {
           department_id?: string | null
           device_user_id?: string | null
           district?: string | null
+          district_id?: string | null
+          division_id?: string | null
           email?: string | null
           employee_id: string
           facebook_link?: string | null
@@ -4101,6 +4106,7 @@ export type Database = {
           status?: string
           sub_user_id?: string | null
           upazila?: string | null
+          upazila_id?: string | null
           updated_at?: string
           user_password?: string | null
           user_permissions?: Json
@@ -4118,6 +4124,8 @@ export type Database = {
           department_id?: string | null
           device_user_id?: string | null
           district?: string | null
+          district_id?: string | null
+          division_id?: string | null
           email?: string | null
           employee_id?: string
           facebook_link?: string | null
@@ -4146,6 +4154,7 @@ export type Database = {
           status?: string
           sub_user_id?: string | null
           upazila?: string | null
+          upazila_id?: string | null
           updated_at?: string
           user_password?: string | null
           user_permissions?: Json
@@ -4169,6 +4178,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employees_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "districts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "employees_payroll_template_id_fkey"
             columns: ["payroll_template_id"]
             isOneToOne: false
@@ -4180,6 +4203,13 @@ export type Database = {
             columns: ["position_id"]
             isOneToOne: false
             referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_upazila_id_fkey"
+            columns: ["upazila_id"]
+            isOneToOne: false
+            referencedRelation: "upazilas"
             referencedColumns: ["id"]
           },
           {
@@ -7618,39 +7648,76 @@ export type Database = {
       }
       salary_sheets: {
         Row: {
+          advance: number
           basic_salary: number | null
+          bonus: number
+          branch_id: string | null
           created_at: string
+          due: number
           employee_id: string
           id: string
+          incentive: number
           month: string
           net_salary: number | null
+          overtime: number
+          paid_date: string | null
+          paid_salary: number
+          remarks: string | null
           status: string
           total_allowance: number | null
+          total_amount: number
           total_deduction: number | null
         }
         Insert: {
+          advance?: number
           basic_salary?: number | null
+          bonus?: number
+          branch_id?: string | null
           created_at?: string
+          due?: number
           employee_id: string
           id?: string
+          incentive?: number
           month: string
           net_salary?: number | null
+          overtime?: number
+          paid_date?: string | null
+          paid_salary?: number
+          remarks?: string | null
           status?: string
           total_allowance?: number | null
+          total_amount?: number
           total_deduction?: number | null
         }
         Update: {
+          advance?: number
           basic_salary?: number | null
+          bonus?: number
+          branch_id?: string | null
           created_at?: string
+          due?: number
           employee_id?: string
           id?: string
+          incentive?: number
           month?: string
           net_salary?: number | null
+          overtime?: number
+          paid_date?: string | null
+          paid_salary?: number
+          remarks?: string | null
           status?: string
           total_allowance?: number | null
+          total_amount?: number
           total_deduction?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "salary_sheets_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "salary_sheets_employee_id_fkey"
             columns: ["employee_id"]
