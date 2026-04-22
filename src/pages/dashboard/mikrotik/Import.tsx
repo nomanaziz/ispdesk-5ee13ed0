@@ -191,7 +191,9 @@ export default function Import() {
     }
   };
 
+  const existingSet = new Set(existingUsernames);
   const filtered = clients
+    .filter((c: any) => transferStatus === "transferred" || !existingSet.has(c.name?.toLowerCase()))
     .filter((c: any) =>
       [c.name, c.caller_id, c.server_name].some((v) => v?.toLowerCase().includes(search.toLowerCase()))
     );
