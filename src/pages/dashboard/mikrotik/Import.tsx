@@ -206,8 +206,22 @@ export default function Import() {
   };
 
   const existingSet = new Set(existingUsernames);
+  const getServerCount = (name?: string) => {
+    if (!name) return 0;
+    return crossServerMap.get(name.toLowerCase())?.size || 0;
+  };
   const filtered = clients
     .filter((c: any) => transferStatus === "transferred" || !existingSet.has(c.name?.toLowerCase()))
+    .filter((c: any) => {
+      if (userTypeFilter === "all") return true;
+      const count = getServerCount(c.name);
+      if (userTypeFilter === "unique") return count === 1;
+      if (userTypeFilter === "duplicate") return count >= 2;
+      if (userTypeFilter === "unlisted") {
+        return !existingSet.has(c.name?.toLowerCase()) && !c.transferred_to_pop_id && !c.linked_client_id;
+      }
+      return true;
+    })
     .filter((c: any) =>
       [c.name, c.caller_id, c.server_name].some((v) => v?.toLowerCase().includes(search.toLowerCase()))
     );
