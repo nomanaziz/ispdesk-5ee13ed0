@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +33,7 @@ export default function ClientProfile() {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [editingBill, setEditingBill] = useState<any>(null);
   const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("service");
 
   const { data: client, isLoading } = useQuery({
     queryKey: ["client-profile", id],
@@ -98,6 +99,28 @@ export default function ClientProfile() {
     enabled: !!id,
   });
 
+  const { data: livePppData, isFetching: isPppFetching } = useQuery({
+    queryKey: ["client-ppp-live", id, client?.mikrotik_id, client?.username],
+    queryFn: async () => {
+      const c = client as any;
+      if (!c?.mikrotik_id || !c?.username) return null;
+      const { data, error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
+        body: { client_id: c.id, mikrotik_id: c.mikrotik_id, username: c.username, action: "status" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    enabled: !!id && !!client?.mikrotik_id && !!client?.username,
+    staleTime: 15000,
+    refetchInterval: 30000,
+    retry: 1,
+  });
+
+  useEffect(() => {
+    setPppSnapshot(null);
+  }, [id]);
+
   const { data: billHistory = [] } = useQuery({
     queryKey: ["bill-history", id],
     queryFn: async () => {
@@ -147,6 +170,7 @@ export default function ClientProfile() {
         await supabase.from("clients").update({ mikrotik_status: data.mikrotik_status }).eq("id", c.id);
       }
       setPppSnapshot(data);
+      queryClient.invalidateQueries({ queryKey: ["client-ppp-live", id] });
       queryClient.invalidateQueries({ queryKey: ["client-profile", id] });
       toast.success(action === "status" ? "PPP তথ্য রিফ্রেশ হয়েছে" : data?.message || "সফল");
     },
@@ -170,7 +194,10 @@ export default function ClientProfile() {
   }
   const billings = (c.billing || []).sort((a: any, b: any) => b.month?.localeCompare(a.month));
   const collections = (c.bill_collections || []).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  const pppData = pppSnapshot || {};
+  const pppData = pppSnapshot || livePppData || null;
+  const pppActive = pppData?.has_active_session ?? Boolean(c.is_online);
+  const pppSession = pppData?.session ?? null;
+  const pppTraffic = pppData?.live_traffic ?? null;
   const totalDue = billings.reduce((s: number, b: any) => s + Number(b.due || 0), 0);
   const totalPaid = billings.reduce((s: number, b: any) => s + Number(b.paid || 0), 0);
   const bs = billings[0]?.status || "unpaid";
@@ -341,18 +368,18 @@ export default function ClientProfile() {
         {/* ========== RIGHT CONTENT ========== */}
         <Card>
           <CardContent className="p-4">
-            <Tabs defaultValue="service">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="flex flex-wrap h-auto gap-1 mb-4 bg-muted/50 p-1">
-                <TabsTrigger value="service" className="text-xs gap-1"><Package className="h-3 w-3" /> সার্ভিস</TabsTrigger>
-                <TabsTrigger value="network" className="text-xs gap-1"><Wifi className="h-3 w-3" /> নেটওয়ার্ক</TabsTrigger>
-                <TabsTrigger value="personal" className="text-xs gap-1"><User className="h-3 w-3" /> ব্যক্তিগত</TabsTrigger>
-                <TabsTrigger value="invoices" className="text-xs gap-1"><FileText className="h-3 w-3" /> বিল</TabsTrigger>
-                <TabsTrigger value="generated" className="text-xs gap-1"><Edit className="h-3 w-3" /> Generated & Updated</TabsTrigger>
-                <TabsTrigger value="collections" className="text-xs gap-1"><CreditCard className="h-3 w-3" /> কালেকশন</TabsTrigger>
-                <TabsTrigger value="traffic" className="text-xs gap-1"><Activity className="h-3 w-3" /> ট্রাফিক</TabsTrigger>
-                <TabsTrigger value="complain" className="text-xs gap-1"><MessageSquare className="h-3 w-3" /> অভিযোগ</TabsTrigger>
-                <TabsTrigger value="changelog" className="text-xs gap-1"><History className="h-3 w-3" /> পরিবর্তন</TabsTrigger>
-                <TabsTrigger value="remarks" className="text-xs gap-1"><Shield className="h-3 w-3" /> রিমার্কস</TabsTrigger>
+                <TabsTrigger value="service" className="text-xs gap-1 border border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><Package className="h-3 w-3" /> সার্ভিস</TabsTrigger>
+                <TabsTrigger value="network" className="text-xs gap-1 border border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><Wifi className="h-3 w-3" /> নেটওয়ার্ক</TabsTrigger>
+                <TabsTrigger value="personal" className="text-xs gap-1 border border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><User className="h-3 w-3" /> ব্যক্তিগত</TabsTrigger>
+                <TabsTrigger value="invoices" className="text-xs gap-1 border border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><FileText className="h-3 w-3" /> বিল</TabsTrigger>
+                <TabsTrigger value="generated" className="text-xs gap-1 border border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><Edit className="h-3 w-3" /> Generated & Updated</TabsTrigger>
+                <TabsTrigger value="collections" className="text-xs gap-1 border border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><CreditCard className="h-3 w-3" /> কালেকশন</TabsTrigger>
+                <TabsTrigger value="traffic" className="text-xs gap-1 border border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><Activity className="h-3 w-3" /> ট্রাফিক</TabsTrigger>
+                <TabsTrigger value="complain" className="text-xs gap-1 border border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><MessageSquare className="h-3 w-3" /> অভিযোগ</TabsTrigger>
+                <TabsTrigger value="changelog" className="text-xs gap-1 border border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><History className="h-3 w-3" /> পরিবর্তন</TabsTrigger>
+                <TabsTrigger value="remarks" className="text-xs gap-1 border border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"><Shield className="h-3 w-3" /> রিমার্কস</TabsTrigger>
               </TabsList>
 
               {/* Service Tab */}
@@ -398,20 +425,23 @@ export default function ClientProfile() {
                   {/* PPP Live Data */}
                   <Card className="border-dashed">
                     <CardHeader className="pb-2 pt-3 px-4">
-                      <CardTitle className="text-sm flex items-center gap-2">
+                      <CardTitle className="text-sm flex items-center justify-between gap-2">
                         <Activity className="h-4 w-4 text-primary" /> PPP Live Status
+                        {isPppFetching ? <span className="text-xs font-normal text-muted-foreground">Refreshing…</span> : null}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="px-4 pb-3">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-                        <DetailRow icon={Wifi} label="PPP Active" value={pppData.has_active_session ? "🟢 Online" : "🔴 Offline"} />
-                        <DetailRow icon={HardDrive} label="Uptime" value={pppData.session?.uptime || "-"} />
-                        <DetailRow icon={Download} label="Download" value={formatBytes(pppData.session?.download_bytes)} />
-                        <DetailRow icon={Download} label="Upload" value={formatBytes(pppData.session?.upload_bytes)} />
-                        <DetailRow icon={Activity} label="RX Traffic" value={formatBits(pppData.live_traffic?.rx_bps)} />
-                        <DetailRow icon={Activity} label="TX Traffic" value={formatBits(pppData.live_traffic?.tx_bps)} />
-                        <DetailRow icon={HardDrive} label="Caller ID" value={pppData.session?.caller_id || "-"} />
-                        <DetailRow icon={Globe} label="Session IP" value={pppData.session?.address || "-"} />
+                        <DetailRow icon={Wifi} label="PPP Active" value={pppActive ? "🟢 Online" : "🔴 Offline"} />
+                        <DetailRow icon={HardDrive} label="Uptime" value={pppSession?.uptime || "-"} />
+                        <DetailRow icon={Download} label="Download" value={formatBytes(pppSession?.download_bytes)} />
+                        <DetailRow icon={Download} label="Upload" value={formatBytes(pppSession?.upload_bytes)} />
+                        <DetailRow icon={Activity} label="RX Traffic" value={formatBits(pppTraffic?.rx_bps)} />
+                        <DetailRow icon={Activity} label="TX Traffic" value={formatBits(pppTraffic?.tx_bps)} />
+                        <DetailRow icon={HardDrive} label="Caller ID" value={pppSession?.caller_id || "-"} />
+                        <DetailRow icon={Globe} label="Session IP" value={pppSession?.address || c.remote_address || "-"} />
+                        <DetailRow icon={HardDrive} label="Session ID" value={pppSession?.session_id || "-"} />
+                        <DetailRow icon={HardDrive} label="Current ID" value={pppData?.current_id || "-"} />
                       </div>
                     </CardContent>
                   </Card>
