@@ -142,7 +142,32 @@ Deno.serve(async (req) => {
             .maybeSingle();
           last_login = ll?.login_at || null;
         } catch (_) { /* ignore */ }
-        return json({ client, bills: bills || [], collections: collections || [], notices, balance, last_login });
+        let recent_messages: any[] = [];
+        try {
+          const { data: rm } = await sb
+            .from("customer_messages")
+            .select("id, channel, message, recipient, status, created_at")
+            .eq("customer_id", tok.sub)
+            .order("created_at", { ascending: false })
+            .limit(5);
+          recent_messages = rm || [];
+        } catch (_) { /* ignore */ }
+        return json({ client, bills: bills || [], collections: collections || [], notices, balance, last_login, recent_messages });
+      }
+
+      case "get_messages": {
+        if (tok.type !== "client") return json({ messages: [] });
+        const ch = payload?.channel ? String(payload.channel) : null;
+        let q = sb
+          .from("customer_messages")
+          .select("id, channel, message, recipient, status, created_at")
+          .eq("customer_id", tok.sub)
+          .order("created_at", { ascending: false })
+          .limit(200);
+        if (ch) q = q.eq("channel", ch);
+        const { data, error } = await q;
+        if (error) return json({ error: error.message }, 500);
+        return json({ messages: data || [] });
       }
 
       case "get_bills": {
