@@ -1,63 +1,38 @@
 
 
-## Client/Billing list-এ POP-এর client না দেখানোর সমাধান
+## "দ্রুত ক্লায়েন্ট তৈরি" (Quick Create Client) সম্পূর্ণ সরানো — POP Admin Portal থেকে
 
-### আসল কারণ (DB confirm করা)
+### লক্ষ্য
+POP Admin portal-এ যেখানেই "Quick Create Client" / `QuickCreateClientDialog` আছে, সব trigger সরিয়ে দেবো। Admin portal-এ যদি থাকে, সেটা **অটুট রাখবো** (user শুধু POP-এর কথা বলেছেন, কিন্তু component-টা যেহেতু shared, আমি POP-side trigger গুলোই disable করবো এবং component file নিজেই রেখে দেবো যাতে Admin-এর কিছু না ভাঙে)।
 
-DB-তে ৩টা client ঠিকই আছে Nahid'র POP-এ (`MVP-000001/002/003`, branch `26973cfc-...`)। কিন্তু `clients` table-এর RLS policy:
+### পরিকল্পিত পরিবর্তন
 
-| Policy | Role | কাজ করে? |
-|--------|------|----------|
-| `Authenticated can view clients` (SELECT) | `authenticated` | ✅ Admin dashboard-এ |
-| `Admins can manage clients` (ALL) | `authenticated` + admin | ✅ |
-| **কোনো `anon` SELECT policy নেই** | `anon` | ❌ **POP portal block** |
+আমি প্রথমে কোডবেইসে `QuickCreateClientDialog` এর সব usage খুঁজে বের করবো (`code--search_files`), বিশেষ করে:
+- `ResellerLayout.tsx` / `ResellerMobileShell.tsx` (POP sidebar / mobile FAB)
+- `ResellerDashboard.tsx` (POP dashboard quick action)
+- যেকোনো POP-related page যেখানে এই dialog open করার button আছে
 
-POP portal Supabase-এ **`anon` key** দিয়ে চলে (PortalAuthContext token JWT, Supabase auth session না)। তাই `ClientList.tsx` এবং `BillingList.tsx`-এর `supabase.from("clients").select(...).eq("branch_id", branchId)` query empty array return করে — list খালি দেখায়, যদিও create সফল হয় (create call `callPortal("create_client")` → service role দিয়ে insert হয়, সেটা RLS bypass করে)।
+তারপর প্রতিটি POP-context ফাইল থেকে:
+1. `<QuickCreateClientDialog ... />` JSX সরাবো
+2. সংশ্লিষ্ট state (`const [quickOpen, setQuickOpen] = useState(false)`) সরাবো
+3. ওই dialog খোলার button/menu-item/FAB সরাবো
+4. unused import সরাবো
 
-### সমাধান — Edge Function দিয়ে POP-scoped fetch
-
-POP portal-কে "anon-readable" করে দেওয়া দুটোই বিপজ্জনক (অন্য POP-এর clients leak হবে)। সঠিক pattern হলো admin pages-এর মতই — service-role edge function:
-
-#### ১. `portal-data` edge function-এ ২টা নতুন action
-
-| Action | কাজ |
-|--------|-----|
-| `list_pop_clients` | token-এর `branch_id` থেকে সব non-left clients (joins: zone, package, mikrotik) |
-| `list_pop_billing_clients` | একই কিন্তু `monthly_bill > 0` + month filter |
-
-দুটোই service role দিয়ে query করে `.eq("branch_id", token.branch_id)` apply করে — অন্য POP-এর data কখনোই leak হবে না।
-
-#### ২. `ClientList.tsx` ও `BillingList.tsx` — POP mode হলে edge function call
-
-```ts
-// Pseudocode
-queryFn: async () => {
-  if (isPopMode) {
-    const res = await callPortal("list_pop_clients", { /* filters */ });
-    return res.rows;
-  }
-  // existing admin path unchanged
-  ...
-}
-```
-
-Admin path (যেখানে `authenticated` Supabase session আছে) **একদম unchanged** — design/behavior কিছুই ভাঙবে না।
-
-#### ৩. একই pattern: update/disable/enable mutations
-
-POP mode-এ `update_client_expire`, `set_client_mikrotik_status` ইত্যাদি ছোট action edge function-এ যোগ করবো যাতে list থেকে edit-ও কাজ করে। (এই মুহূর্তে শুধু list দেখানোই priority — mutations ২য় ধাপে)।
-
-### Files যেগুলো edit হবে
+### Files যেগুলো edit হবে (প্রাথমিক estimate — exploration-এর পর confirm হবে)
 
 | File | পরিবর্তন |
 |------|----------|
-| `supabase/functions/portal-data/index.ts` | নতুন action: `list_pop_clients`, `list_pop_billing_clients` (service role + branch filter from token) |
-| `src/pages/dashboard/clients/ClientList.tsx` | `isPopMode` হলে `callPortal("list_pop_clients")` use; admin path unchanged |
-| `src/pages/dashboard/billing/BillingList.tsx` | `isPopMode` হলে `callPortal("list_pop_billing_clients", { month })` use; admin path unchanged |
+| `src/components/ResellerLayout.tsx` | QuickCreate trigger + import সরানো |
+| `src/components/reseller/mobile/ResellerMobileShell.tsx` | mobile FAB / trigger থাকলে সরানো |
+| `src/pages/reseller/ResellerDashboard.tsx` | Quick Create button + dialog mount সরানো |
+| অন্য কোনো POP page যেখানে usage পাওয়া যাবে | একই pattern |
+| `src/components/QuickCreateClientDialog.tsx` | **অপরিবর্তিত রেখে দেবো** (Admin-side ব্যবহারের জন্য safe থাকবে; কেউ use না করলে dead code হবে কিন্তু কিছু ভাঙবে না) |
+
+### POP user-এর জন্য বিকল্প
+নতুন client তৈরি করতে POP admin "Add Client" পূর্ণ ফর্ম (`/pop-admin/clients/add`) ব্যবহার করবেন — যেটা ইতিমধ্যে কাজ করছে।
 
 ### প্রতিশ্রুতি
-
-- **Admin dashboard-এর design/behavior একদম unchanged** — শুধু POP mode-এ data fetch path আলাদা।
-- কোনো RLS policy public করছি না — security tight থাকছে।
-- এর পরেই Nahid'র already-created ৩টা client (MVP-000001/002/003) `/pop-admin/clients` এবং `/pop-admin/billing/list`-এ সাথে সাথে দেখা যাবে।
+- POP portal থেকে "দ্রুত ক্লায়েন্ট তৈরি" সব entry-point (sidebar, FAB, dashboard, যেকোনো page) সরে যাবে
+- Admin portal-এর কোনো feature ভাঙবে না
+- `/pop-admin/clients/add` (Full Form) আগের মতই কাজ করবে
 
