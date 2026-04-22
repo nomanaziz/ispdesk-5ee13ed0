@@ -11,12 +11,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Mail, KeyRound, LogIn, Plus, ArrowLeftRight, Edit, MapPin, Phone, RotateCcw, RefreshCw,
+  ArrowLeft, Mail, KeyRound, LogIn, Plus, ArrowLeftRight, Edit, MapPin, Phone,
 } from "lucide-react";
 import FundDeductionDialog from "@/components/branches/FundDeductionDialog";
 import PasswordRegenerateDialog from "@/components/branches/PasswordRegenerateDialog";
 import PopDebitHistory from "@/components/branches/PopDebitHistory";
 import PopCreditHistory from "@/components/branches/PopCreditHistory";
+import PopExportedClients from "@/components/branches/PopExportedClients";
+import PopUnexportedClients from "@/components/branches/PopUnexportedClients";
+import PopLeftClientsTab from "@/components/branches/PopLeftClientsTab";
 import { loginAsUser } from "@/lib/impersonate";
 
 export default function PopProfile() {
