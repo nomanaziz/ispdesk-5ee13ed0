@@ -901,6 +901,140 @@ Deno.serve(async (req) => {
         return json({ months: data || [] });
       }
 
+      // ===== POP MikroTik scoped reads =====
+      case "get_pop_mikrotik_servers":
+      case "get_pop_mikrotik_users":
+      case "get_pop_mikrotik_bulk_candidates": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Forbidden" }, 403);
+        }
+        const t: any = tok;
+        const popId: string = t.type === "reseller_sub" ? t.parent_reseller_id : t.sub;
+        if (!popId) return json({ error: "POP not resolved" }, 400);
+
+        // Resolve POP record (branch_id, tariff_id, etc.)
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("id, name, pop_code, branch_id, tariff_id")
+          .eq("id", popId)
+          .maybeSingle();
+        const branchId: string | null = pop?.branch_id || null;
+        const tariffId: string | null = pop?.tariff_id || null;
+
+        // Resolve visible MikroTik device ids:
+        //  - branch_id matches POP branch
+        //  - assigned_to_pop_id = popId
+        //  - historical: any mikrotik_clients.transferred_to_mikrotik_id where transferred_to_pop_id = popId
+        const { data: directDevices } = await sb
+          .from("mikrotik_devices")
+          .select("id, name, ip_address, status, branch_id, assigned_to_pop_id")
+          .order("name");
+        const visibleDevices = (directDevices || []).filter((d: any) =>
+          (branchId && d.branch_id === branchId) || d.assigned_to_pop_id === popId
+        );
+        let visibleIds = new Set<string>(visibleDevices.map((d: any) => d.id));
+
+        const { data: transferRows } = await sb
+          .from("mikrotik_clients")
+          .select("transferred_to_mikrotik_id")
+          .eq("transferred_to_pop_id", popId)
+          .not("transferred_to_mikrotik_id", "is", null);
+        const transferredIds = new Set<string>(
+          (transferRows || []).map((r: any) => r.transferred_to_mikrotik_id).filter(Boolean)
+        );
+        // Add transferred device rows we don't already have
+        const missingIds = [...transferredIds].filter((id) => !visibleIds.has(id));
+        if (missingIds.length > 0) {
+          const { data: extra } = await sb
+            .from("mikrotik_devices")
+            .select("id, name, ip_address, status, branch_id, assigned_to_pop_id")
+            .in("id", missingIds);
+          (extra || []).forEach((d: any) => {
+            visibleDevices.push(d);
+            visibleIds.add(d.id);
+          });
+        }
+
+        if (action === "get_pop_mikrotik_servers") {
+          return json({
+            pop: pop || null,
+            servers: visibleDevices,
+          });
+        }
+
+        // Common: load tariff packages + zones for the POP (used by both users + bulk pages)
+        const [tariffRes, zonesRes] = await Promise.all([
+          tariffId
+            ? sb
+                .from("reseller_tariff_packages")
+                .select("id, package_id, selling_rate, isp_packages(id, name, bandwidth_down)")
+                .eq("tariff_id", tariffId)
+                .eq("status", "active")
+            : Promise.resolve({ data: [] } as any),
+          branchId
+            ? sb.from("zones").select("id, name").eq("branch_id", branchId).order("name")
+            : Promise.resolve({ data: [] } as any),
+        ]);
+
+        if (action === "get_pop_mikrotik_users") {
+          const mtId: string | undefined = payload.mikrotik_id;
+          if (!mtId) return json({ users: [], tariff_packages: tariffRes.data || [], zones: zonesRes.data || [] });
+          const dev = visibleDevices.find((d: any) => d.id === mtId);
+          if (!dev) return json({ error: "MikroTik not visible to this POP" }, 403);
+          const isBranchScoped = !!branchId && dev.branch_id === branchId;
+          const isPopAssigned = dev.assigned_to_pop_id === popId;
+
+          let users: any[] = [];
+          if (isBranchScoped || isPopAssigned) {
+            const { data } = await sb
+              .from("mikrotik_clients")
+              .select("*")
+              .or(`mikrotik_id.eq.${mtId},transferred_to_mikrotik_id.eq.${mtId}`)
+              .order("name");
+            users = data || [];
+          } else {
+            const { data } = await sb
+              .from("mikrotik_clients")
+              .select("*")
+              .eq("transferred_to_pop_id", popId)
+              .eq("transferred_to_mikrotik_id", mtId)
+              .order("name");
+            users = data || [];
+          }
+          return json({
+            users,
+            pop_id: popId,
+            tariff_packages: tariffRes.data || [],
+            zones: zonesRes.data || [],
+          });
+        }
+
+        // get_pop_mikrotik_bulk_candidates: all unlinked across visible devices
+        if (visibleIds.size === 0) {
+          return json({
+            users: [],
+            tariff_packages: tariffRes.data || [],
+            zones: zonesRes.data || [],
+            branch_id: branchId,
+          });
+        }
+        const idArr = [...visibleIds];
+        const { data: bulkRows } = await sb
+          .from("mikrotik_clients")
+          .select("id, name, password, profile, caller_id, remote_address, service, mikrotik_id, transferred_to_mikrotik_id, transferred_to_pop_id, linked_client_id")
+          .is("linked_client_id", null)
+          .or(
+            `transferred_to_pop_id.eq.${popId},mikrotik_id.in.(${idArr.join(",")}),transferred_to_mikrotik_id.in.(${idArr.join(",")})`
+          )
+          .order("name");
+        return json({
+          users: bulkRows || [],
+          tariff_packages: tariffRes.data || [],
+          zones: zonesRes.data || [],
+          branch_id: branchId,
+        });
+      }
+
       default:
         return json({ error: "Unknown action" }, 400);
     }
