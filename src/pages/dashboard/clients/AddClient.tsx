@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ import { callPortal } from "@/lib/portalApi";
 
 export default function AddClient() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const location = useLocation();
   const { isPopMode, branchId, popId, tariffId, popName, districtId, upazilaId } = usePopScope();
   const prefill = location.state?.prefill;
@@ -404,6 +405,10 @@ export default function AddClient() {
         await supabase.from("client_requests").update({ setup_status: "Completed" } as any).eq("id", requestId);
       }
       toast.success(editMode ? "ক্লায়েন্ট সফলভাবে আপডেট হয়েছে" : "ক্লায়েন্ট সফলভাবে যোগ হয়েছে");
+      // Invalidate all client list caches so the new client appears immediately
+      qc.invalidateQueries({ queryKey: ["pop-list-clients"] });
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["pop_mt_users"] });
       navigate(isPopMode ? "/pop-admin/clients" : "/dashboard/clients");
     },
     onError: (e: any) => toast.error(e.message),

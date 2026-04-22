@@ -9,7 +9,7 @@ import {
   Search, Menu, Activity, Server, Globe, ChevronDown, ChevronRight,
   Cog, MapPin, Box, Package, Layers, Briefcase, BadgeCheck, Cpu,
   UserPlus, Wallet, BarChart3, FileText, Calendar,
-  MessageSquare, Send, Antenna, Radar, Wifi, History, TrendingUp, BookOpen, Plus,
+  MessageSquare, Send, Antenna, Radar, Wifi, History, TrendingUp, BookOpen, Plus, FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotesButton } from "@/components/notes/NotesButton";
@@ -52,7 +52,10 @@ const groups: NavGroup[] = [
   },
   {
     key: "mikrotik", label: "মাইক্রোটিক ক্লায়েন্ট", en: "MikroTik Client", icon: Server,
-    items: [{ to: "/pop-admin/mikrotik-users", label: "মাইক্রোটিক ইউজার", en: "MikroTik Users", icon: Server }],
+    items: [
+      { to: "/pop-admin/mikrotik-users", label: "মাইক্রোটিক ইউজার", en: "MikroTik Users", icon: Server },
+      { to: "/pop-admin/mikrotik-users/bulk-create", label: "বাল্ক ক্লায়েন্ট ইম্পোর্ট", en: "Bulk Client Import", icon: FileText },
+    ],
   },
   {
     key: "employee", label: "কর্মচারী", en: "Employee", icon: Users,
@@ -66,7 +69,7 @@ const groups: NavGroup[] = [
     key: "client", label: "ক্লায়েন্ট", en: "Client", icon: Users,
     items: [
       { to: "/pop-admin/clients/add", label: "ক্লায়েন্ট যোগ", en: "Add Client", icon: UserPlus },
-      { to: "/pop-admin/clients/bulk-import", label: "বাল্ক ইম্পোর্ট", en: "Bulk Client Import", icon: FileText },
+      { to: "/pop-admin/clients/bulk-import", label: "এক্সেল ইম্পোর্ট", en: "Excel Bulk Import", icon: FileSpreadsheet },
       { to: "/pop-admin/clients", label: "ক্লায়েন্ট তালিকা", en: "Client List", icon: Users },
       { to: "/pop-admin/billing/list", label: "বিলিং তালিকা", en: "Billing List", icon: Receipt },
       { to: "/pop-admin/billing/daily-collection", label: "দৈনিক সংগ্রহ", en: "Daily Collection", icon: Wallet },

@@ -11,7 +11,7 @@ export default function PopClientList() {
       subtitle="এই POP-এর সক্রিয় ক্লায়েন্ট তালিকা"
       tableName="clients"
       selectFields="id, name, username, mobile, address, monthly_bill, status, expire_date, created_at"
-      extraFilter={(q) => q.in("status", ["active", "online", "offline"])}
+      extraFilter={(q) => q.in("status", ["active", "online", "offline"]).eq("owner_scope", "pop")}
       columns={[
         { key: "username", label: "PPP ID" },
         { key: "name", label: "Name" },
