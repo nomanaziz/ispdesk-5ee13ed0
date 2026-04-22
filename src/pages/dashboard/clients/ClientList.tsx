@@ -29,6 +29,7 @@ import BulkDistrictChangeDialog from "@/components/billing/BulkDistrictChangeDia
 import BulkThanaChangeDialog from "@/components/billing/BulkThanaChangeDialog";
 import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows } from "@/lib/exportClients";
 import { usePopScope } from "@/hooks/usePopScope";
+import { callPortal } from "@/lib/portalApi";
 
 export default function ClientList() {
   const { isPopMode, branchId } = usePopScope();
@@ -53,17 +54,19 @@ export default function ClientList() {
   const [thanaOpen, setThanaOpen] = useState(false);
 
   const { data: clients, isLoading } = useQuery({
-    queryKey: ["clients-list", branchId || "all"],
+    queryKey: ["clients-list", branchId || "all", isPopMode ? "pop" : "admin"],
     queryFn: async () => {
-      let q: any = supabase
+      if (isPopMode) {
+        const res = await callPortal<{ clients: any[] }>("list_pop_clients");
+        return res.clients || [];
+      }
+      const { data, error } = await supabase
         .from("clients")
         .select("*, zones:zone_id(name), isp_packages:package_id(name, bandwidth_down, price), mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name)")
         .neq("status", "left")
         .neq("billing_status", "Left")
+        .eq("owner_scope", "admin")
         .order("created_at", { ascending: false });
-      if (isPopMode && branchId) q = q.eq("branch_id", branchId);
-      else q = q.eq("owner_scope", "admin");
-      const { data, error } = await q;
       if (error) throw error;
       return data;
     },

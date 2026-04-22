@@ -862,7 +862,6 @@ Deno.serve(async (req) => {
         if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
           return json({ error: "Not allowed" }, 403);
         }
-
         const resellerId =
           tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
         const { data: pop } = await sb
@@ -870,16 +869,51 @@ Deno.serve(async (req) => {
           .select("branch_id")
           .eq("id", resellerId)
           .maybeSingle();
-
         if (!pop?.branch_id) return json({ clients: [] });
 
         const { data: clients, error } = await sb
           .from("clients")
-          .select("id, name, username, contact, address, monthly_bill, status, expire_date, created_at")
+          .select("*, zones:zone_id(name), isp_packages:package_id(name, bandwidth_down, price), mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name)")
           .eq("branch_id", pop.branch_id)
-          .eq("owner_scope", "pop")
-          .in("status", ["active", "Active", "online", "Online", "offline", "Offline"])
+          .neq("status", "left")
+          .neq("billing_status", "Left")
           .order("created_at", { ascending: false });
+
+        if (error) return json({ error: error.message }, 500);
+        return json({ clients: clients || [] });
+      }
+
+      case "list_pop_billing_clients": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("branch_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+        if (!pop?.branch_id) return json({ clients: [] });
+
+        const { data: clients, error } = await sb
+          .from("clients")
+          .select(`
+            id, client_id, name, contact, username, remote_address, status,
+            client_type, connection_type, monthly_bill, expire_date, speed,
+            server_name, mac_address, protocol_type, profile, password,
+            mikrotik_id, mikrotik_status, is_vip, billing_date, is_online,
+            zone_id, sub_zone_id, box_id, package_id, email, billing_status,
+            zone:zones(name),
+            package:isp_packages(name),
+            mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name),
+            billing!billing_client_id_fkey(id, bill_id, month, amount, paid, due, discount, advance, vat, status, pay_date)
+          `)
+          .eq("branch_id", pop.branch_id)
+          .eq("status", "active")
+          .ilike("billing_status", "active")
+          .gt("monthly_bill", 0)
+          .order("client_id", { ascending: true });
 
         if (error) return json({ error: error.message }, 500);
         return json({ clients: clients || [] });
