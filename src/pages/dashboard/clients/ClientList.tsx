@@ -291,6 +291,7 @@ export default function ClientList() {
         onBulkVip={() => handleBulkVip(true)}
         onBulkRemoveVip={() => handleBulkVip(false)}
         onBulkProfileChange={() => setProfileChangeOpen(true)}
+        showMigrate={!isPopMode}
       />
 
       {/* Entries + Total */}
