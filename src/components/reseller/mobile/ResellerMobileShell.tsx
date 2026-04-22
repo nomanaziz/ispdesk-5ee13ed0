@@ -22,7 +22,7 @@ export function ResellerMobileShell({ children, onOpenSidebar }: Props) {
   const { customer, logout } = usePortalAuth();
   const { lang, setLang, t } = useLanguage();
   const navigate = useNavigate();
-  const [quickOpen, setQuickOpen] = useState(false);
+  
 
   const popType = (customer as any)?.pop_type as string | undefined;
 
