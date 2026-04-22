@@ -83,7 +83,7 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-3">
-          <div className="px-2 pb-2 text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-semibold">
+          <div className="px-2 pb-2 text-[10px] uppercase tracking-wider text-sidebar-foreground/70 font-bold">
             Navigation
           </div>
           <div className="space-y-0.5">
@@ -95,20 +95,20 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
                   to={item.path}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors font-medium",
                     active
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                      : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent"
                   )}
                 >
-                  <item.icon className="h-4 w-4 shrink-0" />
+                  <item.icon className={cn("h-4 w-4 shrink-0", active ? "" : item.color)} />
                   <span className="truncate">{item.label}</span>
                 </Link>
               );
             })}
           </div>
 
-          <div className="px-2 pt-5 pb-2 text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-semibold">
+          <div className="px-2 pt-5 pb-2 text-[10px] uppercase tracking-wider text-sidebar-foreground/70 font-bold">
             Account
           </div>
           <button
