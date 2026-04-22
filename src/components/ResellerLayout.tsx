@@ -158,7 +158,7 @@ function isGroupAllowed(g: NavGroup, customer: any): boolean {
   const isSub = customer.type === "reseller_sub";
 
   if (isBw) {
-    return ["dashboard", "billing", "purchases", "tickets", "settings", "system"].includes(g.key);
+    return ["dashboard", "billing", "purchases", "tickets", "support", "settings", "system"].includes(g.key);
   }
 
   if (!isSub) return true;
@@ -176,6 +176,7 @@ function isGroupAllowed(g: NavGroup, customer: any): boolean {
     reports: ["reports"],
     purchases: ["purchases"],
     tickets: ["tickets"],
+    support: ["tickets", "monitoring"],
     system: ["system", "settings"],
     accounting: ["accounting"],
     fund_history: ["fund_history", "settings"],
