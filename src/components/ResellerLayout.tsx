@@ -12,6 +12,7 @@ import {
   MessageSquare, Send, Antenna, Radar, Wifi, History, TrendingUp, BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NotesButton } from "@/components/notes/NotesButton";
 
 type PermKey =
   | "dashboard" | "configuration" | "mikrotik" | "employee" | "client"
@@ -399,6 +400,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                 <Globe className="h-4 w-4" />
               </Button>
             </Link>
+            <NotesButton ownerType="pop" />
             <div className="text-right hidden sm:block">
               <div className="text-sm font-medium leading-tight">{customer?.name}</div>
               <div className="text-[11px] text-muted-foreground leading-tight">

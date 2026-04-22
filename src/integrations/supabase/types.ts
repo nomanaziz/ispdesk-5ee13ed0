@@ -9233,6 +9233,42 @@ export type Database = {
           },
         ]
       }
+      user_notes: {
+        Row: {
+          color: string
+          content: string
+          created_at: string
+          id: string
+          owner_id: string
+          owner_type: string
+          pinned: boolean
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          content?: string
+          created_at?: string
+          id?: string
+          owner_id: string
+          owner_type: string
+          pinned?: boolean
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          content?: string
+          created_at?: string
+          id?: string
+          owner_id?: string
+          owner_type?: string
+          pinned?: boolean
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_onu_mapping: {
         Row: {
           caller_id_mac: string

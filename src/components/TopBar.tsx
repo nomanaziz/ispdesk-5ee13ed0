@@ -9,6 +9,7 @@ import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { ThemeCustomizer } from "@/components/ThemeCustomizer";
 import { QuickSettings } from "@/components/QuickSettings";
 import { GlobalClientSearch } from "@/components/GlobalClientSearch";
+import { NotesButton } from "@/components/notes/NotesButton";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
@@ -87,6 +88,7 @@ export function TopBar() {
             </Button>
           </Link>
           <ThemeSwitcher />
+          <NotesButton ownerType="admin" />
           <Button
             variant="ghost"
             size="icon"

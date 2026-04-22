@@ -287,6 +287,11 @@ import WebsiteMedia from "@/pages/dashboard/website/WebsiteMedia";
 import WebsiteAbout from "@/pages/dashboard/website/WebsiteAbout";
 import WebsiteSettings from "@/pages/dashboard/website/WebsiteSettings";
 
+// Notes
+import AdminNotes from "@/pages/notes/AdminNotes";
+import PopNotes from "@/pages/notes/PopNotes";
+import ClientNotes from "@/pages/notes/ClientNotes";
+
 // Portal
 import { PortalAuthProvider } from "@/contexts/PortalAuthContext";
 import { PortalLayout } from "@/components/PortalLayout";
@@ -630,6 +635,7 @@ const App = () => (
               <Route path="/dashboard/sms/gateway" element={<P><SmsGateway /></P>} />
 
               {/* System */}
+              <Route path="/dashboard/notes" element={<P><AdminNotes /></P>} />
               <Route path="/dashboard/system/company" element={<P><SystemCompany /></P>} />
               <Route path="/dashboard/system/invoice" element={<P><SystemInvoice /></P>} />
               <Route path="/dashboard/system/periods" element={<P><SystemPeriods /></P>} />
@@ -714,6 +720,7 @@ const App = () => (
               <Route path="/pop-admin/tickets" element={<PortalAuthProvider><ResellerProtectedRoute require="tickets"><ResellerLayout><ResellerTickets /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/users" element={<PortalAuthProvider><ResellerProtectedRoute require="users"><ResellerLayout><ResellerUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/settings" element={<PortalAuthProvider><ResellerProtectedRoute require="settings"><ResellerLayout><ResellerSettings /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/notes" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><PopNotes /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/mikrotik-users" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><ResellerMikrotikUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/mikrotik-users/bulk-create" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><ResellerMikrotikBulkCreate /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 

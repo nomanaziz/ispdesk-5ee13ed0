@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { KeyRound } from "lucide-react";
 import NotificationBell from "@/components/portal/NotificationBell";
+import { NotesButton } from "@/components/notes/NotesButton";
 
 const menuItems = [
   { bn: "ড্যাশবোর্ড", en: "Dashboard", icon: LayoutDashboard, path: "/portal/dashboard", color: "text-indigo-600 dark:text-indigo-400" },
@@ -159,6 +160,7 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
               </Button>
             </Link>
 
+            <NotesButton ownerType="client" variant="compact" />
             <NotificationBell />
 
           <DropdownMenu>
