@@ -235,12 +235,16 @@ export default function PopSalarySheet() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Employee Name *</Label>
-              <Select value={form.employee_id} onValueChange={(v) => setForm({ ...form, employee_id: v })}>
+              <Select value={form.employee_id} onValueChange={(v) => {
+                const emp = employees.find((e: any) => e.id === v);
+                setForm({ ...form, employee_id: v, paid_salary: emp?.salary ? String(emp.salary) : form.paid_salary });
+              }}>
                 <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
                 <SelectContent>
-                  {employees.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                  {employees.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name} {e.salary ? `— ৳${Number(e.salary).toLocaleString()}` : ""}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {selectedEmp?.salary ? <p className="text-xs text-muted-foreground">Basic salary: ৳{Number(selectedEmp.salary).toLocaleString()}</p> : null}
             </div>
             <div className="space-y-1.5">
               <Label>Month *</Label>
