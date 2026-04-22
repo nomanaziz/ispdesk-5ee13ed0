@@ -1,58 +1,111 @@
 
 
 ## লক্ষ্য
-Import from MikroTik page-এ **USER TYPE** filter-এর meaning ঠিক করে ৩টা logical option করা: **Unique**, **Duplicate**, **Unlisted** — যাতে admin দ্রুত বুঝতে পারে কোন PPP user কোথায় আছে।
+POP Profile-এর **Exported**, **Unexported** tab-এ admin-এর জন্য reference image-এর মতো **filtering + bulk action toolbar + per-row actions** যোগ করা, এবং একটি নতুন **POP Online Clients** tab যোগ করা।
 
-## নতুন definition
+## ১) Exported Clients tab (image-187 অনুযায়ী)
 
-| Option | মানে |
+### Toolbar
+- **Bulk Package Change** — select-করা client-এর package change
+- **Bulk Profile Change** — MikroTik profile bulk update
+- **Bulk Clients Enable** — billing + MT enable
+- **Bulk Clients Disable** — billing + MT disable
+- **Generate PDF / Generate CSV** export buttons
+
+### Filters (top bar)
+- Package (dropdown — POP-এর available packages)
+- Server (dropdown — MikroTik servers)
+- Protocol (pppoe / static / hotspot)
+- Profile (dropdown)
+- Search box (right side, existing)
+- Show entries (10/25/50/100)
+
+### Table changes
+- Left checkbox column (header = select all on page)
+- Per-row **B.Status toggle** (billing enable/disable)
+- Per-row **M.Status toggle** (MikroTik enable/disable — calls `manage-mikrotik-ppp`)
+- বাকি column অপরিবর্তিত
+
+## ২) Unexported Clients tab (image-188 অনুযায়ী)
+
+### Toolbar
+- **Clients Bulk Revert** — selected MT user-দের একসাথে revert (loops `revert_mikrotik_client` RPC)
+- **Bulk Recharge / Renewal** — selected user-দের package validity extend (admin-side helper; calls existing recharge logic)
+- **Bulk Clients Enable**
+- **Bulk Clients Disable**
+- **Generate PDF / Generate CSV**
+
+### Filters
+- Package, Server, Protocol, Profile, **R. Days** (expired / 1-7 / 8-30 / >30)
+- Search box, Show entries
+
+### Table changes
+- Left checkbox column
+- Per-row **Enabled toggle** (MT enable/disable)
+- Per-row **Revert button** (existing — অপরিবর্তিত)
+- Export column থাকবে না (এটা admin view, MT user-কে আবার client বানানোর জন্য আলাদা flow নেই এখানে — Revert is the inverse)
+
+## ৩) নতুন **POP Online Clients** tab
+
+POP Profile-এর tab list-এ **Online Clients** নামে নতুন tab।
+
+### Top stat strip
+- Total Clients
+- **Online** (green)
+- **Offline** (gray)
+- Last sync time
+
+### Filter
+- Status: All / Online / Offline
+- Search (name / username / IP)
+
+### Table
+| Column | Source |
 |---|---|
-| **Unique** | এই username শুধু **একটাই MikroTik server**-এ আছে (cross-server গণনা = 1) |
-| **Duplicate** | একই username **একাধিক MikroTik server**-এ exist করছে (cross-server গণনা ≥ 2) |
-| **Unlisted** | এই PPP user **কোনো POP/Client list-এ নেই** — মানে `clients` table-এ এই username নেই, এবং `mikrotik_clients`-এও `transferred_to_pop_id IS NULL` ও `linked_client_id IS NULL` |
-| **All** | সব দেখাবে (default) |
+| User ID | `clients.username` |
+| Name | `clients.name` |
+| Mobile | `clients.contact` |
+| Package | `isp_packages.name` |
+| IP | `clients.remote_address` |
+| Server | `clients.server_name` |
+| Uptime | live snapshot (optional, blank if N/A) |
+| Status | green "Online" badge / gray "Offline" |
 
-> পুরনো `unique/duplicate/disabled` (যেটা `user_status` column থেকে আসত — এটা actually MikroTik-এর enabled/disabled flag) আর filter হিসেবে ব্যবহার হবে না। সেটার দরকার হলে আলাদা ছোট badge হিসেবে রাখা যাবে, কিন্তু dropdown থেকে সরবে।
+Source query: `clients` where `branch_id = pop.branch_id` AND `owner_scope = 'pop'`, joined with `isp_packages`. `is_online` field দিয়ে status।
 
-## কী কী করা হবে
+Auto-refresh every 30s (lightweight `useQuery` with `refetchInterval`).
 
-### ১) `Import.tsx`-এ User Type filter rebuild
-- Dropdown options: `All`, `Unique`, `Duplicate`, `Unlisted`
-- `clients` table থেকে username set আনা (already আছে: `existingUsernames`)
-- সব `mikrotik_clients` row থেকে username → কতগুলো server-এ আছে map বানানো (client-side aggregation, lowercase username + distinct `mikrotik_id`)
-- Filter logic:
-  - `unique` → server count == 1
-  - `duplicate` → server count ≥ 2
-  - `unlisted` → username `clients` table-এ নেই AND এখনো কোনো POP-এ transfer হয়নি
+## ৪) Bulk action implementation details
 
-### ২) Username duplicate count efficiently আনা
-দরকার হবে সব server-এর সব PPP user-এর `(name, mikrotik_id)` জোড়া। তাই একটা hালকা parallel query:
-- `mikrotik_clients` থেকে শুধু `name, mikrotik_id` select করে cross-server map তৈরি
-- এই query একবারই run হবে (cached) — list filter তার পরে memoize করে চলবে
+| Action | Backend |
+|---|---|
+| Bulk Enable / Disable (billing) | `clients` table update `billing_status` |
+| Bulk Enable / Disable (MikroTik) | loop `manage-mikrotik-ppp` invoke per client |
+| Bulk Package Change | `clients.package_id` update + `manage-mikrotik-ppp` profile update |
+| Bulk Profile Change | `manage-mikrotik-ppp` profile update only |
+| Bulk Revert | loop `revert_mikrotik_client` RPC per MT id |
+| Bulk Recharge / Renewal | `clients.expire_date` extend by package validity_days |
+| Generate PDF / CSV | client-side using existing libs (jsPDF/papaparse) |
 
-### ৩) Pending filter logic অপরিবর্তিত
-আগের core rule যেটা ঠিক হয়েছিল সেটা থাকবে:
-- `transferred_to_pop_id IS NULL`
-- `linked_client_id IS NULL`
-- `exported = false / null`
-- AND username `clients` table-এ নেই (existing hide rule)
+সব bulk action confirmation dialog-এর পরে চলবে এবং progress toast দেখাবে। শেষে relevant query-গুলো invalidate হবে।
 
-User Type filter এই base list-এর উপর extra layer হবে।
-
-### ৪) Visual polish
-- Filter label বাংলায়: **ইউজার টাইপ**
-- Each row-এ ছোট badge: যদি duplicate হয় → `Duplicate (3 servers)` ছোট badge দেখানো (optional, helpful)
-- "Branch" column আগেই সরানো হয়েছে — অপরিবর্তিত
+## ৫) UI pattern
+Reference image-এর মতো একটা reusable **`<BulkActionBar>`** component বানানো হবে যা ৩ জায়গাতেই use হবে — pill-shaped dark buttons + right-side export buttons, top filter row card-এর ভেতর।
 
 ## কোন file বদলাবে
-- `src/pages/dashboard/mikrotik/Import.tsx` (filter dropdown + logic + duplicate count query)
+- `src/components/branches/PopExportedClients.tsx` — toolbar + filters + bulk + checkboxes + per-row toggle
+- `src/components/branches/PopUnexportedClients.tsx` — toolbar + filters + bulk + checkboxes + per-row enable toggle
+- `src/components/branches/PopOnlineClients.tsx` *(new)* — Online clients tab
+- `src/components/branches/BulkActionBar.tsx` *(new, reusable)*
+- `src/pages/dashboard/branches/PopProfile.tsx` — add `Online Clients` tab
+- `src/lib/exporters.ts` *(new, small)* — CSV + PDF helpers (if not already present)
 
 ## কোন file বদলাবে না
-- DB schema, RLS, edge functions, অন্য pages
+- DB schema, RLS, `manage-mikrotik-ppp` edge function, `revert_mikrotik_client` RPC, Import page
 
 ## Apply-এর পরে expected ফলাফল
-1. **Unique** select করলে → শুধু সেই PPP user যাদের username একটাই server-এ আছে
-2. **Duplicate** select করলে → multiple server-এ থাকা username গুলো (যেমন "moron" 3 server-এ থাকলে 3 row-ই আসবে)
-3. **Unlisted** select করলে → যেগুলো কোনো client list / POP-এ নেই — pure raw MT user
-4. Pending tab-এর base behavior অপরিবর্তিত (already-listed user hidden থাকবে)
+1. Exported tab-এ admin filter + bulk enable/disable/package/profile change + CSV/PDF export পাবে
+2. Unexported tab-এ bulk revert / bulk recharge / bulk enable/disable পাবে, প্রতিটা row-এ enable toggle থাকবে
+3. নতুন **Online Clients** tab POP-এর live online/offline client list দেখাবে, auto-refresh সহ
+4. Reference image-এর pill-shaped action button look match করবে
 
