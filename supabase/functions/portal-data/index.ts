@@ -981,26 +981,50 @@ Deno.serve(async (req) => {
           if (!mtId) return json({ users: [], tariff_packages: tariffRes.data || [], zones: zonesRes.data || [] });
           const dev = visibleDevices.find((d: any) => d.id === mtId);
           if (!dev) return json({ error: "MikroTik not visible to this POP" }, 403);
-          const isBranchScoped = !!branchId && dev.branch_id === branchId;
-          const isPopAssigned = dev.assigned_to_pop_id === popId;
 
-          let users: any[] = [];
-          if (isBranchScoped || isPopAssigned) {
-            const { data } = await sb
+          // POP-scoped visibility rule: a MikroTik PPP entry is visible to this POP only if
+          //   (a) it was transferred TO this POP (transferred_to_pop_id = popId, on this device), OR
+          //   (b) it is linked to a client whose branch_id = this POP's branch_id.
+          // We do NOT show every PPP entry on the device — those belong to admin / other POPs.
+
+          // (a) transferred-in candidates on this device
+          const { data: transferredRows } = await sb
+            .from("mikrotik_clients")
+            .select("*")
+            .eq("transferred_to_pop_id", popId)
+            .eq("transferred_to_mikrotik_id", mtId)
+            .order("name");
+
+          // (b) entries on this device whose linked client belongs to this POP's branch
+          let linkedRows: any[] = [];
+          if (branchId) {
+            const { data: rowsOnDevice } = await sb
               .from("mikrotik_clients")
               .select("*")
               .or(`mikrotik_id.eq.${mtId},transferred_to_mikrotik_id.eq.${mtId}`)
-              .order("name");
-            users = data || [];
-          } else {
-            const { data } = await sb
-              .from("mikrotik_clients")
-              .select("*")
-              .eq("transferred_to_pop_id", popId)
-              .eq("transferred_to_mikrotik_id", mtId)
-              .order("name");
-            users = data || [];
+              .not("linked_client_id", "is", null);
+            const ids = (rowsOnDevice || []).map((r: any) => r.linked_client_id).filter(Boolean);
+            if (ids.length > 0) {
+              const { data: ownClients } = await sb
+                .from("clients")
+                .select("id")
+                .in("id", ids)
+                .eq("branch_id", branchId);
+              const ownSet = new Set((ownClients || []).map((c: any) => c.id));
+              linkedRows = (rowsOnDevice || []).filter((r: any) => ownSet.has(r.linked_client_id));
+            }
           }
+
+          // Merge & dedupe
+          const seen = new Set<string>();
+          const users: any[] = [];
+          for (const r of [...(transferredRows || []), ...linkedRows]) {
+            if (seen.has(r.id)) continue;
+            seen.add(r.id);
+            users.push(r);
+          }
+          users.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
           return json({
             users,
             pop_id: popId,
