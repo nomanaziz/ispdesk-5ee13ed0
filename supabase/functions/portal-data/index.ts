@@ -2221,6 +2221,7 @@ Deno.serve(async (req) => {
         });
       }
 
+      default:
         return json({ error: "Unknown action" }, 400);
     }
   } catch (e: any) {
