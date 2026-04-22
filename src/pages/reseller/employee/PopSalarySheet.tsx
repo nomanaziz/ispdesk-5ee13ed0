@@ -74,6 +74,13 @@ export default function PopSalarySheet() {
 
   const totalAll = useMemo(() => rows.reduce((s: number, r: any) => s + Number(r.total_amount || 0), 0), [rows]);
 
+  const selectedEmp = employees.find((e: any) => e.id === form.employee_id);
+  const liveTotal = (Number(form.paid_salary || 0))
+    + Number(form.overtime || 0)
+    + Number(form.incentive || 0)
+    + Number(form.bonus || 0)
+    - Number(form.advance || 0);
+
   const save = useMutation({
     mutationFn: async () => {
       if (!branchId) throw new Error("Branch নেই");
@@ -103,12 +110,36 @@ export default function PopSalarySheet() {
         status: "paid",
       } as any);
       if (error) throw error;
+
+      // Auto-create accounting expense entry for the salary payment
+      if (total > 0) {
+        const monthLabel = format(new Date(form.month), "MMM-yy");
+        const note = [
+          `Salary — ${emp?.name || "Employee"} (${monthLabel})`,
+          overtime > 0 ? `OT ৳${overtime}` : null,
+          incentive > 0 ? `Incentive ৳${incentive}` : null,
+          bonus > 0 ? `Bonus ৳${bonus}` : null,
+          advance > 0 ? `Advance −৳${advance}` : null,
+          form.remarks ? form.remarks : null,
+        ].filter(Boolean).join(" • ");
+        await supabase.from("expense_entries").insert({
+          branch_id: branchId,
+          expense_date: form.paid_date || format(new Date(), "yyyy-MM-dd"),
+          category: "Salary",
+          amount: total,
+          payment_method: "cash",
+          paid_by: emp?.name || null,
+          reference: `SAL-${monthLabel}`,
+          description: note,
+        } as any);
+      }
     },
     onSuccess: () => {
-      toast.success("Salary saved");
+      toast.success("Salary saved & expense added");
       setOpen(false);
       setForm(emptyForm);
       qc.invalidateQueries({ queryKey: ["pop-salary-sheet"] });
+      qc.invalidateQueries({ queryKey: ["pop-expense"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -204,12 +235,16 @@ export default function PopSalarySheet() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Employee Name *</Label>
-              <Select value={form.employee_id} onValueChange={(v) => setForm({ ...form, employee_id: v })}>
+              <Select value={form.employee_id} onValueChange={(v) => {
+                const emp = employees.find((e: any) => e.id === v);
+                setForm({ ...form, employee_id: v, paid_salary: emp?.salary ? String(emp.salary) : form.paid_salary });
+              }}>
                 <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
                 <SelectContent>
-                  {employees.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+                  {employees.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name} {e.salary ? `— ৳${Number(e.salary).toLocaleString()}` : ""}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {selectedEmp?.salary ? <p className="text-xs text-muted-foreground">Basic salary: ৳{Number(selectedEmp.salary).toLocaleString()}</p> : null}
             </div>
             <div className="space-y-1.5">
               <Label>Month *</Label>
@@ -249,6 +284,17 @@ export default function PopSalarySheet() {
               <Textarea value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} rows={2} />
             </div>
           </div>
+
+          <div className="rounded-md border bg-muted/40 p-3 text-sm">
+            <div className="flex justify-between"><span>Paid Salary</span><span>৳ {Number(form.paid_salary || 0).toLocaleString()}</span></div>
+            <div className="flex justify-between text-emerald-600"><span>+ Overtime</span><span>৳ {Number(form.overtime || 0).toLocaleString()}</span></div>
+            <div className="flex justify-between text-emerald-600"><span>+ Incentive</span><span>৳ {Number(form.incentive || 0).toLocaleString()}</span></div>
+            <div className="flex justify-between text-emerald-600"><span>+ Bonus</span><span>৳ {Number(form.bonus || 0).toLocaleString()}</span></div>
+            <div className="flex justify-between text-rose-600"><span>− Advance</span><span>৳ {Number(form.advance || 0).toLocaleString()}</span></div>
+            <div className="flex justify-between font-bold border-t mt-1 pt-1"><span>Total Payable</span><span>৳ {liveTotal.toLocaleString()}</span></div>
+            <p className="text-xs text-muted-foreground mt-1">Save করলে এই amount automatic <b>Expense → Salary</b>-এ যোগ হবে।</p>
+          </div>
+
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setForm(emptyForm)}>Clear</Button>
             <Button variant="outline" onClick={() => setOpen(false)}>Close</Button>

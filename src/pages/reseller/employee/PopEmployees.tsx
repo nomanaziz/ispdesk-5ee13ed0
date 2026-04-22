@@ -10,12 +10,13 @@ export default function PopEmployees() {
       title="Employees"
       subtitle="এই POP-এর সমস্ত কর্মী"
       tableName="employees"
-      selectFields="id, name, mobile, phone, email, designation, department, salary, status, has_user_access, user_username, created_at"
+      selectFields="id, employee_id, name, phone, personal_phone, email, salary, status, has_user_access, user_username, created_at, departments(name), positions(name)"
       columns={[
+        { key: "employee_id", label: "ID" },
         { key: "name", label: "Name" },
-        { key: "phone", label: "Phone", render: (r: any) => r.phone || r.mobile || "—" },
-        { key: "designation", label: "Designation" },
-        { key: "department", label: "Department" },
+        { key: "phone", label: "Phone", render: (r: any) => r.personal_phone || r.phone || "—" },
+        { key: "designation", label: "Designation", render: (r: any) => r.positions?.name || "—" },
+        { key: "department", label: "Department", render: (r: any) => r.departments?.name || "—" },
         { key: "salary", label: "Salary", render: (r: any) => r.salary ? `৳ ${Number(r.salary).toLocaleString()}` : "—" },
         {
           key: "user_access",
