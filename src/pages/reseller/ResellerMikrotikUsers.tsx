@@ -121,7 +121,7 @@ export default function ResellerMikrotikUsers() {
       return created;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reseller_mt_users"] });
+      qc.invalidateQueries({ queryKey: ["pop_mt_users"] });
       toast.success("ক্লায়েন্ট তৈরি হয়েছে");
       setCreateOpen(false);
     },
