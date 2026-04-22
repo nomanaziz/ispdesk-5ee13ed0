@@ -9,7 +9,7 @@ import {
   Search, Menu, Activity, Server, Globe, ChevronDown, ChevronRight,
   Cog, MapPin, Box, Package, Layers, Briefcase, BadgeCheck, Cpu,
   UserPlus, Wallet, BarChart3, FileText, Calendar,
-  MessageSquare, Send, Antenna, Radar, Wifi, History, TrendingUp, BookOpen, Plus,
+  MessageSquare, Send, Antenna, Radar, Wifi, History, TrendingUp, BookOpen, Plus, FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotesButton } from "@/components/notes/NotesButton";
