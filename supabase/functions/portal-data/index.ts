@@ -1865,6 +1865,102 @@ Deno.serve(async (req) => {
         return json({ error: "Unknown POP monitoring action" }, 400);
       }
 
+      case "pop_ticket_clients": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("branch_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+        if (!pop?.branch_id) return json({ clients: [] });
+        const { data, error } = await sb
+          .from("clients")
+          .select("id, name, client_id, username, contact, mobile")
+          .eq("branch_id", pop.branch_id)
+          .neq("status", "left")
+          .order("name");
+        if (error) return json({ error: error.message }, 500);
+        return json({ clients: data || [] });
+      }
+
+      case "pop_ticket_categories": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const { data, error } = await sb
+          .from("support_categories")
+          .select("id, name, status")
+          .eq("status", "active")
+          .order("name");
+        if (error) return json({ error: error.message }, 500);
+        return json({ categories: data || [] });
+      }
+
+      case "pop_create_ticket": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const clientId = String(payload.client_id || "");
+        const subject = String(payload.subject || "").trim();
+        const description = String(payload.description || "");
+        const priority = String(payload.priority || "normal");
+        const categoryId = payload.category_id || null;
+        if (!clientId) return json({ error: "client_id required" }, 400);
+        if (!subject) return json({ error: "subject required" }, 400);
+
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("branch_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+
+        const { data: client } = await sb
+          .from("clients")
+          .select("id, branch_id, zone_id")
+          .eq("id", clientId)
+          .maybeSingle();
+        if (!client || client.branch_id !== pop.branch_id) {
+          return json({ error: "Client not in your POP" }, 403);
+        }
+
+        const ticket_no = `TK${Date.now().toString().slice(-8)}`;
+        const { data: ticket, error: tErr } = await sb
+          .from("support_tickets")
+          .insert({
+            ticket_no,
+            subject,
+            description,
+            priority,
+            category_id: categoryId,
+            client_id: clientId,
+            zone_id: client.zone_id || null,
+            status: "open",
+            source: "pop_admin",
+            created_by: null,
+          })
+          .select()
+          .single();
+        if (tErr) return json({ error: tErr.message }, 500);
+
+        if (ticket) {
+          await sb.from("support_ticket_messages").insert({
+            ticket_id: ticket.id,
+            sender_type: "agent",
+            sender_id: null,
+            sender_name: tok.name || "POP Admin",
+            message: description || subject,
+          });
+        }
+        return json({ ok: true, ticket });
+      }
+
       default:
         return json({ error: "Unknown action" }, 400);
     }
