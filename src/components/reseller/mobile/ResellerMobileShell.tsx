@@ -12,6 +12,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { MobileBottomTabs } from "./MobileBottomTabs";
 import { NotesButton } from "@/components/notes/NotesButton";
+import { InstallAppButton } from "@/components/InstallAppButton";
+import { Smartphone } from "lucide-react";
 
 interface Props {
   children: ReactNode;

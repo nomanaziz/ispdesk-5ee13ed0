@@ -4,6 +4,7 @@ import { PublicFooter } from "@/components/public/PublicFooter";
 import { Wifi } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { InstallAppButton } from "@/components/InstallAppButton";
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {
   const { t } = useLanguage();
@@ -22,6 +23,9 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
       >
         <Wifi className="h-6 w-6" />
       </NavLink>
+
+      {/* Floating Install App chip */}
+      <InstallAppButton variant="chip" />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { QuickSettings } from "@/components/QuickSettings";
 import { GlobalClientSearch } from "@/components/GlobalClientSearch";
 import { NotesButton } from "@/components/notes/NotesButton";
 import { QuickCreateClientDialog } from "@/components/QuickCreateClientDialog";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
@@ -99,6 +100,7 @@ export function TopBar() {
             </Button>
           </Link>
           <ThemeSwitcher />
+          <InstallAppButton variant="icon" />
           <NotesButton ownerType="admin" />
           <Button
             variant="ghost"
