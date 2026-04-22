@@ -408,7 +408,7 @@ Deno.serve(async (req) => {
           const active = await getActiveSessions(conn, username);
           const current = active[0] || null;
           const traffic = await getLiveTraffic(conn, current?.name || username);
-          conn.close();
+          safeClose(conn);
 
           return new Response(
             JSON.stringify({
@@ -440,7 +440,7 @@ Deno.serve(async (req) => {
         case "ping": {
           const targetIp = body.target_ip || secret?.["remote-address"];
           if (!targetIp) {
-            conn.close();
+            safeClose(conn);
             return new Response(
               JSON.stringify({ error: "No IP address available for ping" }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -450,7 +450,7 @@ Deno.serve(async (req) => {
             address: targetIp,
             count: "4",
           });
-          conn.close();
+          safeClose(conn);
           return new Response(
             JSON.stringify({
               success: true,
@@ -489,20 +489,20 @@ Deno.serve(async (req) => {
           break;
         }
         default:
-          conn.close();
+          safeClose(conn);
           return new Response(
             JSON.stringify({ error: `Unknown action: ${action}. Use: update, disable, enable, disconnect, status, remove` }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
       }
 
-      conn.close();
+      safeClose(conn);
       return new Response(
         JSON.stringify({ success: true, message, mikrotik_status: mikrotikStatus }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } catch (cmdErr) {
-      conn.close();
+      safeClose(conn);
       throw cmdErr;
     }
   } catch (err) {
