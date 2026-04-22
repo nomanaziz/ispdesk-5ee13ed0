@@ -20,6 +20,7 @@ import {
 import { NotesButton } from "@/components/notes/NotesButton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ResellerMobileShell } from "@/components/reseller/mobile/ResellerMobileShell";
+import { InstallAppButton } from "@/components/InstallAppButton";
 
 
 type PermKey =
@@ -434,6 +435,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                   </button>
                 </div>
                 <NotesButton ownerType="pop" />
+                <InstallAppButton variant="icon" />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
