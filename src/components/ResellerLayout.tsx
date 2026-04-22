@@ -104,6 +104,7 @@ const groups: NavGroup[] = [
       { to: "/pop-admin/sms/individual", label: "ইন্ডিভিজুয়াল / গ্রুপ", en: "Individual / Group", icon: Users },
       { to: "/pop-admin/sms/send", label: "এসএমএস পাঠান", en: "Send SMS", icon: Send },
       { to: "/pop-admin/sms/gateway", label: "গেটওয়ে", en: "Gateway", icon: Server },
+      { to: "/pop-admin/sms/telegram", label: "Telegram বট", en: "Telegram Bot", icon: Send },
     ],
   },
   {
