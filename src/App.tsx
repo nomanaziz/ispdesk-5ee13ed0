@@ -635,6 +635,7 @@ const App = () => (
               <Route path="/dashboard/sms/gateway" element={<P><SmsGateway /></P>} />
 
               {/* System */}
+              <Route path="/dashboard/notes" element={<P><AdminNotes /></P>} />
               <Route path="/dashboard/system/company" element={<P><SystemCompany /></P>} />
               <Route path="/dashboard/system/invoice" element={<P><SystemInvoice /></P>} />
               <Route path="/dashboard/system/periods" element={<P><SystemPeriods /></P>} />
