@@ -78,7 +78,7 @@ export function QuickCreateClientDialog({ open, onOpenChange }: Props) {
     enabled: open,
     queryFn: async () => {
       const { data } = await supabase
-        .from("packages")
+        .from("isp_packages")
         .select("id, name, price")
         .eq("status", "active")
         .order("name");
