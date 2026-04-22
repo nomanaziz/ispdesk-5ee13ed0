@@ -228,7 +228,8 @@ export default function ClientProfile() {
   const pppTraffic = pppData?.live_traffic ?? null;
   const totalDue = billings.reduce((s: number, b: any) => s + Number(b.due || 0), 0);
   const totalPaid = billings.reduce((s: number, b: any) => s + Number(b.paid || 0), 0);
-  const bs = billings[0]?.status || "unpaid";
+  const latestBill = billings[0] || null;
+  const latestStatus = getBillStatus(latestBill);
 
   return (
     <div className="p-4 space-y-4">
@@ -315,8 +316,8 @@ export default function ClientProfile() {
 
               <div className="space-y-2">
                 <SidebarInfo label="বিলিং স্ট্যাটাস">
-                  <Badge variant={bs === "paid" ? "default" : bs === "partial" ? "secondary" : "destructive"}>
-                    {bs === "paid" ? "Paid" : bs === "partial" ? "Partial" : "Due"}
+                  <Badge variant="outline" className={getBillStatusBadgeClass(latestStatus)}>
+                    {getBillStatusLabel(latestStatus)}
                   </Badge>
                 </SidebarInfo>
                 <SidebarInfo label="MikroTik">
