@@ -20,7 +20,7 @@ import {
 import { NotesButton } from "@/components/notes/NotesButton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ResellerMobileShell } from "@/components/reseller/mobile/ResellerMobileShell";
-import { QuickCreateClientDialog } from "@/components/QuickCreateClientDialog";
+
 
 type PermKey =
   | "dashboard" | "configuration" | "mikrotik" | "employee" | "client"
@@ -399,7 +399,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                 </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <QuickAddButton />
+                
                 <div
                   className="inline-flex items-center rounded-full border border-border/60 bg-muted/30 p-0.5 h-8"
                   role="group"
@@ -500,24 +500,5 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
     </div>
   );
 };
-
-function QuickAddButton() {
-  const [open, setOpen] = useState(false);
-  const { t } = useLanguage();
-  return (
-    <>
-      <Button
-        variant="default"
-        size="sm"
-        className="h-9 gap-1.5"
-        onClick={() => setOpen(true)}
-      >
-        <Plus className="h-4 w-4" />
-        <span className="hidden md:inline">{t("দ্রুত যোগ", "Quick Add")}</span>
-      </Button>
-      <QuickCreateClientDialog open={open} onOpenChange={setOpen} />
-    </>
-  );
-}
 
 export default ResellerLayout;
