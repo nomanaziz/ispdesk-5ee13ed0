@@ -1033,23 +1033,14 @@ Deno.serve(async (req) => {
           });
         }
 
-        // get_pop_mikrotik_bulk_candidates: all unlinked across visible devices
-        if (visibleIds.size === 0) {
-          return json({
-            users: [],
-            tariff_packages: tariffRes.data || [],
-            zones: zonesRes.data || [],
-            branch_id: branchId,
-          });
-        }
-        const idArr = [...visibleIds];
+        // get_pop_mikrotik_bulk_candidates: only PPP entries explicitly transferred to this POP
+        // and not yet converted into a billing client. We do NOT expose admin's untransferred
+        // users here, even if the device is branch-scoped.
         const { data: bulkRows } = await sb
           .from("mikrotik_clients")
           .select("id, name, password, profile, caller_id, remote_address, service, mikrotik_id, transferred_to_mikrotik_id, transferred_to_pop_id, linked_client_id")
           .is("linked_client_id", null)
-          .or(
-            `transferred_to_pop_id.eq.${popId},mikrotik_id.in.(${idArr.join(",")}),transferred_to_mikrotik_id.in.(${idArr.join(",")})`
-          )
+          .eq("transferred_to_pop_id", popId)
           .order("name");
         return json({
           users: bulkRows || [],
