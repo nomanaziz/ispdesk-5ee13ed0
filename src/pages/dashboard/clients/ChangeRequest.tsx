@@ -47,13 +47,10 @@ export default function ChangeRequest() {
             .update({ expire_date: request.new_value })
             .eq("id", request.client_id);
         } else if (request.request_type === "billing_date" && request.new_value) {
-          // Set billing_date to current month with the requested day
           const day = Math.max(1, Math.min(28, Number(request.new_value)));
-          const today = new Date();
-          const target = new Date(today.getFullYear(), today.getMonth(), day);
           await supabase
             .from("clients")
-            .update({ billing_date: target.toISOString().slice(0, 10) })
+            .update({ billing_date: day })
             .eq("id", request.client_id);
         }
         // package: admin manually updates profile via existing flow
