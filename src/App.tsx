@@ -251,6 +251,9 @@ import ReportFinancial from "@/pages/dashboard/reports/Financial";
 // SMS
 import SmsIndividual from "@/pages/dashboard/sms/Individual";
 import PopSmsTemplates from "@/pages/reseller/PopSmsTemplates";
+import PopSmsIndividual from "@/pages/reseller/sms/PopSmsIndividual";
+import PopSmsSend from "@/pages/reseller/sms/PopSmsSend";
+import PopSmsGateway from "@/pages/reseller/sms/PopSmsGateway";
 import SmsTemplates from "@/pages/dashboard/sms/Templates";
 import SmsGroups from "@/pages/dashboard/sms/Groups";
 import SmsSend from "@/pages/dashboard/sms/Send";
@@ -771,9 +774,9 @@ const App = () => (
               <Route path="/pop-admin/monitoring/online" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopOnlineMonitoring /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/monitoring/ping" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Ping Tools" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/templates" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSmsTemplates /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/sms/individual" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Individual / Group SMS" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/sms/send" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Send SMS" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/sms/gateway" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="SMS Gateway" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/sms/individual" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSmsIndividual /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/sms/send" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSmsSend /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/sms/gateway" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSmsGateway /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/reports/bill-collection" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopBillCollection /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/reports/customer" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportCustomer /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/reports/enable-disable" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportEnableDisable /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
