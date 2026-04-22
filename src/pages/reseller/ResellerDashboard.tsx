@@ -15,14 +15,19 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
+import { useIsMobile } from "@/hooks/use-mobile";
+import PopMobileHome from "./PopMobileHome";
 
 const tk = (n: number | null | undefined) =>
   `৳ ${(Number(n) || 0).toLocaleString("en-BD", { maximumFractionDigits: 0 })}`;
 
 const ResellerDashboard = () => {
   const { customer } = usePortalAuth();
+  const isMobile = useIsMobile();
   const { popId, branchId } = getPopScope(customer);
   const billingId = getBillingCustomerId(customer);
+
+  if (isMobile) return <PopMobileHome />;
 
   // ============ Company-level data (between POP and main company) ============
   const { data: company } = useQuery({

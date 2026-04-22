@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Globe, Search, Bell, Palette, Settings } from "lucide-react";
+import { LogOut, User, Globe, Search, Bell, Palette, Settings, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,6 +10,7 @@ import { ThemeCustomizer } from "@/components/ThemeCustomizer";
 import { QuickSettings } from "@/components/QuickSettings";
 import { GlobalClientSearch } from "@/components/GlobalClientSearch";
 import { NotesButton } from "@/components/notes/NotesButton";
+import { QuickCreateClientDialog } from "@/components/QuickCreateClientDialog";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
@@ -23,6 +24,7 @@ export function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
