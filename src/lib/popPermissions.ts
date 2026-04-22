@@ -96,11 +96,6 @@ export const POP_MENU_GROUPS: PopMenuGroup[] = [
     ],
   },
   {
-    key: "purchases",
-    label: "Purchase Orders",
-    items: [{ key: "/pop-admin/purchases", label: "Purchase Orders" }],
-  },
-  {
     key: "system",
     label: "System",
     items: [

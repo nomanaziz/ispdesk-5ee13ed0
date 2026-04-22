@@ -319,8 +319,6 @@ import ResellerDashboard from "@/pages/reseller/ResellerDashboard";
 import ResellerInvoices from "@/pages/reseller/ResellerInvoices";
 import ResellerInvoiceDetail from "@/pages/reseller/ResellerInvoiceDetail";
 import ResellerInvoicePrint from "@/pages/reseller/ResellerInvoicePrint";
-import ResellerPurchaseOrders from "@/pages/reseller/ResellerPurchaseOrders";
-import ResellerPurchaseOrderForm from "@/pages/reseller/ResellerPurchaseOrderForm";
 import ResellerTickets from "@/pages/reseller/ResellerTickets";
 import ResellerUsers from "@/pages/reseller/ResellerUsers";
 import ResellerSettings from "@/pages/reseller/ResellerSettings";
