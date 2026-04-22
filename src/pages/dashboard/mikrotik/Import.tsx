@@ -292,10 +292,8 @@ export default function Import() {
                   <TableHead>সার্ভার</TableHead>
                   <TableHead>Logout Time</TableHead>
                   <TableHead>স্ট্যাটাস</TableHead>
-                  {transferStatus === "transferred" ? (
+                  {transferStatus === "transferred" && (
                     <TableHead>ট্রান্সফার গন্তব্য</TableHead>
-                  ) : (
-                    <TableHead>ব্রাঞ্চ</TableHead>
                   )}
                   <TableHead>অ্যাকশন</TableHead>
                 </TableRow>
