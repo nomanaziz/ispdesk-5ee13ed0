@@ -254,6 +254,8 @@ import PopSmsTemplates from "@/pages/reseller/PopSmsTemplates";
 import PopSmsIndividual from "@/pages/reseller/sms/PopSmsIndividual";
 import PopSmsSend from "@/pages/reseller/sms/PopSmsSend";
 import PopSmsGateway from "@/pages/reseller/sms/PopSmsGateway";
+import PopTelegramSetup from "@/pages/reseller/sms/PopTelegramSetup";
+import TelegramSetup from "@/pages/dashboard/sms/TelegramSetup";
 import SmsTemplates from "@/pages/dashboard/sms/Templates";
 import SmsGroups from "@/pages/dashboard/sms/Groups";
 import SmsSend from "@/pages/dashboard/sms/Send";
@@ -777,6 +779,7 @@ const App = () => (
               <Route path="/pop-admin/sms/individual" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSmsIndividual /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/send" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSmsSend /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/gateway" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSmsGateway /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/sms/telegram" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopTelegramSetup /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/reports/bill-collection" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopBillCollection /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/reports/customer" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportCustomer /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/reports/enable-disable" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportEnableDisable /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
