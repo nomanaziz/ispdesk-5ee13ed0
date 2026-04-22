@@ -1,96 +1,97 @@
 
 
 ## লক্ষ্য
-My Profile page-এর critical bug fix + proper validation + Bangladesh country-code + package/join date display ঠিক করা।
+দুটি সমস্যা ঠিক করা:
+1. POP admin MikroTik server-এর users দেখতে পারছে না (যদিও running 3, 4 user আছে) → bulk import করতে পারছে না
+2. POP admin sidebar-এ "বিলিং" আলাদা section, যা "ক্লায়েন্ট" section-এর সাথে merge করতে হবে
 
 ---
 
-## সমস্যাগুলোর কারণ (root cause)
+## 🔴 সমস্যা ১ — MikroTik Users খালি দেখাচ্ছে
 
-### 🔴 Bug #1 — "এক letter লিখলেই input খালি হয়ে যায়"
-`PortalProfile.tsx`-এ `F`, `Row`, `SectionTitle` component-গুলো **parent component-এর ভেতরে define করা**। প্রতি keystroke-এ React নতুন component reference বানায় → পুরো input unmount + remount → focus + value lost → মনে হয় "tab change হয়ে গেছে"।
-
-### 🔴 Bug #2 — "Package, Joining Date দেখাচ্ছে না"
-Backend-এর `get_profile` action শুধু minimal field return করে — `joining_date`, `package_id`, `father_name`, `mother_name`, `date_of_birth`, `occupation`, `gender`, `phone_number`, `road_number`, `house_number` **return-ই হচ্ছে না**। তাই left card-এ "—" + Personal tab-এ সবকিছু blank।
-
-### 🔴 Bug #3 — Validation নেই
-Name-এ digit allow হচ্ছে, mobile-এ letter allow হচ্ছে, country code নেই।
-
----
-
-## সমাধান
-
-### 1. Component re-mount bug fix
-**File: `src/pages/portal/PortalProfile.tsx`**
-- `F`, `Row`, `SectionTitle` — তিনটাই **module-level**-এ সরানো (parent function-এর বাইরে)।
-- Or even simpler: inline `<Input>` direct ব্যবহার, helper component বাদ।
-- Result: typing smooth, focus lost হবে না।
-
-### 2. Backend `get_profile` enrich
-**File: `supabase/functions/portal-data/index.ts`** — `get_profile`-এর select clause-এ সব profile field যোগ + package join:
-```ts
-.select("id, name, client_id, username, contact, email, address, present_address, permanent_address, nid_number, photo_url, nid_front_url, nid_back_url, documents, joining_date, expire_date, billing_date, status, package_id, father_name, mother_name, date_of_birth, occupation, gender, road_number, house_number, phone_number")
+### কারণ
+`ResellerMikrotikUsers.tsx` শুধু সেই rows fetch করে যেগুলা admin manually **TransferToPop** dialog দিয়ে এই POP-এ pushed:
+```typescript
+.eq("transferred_to_pop_id", popId)
+.eq("transferred_to_mikrotik_id", activeMt)
 ```
-+ এর পর `loadClient`-এর মতো `isp_packages` join করে `package: {name, bandwidth_down, price}` return।
+কিন্তু POP-এর branch-এ assigned MikroTik device-এর actual `mikrotik_clients` rows (যেগুলা sync থেকে এসেছে) এই filter-এ ধরা পড়ছে না। তাই display "0 users" হলেও MikroTik dashboard-এ "Running 3 / 4" দেখাচ্ছে।
 
-### 3. Validation যোগ
-**File: `src/pages/portal/PortalProfile.tsx`** — ৩ ধরনের sanitizer onChange-এ:
+### সমাধান
+`ResellerMikrotikUsers.tsx` query update — POP-এর branch-এ assigned কোনো MikroTik device-এর সব `mikrotik_clients` দেখানো হবে, plus পুরোনো transferred ones-ও:
 
-| Field | Rule | Behavior |
-|---|---|---|
-| **Name** (father, mother) | শুধু alphabet + space | digit/symbol টাইপ করলে auto-strip |
-| **Mobile / Alternate Phone** | শুধু digit, max 11 | letter টাইপ করলে accept-ই হবে না; submit-এ regex check `/^01[3-9]\d{8}$/` |
-| **Email** | trim + lowercase | submit-এ HTML5 + zod email check |
-| **Occupation** | letters + space + ., | digit reject |
-
-`onChange={(e) => setForm({...form, contact: e.target.value.replace(/\D/g, '').slice(0,11)})}`
-
-### 4. Country code prefix (Bangladesh +880 default)
-Mobile + Alternate Phone field দুটোয় **prefix add-on** UI:
-- বাঁদিকে disabled flag chip: `🇧🇩 +880`
-- Input শুধু 11-digit local number নেয় (01XXXXXXXXX)
-- Display only — backend/DB-তে existing format-ই (01...) save হবে, কারণ Bangladesh default
-
-Compact pattern:
-```tsx
-<div className="flex">
-  <div className="flex items-center gap-1 px-2 border border-r-0 rounded-l bg-muted text-xs">
-    🇧🇩 +880
-  </div>
-  <Input className="rounded-l-none" maxLength={11} ... />
-</div>
+```typescript
+// নতুন query (OR condition)
+.or(
+  `mikrotik_id.eq.${activeMt},` +
+  `transferred_to_mikrotik_id.eq.${activeMt}`
+)
+// প্লাস: branch-scoped MT হলে সব দেখাও; না হলে শুধু transferred
 ```
 
-### 5. Mobile Tab-এও same prefix + validation
-**File: `src/pages/portal/PortalProfile.tsx` → `MobileTab`** — same flag prefix pattern + digit-only sanitizer।
+একই logic `ResellerMikrotikBulkCreate.tsx`-এ — শুধু `transferred_to_pop_id` filter-এর বদলে: যে MT এই POP-এর branch-এ আছে, তার সব unlinked users দেখাও।
 
-### 6. Personal tab-এর field re-population fix
-যেহেতু `get_profile` enrich হবে, `useEffect` dependency `[client?.id]` রেখে — load হলে সব field properly populate হবে। শুধু confirm করব form fields সব properly bind।
-
----
-
-## Files modified
-
-| File | Change |
-|---|---|
-| `src/pages/portal/PortalProfile.tsx` | Helper components module-level সরানো · digit/alpha sanitizers · 🇧🇩 +880 prefix · validation on submit |
-| `supabase/functions/portal-data/index.ts` | `get_profile` action enrich (all personal fields + package join) |
+### Status badge logic update
+- যদি `linked_client_id` থাকে → "Client" (সবুজ)
+- যদি `transferred_to_pop_id = popId` → "Transferred to POP"
+- নইলে → "Available" (gray) — POP চাইলে directly client বানাবে
 
 ---
 
-## Out of scope
-- International phone number support (শুধু Bangladesh)
-- Phone uniqueness check across clients
-- Email verification flow
-- Other portal pages-এর form (শুধু Profile)
+## 🟢 সমস্যা ২ — Billing section কে Client section-এ Merge
+
+### বর্তমান Sidebar (POP admin)
+```
+ক্লায়েন্ট
+  ├─ ক্লায়েন্ট যোগ
+  ├─ ক্লায়েন্ট তালিকা
+  ├─ বিলিং ক্লায়েন্ট        ← duplicate of /billing/list
+  ├─ চলে যাওয়া ক্লায়েন্ট
+  └─ শিডিউলার
+
+বিলিং                         ← এই পুরো section সরবে
+  ├─ বিলিং তালিকা
+  └─ দৈনিক সংগ্রহ
+```
+
+### নতুন Sidebar (merged)
+```
+ক্লায়েন্ট
+  ├─ ক্লায়েন্ট যোগ           (Add Client)
+  ├─ ক্লায়েন্ট তালিকা         (Client List)
+  ├─ বিলিং তালিকা             (Billing List)        ← from বিলিং
+  ├─ দৈনিক সংগ্রহ              (Daily Collection)    ← from বিলিং
+  ├─ চলে যাওয়া ক্লায়েন্ট
+  └─ শিডিউলার
+```
+
+- "বিলিং ক্লায়েন্ট" আর "বিলিং তালিকা" একই page (BillingList) → duplicate বাদ, একটাই থাকবে: "বিলিং তালিকা"
+- "বিলিং" group entirely সরবে
+- `/pop-admin/clients/billing` → backward-compat redirect to `/pop-admin/billing/list`
 
 ---
 
-## Apply-এর পরে expected
-1. ✅ Personal tab-এ smooth typing — কোনো field auto-clear/jump হবে না
-2. ✅ Left card-এ Package name + Joined date দেখাবে
-3. ✅ Personal tab open করলেই সব existing data pre-filled থাকবে (DOB, father, mother, occupation, gender, address)
-4. ✅ Mobile field-এ 🇧🇩 +880 prefix + শুধু digit accept (max 11)
-5. ✅ Name field-এ digit টাইপ করলে auto-strip
-6. ✅ Save করলে valid data backend-এ যাবে — invalid হলে toast error
+## পরিবর্তন হবে যেসব file
+
+| File | পরিবর্তন |
+|------|---------|
+| `src/pages/reseller/ResellerMikrotikUsers.tsx` | Mikrotik users query — branch-scoped MT হলে সব users দেখাও |
+| `src/pages/reseller/ResellerMikrotikBulkCreate.tsx` | Bulk import query — same logic, সব unlinked users আনো |
+| `src/components/ResellerLayout.tsx` | "বিলিং" group সরিয়ে "ক্লায়েন্ট" group-এ items merge |
+| `src/App.tsx` | `/pop-admin/clients/billing` কে `/pop-admin/billing/list`-এ redirect |
+
+---
+
+## পরিবর্তন হবে না
+- Admin portal sidebar / billing pages
+- Database schema (কোন migration লাগবে না)
+- Permission system / RLS
+
+---
+
+## Apply-এর পরে expected ফলাফল
+1. ✅ POP admin MikroTik Users page-এ এই POP-এর branch-এ assigned MT-এর সব user (3 / 4 জন) দেখাবে
+2. ✅ Bulk Hardware Import-এ সব unlinked users আসবে — checkbox দিয়ে select করে client বানানো যাবে
+3. ✅ POP sidebar-এ "বিলিং" আলাদা section আর থাকবে না; বিলিং তালিকা + দৈনিক সংগ্রহ "ক্লায়েন্ট"-এর under-এ আসবে
+4. ✅ পুরোনো URL `/pop-admin/clients/billing` খুললেও billing list-এ চলে যাবে (broken link হবে না)
 
