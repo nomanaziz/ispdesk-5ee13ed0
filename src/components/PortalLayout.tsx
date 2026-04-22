@@ -142,14 +142,25 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
-            <div className="font-semibold text-sm hidden sm:block">Customer Portal</div>
+            <div className="font-semibold text-sm hidden sm:block">{t("কাস্টমার পোর্টাল", "Customer Portal")}</div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Link to="/" target="_blank" title="ওয়েবসাইটে যান">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-foreground hover:text-foreground"
+              onClick={() => setLang(lang === "bn" ? "en" : "bn")}
+              title={t("ভাষা পরিবর্তন", "Change language")}
+            >
+              <Languages className="h-4 w-4" />
+              <span className="text-xs font-medium">{lang === "bn" ? "EN" : "বাং"}</span>
+            </Button>
+
+            <Link to="/" target="_blank" title={t("ওয়েবসাইটে যান", "Visit website")}>
               <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
                 <Globe className="h-4 w-4" />
-                <span className="hidden sm:inline text-xs">ওয়েবসাইট</span>
+                <span className="hidden sm:inline text-xs">{t("ওয়েবসাইট", "Website")}</span>
               </Button>
             </Link>
 
