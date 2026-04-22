@@ -147,7 +147,20 @@ export default function ResellerMikrotikUsers() {
         </Button>
       </div>
 
-      {mikrotiks.length === 0 ? (
+      {serversQuery.isLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">লোড হচ্ছে...</CardContent>
+        </Card>
+      ) : serversQuery.isError ? (
+        <Card>
+          <CardContent className="py-12 text-center text-destructive">
+            <AlertTriangle className="h-12 w-12 mx-auto mb-3 opacity-70" />
+            <p>MikroTik server লোড করতে সমস্যা হয়েছে।</p>
+            <p className="text-sm mt-1 text-muted-foreground">{(serversQuery.error as any)?.message}</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => serversQuery.refetch()}>আবার চেষ্টা করুন</Button>
+          </CardContent>
+        </Card>
+      ) : mikrotiks.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <Server className="h-12 w-12 mx-auto mb-3 opacity-50" />
