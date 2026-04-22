@@ -1,97 +1,78 @@
 
 
-## কাজ — POP Admin Employee module simplification
+## কাজ — সব portal-এ Basic Notes (Sticky Notes) system
 
-### ১) Sidebar cleanup (`ResellerLayout.tsx`)
-"কর্মচারী" group থেকে **Payroll** ও **Attendance** বাদ। শুধু থাকবে:
-- Add Employee
-- Employee List
-- Salary Sheet
+৪টা portal-এ একই simple notes feature — header-এর "Take a Note" button → dialog → title + color + content → save → list view।
 
-### ২) Routes cleanup (`App.tsx`)
-বাদ:
-- `/pop-admin/employees/payroll`
-- `/pop-admin/employees/attendance`
+### কোথায় add হবে
+1. **Admin Dashboard** — `TopBar.tsx`-এ "Take a Note" button + `/dashboard/notes` route
+2. **POP Admin Portal** — `ResellerLayout.tsx` header-এ button + `/pop-admin/notes` route
+3. **Client Portal** — `PortalLayout.tsx` header-এ button + `/portal/notes` route
+4. **BW Sale** — admin dashboard-এর অংশ, তাই TopBar-এ পাওয়া যাবে (আলাদা portal না)
 
-`/pop-admin/employees/salary-sheet` placeholder → নতুন real page `<PopSalarySheet />`।
+### Database (নতুন table)
 
-### ৩) Add Employee form — Division/District/Upazila সরাসরি main DB থেকে (`PopAddEmployee.tsx` + `PopEditEmployee.tsx`)
-এখন District/Upazila plain `<Input>` text। বদলে cascading dropdown:
-- **Division** → `divisions` table থেকে (8টা already seeded)
-- **District** → `districts` table, selected division অনুযায়ী filter
-- **Upazila** → `upazilas` table, selected district অনুযায়ী filter
+```sql
+CREATE TABLE public.user_notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_type text NOT NULL,         -- 'admin' | 'pop' | 'client' | 'reseller_sub' | 'pop_sub'
+  owner_id text NOT NULL,           -- auth.uid() for admin, customer.sub for portal users
+  title text,
+  content text,
+  color text NOT NULL DEFAULT 'yellow',  -- yellow|blue|green|pink|purple|orange
+  pinned boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_user_notes_owner ON public.user_notes(owner_type, owner_id, created_at DESC);
+ALTER TABLE public.user_notes ENABLE ROW LEVEL SECURITY;
+```
 
-কোনো নতুন table/seed না — existing main DB তিনটা table পুনঃব্যবহার। `employees` table-এ নতুন column যোগ:
-- `division_id uuid` (nullable, FK divisions)
-- `district_id uuid` (nullable, FK districts) — বর্তমানে `district` text আছে, এটা সাথে রাখব backward compat-এ; নতুন সব entry id দিয়ে save হবে
-- `upazila_id uuid` (nullable, FK upazilas)
+**RLS:** Admin/super reads all. Portal users (non-auth.uid) — open INSERT/SELECT/UPDATE/DELETE policy filtered by `owner_type` + `owner_id` matched in app code (since portal uses custom JWT not Supabase auth, RLS can't enforce; we'll filter in queries). Actual hard isolation: portal CRUD goes through the existing `portal-data` edge function with the JWT verifying owner.
 
-নতুন reusable `<DivisionDistrictUpazilaSelect>` component বানাব, যেটা দুই form-এ ব্যবহার হবে।
+Simpler approach (chosen): admin uses Supabase auth + RLS; portal users (POP/client) call a small new edge function `portal-notes` that verifies the portal JWT and does CRUD with service role, scoping by `owner_type` + `customer.sub`.
 
-### ৪) Salary Sheet page (নতুন `PopSalarySheet.tsx`)
-Reference image-203 অনুযায়ী **simple** version:
+### Files
 
-**Layout:**
-- Header: "Salary Sheet" + Month filter dropdown (Apr-26 style) + "**+ Pay Salary**" button (top-right)
-- Table columns: Name | Month | Basic Salary | Paid Salary | Overtime | Incentive | Bonus | Advance Salary | Due | Total Amount | Action
-- Bottom row: TOTAL (sum of Total Amount)
+**New:**
+- `src/components/notes/NoteDialog.tsx` — Take/Edit note modal (title input, 6 color swatches, content textarea, Save/Cancel)
+- `src/components/notes/NotesButton.tsx` — header button "📝 Note" + opens dialog (props: `ownerType`, `ownerId`)
+- `src/components/notes/NotesList.tsx` — masonry grid of colored sticky cards (pin, edit, delete actions)
+- `src/pages/notes/AdminNotes.tsx` — `/dashboard/notes` page wrapper
+- `src/pages/notes/PopNotes.tsx` — `/pop-admin/notes` page wrapper
+- `src/pages/notes/ClientNotes.tsx` — `/portal/notes` page wrapper
+- `src/lib/notesApi.ts` — small data-access helper: admin uses `supabase.from("user_notes")`, portal uses fetch to edge function
+- `supabase/functions/portal-notes/index.ts` — POST `{action, ...}` with portal JWT; supports list/create/update/delete/togglePin
 
-**+ Pay Salary modal:** (image-203 দেখানো হয়েছে)
-- Employee Name * (dropdown — branch-scoped employees)
-- Month *
-- Paid Salary *
-- Overtime
-- Incentive
-- Bonus
-- Paid Date * (default: now)
-- Remarks/Note
-- Clear / Save / Close buttons
+**Edited:**
+- `src/components/TopBar.tsx` — add `<NotesButton ownerType="admin" />` next to existing icons
+- `src/components/ResellerLayout.tsx` — add `<NotesButton ownerType="pop" />` in header
+- `src/components/PortalLayout.tsx` — add `<NotesButton ownerType="client" />` in header
+- `src/App.tsx` — register the 3 new routes
+- `src/components/AppSidebar.tsx`, `ResellerLayout.tsx`, `PortalLayout.tsx` — add "Notes" sidebar entry (optional, low priority — primary entry is the header button)
 
-**Data:** existing `salary_sheets` table পুনঃব্যবহার + প্রয়োজনীয় column যোগ:
-- `branch_id uuid` (POP isolation)
-- `paid_salary numeric default 0`
-- `overtime numeric default 0`
-- `incentive numeric default 0`
-- `bonus numeric default 0`
-- `advance numeric default 0`
-- `due numeric default 0`
-- `paid_date timestamptz`
-- `remarks text`
-- `total_amount numeric` (computed: paid+overtime+incentive+bonus−advance)
+### UI behaviour (simple)
 
-Branch-scoped query — `WHERE branch_id = {pop branch}`। RLS policy যোগ করব branch isolation এর জন্য।
+**Header button:** small icon + "Note" label → opens `NoteDialog` in "create" mode → on save, inserts and toasts. Click "View All" link inside dialog → navigates to `/…/notes` list.
 
-### ৫) Salary status field (form-এ)
-Add Employee form-এ ইতিমধ্যে "Status" আছে (active/inactive)। User বললেন **Salary status** আলাদা চান না — শুধু একটাই salary field থাকবে যেটা Posting Information section-এর "Salary"। এটা অপরিবর্তিত থাকছে। কোনো অতিরিক্ত salary status add করা হবে না।
+**NoteDialog fields:**
+- Title (optional, max 80)
+- Color picker — 6 swatches (yellow/blue/green/pink/purple/orange)
+- Content textarea (required)
+- Pin checkbox
+- Save / Cancel
 
-## কোন file বদলাবে / নতুন
+**Notes list page:** masonry grid of colored cards, pinned ones first; each card shows title, content (clamped 6 lines), date, and hover actions: pin/unpin, edit, delete. Search box on top, color filter chips. Empty state with a "Take a Note" CTA.
 
-**Migration (database):**
-- `employees` table-এ `division_id`, `district_id`, `upazila_id` column যোগ
-- `salary_sheets` table-এ `branch_id`, `paid_salary`, `overtime`, `incentive`, `bonus`, `advance`, `due`, `paid_date`, `remarks`, `total_amount` column যোগ
-- `salary_sheets` RLS — branch-scoped policy যোগ (POP portal access)
+### কী বদলাবে না
+- Admin সব data, অন্যান্য module untouched
+- Existing tickets / employee / packages কিছুই ছোঁয়া হবে না
+- Public site untouched (visitors-এর জন্য notes দরকার নেই)
 
-**নতুন (2 files):**
-- `src/components/reseller/DivisionDistrictUpazilaSelect.tsx` — reusable cascading dropdown
-- `src/pages/reseller/employee/PopSalarySheet.tsx` — list + Pay Salary dialog
-
-**Edit:**
-- `src/components/ResellerLayout.tsx` — Payroll/Attendance link সরানো
-- `src/App.tsx` — payroll/attendance route মুছে, salary-sheet placeholder → real component
-- `src/pages/reseller/employee/PopAddEmployee.tsx` — district/upazila text input → cascading select
-- `src/pages/reseller/employee/PopEditEmployee.tsx` — same select যোগ
-
-## কোন file বদলাবে না
-- `divisions`/`districts`/`upazilas` table বা seed data
-- Admin dashboard এর HR/Employee/Salary pages
-- Employee user-access section (image-201 এর কাজ অপরিবর্তিত)
-- Accounting / packages / pricing / অন্য সব POP module
-
-## Apply-এর পরে expected ফলাফল
-1. ✅ POP sidebar-এ "কর্মচারী" group-এ ৩টা item: Add / List / Salary Sheet
-2. ✅ Add Employee-এ Division → District → Upazila cascading dropdown — main DB থেকে data
-3. ✅ Salary Sheet page reference image-203 অনুযায়ী, "+ Pay Salary" modal কাজ করবে
-4. ✅ Branch isolation — এক POP-এর salary data অন্য POP দেখবে না
-5. ✅ Payroll / Attendance menu আর সাইডবারে নেই, route 404 হবে না (সরিয়ে দেওয়া হয়েছে)
-6. ✅ Admin dashboard untouched
+### Apply-এর পরে expected ফলাফল
+1. ✅ চারটা portal-এর header-এ "Take a Note" button
+2. ✅ Color + title + content দিয়ে note save
+3. ✅ Notes list page — masonry grid, pin/edit/delete/search/filter
+4. ✅ প্রতিটা user শুধু নিজের notes দেখবে (admin auth.uid, portal user customer.sub দিয়ে scoped)
+5. ✅ Edge function `portal-notes` portal users-দের secure CRUD provide করবে
 
