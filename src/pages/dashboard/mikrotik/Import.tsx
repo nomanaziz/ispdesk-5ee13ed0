@@ -255,12 +255,12 @@ export default function Import() {
               </SelectContent>
             </Select>
             <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
-              <SelectTrigger className="w-[140px]"><SelectValue placeholder="ইউজার টাইপ" /></SelectTrigger>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="ইউজার টাইপ" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">সকল</SelectItem>
-                <SelectItem value="unique">Unique</SelectItem>
-                <SelectItem value="duplicate">Duplicate</SelectItem>
-                <SelectItem value="disabled">Disabled</SelectItem>
+                <SelectItem value="all">সকল ইউজার</SelectItem>
+                <SelectItem value="unique">Unique (1 server)</SelectItem>
+                <SelectItem value="duplicate">Duplicate (multi-server)</SelectItem>
+                <SelectItem value="unlisted">Unlisted (no POP/Client)</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={clearFilters}><XCircle className="h-4 w-4 mr-1" /> ক্লিয়ার</Button>
