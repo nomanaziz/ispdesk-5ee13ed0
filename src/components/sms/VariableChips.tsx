@@ -1,6 +1,6 @@
 import { RefObject } from "react";
 import { TEMPLATE_VARIABLES } from "@/lib/templateVars";
-import { Badge } from "@/components/ui/badge";
+import { badgeVariants } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -51,20 +51,18 @@ export default function VariableChips({
       <p className="text-xs text-muted-foreground">{label}</p>
       <div className="flex flex-wrap gap-1.5">
         {TEMPLATE_VARIABLES.map((v) => (
-          <Badge
+          <button
             key={v}
-            variant="outline"
-            asChild
+            type="button"
+            onClick={() => insert(v)}
+            title={`ক্লিক করে বসান: {${v}}`}
+            className={cn(
+              badgeVariants({ variant: "outline" }),
+              "cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors",
+            )}
           >
-            <button
-              type="button"
-              onClick={() => insert(v)}
-              title={`ক্লিক করে বসান: {${v}}`}
-              className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-            >
-              {`{${v}}`}
-            </button>
-          </Badge>
+            {`{${v}}`}
+          </button>
         ))}
       </div>
     </div>
