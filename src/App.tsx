@@ -250,6 +250,7 @@ import ReportFinancial from "@/pages/dashboard/reports/Financial";
 
 // SMS
 import SmsIndividual from "@/pages/dashboard/sms/Individual";
+import PopSmsTemplates from "@/pages/reseller/PopSmsTemplates";
 import SmsTemplates from "@/pages/dashboard/sms/Templates";
 import SmsGroups from "@/pages/dashboard/sms/Groups";
 import SmsSend from "@/pages/dashboard/sms/Send";
