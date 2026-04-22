@@ -69,7 +69,7 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
               <div className="font-semibold text-sm truncate">{customer?.name || "Customer"}</div>
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                <span className="text-[11px] text-success">Signed in</span>
+                <span className="text-[11px] text-success">{t("সাইন ইন", "Signed in")}</span>
               </div>
             </div>
             <Button
