@@ -1,52 +1,50 @@
 
 
-## Fix: POP Employee Add/Edit — column mismatch
+## Accordion Sidebar — একসাথে শুধু একটা group খোলা
 
 ### সমস্যা
-`employees` table-এ `department_id` (uuid → `departments.id`) আর `position_id` (uuid → `positions.id`) আছে। কিন্তু কোড `department` / `designation` (text name) পাঠাচ্ছে — এই column গুলা table-এ নাই। তাই Edit save করলে error: *Could not find the 'department' column*।
+এখন POP Admin আর Main Admin sidebar-এ অনেকগুলো main menu (group) একসাথে expand করা যায়। ফলে sidebar অনেক লম্বা হয়ে scroll নিচে চলে যায়।
 
-দ্বিতীয় সমস্যা: `PopEmployees` list-এ `positions(name)` join করা — এটা ঠিক, কিন্তু FK relation না থাকলে fail করতে পারে। (DB-তে `position_id` আছে, FK check করব migration লাগবে কিনা।)
+### সমাধান (Accordion behaviour)
+যে কোনো main group click → আগের সব group auto-close হবে, শুধু ক্লিক করা group-এর sub-menu open থাকবে। Active route যেই group-এ আছে সেটা by default open।
 
-### সমাধান
+### Scope (যেসব portal-এ apply হবে)
+| Portal | File | পরিবর্তন |
+|---|---|---|
+| Main Admin / Super Admin sidebar | `src/components/AppSidebar.tsx` | `CollapsibleGroup`-এর local `useState` সরিয়ে parent-controlled single-open state |
+| POP Admin (Reseller) sidebar | `src/components/ResellerLayout.tsx` | `openGroups: Set<string>` → `openGroup: string \| null` |
+| Client Portal | `src/components/PortalLayout.tsx` | এখানে collapsible group নাই — কোনো পরিবর্তন লাগবে না |
 
-#### ১) `BranchScopedSelect` — value হিসেবে ID return করবে
-- Query থেকে `id, name` দুটোই select
-- `value` prop = uuid, dropdown-এ `name` দেখাবে কিন্তু `<SelectItem value={id}>`
-- `onChange(id)` — parent UUID পাবে
-- "Add new"-এর পর insert করে নতুন row-এর `id` return করে select set হবে
+### Technical changes
 
-#### ২) `PopEditEmployee.tsx`
-- `form.designation` / `form.department` → `form.position_id` / `form.department_id`
-- `useEffect` initializer-এ `(emp as any).position_id` ও `department_id` পড়বে
-- `update` payload: `department_id`, `position_id` পাঠাবে — পুরোনো `designation`/`department` key বাদ
-- `BranchScopedSelect` কে UUID value pass করবে
+**১) `ResellerLayout.tsx`**
+- `openGroups` (Set) → `openGroup` (single string | null)
+- Initializer: active route যেই group-এ আছে সেটার key, না পেলে `"dashboard"`
+- `toggleGroup(k)`: `setOpenGroup(prev => prev === k ? null : k)`
+- `isOpen = openGroup === g.key || !!search` (search চললে আগের মতই সব expanded)
+- Route change হলে যদি active group ভিন্ন হয় → auto-switch (useEffect on `location.pathname`)
 
-#### ৩) `PopAddEmployee.tsx`
-- Form state: `department: ""` → `department_id: null`, `designation: ""` → `position_id: null`
-- Payload: `department_id`, `position_id` পাঠাবে
-- Edge function-এ already `...p` spread হয়, তাই নতুন key গুলা ঠিক column-এ যাবে
+**২) `AppSidebar.tsx`**
+- বর্তমানে প্রতিটা `CollapsibleGroup`-এ নিজস্ব `useState` — তাই multi-open হয়
+- Parent (`AppSidebar` main component) যোগ করবে `const [openGroupKey, setOpenGroupKey] = useState<string|null>(activeGroupLabel)`
+- `CollapsibleGroup`-এ নতুন props: `openKey`, `onToggle(key)`
+- Internal `useState(open)` সরিয়ে `effectiveOpen = forceOpen ?? (openKey === group.label)`
+- `onClick={() => setOpen(!open)}` → `onClick={() => onToggle(group.label)}`
+- Search match থাকলে আগের মতই `forceOpen=true` (search বহাল)
+- Route change হলে active group auto-open (useEffect on `location.pathname`)
 
-#### ৪) Edge function `create_employee` (safety)
-- `...p` spread-এর পর explicitly delete ক্ষতিকর/নাই key (`department`, `designation`) যদি কোথাও থেকে আসে — protective strip
-
-#### ৫) `PopEmployees.tsx` list verify
-- `positions(name)` / `departments(name)` join — FK exists কিনা check করে দরকার হলে FK migration:
-  ```sql
-  ALTER TABLE employees
-    ADD CONSTRAINT employees_department_id_fkey FOREIGN KEY (department_id) REFERENCES departments(id),
-    ADD CONSTRAINT employees_position_id_fkey FOREIGN KEY (position_id) REFERENCES positions(id);
-  ```
-  (যদি ইতিমধ্যেই থাকে → skip)
-
-### Files to edit
-- `src/components/reseller/BranchScopedSelect.tsx` — return id instead of name
-- `src/pages/reseller/employee/PopEditEmployee.tsx` — use `department_id` / `position_id`
-- `src/pages/reseller/employee/PopAddEmployee.tsx` — same
-- `supabase/functions/portal-data/index.ts` — strip stale keys in `create_employee`
-- Migration (conditional) — add FKs যদি missing
+**৩) Edge cases**
+- Search box-এ টাইপ → সব matched group খুলবে (debug-friendly), search clear করলে আবার single-open mode
+- Direct group (single item) — accordion logic apply হবে না, আগের মতই simple link
+- Collapsed (mini) sidebar mode — accordion irrelevant, আগের মতই icon-only
 
 ### ফলাফল
-- Edit save করলে আর error আসবে না
-- Add করলে department/designation correctly save হবে
-- List page-এ join properly resolve হবে
+- যেকোনো main menu click করলে আগের open group auto-close, sidebar সবসময় ছোট থাকবে
+- Active route যেখানে আছে সেই group always pre-opened
+- Search-based exploration আগের মতই কাজ করবে
+- POP Admin + Main Admin দুই sidebar consistent behaviour
+
+### Files to edit
+- `src/components/ResellerLayout.tsx`
+- `src/components/AppSidebar.tsx`
 
