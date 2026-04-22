@@ -72,15 +72,27 @@ export default function ResellerMikrotikUsers() {
   }, [mikrotiks, activeMt]);
 
   const { data: users = [], isLoading } = useQuery({
-    queryKey: ["reseller_mt_users", popId, activeMt],
+    queryKey: ["reseller_mt_users", popId, activeMt, pop?.branch_id],
     queryFn: async () => {
       if (!activeMt) return [];
-      const { data } = await supabase
-        .from("mikrotik_clients")
-        .select("*")
-        .eq("transferred_to_pop_id", popId!)
-        .eq("transferred_to_mikrotik_id", activeMt)
-        .order("name");
+      // POP-এর branch-এ assigned MikroTik হলে ওই MT-এর সব users দেখাও;
+      // নইলে শুধু এই POP-এ transferred users দেখাও।
+      const { data: mtRow } = await supabase
+        .from("mikrotik_devices")
+        .select("branch_id")
+        .eq("id", activeMt)
+        .maybeSingle();
+      const isBranchScoped = !!pop?.branch_id && mtRow?.branch_id === pop.branch_id;
+
+      let q = supabase.from("mikrotik_clients").select("*").order("name");
+      if (isBranchScoped) {
+        q = q.or(
+          `mikrotik_id.eq.${activeMt},transferred_to_mikrotik_id.eq.${activeMt}`,
+        );
+      } else {
+        q = q.eq("transferred_to_pop_id", popId!).eq("transferred_to_mikrotik_id", activeMt);
+      }
+      const { data } = await q;
       return data || [];
     },
     enabled: !!popId && !!activeMt,
@@ -263,7 +275,7 @@ export default function ResellerMikrotikUsers() {
                         {isLoading ? (
                           <TableRow><TableCell colSpan={8} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
                         ) : filtered.length === 0 ? (
-                          <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">কোনো ইউজার ট্রান্সফার করা হয়নি</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">কোনো ইউজার পাওয়া যায়নি</TableCell></TableRow>
                         ) : filtered.map((u: any) => (
                           <TableRow key={u.id}>
                             <TableCell className="font-medium">{u.name}</TableCell>
@@ -284,8 +296,10 @@ export default function ResellerMikrotikUsers() {
                                 <Badge variant="default">Client</Badge>
                               ) : u.status === "disabled" ? (
                                 <Badge variant="destructive">Disabled</Badge>
-                              ) : (
+                              ) : u.transferred_to_pop_id === popId ? (
                                 <Badge variant="secondary">Transferred</Badge>
+                              ) : (
+                                <Badge variant="outline">Available</Badge>
                               )}
                             </TableCell>
                             <TableCell className="text-right space-x-1">

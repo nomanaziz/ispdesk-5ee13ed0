@@ -65,16 +65,10 @@ const groups: NavGroup[] = [
     items: [
       { to: "/pop-admin/clients/add", label: "ক্লায়েন্ট যোগ", en: "Add Client", icon: UserPlus },
       { to: "/pop-admin/clients", label: "ক্লায়েন্ট তালিকা", en: "Client List", icon: Users },
-      { to: "/pop-admin/clients/billing", label: "বিলিং ক্লায়েন্ট", en: "Billing Client", icon: Receipt },
-      { to: "/pop-admin/clients/left", label: "চলে যাওয়া ক্লায়েন্ট", en: "Left Clients", icon: Users },
-      { to: "/pop-admin/clients/scheduler", label: "শিডিউলার", en: "Scheduler", icon: Calendar },
-    ],
-  },
-  {
-    key: "billing", label: "বিলিং", en: "Billing", icon: Receipt,
-    items: [
       { to: "/pop-admin/billing/list", label: "বিলিং তালিকা", en: "Billing List", icon: Receipt },
       { to: "/pop-admin/billing/daily-collection", label: "দৈনিক সংগ্রহ", en: "Daily Collection", icon: Wallet },
+      { to: "/pop-admin/clients/left", label: "চলে যাওয়া ক্লায়েন্ট", en: "Left Clients", icon: Users },
+      { to: "/pop-admin/clients/scheduler", label: "শিডিউলার", en: "Scheduler", icon: Calendar },
     ],
   },
   {

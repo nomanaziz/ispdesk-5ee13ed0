@@ -66,15 +66,35 @@ export default function ResellerMikrotikBulkCreate() {
   });
 
   const { isLoading, refetch } = useQuery({
-    queryKey: ["bulk_mt_transferred", popId],
+    queryKey: ["bulk_mt_transferred", popId, branchId],
     queryFn: async () => {
       if (!popId) return [];
-      const { data } = await supabase
+      // POP-এর branch-এ assigned সব MikroTik device-এর id-গুলো
+      let mtIds: string[] = [];
+      if (branchId) {
+        const { data: mts } = await supabase
+          .from("mikrotik_devices")
+          .select("id")
+          .eq("branch_id", branchId);
+        mtIds = (mts || []).map((m: any) => m.id);
+      }
+
+      let q = supabase
         .from("mikrotik_clients")
-        .select("id, name, password, profile, caller_id, remote_address, service, transferred_to_mikrotik_id, linked_client_id")
-        .eq("transferred_to_pop_id", popId)
+        .select("id, name, password, profile, caller_id, remote_address, service, mikrotik_id, transferred_to_mikrotik_id, transferred_to_pop_id, linked_client_id")
         .is("linked_client_id", null)
         .order("name");
+
+      if (mtIds.length > 0) {
+        // branch-এর সব MT-এর users + পুরোনো transferred users
+        const inList = `(${mtIds.join(",")})`;
+        q = q.or(
+          `transferred_to_pop_id.eq.${popId},mikrotik_id.in.${inList},transferred_to_mikrotik_id.in.${inList}`,
+        );
+      } else {
+        q = q.eq("transferred_to_pop_id", popId);
+      }
+      const { data } = await q;
       const today = new Date().toISOString().slice(0, 10);
       const mapped: Row[] = (data || []).map((u: any) => ({
         id: u.id,
@@ -84,7 +104,7 @@ export default function ResellerMikrotikBulkCreate() {
         caller_id: u.caller_id,
         remote_address: u.remote_address,
         service: u.service,
-        mikrotik_id: u.transferred_to_mikrotik_id,
+        mikrotik_id: u.transferred_to_mikrotik_id || u.mikrotik_id,
         name: u.name,
         contact: "",
         address: "",
