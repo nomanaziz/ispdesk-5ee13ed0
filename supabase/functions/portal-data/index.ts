@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     const { data: client } = await sb
       .from("clients")
       .select(
-        "id, name, client_id, username, contact, email, address, present_address, permanent_address, nid_number, photo_url, nid_front_url, nid_back_url, monthly_bill, status, billing_status, joining_date, expire_date, billing_date, speed, connection_type, protocol_type, mac_address, remote_address, server_name, profile, is_online, total_upload, total_download, package_id, zone_id, sub_zone_id, branch_id"
+        "id, name, client_id, username, contact, email, address, present_address, permanent_address, nid_number, photo_url, nid_front_url, nid_back_url, monthly_bill, status, billing_status, joining_date, expire_date, billing_date, speed, connection_type, protocol_type, mac_address, remote_address, server_name, profile, is_online, total_upload, total_download, package_id, zone_id, sub_zone_id, branch_id, father_name, mother_name, date_of_birth, occupation, gender, road_number, house_number, phone_number"
       )
       .eq("id", tok.sub)
       .maybeSingle();
