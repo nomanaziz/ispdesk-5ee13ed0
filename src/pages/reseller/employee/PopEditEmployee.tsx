@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import EmployeeUserAccessSection from "@/components/reseller/EmployeeUserAccessSection";
 import DivisionDistrictUpazilaSelect from "@/components/reseller/DivisionDistrictUpazilaSelect";
+import BranchScopedSelect from "@/components/reseller/BranchScopedSelect";
 import { toast } from "sonner";
 
 export default function PopEditEmployee() {
@@ -111,8 +112,8 @@ export default function PopEditEmployee() {
             <div className="space-y-1.5"><Label>Name *</Label><Input value={form.name || ""} onChange={set("name")} required /></div>
             <div className="space-y-1.5"><Label>Email</Label><Input value={form.email || ""} onChange={set("email")} /></div>
             <div className="space-y-1.5"><Label>Phone</Label><Input value={form.phone || ""} onChange={set("phone")} /></div>
-            <div className="space-y-1.5"><Label>Designation</Label><Input value={form.designation || ""} onChange={set("designation")} /></div>
-            <div className="space-y-1.5"><Label>Department</Label><Input value={form.department || ""} onChange={set("department")} /></div>
+            <div className="space-y-1.5"><Label>Designation</Label><BranchScopedSelect table="designations" branchId={branchId} value={form.designation || ""} onChange={(v) => setForm({ ...form, designation: v })} /></div>
+            <div className="space-y-1.5"><Label>Department</Label><BranchScopedSelect table="departments" branchId={branchId} value={form.department || ""} onChange={(v) => setForm({ ...form, department: v })} /></div>
             <div className="space-y-1.5"><Label>Salary</Label><Input type="number" value={form.salary || ""} onChange={set("salary")} /></div>
             <DivisionDistrictUpazilaSelect
               divisionId={form.division_id}
