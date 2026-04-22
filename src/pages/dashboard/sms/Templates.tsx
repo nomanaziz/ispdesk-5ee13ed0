@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Search, ShieldCheck } from "lucide-react";
-import { TEMPLATE_CATEGORIES, TEMPLATE_VARIABLES, categoryLabel } from "@/lib/templateVars";
+import { TEMPLATE_CATEGORIES, categoryLabel } from "@/lib/templateVars";
+import VariableChips from "@/components/sms/VariableChips";
 
 interface MasterRow {
   id: string;
@@ -49,6 +50,7 @@ export default function Templates() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<Form>(emptyForm);
   const [search, setSearch] = useState("");
+  const contentRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["sms_template_master"],
@@ -280,14 +282,17 @@ export default function Templates() {
             <div className="grid gap-2">
               <Label>কন্টেন্ট *</Label>
               <Textarea
+                ref={contentRef}
                 rows={4}
                 value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
                 placeholder="প্রিয় {UserName}, আপনার {Month} মাসের বিল {MonthlyBillAmount} টাকা।"
               />
-              <p className="text-xs text-muted-foreground">
-                ভেরিয়েবল: {TEMPLATE_VARIABLES.map((v) => `{${v}}`).join(", ")}
-              </p>
+              <VariableChips
+                textareaRef={contentRef}
+                value={form.content}
+                onChange={(v) => setForm({ ...form, content: v })}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">

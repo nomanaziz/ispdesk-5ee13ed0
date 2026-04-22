@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import VariableChips from "@/components/sms/VariableChips";
 
 interface Props {
   open: boolean;
@@ -19,6 +20,7 @@ export default function BulkSmsDialog({ open, onOpenChange, selectedClients }: P
   const [templateId, setTemplateId] = useState("");
   const [gatewayId, setGatewayId] = useState("");
   const [message, setMessage] = useState("");
+  const messageRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: templates = [] } = useQuery({
     queryKey: ["sms-templates-active-effective"],
@@ -101,8 +103,11 @@ export default function BulkSmsDialog({ open, onOpenChange, selectedClients }: P
           </div>
           <div>
             <Label>মেসেজ *</Label>
-            <Textarea rows={5} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="আপনার মেসেজ লিখুন..." />
+            <Textarea ref={messageRef} rows={5} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="আপনার মেসেজ লিখুন..." />
             <p className="text-xs text-muted-foreground mt-1">{message.length} অক্ষর</p>
+            <div className="mt-2">
+              <VariableChips textareaRef={messageRef} value={message} onChange={setMessage} />
+            </div>
           </div>
         </div>
         <DialogFooter>

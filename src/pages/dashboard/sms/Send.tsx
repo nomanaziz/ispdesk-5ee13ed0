@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { Send as SendIcon, MessageSquare, Users, Clock } from "lucide-react";
+import VariableChips from "@/components/sms/VariableChips";
 
 export default function SendSMS() {
   const { user } = useAuth();
@@ -21,6 +22,7 @@ export default function SendSMS() {
   const [gatewayId, setGatewayId] = useState("");
   const [templateId, setTemplateId] = useState("");
   const [message, setMessage] = useState("");
+  const messageRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: gateways = [] } = useQuery({
     queryKey: ["sms_gateways"],
@@ -197,8 +199,9 @@ export default function SendSMS() {
             </div>
             <div className="grid gap-2">
               <Label>মেসেজ *</Label>
-              <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="আপনার মেসেজ লিখুন..." />
+              <Textarea ref={messageRef} rows={4} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="আপনার মেসেজ লিখুন..." />
               <p className="text-xs text-muted-foreground">{message.length} অক্ষর</p>
+              <VariableChips textareaRef={messageRef} value={message} onChange={setMessage} />
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
