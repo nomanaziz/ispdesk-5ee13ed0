@@ -191,7 +191,7 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
                   )}
                 >
                   <item.icon className={cn("h-5 w-5", active ? "scale-110" : item.color)} />
-                  {item.label}
+                  {t(item.bn, item.en)}
                 </Link>
               );
             })}
