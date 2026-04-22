@@ -1,97 +1,120 @@
 
 
-## কাজ — POP Admin Reports (Admin reports-এর POP-scoped clone)
+## কাজ — POP Admin Mobile-Friendly Layout + Global Quick Create
 
-Admin-এর সব ৮টা report POP admin-এর জন্য তৈরি করব — হুবহু একই layout, একই filters, একই columns, একই export (PDF/CSV/Excel)। শুধু পার্থক্য: প্রতিটা query `branch_id = popScope.branchId` দিয়ে scoped — অন্য POP-এর কোনো data দেখা যাবে না।
+POP admin সাধারণত mobile দিয়ে কাজ করে। তাই POP portal-এর জন্য একটা mobile-first shell তৈরি করব (web view অপরিবর্তিত), reference screenshot-এর মতো — উপরে header, মাঝে clickable shortcut grid + summary cards, নিচে fixed bottom-tab bar (Home / Billing / Collection / Monitoring / Support)। সাথে web + portal দুই জায়গায় একটা "Quick Create Client" floating dialog।
 
-### POP Reports list (৯টা page)
+### ১) Mobile shell (auto-switch on viewport < 768px)
 
-| # | Page | Route | Source admin file |
-|---|---|---|---|
-| 1 | Bill Collection | `/pop-admin/reports/bill-collection` | BillCollection.tsx |
-| 2 | Customer | `/pop-admin/reports/customer` | Customer.tsx |
-| 3 | Messages | `/pop-admin/reports/messages` | Messages.tsx |
-| 4 | Due SMS | `/pop-admin/reports/due-sms` | DueSms.tsx |
-| 5 | Processing Fee | `/pop-admin/reports/processing-fee` | ProcessingFee.tsx |
-| 6 | Discount | `/pop-admin/reports/discount` | Discount.tsx |
-| 7 | BTRC Monthly | `/pop-admin/reports/btrc` | Btrc.tsx |
-| 8 | Financial | `/pop-admin/reports/financial` | Financial.tsx |
-| 9 | Enable/Disable | `/pop-admin/reports/enable-disable` | নতুন (clients status changes) |
+`ResellerLayout.tsx`-এ `useIsMobile()` দিয়ে detect করব। Mobile হলে নতুন `ResellerMobileShell` render হবে; desktop-এ existing sidebar layout ঠিক থাকবে।
 
-### Branch isolation strategy
-
-প্রতিটা page `usePopScope()` থেকে `branchId` নেবে এবং Supabase query-তে filter যোগ করবে:
-
-- **clients-based** (Customer, Discount via client.branch_id, BTRC, Enable/Disable): `.eq("branch_id", branchId)`
-- **bill_collections-based** (Bill Collection, Processing Fee, Discount): client এর সাথে inner join করে client.branch_id দিয়ে filter — `.eq("client.branch_id", branchId)` (pg-rest filter on related table) অথবা সব row fetch করে client-side `client.branch_id === branchId` filter
-- **sms_log-based** (Messages, Due SMS): যদি `branch_id` column থাকে use করব; না থাকলে recipient → clients table-এ branch match করে filter
-- **income/expense (Financial)**: যদি `branch_id` থাকে use; না থাকলে POP `branch_funding_logs` থেকে fund credit/debit history দেখাব (POP-এর জন্য সেটাই relevant)
-
-`branchId` undefined হলে empty rows return — accidental cross-POP leak রোধ।
-
-### Sidebar update
-
-বর্তমান sidebar-এ ৬টা link আছে। ৯টা করব (যোগ করব Customer, Processing Fee, BTRC, Financial; ইতোমধ্যে আছে: Bill Collection, Enable/Disable, Messages, Discount, Due SMS):
-
+**Mobile shell structure:**
 ```
-রিপোর্ট (Reports)
-  ├─ বিল সংগ্রহ (Bill Collection)
-  ├─ কাস্টমার (Customer)
-  ├─ চালু/বন্ধ (Enable/Disable)
-  ├─ মেসেজ (Messages)
-  ├─ ডিউ এসএমএস (Due SMS)
-  ├─ ডিসকাউন্ট (Discount)
-  ├─ প্রসেসিং ফি (Processing Fee)
-  ├─ বিটিআরসি মাসিক (BTRC Monthly)
-  └─ আর্থিক (Financial)
+┌──────────────────────────────────────┐
+│ Header (blue, sticky)                │
+│  avatar | popName + type | 🔍 🔔 ☰  │
+│  ENGLISH/বাংলা toggle               │
+├──────────────────────────────────────┤
+│ Page content (scrollable)           │
+│  pb-20 (space for bottom bar)       │
+├──────────────────────────────────────┤
+│ Bottom Tab Bar (fixed, 5 tabs)      │
+│  Home | Billing | Collection | Mon. | Support │
+└──────────────────────────────────────┘
++ Floating "Quick Create" FAB (bottom-right, above tab bar)
 ```
 
-### Reuse pattern
+- Header height 62px, primary blue, white text
+- Hamburger (☰) opens existing full sidebar drawer (already implemented)
+- Bottom tabs: routes resolve to `/pop-admin/dashboard`, `/pop-admin/billing/list`, `/pop-admin/billing/daily-collection`, `/pop-admin/monitoring/online`, `/pop-admin/tickets`
+- Active tab highlighted in primary color (icon + label)
 
-প্রতিটা POP report file admin file-এর hubohu copy, শুধু ৩ লাইন পরিবর্তন:
-1. `import { usePopScope } from "@/hooks/usePopScope"` যোগ
-2. component-এ `const { branchId } = usePopScope();` যোগ
-3. প্রতিটা lookup query (zones, packages, sub_zones, boxes, affiliates) এবং main query-তে `.eq("branch_id", branchId)` chain যোগ; queryKey-তে `branchId` যোগ; `enabled: !!branchId` যোগ
+### ২) Mobile Dashboard (`PopMobileHome.tsx`) — ১ম screenshot replica
 
-`ReportLayout` + `reportExport` lib + `useSystemSetting` সবই reuse — কোনো নতুন infrastructure লাগবে না।
+Existing `ResellerDashboard.tsx` desktop-এ unchanged থাকে। Mobile-এ আলাদা component render হবে (same data hooks reuse):
 
-### Enable/Disable report (নতুন)
+**Sections (top → bottom):**
+1. **Profile card** — avatar, name, "User Type: MAC Reseller", "Reseller Type: Active" badge, language toggle
+2. **Shortcut grid (4×2 = 8 icons)** — clickable square tiles, navigate to:
+   - Bill Receive → `/pop-admin/billing/list` (with pay action)
+   - Bill Approval → `/pop-admin/billing/list?tab=approval`
+   - Add Client → `/pop-admin/clients/add`
+   - Create Ticket → `/pop-admin/tickets?action=new`
+   - Fund Recharge → `/pop-admin/fund-history/credit?action=recharge`
+   - Debit History → `/pop-admin/fund-history/debit`
+   - Recharge Transaction → `/pop-admin/fund-history/credit`
+   - Credit Transaction → `/pop-admin/fund-history/credit`
+3. **Summary card** (rounded, light bg) — Monthly Bill / Collected / Due / Discount (2×2 grid)
+4. **Tickets card** — Ticket / Pending / Process counts (3 columns)
+5. **Bar chart** — Unpaid vs Paid per zone (reuse existing recharts data)
+6. **Bottom card** — Paid Salary / Remaining Balance / Cash on Hand / Approximate Rechargeable
 
-POP-এর জন্য client status change history। Source: `clients` table-এ `status_changed_at`, `mikrotik_status` fields, plus `bill_collections` থেকে disable/enable triggers। যদি dedicated audit table না থাকে: simply current snapshot — Active vs Inactive vs Left counts + filterable list।
+All data already available in `ResellerDashboard.tsx` queries — just restructured for mobile.
 
-Columns: SN | Client Code | Username | Name | Action (Enabled/Disabled) | Reason | Date | By
+### ৩) Quick Create Client (web + mobile, global FAB)
 
-### ফাইল পরিবর্তন
+নতুন `QuickCreateClientDialog.tsx` component যা:
 
-**নতুন (৯টা):**
-- `src/pages/reseller/reports/PopBillCollection.tsx`
-- `src/pages/reseller/reports/PopCustomer.tsx`
-- `src/pages/reseller/reports/PopMessages.tsx`
-- `src/pages/reseller/reports/PopDueSms.tsx`
-- `src/pages/reseller/reports/PopProcessingFee.tsx`
-- `src/pages/reseller/reports/PopDiscount.tsx`
-- `src/pages/reseller/reports/PopBtrc.tsx`
-- `src/pages/reseller/reports/PopFinancial.tsx`
-- `src/pages/reseller/reports/PopEnableDisable.tsx`
+**Trigger:**
+- Mobile: floating "+" FAB button (bottom-right, above bottom-tab bar)
+- Desktop (both Admin + POP): TopBar-এ "Quick Add" button (Plus icon) — admin-এর `TopBar.tsx`-এও একই button
+
+**Form fields (only mandatory):**
+- Client name *
+- Mobile number *
+- PPP ID / Username *
+- Password *
+- Zone (dropdown, branch-scoped) *
+- Package (dropdown) *
+- Monthly bill (auto-fill from package, editable)
+
+**Submit:** `clients` table-এ insert with `branch_id` (POP scope) or admin-selected branch। Success toast + option to "Continue to full form" বা "Create another"।
+
+Reuses existing zone/package lookups via `usePopScope` + branch_id filter। Generates client_code automatically (existing helper if available, else timestamp-based).
+
+### ৪) Mobile-friendly tweaks for key existing pages
+
+প্রতিটা page-এর জন্য mobile-specific rewrite নয় — শুধু responsive utility classes adjust:
+
+- **Billing List** (`PopBillingList.tsx` or wherever): card layout < 768px, button-tap-friendly Pay button
+- **Receive Bill / Bill Collection**: full-width inputs, larger tap targets (min h-11)
+- **Add Client form**: stepper (Personal Info / Network) like 2nd screenshot — already largely OK, just adjust spacing
+- **Fund Recharge**: full-width amount input + payment method selector like 3rd screenshot
+- **Debit History**: card list with "Paid" badge like 1st screenshot
+- **Client Monitoring**: stat-row + card list like 5th screenshot
+- **Support Ticket**: search + empty state + FAB like 4th screenshot
+
+Global tweak: `.touch-target { min-height: 44px }` utility for buttons/links on mobile।
+
+### ৫) ফাইল পরিবর্তন
+
+**নতুন (৪টা):**
+- `src/components/reseller/mobile/ResellerMobileShell.tsx` — header + bottom tab bar wrapper
+- `src/components/reseller/mobile/MobileBottomTabs.tsx` — 5-tab fixed bar
+- `src/pages/reseller/PopMobileHome.tsx` — mobile dashboard (shortcut grid + cards)
+- `src/components/QuickCreateClientDialog.tsx` — shared dialog (POP + Admin)
 
 **Edit:**
-- `src/App.tsx` — ৯টা route যোগ (`/pop-admin/reports/*`) under `<ResellerProtectedRoute require="reports">` (existing permission key reuse)
-- `src/components/ResellerLayout.tsx` — sidebar reports section-এ ৩টা নতুন link যোগ (Customer, Processing Fee, BTRC, Financial)
-- `src/components/ResellerProtectedRoute.tsx` — `require` prop type-এ `"reports"` যোগ (সাধারণ permissions key)
+- `src/components/ResellerLayout.tsx` — `useIsMobile()` দিয়ে ResellerMobileShell render conditionally
+- `src/pages/reseller/ResellerDashboard.tsx` — mobile হলে `<PopMobileHome />` render
+- `src/components/dashboard/TopBar.tsx` — admin-এ "Quick Add" button যোগ
+- কয়েকটা list page-এ minor responsive class tweak (Billing List, Fund Recharge dialog)
 
 ### কী বদলাবে না
 
-- Admin dashboard reports — অপরিবর্তিত
-- `ReportLayout`, `reportExport.ts`, `useSystemSetting` — reuse, কোনো edit নয়
-- কোনো database schema পরিবর্তন নেই, কোনো migration নেই, কোনো edge function নেই
-- অন্য POP-এর কোনো data কোনো POP দেখতে পাবে না (`branch_id` filter mandatory)
+- Desktop POP layout, sidebar, all desktop pages — অপরিবর্তিত
+- Admin dashboard layout — শুধু TopBar-এ একটা Quick Add button যোগ
+- Database schema — কোনো migration নেই (Quick Create reuses existing `clients` insert)
 - BW customer / client portal — অপরিবর্তিত
+- Existing reports, notes, areas, bulk import — সব কাজ করবে যেমন আছে
 
 ### Apply-এর পরে expected ফলাফল
 
-1. ✅ POP sidebar-এ "Reports" submenu-তে ৯টা item
-2. ✅ প্রতিটা report Admin-এর সাথে UI/UX হুবহু same — filters, columns, totals, PDF/CSV/Excel export
-3. ✅ POP-A logged in → শুধু POP-A-এর clients/bills/SMS দেখা যাবে; POP-B-এর কোনো data invisible
-4. ✅ Sub-user (`reseller_sub`) যদি `permissions.reports = true` থাকে তবে দেখতে পাবে; নাহলে redirect
-5. ✅ কোনো DB change নেই — pure frontend, instant deploy
+1. ✅ Mobile (< 768px) POP portal খুললেই — header + shortcut grid dashboard + fixed bottom tabs (Home/Billing/Collection/Monitoring/Support)
+2. ✅ Shortcut tile tap করলে relevant page-এ যাবে; bottom tab swap-এ instant nav
+3. ✅ Hamburger menu থেকে full sidebar drawer accessible (existing menu)
+4. ✅ "+" FAB → Quick Create dialog → ৬টা mandatory field → instant client save
+5. ✅ Admin desktop topbar-এ "Quick Add" button — same dialog (with branch selector)
+6. ✅ Bill collection / Fund recharge / Add Client mobile-এ thumb-friendly (44px tap targets, full-width)
+7. ✅ Desktop view, all existing features — কোনো regression নেই
 
