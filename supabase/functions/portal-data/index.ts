@@ -130,7 +130,19 @@ Deno.serve(async (req) => {
           notices = r.data || [];
         } catch (_) { /* table may not exist */ }
         const balance = computeBalance(bills || [], collections || []);
-        return json({ client, bills: bills || [], collections: collections || [], notices, balance });
+        let last_login: string | null = null;
+        try {
+          const { data: ll } = await sb
+            .from("portal_login_log")
+            .select("login_at")
+            .eq("client_id", tok.sub)
+            .eq("status", "success")
+            .order("login_at", { ascending: false })
+            .range(1, 1)
+            .maybeSingle();
+          last_login = ll?.login_at || null;
+        } catch (_) { /* ignore */ }
+        return json({ client, bills: bills || [], collections: collections || [], notices, balance, last_login });
       }
 
       case "get_bills": {
