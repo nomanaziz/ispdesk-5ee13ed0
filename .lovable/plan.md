@@ -1,85 +1,96 @@
 
 
-## আসল সমস্যা
-আগের execution-এ Settings page গুলো বানানো হয়েছিল **Admin dashboard** (`/dashboard/system/*` + `AppSidebar.tsx`) এ। কিন্তু আপনি চেয়েছিলেন **POP admin / Reseller portal** (`/pop-admin/*` + `ResellerLayout.tsx`) এ। POP admin এর সম্পূর্ণ আলাদা portal/layout/permission system আছে — সেখানে সিস্টেম group এ এখন শুধু ৩টা placeholder item আছে: Company Settings, Period, Users।
+## কাজ ৩টা — একসাথে
 
-ফলে credit খরচ হলেও POP admin login করে কিছুই দেখা যাচ্ছে না — কারণ কাজটা ভুল jায়গায় হয়েছিল।
+### ১) Build error fix (দ্রুত)
+`ResellerProtectedRoute`-এর `require` prop type-এ `"system"` নেই, কিন্তু নতুন ১০টা route-এ `require="system"` ব্যবহার করা হয়েছিল।
 
-## এই plan-এ যা হবে — POP admin portal এ সব settings যোগ
+**Fix:** `src/components/ResellerProtectedRoute.tsx`-এ type union-এ `"system"` যোগ করব এবং sub-user `permissions` interface-এ `system?: boolean` যোগ করব। `App.tsx`-এ ১০টা route ইতিমধ্যে `require="settings"` ব্যবহার করছে (build error message অনুযায়ী আগের সংস্করণে `"system"` ছিল) — এগুলো `require="system"` করব এবং নতুন `system` permission key যোগ করব।
 
-### ১) ResellerLayout sidebar "সিস্টেম" group rebuild
-`src/components/ResellerLayout.tsx` এর system group reference image অনুযায়ী:
-```
-- সিস্টেম সেটআপ        → /pop-admin/system/setup
-- বিল পিরিয়ড          → /pop-admin/system/bill-period
-- পিরিয়ড সেটআপ         → /pop-admin/system/period
-- কোম্পানি সেটআপ       → /pop-admin/settings (existing)
-- ইনভয়েস সেটআপ        → /pop-admin/system/invoice
-- ইমেইল সেটআপ          → /pop-admin/system/email
-- পেমেন্ট গেটওয়ে       → /pop-admin/system/payment-gateways
-- প্রসেসিং ফি           → /pop-admin/system/processing-fee
-- অটোমেটিক প্রসেস       → /pop-admin/system/automatic-process
-- অ্যাক্টিভিটি লগ        → /pop-admin/system/activity-log
-```
-> User Management সরানোই আছে — `Users` item বাদ পড়বে।
+### ২) POP Admin Basic Accounting (Income / Expense / Cash Book)
 
-### ২) নতুন POP admin pages তৈরি
-সব pages `src/pages/reseller/system/` এ — `ResellerLayout` wrapper সহ। প্রতিটা pop scope (branch_id) aware:
+**Concept:** Bill collection automatically income → cash book। POP চাইলে manual income/expense add করতে পারবে। শেষে cash book-এ সব এক জায়গায়।
 
+**Sidebar group (নতুন):** "হিসাব / Accounting"
+- Income
+- Expense  
+- Cash Book
+
+**Pages (নতুন `src/pages/reseller/accounting/`):**
 | File | কী করবে |
 |---|---|
-| `PopSetup.tsx` | Tabs: "Common Settings" + "Clients & Billing Settings" (১০ group toggle) |
-| `PopBillPeriod.tsx` | Year toggle list (image-192 অনুযায়ী) |
-| `PopPeriodSetup.tsx` | Billing period config (cycle/mode) |
-| `PopInvoice.tsx` | Logo upload + invoice position toggle (image-194) |
-| `PopEmail.tsx` | Mail/SMTP protocol radio + SMTP config (image-193) |
-| `PopPaymentGateways.tsx` | Gateway list + on/off + key config |
-| `PopProcessingFee.tsx` | PG-wise processing fee % |
-| `PopAutomaticProcess.tsx` | Scheduler list (image-190) — edit dialog |
-| `PopActivityLog.tsx` | POP-scoped activity log viewer |
+| `PopIncome.tsx` | Auto income (bill_collections, branch-scoped) + manual income (income_entries) — list + Add dialog |
+| `PopExpense.tsx` | Manual expense list (expense_entries, branch-scoped) + Add dialog (category, amount, date, payment method, note) |
+| `PopCashBook.tsx` | Date-range filter; merged ledger: opening balance + all incomes (+) + all expenses (−) + closing balance; print/export ready |
 
-বিদ্যমান `ResellerSettings` (Company Settings) অপরিবর্তিত থাকবে।
+**Data source — সব branch_id দিয়ে scope:**
+- Auto income = `bill_collections WHERE branch_id = {pop branch}` (status='completed' or all paid)
+- Manual income = `income_entries WHERE branch_id = {pop}`
+- Expense = `expense_entries WHERE branch_id = {pop}`
 
-### ৩) Storage strategy (per-POP isolation)
-- POP-specific settings একটা নতুন pattern-এ save হবে: `system_settings` table-এ key prefix `pop:{branch_id}:{setting_key}` (e.g. `pop:abc-123:client_billing_settings`)
-- `useSystemSetting` hook এর সাথে নতুন `usePopSystemSetting(key)` hook তৈরি করব যেটা automatically branch_id prefix যোগ করবে
-- `automatic_processes` table-এ ইতিমধ্যে `branch_id` column আছে — POP-specific row insert/update হবে; না থাকলে global default fallback
-- Logo upload — existing `pop-logos` bucket reuse, path: `{branch_id}/invoice-logo.png`
+**Routes:** 3টা নতুন `/pop-admin/accounting/{income|expense|cashbook}`, `require="accounting"` permission gate দিয়ে।
 
-### ৪) App.tsx routes যোগ
-১০টা নতুন route, সবটা `PortalAuthProvider + ResellerProtectedRoute(require="system") + ResellerLayout` wrapper দিয়ে। পুরনো placeholder `"/pop-admin/system/period"` (PopPlaceholder) replace হবে real component দিয়ে।
+**Permission key:** `popPermissions.ts`-এ নতুন group `accounting` (3 items) যোগ করব।
 
-### ৫) Permission keys update
-`src/lib/popPermissions.ts` এর `system` group items list সিঙ্ক করব নতুন ১০ menu item-এর সাথে — যাতে সুপার admin permission UI-তে সঠিক list দেখায়।
+### ৩) Employee → User Access (POP-only sub-user system)
 
-### ৬) Admin portal এর Settings পরিবর্তন (নয়)
-Admin (`/dashboard/system/*`) এ আগে যেগুলো বানানো হয়েছিল সেগুলো **থাকবে অপরিবর্তিত** — এতে design consistency / কাজ ভাঙবে না। শুধু POP portal-এ সমান্তরাল পেজ তৈরি করা হবে।
+Reference image-201: Employee form-এ **"HAS USER ACCESS?"** checkbox। Tick করলে নিচে username/password + POP Menus tree appear করবে। Save করলে employee POP-এর sub-user হিসেবে portal-এ login করতে পারবে — এবং শুধু selected menu গুলো দেখবে।
+
+**Implementation:**
+
+**Database (migration):**
+- `employees` table-এ ৩টা column যোগ:
+  - `has_user_access boolean default false`
+  - `user_username text` (unique-ish per branch)
+  - `user_password_hash text` (bcrypt via edge function, প্ল্যান নয় — সরাসরি লেখা plaintext-এর বদলে existing `branch_managers` pattern follow করব যেটায় কোলামটা `password` text — same approach reuse)
+  - `user_permissions jsonb` (POP menu permission tree, same shape as `popPermissions`)
+
+**`PopAddEmployee.tsx` overhaul** (image-199/200/201 অনুযায়ী):
+- 3 sections: Employee information / Educational qualification / Posting information
+- নতুন full field set (date_of_birth, gender, personal_phone, office_phone, guardian_phone, marital_status, nid_number, facebook_link, reference, district, upazila, present_address, permanent_address, working_experience, last_degree, institution, passing_year, joining_date, department, designation, salary, status, image upload, **has_user_access checkbox**)
+- `has_user_access = true` হলে নিচে নতুন section render:
+  - "Employee User Info": username / password / confirm password
+  - "POP Menus": existing `<PermissionTreeSelector>` (image-201 অনুযায়ী 11 group checkbox) — same component already used for branch managers
+- Save করলে: employee row + (যদি user access on) `branch_managers`-এ একটা **sub-user** entry তৈরি হবে (`type='reseller_sub'`, `parent_reseller_id={pop_id}`, `branch_id={pop branch}`, `permissions={selected menus}`)
+
+**Login flow:** ইতিমধ্যে `portal-auth` edge function `reseller_sub` type support করে। নতুন কিছু না — শুধু sub-user row insert করলেই login কাজ করবে।
+
+**Scope:** এই entire feature **শুধু POP admin portal-এ** apply হবে। Admin dashboard-এর `HrEmployees` page অপরিবর্তিত — সেটায় user access checkbox দেখাবে না।
+
+**Edit existing:**
+- `PopEmployees.tsx` — list-এ "User Access" badge column যোগ
+- নতুন `PopEditEmployee.tsx` route + page (existing employees-এর জন্য user access toggle/permission edit)
 
 ## কোন file বদলাবে / নতুন
-**নতুন (9 files):**
-- `src/pages/reseller/system/PopSetup.tsx`
-- `src/pages/reseller/system/PopBillPeriod.tsx`
-- `src/pages/reseller/system/PopPeriodSetup.tsx`
-- `src/pages/reseller/system/PopInvoice.tsx`
-- `src/pages/reseller/system/PopEmail.tsx`
-- `src/pages/reseller/system/PopPaymentGateways.tsx`
-- `src/pages/reseller/system/PopProcessingFee.tsx`
-- `src/pages/reseller/system/PopAutomaticProcess.tsx`
-- `src/pages/reseller/system/PopActivityLog.tsx`
-- `src/hooks/usePopSystemSetting.ts`
+
+**Database migration:**
+- `employees` table-এ user access column ৪টা যোগ
+
+**নতুন (5 files):**
+- `src/pages/reseller/accounting/PopIncome.tsx`
+- `src/pages/reseller/accounting/PopExpense.tsx`
+- `src/pages/reseller/accounting/PopCashBook.tsx`
+- `src/pages/reseller/employee/PopEditEmployee.tsx`
+- `src/components/reseller/EmployeeUserAccessSection.tsx` (reusable user-access form block)
 
 **Edit:**
-- `src/components/ResellerLayout.tsx` (system group rebuild)
-- `src/lib/popPermissions.ts` (system items list sync)
-- `src/App.tsx` (10 new routes)
+- `src/components/ResellerProtectedRoute.tsx` (type fix + `system`/`accounting` keys)
+- `src/contexts/PortalAuthContext.tsx` (`ResellerPermissions` interface optional `system`/`accounting`)
+- `src/pages/reseller/employee/PopAddEmployee.tsx` (full Galaxy-style form + user access section)
+- `src/pages/reseller/employee/PopEmployees.tsx` (user access badge column + edit link)
+- `src/components/ResellerLayout.tsx` (Accounting group যোগ sidebar-এ)
+- `src/lib/popPermissions.ts` (`accounting` group + sync `system` keys)
+- `src/App.tsx` (3 accounting routes + 1 employee edit route + 10 system routes-এ `require="settings"` → `"system"`)
 
 ## কোন file বদলাবে না
-- Admin dashboard pages, RLS policies, edge functions, billing logic, MikroTik integration, existing `/pop-admin/settings` (Company)
+- Admin dashboard pages, RLS, MikroTik, billing logic, edge functions (login already handles `reseller_sub`)
 
 ## Apply-এর পরে expected ফলাফল
-1. POP admin login → "সিস্টেম" group এ ১০টা item দেখাবে
-2. প্রতিটা page reference image অনুযায়ী functional হবে — toggle/save সরাসরি POP-scoped storage-এ persist
-3. একটা POP-এর setting অন্য POP-এ leak করবে না (branch_id isolation)
-4. Admin dashboard এর settings অপরিবর্তিত — break হবে না
-5. Credit খরচ হবে শুধু এই POP portal কাজের জন্য, কোনো মিশ্রণ হবে না
+1. ✅ Build error gone — system routes কাজ করবে
+2. ✅ POP admin sidebar-এ "হিসাব" group — Income/Expense/Cash Book functional, branch-scoped
+3. ✅ Bill collection auto income হিসেবে cash book-এ আসবে
+4. ✅ Add Employee page reference image-এর মত full form
+5. ✅ "HAS USER ACCESS?" tick করলে username + permission tree show হবে
+6. ✅ Save করলে employee portal login করতে পারবে — শুধু allowed menu দেখবে
+7. ✅ এই সব শুধু POP admin-এ; admin dashboard untouched
 
