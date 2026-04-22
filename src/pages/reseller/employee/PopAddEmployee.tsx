@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { getPopScope } from "@/lib/popScope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,10 +44,7 @@ export default function PopAddEmployee() {
         if (password !== confirm) throw new Error("Password match হচ্ছে না");
       }
 
-      // 1. Create employee
-      const employee_id = `EMP-${Date.now().toString().slice(-8)}`;
-      const { data: emp, error } = await supabase.from("employees").insert({
-        employee_id,
+      const payload: any = {
         name: form.name,
         email: form.email || null,
         phone: form.phone || null,
@@ -71,32 +68,18 @@ export default function PopAddEmployee() {
         passing_year: form.passing_year || null,
         joining_date: form.joining_date || null,
         salary: form.salary ? Number(form.salary) : null,
-        branch_id: branchId,
         status: form.status,
         has_user_access: hasAccess,
         user_username: hasAccess ? username : null,
         user_password: hasAccess ? password : null,
         user_permissions: hasAccess ? permissions : {},
-      } as any).select().single();
-      if (error) throw error;
+      };
 
-      // 2. If has_user_access, create branch_managers sub-user
-      if (hasAccess && popId) {
-        const { data: sub, error: subErr } = await supabase.from("branch_managers").insert({
-          name: form.name,
-          username,
-          password,
-          email: form.email || null,
-          contact: form.personal_phone || form.phone || null,
-          branch_id: branchId,
-          pop_type: "reseller_sub" as any,
-          permissions,
-          portal_enabled: true,
-          status: "active",
-        } as any).select().single();
-        if (subErr) throw subErr;
-        await supabase.from("employees").update({ sub_user_id: sub.id } as any).eq("id", emp.id);
-      }
+      const res = await callPortal<{ ok: boolean; id?: string; error?: string }>(
+        "create_employee",
+        payload,
+      );
+      if (!res.ok) throw new Error(res.error || "Failed");
     },
     onSuccess: () => {
       toast.success("Employee যোগ হয়েছে");
