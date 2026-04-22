@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -8,38 +9,39 @@ import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard, FileText, HeadphonesIcon, LogOut, Menu, X,
   Activity, Bell, Building2, Clapperboard, BookOpen, ChevronDown, Rocket,
-  ShoppingBag, Package, Receipt, Globe, UserCog,
+  ShoppingBag, Package, Receipt, Globe, UserCog, Languages,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 const menuItems = [
-  { label: "Dashboard", icon: LayoutDashboard, path: "/portal/dashboard", color: "text-indigo-600 dark:text-indigo-400" },
-  { label: "My Profile", icon: UserCog, path: "/portal/profile", color: "text-blue-600 dark:text-blue-400" },
-  { label: "Live Usage", icon: Activity, path: "/portal/live-usage", color: "text-green-600 dark:text-green-400" },
-  { label: "Notices", icon: Bell, path: "/portal/notices", color: "text-amber-600 dark:text-amber-400" },
-  { label: "Company Info", icon: Building2, path: "/portal/company", color: "text-slate-600 dark:text-slate-300" },
-  { label: "Movie/FTP Servers", icon: Clapperboard, path: "/portal/media", color: "text-purple-600 dark:text-purple-400" },
-  { label: "Speed Test", icon: Rocket, path: "/portal/speed-test", color: "text-rose-600 dark:text-rose-400" },
-  { label: "My Ledger", icon: BookOpen, path: "/portal/ledger", color: "text-cyan-600 dark:text-cyan-400" },
-  { label: "মাসিক বিল", icon: Receipt, path: "/portal/bills", color: "text-emerald-600 dark:text-emerald-400" },
-  { label: "Invoices", icon: FileText, path: "/portal/invoices", color: "text-teal-600 dark:text-teal-400" },
-  { label: "Shop", icon: ShoppingBag, path: "/portal/shop", color: "text-pink-600 dark:text-pink-400" },
-  { label: "My Orders", icon: Package, path: "/portal/my-orders", color: "text-orange-600 dark:text-orange-400" },
-  { label: "Support Tickets", icon: HeadphonesIcon, path: "/portal/support", color: "text-red-600 dark:text-red-400" },
+  { bn: "ড্যাশবোর্ড", en: "Dashboard", icon: LayoutDashboard, path: "/portal/dashboard", color: "text-indigo-600 dark:text-indigo-400" },
+  { bn: "আমার প্রোফাইল", en: "My Profile", icon: UserCog, path: "/portal/profile", color: "text-blue-600 dark:text-blue-400" },
+  { bn: "লাইভ ব্যবহার", en: "Live Usage", icon: Activity, path: "/portal/live-usage", color: "text-green-600 dark:text-green-400" },
+  { bn: "নোটিশ", en: "Notices", icon: Bell, path: "/portal/notices", color: "text-amber-600 dark:text-amber-400" },
+  { bn: "কোম্পানি তথ্য", en: "Company Info", icon: Building2, path: "/portal/company", color: "text-slate-600 dark:text-slate-300" },
+  { bn: "মুভি/FTP সার্ভার", en: "Movie/FTP Servers", icon: Clapperboard, path: "/portal/media", color: "text-purple-600 dark:text-purple-400" },
+  { bn: "স্পিড টেস্ট", en: "Speed Test", icon: Rocket, path: "/portal/speed-test", color: "text-rose-600 dark:text-rose-400" },
+  { bn: "আমার লেজার", en: "My Ledger", icon: BookOpen, path: "/portal/ledger", color: "text-cyan-600 dark:text-cyan-400" },
+  { bn: "মাসিক বিল", en: "Monthly Bills", icon: Receipt, path: "/portal/bills", color: "text-emerald-600 dark:text-emerald-400" },
+  { bn: "ইনভয়েস", en: "Invoices", icon: FileText, path: "/portal/invoices", color: "text-teal-600 dark:text-teal-400" },
+  { bn: "শপ", en: "Shop", icon: ShoppingBag, path: "/portal/shop", color: "text-pink-600 dark:text-pink-400" },
+  { bn: "আমার অর্ডার", en: "My Orders", icon: Package, path: "/portal/my-orders", color: "text-orange-600 dark:text-orange-400" },
+  { bn: "সাপোর্ট টিকেট", en: "Support Tickets", icon: HeadphonesIcon, path: "/portal/support", color: "text-red-600 dark:text-red-400" },
 ];
 
 const bottomNav = [
-  { label: "Home", icon: LayoutDashboard, path: "/portal/dashboard", color: "text-indigo-600 dark:text-indigo-400" },
-  { label: "Bills", icon: Receipt, path: "/portal/bills", color: "text-emerald-600 dark:text-emerald-400" },
-  { label: "Tickets", icon: HeadphonesIcon, path: "/portal/support", color: "text-red-600 dark:text-red-400" },
-  { label: "Ledger", icon: BookOpen, path: "/portal/ledger", color: "text-cyan-600 dark:text-cyan-400" },
-  { label: "Notices", icon: Bell, path: "/portal/notices", color: "text-amber-600 dark:text-amber-400" },
+  { bn: "হোম", en: "Home", icon: LayoutDashboard, path: "/portal/dashboard", color: "text-indigo-600 dark:text-indigo-400" },
+  { bn: "বিল", en: "Bills", icon: Receipt, path: "/portal/bills", color: "text-emerald-600 dark:text-emerald-400" },
+  { bn: "টিকেট", en: "Tickets", icon: HeadphonesIcon, path: "/portal/support", color: "text-red-600 dark:text-red-400" },
+  { bn: "লেজার", en: "Ledger", icon: BookOpen, path: "/portal/ledger", color: "text-cyan-600 dark:text-cyan-400" },
+  { bn: "নোটিশ", en: "Notices", icon: Bell, path: "/portal/notices", color: "text-amber-600 dark:text-amber-400" },
 ];
 
 export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
   const { customer, logout } = usePortalAuth();
+  const { lang, setLang, t } = useLanguage();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
