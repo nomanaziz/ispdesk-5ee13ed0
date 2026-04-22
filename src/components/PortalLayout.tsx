@@ -86,7 +86,7 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-3">
           <div className="px-2 pb-2 text-[10px] uppercase tracking-wider text-sidebar-foreground/70 font-bold">
-            Navigation
+            {t("নেভিগেশন", "Navigation")}
           </div>
           <div className="space-y-0.5">
             {menuItems.map((item) => {
