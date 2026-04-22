@@ -136,6 +136,33 @@ async function getLiveTraffic(conn: Deno.TcpConn, interfaceName?: string) {
   }
 }
 
+function getInterfaceCandidates(username: string, session?: Record<string, string> | null) {
+  return [
+    session?.interface || "",
+    session?.service && username ? `<${session.service}-${username}>` : "",
+    username ? `<pppoe-${username}>` : "",
+    username,
+  ].filter(Boolean);
+}
+
+async function getInterfaceStats(
+  conn: Deno.TcpConn,
+  username: string,
+  session?: Record<string, string> | null,
+) {
+  try {
+    const ifaces = await mikrotikCommand(conn, "/interface/print", { stats: "" });
+    const ifaceCandidates = getInterfaceCandidates(username, session);
+    const matchedIface =
+      ifaces.find((iface) => ifaceCandidates.includes(iface.name || "")) ||
+      ifaces.find((iface) => (iface.name || "").toLowerCase().includes(username.toLowerCase()));
+
+    return matchedIface || null;
+  } catch {
+    return null;
+  }
+}
+
 async function insertClientLog(
   supabase: ReturnType<typeof createClient>,
   clientId: string | null,
@@ -407,7 +434,8 @@ Deno.serve(async (req) => {
         case "status": {
           const active = await getActiveSessions(conn, username);
           const current = active[0] || null;
-          const traffic = await getLiveTraffic(conn, current?.name || username);
+          const ifaceStats = await getInterfaceStats(conn, username, current);
+          const traffic = await getLiveTraffic(conn, ifaceStats?.name || current?.interface || current?.name || username);
           safeClose(conn);
 
           return new Response(
@@ -424,8 +452,8 @@ Deno.serve(async (req) => {
                 service: current.service || null,
                 uptime: current.uptime || null,
                 session_id: current["session-id"] || null,
-                download_bytes: current["bytes-in"] || null,
-                upload_bytes: current["bytes-out"] || null,
+                download_bytes: ifaceStats?.["tx-byte"] || current["bytes-out"] || null,
+                upload_bytes: ifaceStats?.["rx-byte"] || current["bytes-in"] || null,
               } : null,
               live_traffic: traffic ? {
                 rx_bps: traffic["rx-bits-per-second"] || null,
