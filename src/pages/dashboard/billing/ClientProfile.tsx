@@ -20,6 +20,8 @@ import BillEditDialog from "@/components/billing/BillEditDialog";
 import { usePopScope } from "@/hooks/usePopScope";
 import { useAuth } from "@/contexts/AuthContext";
 import { loginAsUser } from "@/lib/impersonate";
+import { callPortal } from "@/lib/portalApi";
+import { getBillStatus, getBillStatusLabel, getBillStatusBadgeClass } from "@/lib/billingStatus";
 
 export default function ClientProfile() {
   const { id } = useParams<{ id: string }>();
