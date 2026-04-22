@@ -1,123 +1,85 @@
 
 
-## লক্ষ্য
-POP admin (Settings) এর সব sub-page reference image অনুযায়ী **create + functional** করা, এবং Setting থেকে **User Management সরিয়ে দেওয়া**।
+## আসল সমস্যা
+আগের execution-এ Settings page গুলো বানানো হয়েছিল **Admin dashboard** (`/dashboard/system/*` + `AppSidebar.tsx`) এ। কিন্তু আপনি চেয়েছিলেন **POP admin / Reseller portal** (`/pop-admin/*` + `ResellerLayout.tsx`) এ। POP admin এর সম্পূর্ণ আলাদা portal/layout/permission system আছে — সেখানে সিস্টেম group এ এখন শুধু ৩টা placeholder item আছে: Company Settings, Period, Users।
 
-## Reference image analysis (Galaxy Net portal এর সাথে mapping)
+ফলে credit খরচ হলেও POP admin login করে কিছুই দেখা যাচ্ছে না — কারণ কাজটা ভুল jায়গায় হয়েছিল।
 
-| Galaxy Net page | আমাদের status | কাজ |
-|---|---|---|
-| Settings → Common System Settings | ✅ আছে (`Setup.tsx`) | Functional রাখব |
-| Settings → Clients & Billing Settings | ❌ নেই | নতুন tab/section বানাব (image-1 অনুযায়ী 11টা switch group) |
-| Bill Period (image-192) | ⚠️ আছে কিন্তু আলাদা logic | Year-toggle list যোগ করব নতুন `BillPeriodYears.tsx` |
-| Company Settings | ✅ আছে (`Company.tsx`) | অপরিবর্তিত |
-| EMail SetUp (image-193) | ✅ আছে (`Email.tsx`) | Mail/SMTP protocol toggle যোগ করব |
-| Invoice SetUp (image-194) | ✅ আছে (`Invoice.tsx`) | Logo upload + position toggle যোগ করব |
-| Payment Gateways | ✅ আছে | অপরিবর্তিত |
-| P. Processing Fee | ✅ আছে | অপরিবর্তিত |
-| Activity Loggers | ✅ আছে (`SystemLog.tsx`) | অপরিবর্তিত |
-| **Automatic Process** (image-190) | ❌ নেই | নতুন page বানাব |
-| **User Management** | ❌ remove করতে হবে | sidebar + route + file delete |
+## এই plan-এ যা হবে — POP admin portal এ সব settings যোগ
 
-## কী কী হবে
-
-### ১) User Management সরানো
-- **AppSidebar.tsx**: "অ্যাপ ইউজার" + "রোল" + "OLT পারমিশন" + "Device Permissions" এই ৪টা item "সিস্টেম" group থেকে remove
-- **App.tsx**: `/dashboard/system/users`, `/users/:id`, `/roles`, `/olt-permissions`, `/device-permissions` route remove + import remove
-- **Files delete**: `src/pages/dashboard/system/Users.tsx`, `UserReview.tsx`, `Roles.tsx`, `OltPermissions.tsx`, `DevicePermissions.tsx`
-
-> Permission system (RBAC) underlying functions/tables অপরিবর্তিত থাকবে — শুধু Settings menu থেকে UI সরানো হচ্ছে।
-
-### ২) নতুন: **Bill Period (Year toggle)** — `BillPeriodYears.tsx`
-Image-192 অনুযায়ী একটা table — Year column + Show On List (Switch toggle column)। Default 2025/2026/2027।
-- Storage: `system_settings` key = `bill_period_years` → `{ "2025": false, "2026": true, "2027": false }`
-- Toggle on/off, save instant
-- Route: `/dashboard/system/bill-period-years`
-- বাকি বছর filter দেখাতে চাইলে এখান থেকেই enable/disable হবে
-
-> বর্তমান `Periods.tsx` (billing mode/cycle config) আলাদা থাকবে — এটা functional setting; নতুনটা শুধু year visibility।
-
-### ৩) নতুন: **Automatic Process** — `AutomaticProcess.tsx`
-Image-190 অনুযায়ী scheduler list page।
-- Table columns: Branch, Process Name, Execute At, Interval, Execution Day, Action (info / view / status icon)
-- Default 6 rows seed: Package Scheduler, Status Scheduler, Validate Payments, Disable Unpaid, Send SMS Before Expiry, Prepaid Auto Renewal
-- Storage: নতুন table `automatic_processes` (id, branch_id, process_name, execute_at, interval_type, execution_day, enabled, last_run, next_run)
-- Edit dialog → time + interval পরিবর্তন
-- Action icons: Info popover, View last run logs, Toggle on/off
-- Route: `/dashboard/system/automatic-process`
-
-### ৪) **Settings** page এ Clients & Billing tab যোগ
-`Setup.tsx`-এ একটা TabsList — "Common System Settings" | "Clients & Billing Settings"। নতুন tab-এ image-1 এর ১১টা group বসবে (প্রতিটা card-এ Yes/No বা select + Save button + side-info panel):
-1. Payment Status Wise Client Enable/Disabled
-2. Allow InActive Process at last day of month
-3. Client Code Automatic / Customizable
-4. Due SMS — Billing Date / Remaining Days
-5. Send SMS To Unpaid Client — Before Days (1/2/3/5)
-6. Client Billing Expire Date Extensions Permission (Whom + Days)
-7. POP Client Automatic Scheduler Approval
-8. Client Billing Status Scheduler Time Customization (5 status × 2 time)
-9. POP Client Recharge Approval on PG Transactions
-10. POP Client Expiry Date Update Policy on Payment Date
-- প্রতিটা সেটিং `system_settings` table-এ key অনুযায়ী save (`useSystemSetting` hook reuse)
-- Right-side info panel (description text) প্রতিটা group-এর সাথে
-
-### ৫) Email & Invoice page small enhancements
-- **Email.tsx**: উপরে Mail/SMTP radio protocol toggle যোগ (image-193)
-- **Invoice.tsx**: Logo upload (Supabase storage `pop-logos` bucket reuse) + "Invoice" word position Left/Right radio + Invoice Title visibility Yes/No (image-194)
-
-### ৬) Sidebar update
-সিস্টেম group এর নতুন order:
+### ১) ResellerLayout sidebar "সিস্টেম" group rebuild
+`src/components/ResellerLayout.tsx` এর system group reference image অনুযায়ী:
 ```
-- সিস্টেম সেটআপ (Setup — Common + Clients tabs)
-- বিল পিরিয়ড (BillPeriodYears — new)
-- পিরিয়ড সেটআপ (existing Periods)
-- কোম্পানি সেটআপ
-- ইনভয়েস সেটআপ
-- ইমেইল সেটআপ
-- পেমেন্ট গেটওয়ে
-- প্রসেসিং ফি
-- অটোমেটিক প্রসেস (new)
-- সিস্টেম লগ (Activity Loggers)
-- বিলিং সাইকেল সেটিংস (existing link)
+- সিস্টেম সেটআপ        → /pop-admin/system/setup
+- বিল পিরিয়ড          → /pop-admin/system/bill-period
+- পিরিয়ড সেটআপ         → /pop-admin/system/period
+- কোম্পানি সেটআপ       → /pop-admin/settings (existing)
+- ইনভয়েস সেটআপ        → /pop-admin/system/invoice
+- ইমেইল সেটআপ          → /pop-admin/system/email
+- পেমেন্ট গেটওয়ে       → /pop-admin/system/payment-gateways
+- প্রসেসিং ফি           → /pop-admin/system/processing-fee
+- অটোমেটিক প্রসেস       → /pop-admin/system/automatic-process
+- অ্যাক্টিভিটি লগ        → /pop-admin/system/activity-log
 ```
-User/Role/Permission menu items সরে যাবে।
+> User Management সরানোই আছে — `Users` item বাদ পড়বে।
 
-## Database changes
-1. নতুন table: `automatic_processes`
-   ```
-   id uuid PK, branch_id uuid null, process_name text, execute_at time,
-   interval_type text ('daily'|'hourly'|'weekly'|'monthly'),
-   execution_day text, enabled bool default true,
-   last_run timestamptz, next_run timestamptz,
-   created_at, updated_at
-   ```
-   - RLS: admin/super_admin full access; POP admin SELECT own branch
-   - Seed 6 default rows
-2. কোনো schema migration `system_settings` এর জন্য লাগবে না — JSON value-তে সব বসবে
+### ২) নতুন POP admin pages তৈরি
+সব pages `src/pages/reseller/system/` এ — `ResellerLayout` wrapper সহ। প্রতিটা pop scope (branch_id) aware:
 
-## কোন file বদলাবে / তৈরি হবে
-- `src/pages/dashboard/system/Setup.tsx` *(rebuild with tabs)*
-- `src/pages/dashboard/system/BillPeriodYears.tsx` *(new)*
-- `src/pages/dashboard/system/AutomaticProcess.tsx` *(new)*
-- `src/pages/dashboard/system/Email.tsx` *(protocol toggle)*
-- `src/pages/dashboard/system/Invoice.tsx` *(logo + position toggles)*
-- `src/components/AppSidebar.tsx` *(menu update)*
-- `src/App.tsx` *(routes add/remove)*
+| File | কী করবে |
+|---|---|
+| `PopSetup.tsx` | Tabs: "Common Settings" + "Clients & Billing Settings" (১০ group toggle) |
+| `PopBillPeriod.tsx` | Year toggle list (image-192 অনুযায়ী) |
+| `PopPeriodSetup.tsx` | Billing period config (cycle/mode) |
+| `PopInvoice.tsx` | Logo upload + invoice position toggle (image-194) |
+| `PopEmail.tsx` | Mail/SMTP protocol radio + SMTP config (image-193) |
+| `PopPaymentGateways.tsx` | Gateway list + on/off + key config |
+| `PopProcessingFee.tsx` | PG-wise processing fee % |
+| `PopAutomaticProcess.tsx` | Scheduler list (image-190) — edit dialog |
+| `PopActivityLog.tsx` | POP-scoped activity log viewer |
 
-## Delete হবে
-- `src/pages/dashboard/system/Users.tsx`
-- `src/pages/dashboard/system/UserReview.tsx`
-- `src/pages/dashboard/system/Roles.tsx`
-- `src/pages/dashboard/system/OltPermissions.tsx`
-- `src/pages/dashboard/system/DevicePermissions.tsx`
+বিদ্যমান `ResellerSettings` (Company Settings) অপরিবর্তিত থাকবে।
+
+### ৩) Storage strategy (per-POP isolation)
+- POP-specific settings একটা নতুন pattern-এ save হবে: `system_settings` table-এ key prefix `pop:{branch_id}:{setting_key}` (e.g. `pop:abc-123:client_billing_settings`)
+- `useSystemSetting` hook এর সাথে নতুন `usePopSystemSetting(key)` hook তৈরি করব যেটা automatically branch_id prefix যোগ করবে
+- `automatic_processes` table-এ ইতিমধ্যে `branch_id` column আছে — POP-specific row insert/update হবে; না থাকলে global default fallback
+- Logo upload — existing `pop-logos` bucket reuse, path: `{branch_id}/invoice-logo.png`
+
+### ৪) App.tsx routes যোগ
+১০টা নতুন route, সবটা `PortalAuthProvider + ResellerProtectedRoute(require="system") + ResellerLayout` wrapper দিয়ে। পুরনো placeholder `"/pop-admin/system/period"` (PopPlaceholder) replace হবে real component দিয়ে।
+
+### ৫) Permission keys update
+`src/lib/popPermissions.ts` এর `system` group items list সিঙ্ক করব নতুন ১০ menu item-এর সাথে — যাতে সুপার admin permission UI-তে সঠিক list দেখায়।
+
+### ৬) Admin portal এর Settings পরিবর্তন (নয়)
+Admin (`/dashboard/system/*`) এ আগে যেগুলো বানানো হয়েছিল সেগুলো **থাকবে অপরিবর্তিত** — এতে design consistency / কাজ ভাঙবে না। শুধু POP portal-এ সমান্তরাল পেজ তৈরি করা হবে।
+
+## কোন file বদলাবে / নতুন
+**নতুন (9 files):**
+- `src/pages/reseller/system/PopSetup.tsx`
+- `src/pages/reseller/system/PopBillPeriod.tsx`
+- `src/pages/reseller/system/PopPeriodSetup.tsx`
+- `src/pages/reseller/system/PopInvoice.tsx`
+- `src/pages/reseller/system/PopEmail.tsx`
+- `src/pages/reseller/system/PopPaymentGateways.tsx`
+- `src/pages/reseller/system/PopProcessingFee.tsx`
+- `src/pages/reseller/system/PopAutomaticProcess.tsx`
+- `src/pages/reseller/system/PopActivityLog.tsx`
+- `src/hooks/usePopSystemSetting.ts`
+
+**Edit:**
+- `src/components/ResellerLayout.tsx` (system group rebuild)
+- `src/lib/popPermissions.ts` (system items list sync)
+- `src/App.tsx` (10 new routes)
 
 ## কোন file বদলাবে না
-- RLS policies on existing tables, edge functions, POP profile pages, billing logic
+- Admin dashboard pages, RLS policies, edge functions, billing logic, MikroTik integration, existing `/pop-admin/settings` (Company)
 
 ## Apply-এর পরে expected ফলাফল
-1. Settings menu থেকে User/Role/Permission সরে যাবে
-2. সব 10টা Settings page reference image অনুযায়ী functional হবে — toggle/save সরাসরি `system_settings`-এ persist
-3. Bill Period year toggle list কাজ করবে
-4. Automatic Process page থেকে scheduler config view/edit হবে
-5. Email-এ Mail/SMTP, Invoice-এ logo upload + position toggle add হবে
+1. POP admin login → "সিস্টেম" group এ ১০টা item দেখাবে
+2. প্রতিটা page reference image অনুযায়ী functional হবে — toggle/save সরাসরি POP-scoped storage-এ persist
+3. একটা POP-এর setting অন্য POP-এ leak করবে না (branch_id isolation)
+4. Admin dashboard এর settings অপরিবর্তিত — break হবে না
+5. Credit খরচ হবে শুধু এই POP portal কাজের জন্য, কোনো মিশ্রণ হবে না
 
