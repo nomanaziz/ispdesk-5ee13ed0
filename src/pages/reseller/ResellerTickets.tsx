@@ -52,17 +52,13 @@ const ResellerTickets = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [activeTicket, setActiveTicket] = useState<any | null>(null);
 
-  // POP-scoped client list (used both for filtering tickets & the create dialog)
+  // POP-scoped client list (portal API — RLS-safe)
   const { data: clients = [] } = useQuery({
-    queryKey: ["pop-clients-min", branchId],
+    queryKey: ["pop-ticket-clients", branchId],
     enabled: !!branchId,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("clients")
-        .select("id, name, client_id, username, contact")
-        .eq("branch_id", branchId!)
-        .order("name");
-      return data || [];
+      const res = await callPortal<{ clients: any[] }>("pop_ticket_clients");
+      return res.clients || [];
     },
   });
 
