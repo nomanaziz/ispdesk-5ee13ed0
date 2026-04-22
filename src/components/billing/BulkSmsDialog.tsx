@@ -49,7 +49,7 @@ export default function BulkSmsDialog({ open, onOpenChange, selectedClients }: P
         recipient: recipients.join(","),
         message,
         gateway_id: gatewayId || null,
-        template_id: templateId || null,
+        template_id: null,
         sms_type: "bulk_clients",
         status: "sent",
         sent_at: new Date().toISOString(),
