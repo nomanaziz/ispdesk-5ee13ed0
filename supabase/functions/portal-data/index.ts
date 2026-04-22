@@ -318,6 +318,110 @@ Deno.serve(async (req) => {
         return json({ client });
       }
 
+      case "list_available_packages": {
+        if (tok.type !== "client") return json({ packages: [] });
+        const { data } = await sb
+          .from("isp_packages")
+          .select("id, name, bandwidth_down, bandwidth_up, price, code")
+          .eq("status", "active")
+          .order("price", { ascending: true });
+        return json({ packages: data || [] });
+      }
+
+      case "list_change_requests": {
+        if (tok.type !== "client") return json({ requests: [] });
+        const { data, error } = await sb
+          .from("change_requests")
+          .select("id, request_type, old_value, new_value, reason, status, created_at, approved_at")
+          .eq("client_id", tok.sub)
+          .order("created_at", { ascending: false })
+          .limit(100);
+        if (error) return json({ error: error.message }, 500);
+        return json({ requests: data || [] });
+      }
+
+      case "create_change_request": {
+        if (tok.type !== "client") return json({ error: "Not allowed" }, 403);
+        const allowedTypes = new Set(["package", "billing_date", "date_extend"]);
+        const request_type = String(payload?.request_type || "");
+        if (!allowedTypes.has(request_type)) return json({ error: "Invalid type" }, 400);
+
+        const old_value = payload?.old_value != null ? String(payload.old_value).slice(0, 200) : null;
+        const new_value = payload?.new_value != null ? String(payload.new_value).slice(0, 200) : null;
+        const reason = payload?.reason ? String(payload.reason).slice(0, 500) : null;
+
+        if (!new_value) return json({ error: "Missing new value" }, 400);
+
+        // Validation per type
+        if (request_type === "billing_date") {
+          const n = Number(new_value);
+          if (!n || n < 1 || n > 28) return json({ error: "Day must be 1-28" }, 400);
+        }
+        if (request_type === "date_extend") {
+          if (!reason) return json({ error: "Reason required" }, 400);
+          const d = new Date(new_value);
+          if (isNaN(d.getTime())) return json({ error: "Invalid date" }, 400);
+        }
+
+        // Block duplicate pending of same type
+        const { data: pending } = await sb
+          .from("change_requests")
+          .select("id")
+          .eq("client_id", tok.sub)
+          .eq("request_type", request_type)
+          .eq("status", "pending")
+          .limit(1);
+        if (pending && pending.length > 0) {
+          return json({ error: "একটি pending রিকোয়েস্ট আছে" }, 400);
+        }
+
+        // For date_extend: only one approved/pending in last 30 days
+        if (request_type === "date_extend") {
+          const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+          const { data: recent } = await sb
+            .from("change_requests")
+            .select("id")
+            .eq("client_id", tok.sub)
+            .eq("request_type", "date_extend")
+            .in("status", ["approved", "pending"])
+            .gte("created_at", since)
+            .limit(1);
+          if (recent && recent.length > 0) {
+            return json({ error: "এই মাসে একবারই date extend allowed" }, 400);
+          }
+        }
+
+        const { error } = await sb.from("change_requests").insert({
+          client_id: tok.sub,
+          request_type,
+          old_value,
+          new_value,
+          reason,
+          status: "pending",
+        });
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true });
+      }
+
+      case "cancel_change_request": {
+        if (tok.type !== "client") return json({ error: "Not allowed" }, 403);
+        const id = String(payload?.id || "");
+        if (!id) return json({ error: "Missing id" }, 400);
+        const { data: row } = await sb
+          .from("change_requests")
+          .select("id, client_id, status")
+          .eq("id", id)
+          .maybeSingle();
+        if (!row || row.client_id !== tok.sub) return json({ error: "Not found" }, 404);
+        if (row.status !== "pending") return json({ error: "Cannot cancel" }, 400);
+        const { error } = await sb
+          .from("change_requests")
+          .update({ status: "cancelled" })
+          .eq("id", id);
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true });
+      }
+
       case "get_profile": {
         if (tok.type !== "client") return json({ client: null, requests: [] });
         const { data: client } = await sb
