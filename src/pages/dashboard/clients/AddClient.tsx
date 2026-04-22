@@ -407,6 +407,7 @@ export default function AddClient() {
       toast.success(editMode ? "ক্লায়েন্ট সফলভাবে আপডেট হয়েছে" : "ক্লায়েন্ট সফলভাবে যোগ হয়েছে");
       // Invalidate all client list caches so the new client appears immediately
       qc.invalidateQueries({ queryKey: ["pop-list-clients"] });
+      qc.invalidateQueries({ queryKey: ["portal-pop-clients"] });
       qc.invalidateQueries({ queryKey: ["clients"] });
       qc.invalidateQueries({ queryKey: ["pop_mt_users"] });
       navigate(isPopMode ? "/pop-admin/clients" : "/dashboard/clients");
