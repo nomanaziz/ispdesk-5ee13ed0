@@ -104,25 +104,25 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
                   )}
                 >
                   <item.icon className={cn("h-4 w-4 shrink-0", active ? "" : item.color)} />
-                  <span className="truncate">{item.label}</span>
+                  <span className="truncate">{t(item.bn, item.en)}</span>
                 </Link>
               );
             })}
           </div>
 
           <div className="px-2 pt-5 pb-2 text-[10px] uppercase tracking-wider text-sidebar-foreground/70 font-bold">
-            Account
+            {t("অ্যাকাউন্ট", "Account")}
           </div>
           <button
             onClick={logout}
             className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors"
           >
-            <LogOut className="h-4 w-4" /> Logout
+            <LogOut className="h-4 w-4" /> {t("লগআউট", "Logout")}
           </button>
         </nav>
 
         <div className="px-5 py-3 border-t border-sidebar-border text-[11px] text-sidebar-foreground/50">
-          Customer Portal v1.0
+          {t("কাস্টমার পোর্টাল", "Customer Portal")} v1.0
         </div>
       </aside>
 
