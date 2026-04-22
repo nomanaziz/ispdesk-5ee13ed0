@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 type PermKey =
   | "dashboard" | "configuration" | "mikrotik" | "employee" | "client"
   | "billing" | "monitoring" | "sms" | "reports" | "purchases"
-  | "tickets" | "system" | "fund_history" | "settings" | "users" | "invoices";
+  | "tickets" | "system" | "fund_history" | "settings" | "users" | "invoices" | "accounting";
 
 interface NavLink { to: string; label: string; en: string; icon: any }
 interface NavGroup {
