@@ -104,7 +104,7 @@ export default function ResellerMikrotikBulkCreate() {
         caller_id: u.caller_id,
         remote_address: u.remote_address,
         service: u.service,
-        mikrotik_id: u.transferred_to_mikrotik_id,
+        mikrotik_id: u.transferred_to_mikrotik_id || u.mikrotik_id,
         name: u.name,
         contact: "",
         address: "",
