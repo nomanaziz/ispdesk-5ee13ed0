@@ -856,6 +856,65 @@ Deno.serve(async (req) => {
         return json({ ok: true, id: inserted?.id });
       }
 
+      case "create_employee": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub")
+          return json({ error: "Not allowed" }, 403);
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("branch_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+
+        const p = payload || {};
+        if (!p.name) return json({ error: "Name আবশ্যক" }, 400);
+
+        const employee_id = `EMP-${Date.now().toString().slice(-8)}`;
+        const empRow: any = {
+          ...p,
+          employee_id,
+          branch_id: pop.branch_id,
+        };
+        // Strip sub-user-only fields before insert
+        const hasAccess = !!p.has_user_access;
+        const subUsername = p.user_username;
+        const subPassword = p.user_password;
+        const subPermissions = p.user_permissions || {};
+
+        const { data: emp, error: empErr } = await sb
+          .from("employees")
+          .insert(empRow)
+          .select("id")
+          .single();
+        if (empErr) return json({ error: empErr.message }, 500);
+
+        if (hasAccess && subUsername && subPassword) {
+          const { data: sub, error: subErr } = await sb
+            .from("branch_managers")
+            .insert({
+              name: p.name,
+              username: subUsername,
+              password: subPassword,
+              email: p.email || null,
+              contact: p.personal_phone || p.phone || null,
+              branch_id: pop.branch_id,
+              pop_type: "reseller_sub",
+              parent_reseller_id: resellerId,
+              permissions: subPermissions,
+              portal_enabled: true,
+              status: "active",
+            } as any)
+            .select("id")
+            .single();
+          if (subErr) return json({ error: subErr.message }, 500);
+          await sb.from("employees").update({ sub_user_id: sub.id } as any).eq("id", emp.id);
+        }
+
+        return json({ ok: true, id: emp.id });
+      }
+
       case "get_daily_usage": {
         if (tok.type !== "client") return json({ days: [] });
         const start = new Date();
