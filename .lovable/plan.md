@@ -1,84 +1,134 @@
 
 
 ## লক্ষ্য
-Customer Portal-এর **Live Usage** page-এ গ্রাহক দেখতে পারবে:
-1. বর্তমান মাসে **কোন দিন কত GB** ডাটা use হয়েছে (daily breakdown)
-2. **এই মাসের মোট** + **আগের মাসগুলোর মোট** (monthly summary, দিনভিত্তিক ভাঙা ছাড়া)
+গ্রাহক পোর্টালে নতুন **"Change/Update"** section যোগ করা, যেখানে গ্রাহক ৩ ধরনের request পাঠাতে পারবে:
+1. **Package Change** — package migrate/update
+2. **Billing Date Change** — পরবর্তী cycle থেকে নতুন billing date
+3. **Billing Date Extend** — শুধু এই মাসের জন্য expire date বাড়ানো
+
+আর **Company Info** sidebar থেকে সরিয়ে Dashboard-এর নিচে **default-ভাবে show** করা।
 
 ---
 
 ## সমাধান
 
-### 1. Live Usage page-এ ২টা নতুন section যোগ
-বর্তমান page (Connectivity Info + Online status + Live speed + Real-time graph) এর **নিচে** যোগ হবে:
+### 1. নতুন page `/portal/change-request` (3-tab interface, image reference থেকে)
 
-#### A. **This Month — Daily Usage** (current month)
-- Bar chart: X-axis = তারিখ (1-31), Y-axis = GB
-- প্রতিটা bar-এ Download + Upload stacked (or grouped)
-- উপরে summary chip: "এই মাসে মোট: ↓ XX GB · ↑ YY GB · মোট ZZ GB"
-- শুধু **চলতি মাসের** data দেখাবে (1 তারিখ থেকে আজ পর্যন্ত)
+**File: `src/pages/portal/PortalChangeRequest.tsx`** *(new)*
 
-#### B. **Monthly Summary** (past months)
-- Compact table/list: প্রতি row = এক মাস
-- Columns: Month (Nov 2025), Download, Upload, Total
-- শেষ ৬ মাস দেখাবে, "View More" দিলে আরো load
-- পরের মাস শুরু হলে আগের মাস automatic এই list-এ চলে আসবে (daily breakdown আর show করব না সেই মাসের জন্য — শুধু total)
+Header card: paper-plane icon + "Migrate/Update Package" + helper text।
+
+৩টা tab:
+
+#### Tab A: **Package Change Request**
+- "Current Package: [Advance+(40)]" (badge সহ) + ডানে **"+ Change Request"** button
+- Button click → Dialog খুলবে:
+  - Package selector (admin-এ active + current package বাদে সব)
+  - Reason/Note textarea (optional)
+  - Submit → `change_requests` insert (`request_type='package'`, `old_value=current_pkg_name`, `new_value=new_pkg_name`)
+- নিচে table: Current Package · Requested Package · Occurred Date · Remarks · Action (Status badge + Cancel button যদি pending হয়)
+
+#### Tab B: **Billing Expiry Date Change** (পরের cycle থেকে date বদলাবে)
+- Current billing date (e.g., "প্রতি মাসের ১০ তারিখ") দেখাবে
+- "+ Change Request" → Dialog:
+  - নতুন day-of-month select (1-28)
+  - Reason
+  - Submit → `change_requests` (`request_type='billing_date'`, `old_value=current_day`, `new_value=new_day`)
+- নিচে history table
+
+#### Tab C: **Billing Expiry Date Extend** (শুধু চলতি মাসের জন্য)
+- Current expire_date দেখাবে
+- "+ Change Request" → Dialog:
+  - নতুন expire date picker (চলতি মাসের মধ্যে, max 28 দিন বৃদ্ধি)
+  - Reason (required এই tab-এ)
+  - Submit → `change_requests` (`request_type='date_extend'`, `old_value=current_expire`, `new_value=new_expire`)
+- নিচে history table
+
+প্রতিটা tab-এর table-এ Status badge: 🟡 Requested · 🟢 Approved · 🔴 Rejected। Pending হলে Cancel button (status='cancelled')।
+
+### 2. Backend — `portal-data` edge function-এ ৩টা নতুন action
+
+**File: `supabase/functions/portal-data/index.ts`**
+
+- `list_change_requests` — `change_requests` table থেকে `client_id = tok.sub`-এর সব request, joined isp_packages name সহ
+- `create_change_request` — payload: `{request_type, old_value, new_value, reason}` → insert with `status='pending'`
+- `cancel_change_request` — payload: `{id}` → update `status='cancelled'` যদি সেই client-এর pending request হয়
+
+### 3. Admin দিকে existing `ChangeRequest.tsx` page **already supports** `package` / `billing_date` / `status` types। শুধু `date_extend` type approve handler-এ যোগ করব:
+- approve হলে: `date_extend` → `clients.expire_date = new_value` update
+- `package` → existing manual flow (admin profile change কাজ করবে)
+- `billing_date` → `clients.billing_date = new_value` update
+
+**File: `src/pages/dashboard/clients/ChangeRequest.tsx`** — approve mutation-এ side-effect SQL update যোগ + filter dropdown-এ `date_extend` option।
+
+### 4. Sidebar nav-এ নতুন item
+
+**File: `src/components/PortalLayout.tsx`**
+- "Change/Update" entry (paper-plane / Send icon, teal color), path `/portal/change-request`
+- Bottom nav-এ "নোটিশ"-এর জায়গায় "Change" রাখব না — sidebar-ই যথেষ্ট
+- **"Company Info" entry সরিয়ে দেব** sidebar থেকে (default-ভাবে dashboard-এ embed হবে)
+
+### 5. Route registration
+
+**File: `src/App.tsx`**
+- `/portal/change-request` → `PortalChangeRequest`
+- `/portal/company` route রাখব (direct link থাকলে কাজ করবে), শুধু sidebar entry সরাবো
+
+### 6. Dashboard-এ Company Info embed (default show)
+
+**File: `src/pages/portal/PortalDashboard.tsx`**
+- পুরো dashboard-এর **শেষে** একটা compact "About Your ISP" card যোগ:
+  - Logo + company name + tagline (gradient header)
+  - Quick info grid: Hotline · Address · Email · Website (icon + value)
+  - "View Full Info →" link (যদি বেশি details থাকে → `/portal/company`)
+- Data source: existing `get_company` action (already exists)
+- Compact version, full page-এর ছোট রূপ
 
 ---
 
 ## Technical Details
 
-### Data source
-- **Daily breakdown**: `client_traffic_logs` থেকে aggregate
-  - প্রতি tick-এ snapshot আছে (`upload_bytes`, `download_bytes` = session counter)
-  - **Delta computation**: একই day-এর consecutive rows-এর difference নিতে হবে; counter reset (current < prev) হলে current-কে delta ধরব
-  - SQL: window function `LAG()` দিয়ে delta বের করে date-wise SUM
-- **Monthly totals**: `client_traffic_monthly` (already populated by collector)
-  - Direct SELECT, order by month DESC
+### Database
+- `change_requests` table **already exists** (id, client_id, request_type, old_value, new_value, reason, status, approved_by, approved_at, created_at)
+- কোনো schema change লাগবে না
+- `request_type` values: `'package'`, `'billing_date'`, `'date_extend'` (existing `'status'` ও থাকবে admin-এর জন্য)
+- **Migration ছোট একটা**: `status='cancelled'` allow করার জন্য existing CHECK constraint থাকলে update (যদি না থাকে — text column, কিছু লাগবে না)
 
-### Backend changes
-**File: `supabase/functions/portal-data/index.ts`** — দুটো নতুন action:
+### Validation rules (frontend + edge function-এ duplicate)
+- **Package**: same package select করা যাবে না; pending request থাকলে নতুন পাঠানো যাবে না
+- **Billing date change**: 1-28 range
+- **Date extend**: নতুন date > current expire; max +28 দিন; এই মাসে একবারই allowed (pending+approved last 30 days check)
 
-1. `get_daily_usage` — current month daily breakdown
-   ```sql
-   WITH ordered AS (
-     SELECT recorded_at::date AS day, upload_bytes, download_bytes,
-            LAG(upload_bytes) OVER (ORDER BY recorded_at) AS prev_up,
-            LAG(download_bytes) OVER (ORDER BY recorded_at) AS prev_dn
-     FROM client_traffic_logs
-     WHERE client_id = $1 AND recorded_at >= date_trunc('month', now())
-   )
-   SELECT day,
-          SUM(GREATEST(upload_bytes - COALESCE(prev_up, upload_bytes), 0)) AS up,
-          SUM(GREATEST(download_bytes - COALESCE(prev_dn, download_bytes), 0)) AS dn
-   FROM ordered GROUP BY day ORDER BY day;
-   ```
-   Note: edge function-এ raw SQL allowed না — তাই client-side aggregation: `client_traffic_logs` থেকে current month rows fetch করে JS-এ delta + group।
+### UI patterns
+- Reference image-এর দরকারি concept: tabs · current state badge · "+ Change Request" CTA · clean table with status pill — design fresh, copy নয়
+- Existing colorful tints, dark text (per memory)
+- Mobile (390px): tabs scrollable, table → card list
 
-2. `get_monthly_usage` — last 12 months
-   - Direct query: `client_traffic_monthly` filter by client_id, order desc, limit 12
+---
 
-### Frontend changes
-**File: `src/pages/portal/PortalLiveUsage.tsx`** — page-এর শেষে নতুন ২টা Card:
-- React Query (15-min staleTime, না polling — historical data)
-- Recharts BarChart (daily) + simple table (monthly)
-- Empty-state: "এখনও data সংগ্রহ হয়নি"
+## Files Modified/Created
 
-### Files modified
-1. `supabase/functions/portal-data/index.ts` — 2 new actions
-2. `src/pages/portal/PortalLiveUsage.tsx` — 2 new sections at bottom
+| File | Type |
+|---|---|
+| `src/pages/portal/PortalChangeRequest.tsx` | **new** |
+| `supabase/functions/portal-data/index.ts` | modify (3 new actions) |
+| `src/pages/dashboard/clients/ChangeRequest.tsx` | modify (approve handler + new type filter) |
+| `src/components/PortalLayout.tsx` | modify (add Change item, remove Company Info) |
+| `src/App.tsx` | modify (register route) |
+| `src/pages/portal/PortalDashboard.tsx` | modify (embed Company Info card at bottom) |
 
 ---
 
 ## Out of scope
-- Hour-by-hour breakdown
-- Per-day download করার option
-- Comparison chart (this month vs last month)
+- Auto MikroTik profile push on package approve (admin manual approve flow আগের মতই থাকবে)
+- Email/SMS notification on approval (future)
+- Multi-month date extension
 
 ---
 
 ## Apply-এর পরে expected
-1. Live Usage page-এ scroll down করলে চলতি মাসের প্রতিদিনের usage bar chart দেখাবে।
-2. তার নিচে আগের মাসগুলোর summary table থাকবে (শুধু মাসিক total)।
-3. মাস শেষ হলে সেই মাস automatically monthly summary-তে চলে যাবে।
+1. গ্রাহক sidebar-এ "Change/Update" দেখবে → ৩-tab page থেকে যেকোনো request পাঠাতে পারবে
+2. Admin existing `Client > Change Request` page থেকে approve/reject করলে `clients` table আপডেট হয়ে যাবে (date_extend & billing_date এর জন্য)
+3. গ্রাহক history-তে নিজের সব request দেখবে (pending হলে cancel option)
+4. Dashboard-এর নিচে by default Company Info card visible — sidebar থেকে আলাদা entry আর নেই
 
