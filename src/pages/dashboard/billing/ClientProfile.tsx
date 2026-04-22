@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -98,6 +98,28 @@ export default function ClientProfile() {
     enabled: !!id,
   });
 
+  const { data: livePppData, isFetching: isPppFetching } = useQuery({
+    queryKey: ["client-ppp-live", id, client?.mikrotik_id, client?.username],
+    queryFn: async () => {
+      const c = client as any;
+      if (!c?.mikrotik_id || !c?.username) return null;
+      const { data, error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
+        body: { client_id: c.id, mikrotik_id: c.mikrotik_id, username: c.username, action: "status" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    enabled: !!id && !!client?.mikrotik_id && !!client?.username,
+    staleTime: 15000,
+    refetchInterval: 30000,
+    retry: 1,
+  });
+
+  useEffect(() => {
+    setPppSnapshot(null);
+  }, [id]);
+
   const { data: billHistory = [] } = useQuery({
     queryKey: ["bill-history", id],
     queryFn: async () => {
@@ -147,6 +169,7 @@ export default function ClientProfile() {
         await supabase.from("clients").update({ mikrotik_status: data.mikrotik_status }).eq("id", c.id);
       }
       setPppSnapshot(data);
+      queryClient.invalidateQueries({ queryKey: ["client-ppp-live", id] });
       queryClient.invalidateQueries({ queryKey: ["client-profile", id] });
       toast.success(action === "status" ? "PPP তথ্য রিফ্রেশ হয়েছে" : data?.message || "সফল");
     },
@@ -170,7 +193,8 @@ export default function ClientProfile() {
   }
   const billings = (c.billing || []).sort((a: any, b: any) => b.month?.localeCompare(a.month));
   const collections = (c.bill_collections || []).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  const pppData = pppSnapshot || {};
+  const pppData = pppSnapshot || livePppData || null;
+  const pppActive = pppData?.has_active_session ?? Boolean(c.is_online);
   const totalDue = billings.reduce((s: number, b: any) => s + Number(b.due || 0), 0);
   const totalPaid = billings.reduce((s: number, b: any) => s + Number(b.paid || 0), 0);
   const bs = billings[0]?.status || "unpaid";
