@@ -23,7 +23,7 @@ export default function PopAddEmployee() {
     name: "", email: "", phone: "", address: "",
     date_of_birth: "", gender: "", personal_phone: "", office_phone: "", guardian_phone: "",
     marital_status: "", nid_number: "", facebook_link: "", reference: "",
-    district: "", upazila: "", permanent_address: "",
+    division_id: null, district_id: null, upazila_id: null, permanent_address: "",
     working_experience: "", last_degree: "", institution: "", passing_year: "",
     joining_date: "", department: "", designation: "", salary: "", status: "active",
   });
