@@ -56,7 +56,7 @@ const PortalChangeRequest = () => {
   });
   const client = dashData?.client;
   const currentPkg = client?.package;
-  const currentBillingDay = client?.billing_date ? new Date(client.billing_date).getDate() : null;
+  const currentBillingDay = client?.billing_date ? Number(client.billing_date) : null;
   const currentExpire = client?.expire_date;
 
   const { data: pkgData } = useQuery({
