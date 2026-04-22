@@ -873,7 +873,7 @@ Deno.serve(async (req) => {
 
         const { data: clients, error } = await sb
           .from("clients")
-          .select("id, name, username, mobile, address, monthly_bill, status, expire_date, created_at")
+          .select("id, name, username, contact, address, monthly_bill, status, expire_date, created_at")
           .eq("branch_id", pop.branch_id)
           .eq("owner_scope", "pop")
           .in("status", ["active", "online", "offline"])

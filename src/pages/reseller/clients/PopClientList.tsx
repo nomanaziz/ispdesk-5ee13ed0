@@ -11,7 +11,7 @@ interface PopClientRow {
   id: string;
   name: string | null;
   username: string | null;
-  mobile: string | null;
+  contact: string | null;
   address: string | null;
   monthly_bill: number | null;
   status: string | null;
@@ -69,7 +69,7 @@ export default function PopClientList() {
                     <tr key={row.id} className={i % 2 ? "bg-primary/5" : ""}>
                       <td className="px-3 py-2 border-r border-b border-border">{row.username ?? "—"}</td>
                       <td className="px-3 py-2 border-r border-b border-border">{row.name ?? "—"}</td>
-                      <td className="px-3 py-2 border-r border-b border-border">{row.mobile ?? "—"}</td>
+                      <td className="px-3 py-2 border-r border-b border-border">{row.contact ?? "—"}</td>
                       <td className="px-3 py-2 border-r border-b border-border">{row.monthly_bill ? `৳ ${Number(row.monthly_bill).toLocaleString()}` : "—"}</td>
                       <td className="px-3 py-2 border-r border-b border-border">{row.expire_date ?? "—"}</td>
                       <td className="px-3 py-2 border-b border-border"><Badge>{row.status ?? "—"}</Badge></td>
