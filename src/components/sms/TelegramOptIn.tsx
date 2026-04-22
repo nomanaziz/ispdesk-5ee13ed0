@@ -36,7 +36,7 @@ export default function TelegramOptIn({ ownerType, ownerId, botUsername }: Props
       return;
     }
     const token = `lnk_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
-    const { error } = await supabase.from("telegram_link_requests").insert({
+    const { error } = await (supabase.from as any)("telegram_link_requests").insert({
       token,
       client_id: client.id,
       owner_type: ownerType,

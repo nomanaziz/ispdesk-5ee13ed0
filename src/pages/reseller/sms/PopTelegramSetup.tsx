@@ -24,8 +24,7 @@ export default function PopTelegramSetup() {
     queryKey: ["pop_telegram_bot", popId],
     enabled: !!popId,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("branch_managers")
+      const { data } = await (supabase.from as any)("branch_managers")
         .select("telegram_bot_token, telegram_bot_username, telegram_bot_active")
         .eq("id", popId)
         .maybeSingle();
@@ -54,8 +53,7 @@ export default function PopTelegramSetup() {
   const save = useMutation({
     mutationFn: async () => {
       if (!popId) throw new Error("POP ID পাওয়া যায়নি");
-      const { error } = await supabase
-        .from("branch_managers")
+      const { error } = await (supabase.from as any)("branch_managers")
         .update({
           telegram_bot_token: token || null,
           telegram_bot_username: username || null,

@@ -23,10 +23,10 @@ export default function TelegramSetup() {
     queryFn: async () => {
       const { data } = await supabase
         .from("system_settings")
-        .select("value")
-        .eq("key", "admin_telegram_bot")
+        .select("setting_value")
+        .eq("setting_key", "admin_telegram_bot")
         .maybeSingle();
-      const v = (data?.value as any) || {};
+      const v = ((data as any)?.setting_value as any) || {};
       setToken(v.token || "");
       setUsername(v.username || "");
       setActive(!!v.active);
@@ -51,7 +51,10 @@ export default function TelegramSetup() {
     mutationFn: async () => {
       const { error } = await supabase
         .from("system_settings")
-        .upsert({ key: "admin_telegram_bot", value: { token, username, active } });
+        .upsert(
+          { setting_key: "admin_telegram_bot", setting_value: { token, username, active } as any },
+          { onConflict: "setting_key" }
+        );
       if (error) throw error;
     },
     onSuccess: () => {
