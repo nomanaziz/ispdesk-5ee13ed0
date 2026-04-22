@@ -414,7 +414,7 @@ Deno.serve(async (req) => {
             JSON.stringify({
               success: true,
               message: active.length > 0 ? `PPP session '${username}' is online` : `PPP session '${username}' is offline`,
-              mikrotik_status,
+              mikrotik_status: mikrotikStatus,
               has_active_session: active.length > 0,
               current_id: current?.address || secret["remote-address"] || null,
               session: current ? {
