@@ -34,7 +34,10 @@ interface NavGroup {
 const groups: NavGroup[] = [
   {
     key: "dashboard", label: "ড্যাশবোর্ড", en: "Dashboard", icon: LayoutDashboard,
-    items: [{ to: "/pop-admin/dashboard", label: "ড্যাশবোর্ড", en: "Dashboard", icon: LayoutDashboard }],
+    items: [
+      { to: "/pop-admin/dashboard", label: "ড্যাশবোর্ড", en: "Dashboard", icon: LayoutDashboard },
+      { to: "/pop-admin/notes", label: "নোট", en: "Notes", icon: FileText },
+    ],
   },
   {
     key: "configuration", label: "কনফিগারেশন", en: "Configuration", icon: Cog,
