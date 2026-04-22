@@ -63,6 +63,7 @@ const groups: NavGroup[] = [
     key: "client", label: "ক্লায়েন্ট", en: "Client", icon: Users,
     items: [
       { to: "/pop-admin/clients/add", label: "ক্লায়েন্ট যোগ", en: "Add Client", icon: UserPlus },
+      { to: "/pop-admin/clients/bulk-import", label: "বাল্ক ইম্পোর্ট", en: "Bulk Client Import", icon: FileText },
       { to: "/pop-admin/clients", label: "ক্লায়েন্ট তালিকা", en: "Client List", icon: Users },
       { to: "/pop-admin/billing/list", label: "বিলিং তালিকা", en: "Billing List", icon: Receipt },
       { to: "/pop-admin/billing/daily-collection", label: "দৈনিক সংগ্রহ", en: "Daily Collection", icon: Wallet },
