@@ -2865,6 +2865,7 @@ export type Database = {
           core_color: string | null
           core_count: number | null
           created_at: string
+          created_by_admin: string | null
           date_of_birth: string | null
           device_recovered: boolean
           device_serial: string | null
@@ -2897,6 +2898,7 @@ export type Database = {
           nid_number: string | null
           occupation: string | null
           onu_id: string | null
+          owner_scope: string
           package_id: string | null
           password: string | null
           permanent_address: string | null
@@ -2944,6 +2946,7 @@ export type Database = {
           core_color?: string | null
           core_count?: number | null
           created_at?: string
+          created_by_admin?: string | null
           date_of_birth?: string | null
           device_recovered?: boolean
           device_serial?: string | null
@@ -2976,6 +2979,7 @@ export type Database = {
           nid_number?: string | null
           occupation?: string | null
           onu_id?: string | null
+          owner_scope?: string
           package_id?: string | null
           password?: string | null
           permanent_address?: string | null
@@ -3023,6 +3027,7 @@ export type Database = {
           core_color?: string | null
           core_count?: number | null
           created_at?: string
+          created_by_admin?: string | null
           date_of_birth?: string | null
           device_recovered?: boolean
           device_serial?: string | null
@@ -3055,6 +3060,7 @@ export type Database = {
           nid_number?: string | null
           occupation?: string | null
           onu_id?: string | null
+          owner_scope?: string
           package_id?: string | null
           password?: string | null
           permanent_address?: string | null
