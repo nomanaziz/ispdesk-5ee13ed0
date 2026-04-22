@@ -26,6 +26,7 @@ interface Props {
   onBulkRemoveVip: () => void;
   onBulkProfileChange: () => void;
   onRegenerateInvoice?: () => void;
+  showMigrate?: boolean;
 }
 
 export default function BulkActionButtons({
@@ -48,6 +49,7 @@ export default function BulkActionButtons({
   onBulkRemoveVip,
   onBulkProfileChange,
   onRegenerateInvoice,
+  showMigrate = true,
 }: Props) {
   const requireSelection = (fn: () => void) => {
     if (selectedCount === 0) {
@@ -77,7 +79,9 @@ export default function BulkActionButtons({
         <ActionBtn icon={MessageSquare} label="SMS পাঠান" onClick={() => requireSelection(onSmsSelected)} />
         <ActionBtn icon={Mail} label="ইমেইল পাঠান" onClick={() => requireSelection(onEmailSelected)} />
         <ActionBtn icon={CalendarPlus} label="তারিখ বাড়ান" onClick={() => requireSelection(onBulkDateExtend)} />
-        <ActionBtn icon={ArrowRightLeft} label="সার্ভার মাইগ্রেট" onClick={() => requireSelection(onMigrateServer)} color="bg-blue-600 hover:bg-blue-700 text-white" />
+        {showMigrate && (
+          <ActionBtn icon={ArrowRightLeft} label="সার্ভার মাইগ্রেট" onClick={() => requireSelection(onMigrateServer)} color="bg-blue-600 hover:bg-blue-700 text-white" />
+        )}
         <ActionBtn icon={Star} label="VIP করুন" onClick={() => requireSelection(onBulkVip)} />
         <ActionBtn icon={StarOff} label="VIP বাতিল" onClick={() => requireSelection(onBulkRemoveVip)} />
         <ActionBtn icon={Settings} label="প্রোফাইল পরিবর্তন" onClick={() => requireSelection(onBulkProfileChange)} />
