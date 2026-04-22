@@ -9,12 +9,13 @@ import {
   Search, Menu, Activity, Server, Globe, ChevronDown, ChevronRight,
   Cog, MapPin, Box, Package, Layers, Briefcase, BadgeCheck, Cpu,
   UserPlus, Wallet, BarChart3, FileText, Calendar,
-  MessageSquare, Send, Antenna, Radar, Wifi, History, TrendingUp, BookOpen,
+  MessageSquare, Send, Antenna, Radar, Wifi, History, TrendingUp, BookOpen, Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotesButton } from "@/components/notes/NotesButton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ResellerMobileShell } from "@/components/reseller/mobile/ResellerMobileShell";
+import { QuickCreateClientDialog } from "@/components/QuickCreateClientDialog";
 
 type PermKey =
   | "dashboard" | "configuration" | "mikrotik" | "employee" | "client"
