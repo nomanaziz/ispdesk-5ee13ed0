@@ -32,6 +32,38 @@ export default function Import() {
   const [bulkExportOpen, setBulkExportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [bulkProfileOpen, setBulkProfileOpen] = useState(false);
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+
+  const togglePppStatus = async (c: any) => {
+    if (!c.mikrotik_id || !c.name) {
+      toast.error("MikroTik server বা username পাওয়া যায়নি");
+      return;
+    }
+    const isDisabled = c.user_status === "disabled";
+    const action = isDisabled ? "enable" : "disable";
+    setTogglingIds((s) => new Set(s).add(c.id));
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
+        body: { mikrotik_id: c.mikrotik_id, username: c.name, action },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      await supabase
+        .from("mikrotik_clients")
+        .update({ user_status: isDisabled ? "unique" : "disabled" })
+        .eq("id", c.id);
+      toast.success(`${c.name} ${isDisabled ? "enable" : "disable"} হয়েছে`);
+      queryClient.invalidateQueries({ queryKey: ["mikrotik_clients"] });
+    } catch (e: any) {
+      toast.error("ব্যর্থ: " + (e.message || "অজানা ত্রুটি"));
+    } finally {
+      setTogglingIds((s) => {
+        const n = new Set(s);
+        n.delete(c.id);
+        return n;
+      });
+    }
+  };
 
   const { data: servers = [] } = useQuery({
     queryKey: ["mikrotik_devices_active"],
