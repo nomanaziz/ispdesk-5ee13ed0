@@ -178,6 +178,8 @@ const ResellerDashboard = () => {
 
   const COLORS = ["hsl(var(--primary))", "#22c55e", "#f59e0b", "#3b82f6", "#a855f7", "#ec4899"];
 
+  if (isMobile) return <PopMobileHome />;
+
   return (
     <div className="space-y-5">
       {/* Welcome */}
