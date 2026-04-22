@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { getPopScope } from "@/lib/popScope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,8 +18,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
-  LifeBuoy, Plus, Search, Send, ShieldCheck, User as UserIcon, MessageSquare,
+  LifeBuoy, Plus, Search, Send, ShieldCheck, User as UserIcon, MessageSquare, Check, ChevronsUpDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -49,17 +52,13 @@ const ResellerTickets = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [activeTicket, setActiveTicket] = useState<any | null>(null);
 
-  // POP-scoped client list (used both for filtering tickets & the create dialog)
+  // POP-scoped client list (portal API — RLS-safe)
   const { data: clients = [] } = useQuery({
-    queryKey: ["pop-clients-min", branchId],
+    queryKey: ["pop-ticket-clients", branchId],
     enabled: !!branchId,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("clients")
-        .select("id, name, client_id, username, contact")
-        .eq("branch_id", branchId!)
-        .order("name");
-      return data || [];
+      const res = await callPortal<{ clients: any[] }>("pop_ticket_clients");
+      return res.clients || [];
     },
   });
 
@@ -240,47 +239,45 @@ const PopCreateTicketDialog = ({
   clients: any[];
   onCreated: () => void;
 }) => {
-  const { customer } = usePortalAuth();
   const [clientId, setClientId] = useState<string | undefined>();
+  const [categoryId, setCategoryId] = useState<string | undefined>();
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("normal");
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["pop-ticket-categories"],
+    enabled: open,
+    queryFn: async () => {
+      const res = await callPortal<{ categories: any[] }>("pop_ticket_categories");
+      return res.categories || [];
+    },
+  });
+
+  const selectedClient = useMemo(
+    () => clients.find((c: any) => c.id === clientId),
+    [clients, clientId],
+  );
 
   const create = useMutation({
     mutationFn: async () => {
       if (!clientId) throw new Error("Please select a client");
       if (!subject.trim()) throw new Error("Subject is required");
-      const ticket_no = `TK${Date.now().toString().slice(-8)}`;
-      const { data, error } = await supabase
-        .from("support_tickets")
-        .insert({
-          ticket_no,
-          subject,
-          description,
-          priority,
-          client_id: clientId,
-          status: "open",
-          source: "pop_admin",
-          created_by: customer?.sub,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      if (data) {
-        await supabase.from("support_ticket_messages").insert({
-          ticket_id: data.id,
-          sender_type: "agent",
-          sender_id: customer?.sub,
-          sender_name: customer?.name || "POP Admin",
-          message: description || subject,
-        });
-      }
+      await callPortal("pop_create_ticket", {
+        client_id: clientId,
+        category_id: categoryId || null,
+        subject,
+        description,
+        priority,
+      });
     },
     onSuccess: () => {
       toast.success("Ticket created");
       onCreated();
       onOpenChange(false);
-      setClientId(undefined); setSubject(""); setDescription(""); setPriority("normal");
+      setClientId(undefined); setCategoryId(undefined);
+      setSubject(""); setDescription(""); setPriority("normal");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -294,32 +291,98 @@ const PopCreateTicketDialog = ({
         <div className="space-y-3">
           <div>
             <Label>Client *</Label>
-            <Select value={clientId} onValueChange={setClientId}>
-              <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name} {c.client_id && `(${c.client_id})`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={clientPickerOpen} onOpenChange={setClientPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between font-normal"
+                >
+                  {selectedClient ? (
+                    <span className="truncate">
+                      {selectedClient.name}
+                      {selectedClient.client_id && (
+                        <span className="text-muted-foreground"> · {selectedClient.client_id}</span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Select client…</span>
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command
+                  filter={(value, search) => {
+                    return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+                  }}
+                >
+                  <CommandInput placeholder="Search by name, ID, contact…" />
+                  <CommandList>
+                    <CommandEmpty>No client found.</CommandEmpty>
+                    <CommandGroup>
+                      {clients.map((c: any) => {
+                        const haystack = `${c.name || ""} ${c.client_id || ""} ${c.username || ""} ${c.contact || ""} ${c.mobile || ""}`;
+                        return (
+                          <CommandItem
+                            key={c.id}
+                            value={haystack}
+                            onSelect={() => {
+                              setClientId(c.id);
+                              setClientPickerOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                clientId === c.id ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span className="text-sm">{c.name}</span>
+                              <span className="text-[11px] text-muted-foreground">
+                                {c.client_id} {c.contact && `· ${c.contact}`}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Category</Label>
+              <Select value={categoryId} onValueChange={setCategoryId}>
+                <SelectTrigger><SelectValue placeholder="Select issue" /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {categories.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Priority</Label>
+              <Select value={priority} onValueChange={setPriority}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div>
             <Label>Subject *</Label>
             <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Briefly describe the issue" />
-          </div>
-          <div>
-            <Label>Priority</Label>
-            <Select value={priority} onValueChange={setPriority}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="normal">Normal</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           <div>
             <Label>Description</Label>
