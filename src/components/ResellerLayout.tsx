@@ -106,9 +106,16 @@ const groups: NavGroup[] = [
   {
     key: "system", label: "সিস্টেম", en: "System", icon: Settings,
     items: [
-      { to: "/pop-admin/settings", label: "কোম্পানি সেটিংস", en: "Company Settings", icon: Settings },
-      { to: "/pop-admin/system/period", label: "পিরিয়ড", en: "Period", icon: Calendar },
-      { to: "/pop-admin/users", label: "ইউজার", en: "Users", icon: Users },
+      { to: "/pop-admin/system/setup", label: "সিস্টেম সেটআপ", en: "System Setup", icon: Cog },
+      { to: "/pop-admin/system/bill-period", label: "বিল পিরিয়ড", en: "Bill Period", icon: Calendar },
+      { to: "/pop-admin/system/period", label: "পিরিয়ড সেটআপ", en: "Period Setup", icon: Calendar },
+      { to: "/pop-admin/settings", label: "কোম্পানি সেটআপ", en: "Company Settings", icon: Settings },
+      { to: "/pop-admin/system/invoice", label: "ইনভয়েস সেটআপ", en: "Invoice Setup", icon: FileText },
+      { to: "/pop-admin/system/email", label: "ইমেইল সেটআপ", en: "Email Setup", icon: MessageSquare },
+      { to: "/pop-admin/system/payment-gateways", label: "পেমেন্ট গেটওয়ে", en: "Payment Gateways", icon: Wallet },
+      { to: "/pop-admin/system/processing-fee", label: "প্রসেসিং ফি", en: "Processing Fee", icon: Wallet },
+      { to: "/pop-admin/system/automatic-process", label: "অটোমেটিক প্রসেস", en: "Automatic Process", icon: Activity },
+      { to: "/pop-admin/system/activity-log", label: "অ্যাক্টিভিটি লগ", en: "Activity Log", icon: History },
     ],
   },
   {
