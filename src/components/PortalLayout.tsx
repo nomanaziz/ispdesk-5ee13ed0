@@ -8,8 +8,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard, FileText, HeadphonesIcon, LogOut, Menu, X,
-  Activity, Bell, Building2, Clapperboard, BookOpen, ChevronDown, Rocket,
-  ShoppingBag, Package, Receipt, Globe, UserCog, Languages, MessageSquare,
+  Activity, Bell, Clapperboard, BookOpen, ChevronDown, Rocket,
+  ShoppingBag, Package, Receipt, Globe, UserCog, Languages, MessageSquare, Send,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -20,7 +20,7 @@ const menuItems = [
   { bn: "আমার প্রোফাইল", en: "My Profile", icon: UserCog, path: "/portal/profile", color: "text-blue-600 dark:text-blue-400" },
   { bn: "লাইভ ব্যবহার", en: "Live Usage", icon: Activity, path: "/portal/live-usage", color: "text-green-600 dark:text-green-400" },
   { bn: "নোটিশ", en: "Notices", icon: Bell, path: "/portal/notices", color: "text-amber-600 dark:text-amber-400" },
-  { bn: "কোম্পানি তথ্য", en: "Company Info", icon: Building2, path: "/portal/company", color: "text-slate-600 dark:text-slate-300" },
+  { bn: "চেঞ্জ/আপডেট", en: "Change/Update", icon: Send, path: "/portal/change-request", color: "text-teal-600 dark:text-teal-400" },
   { bn: "মুভি/FTP সার্ভার", en: "Movie/FTP Servers", icon: Clapperboard, path: "/portal/media", color: "text-purple-600 dark:text-purple-400" },
   { bn: "স্পিড টেস্ট", en: "Speed Test", icon: Rocket, path: "/portal/speed-test", color: "text-rose-600 dark:text-rose-400" },
   { bn: "আমার লেজার", en: "My Ledger", icon: BookOpen, path: "/portal/ledger", color: "text-cyan-600 dark:text-cyan-400" },

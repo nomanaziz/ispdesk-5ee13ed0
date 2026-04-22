@@ -311,6 +311,7 @@ import PortalBills from "@/pages/portal/PortalBills";
 import PortalBillInvoice from "@/pages/portal/PortalBillInvoice";
 import PortalProfile from "@/pages/portal/PortalProfile";
 import PortalMessages from "@/pages/portal/PortalMessages";
+import PortalChangeRequest from "@/pages/portal/PortalChangeRequest";
 import UserUpdateRequests from "@/pages/dashboard/clients/UserUpdateRequests";
 
 // Reseller (POP Admin) Portal
@@ -688,6 +689,7 @@ const App = () => (
               <Route path="/portal/my-orders" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalMyOrders /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/profile" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalProfile /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/messages" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalMessages /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/change-request" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalChangeRequest /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
 
               {/* POP Admin Portal */}
               <Route path="/pop-admin" element={<Navigate to="/pop-admin/dashboard" replace />} />
