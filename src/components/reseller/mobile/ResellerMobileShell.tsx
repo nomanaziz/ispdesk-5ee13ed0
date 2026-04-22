@@ -1,6 +1,12 @@
 import { ReactNode, useState } from "react";
-import { Menu, Bell, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Menu, Bell, Plus, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
@@ -14,23 +20,84 @@ interface Props {
 }
 
 export function ResellerMobileShell({ children, onOpenSidebar }: Props) {
-  const { customer } = usePortalAuth();
-  const { lang, setLang } = useLanguage();
+  const { customer, logout } = usePortalAuth();
+  const { lang, setLang, t } = useLanguage();
+  const navigate = useNavigate();
   const [quickOpen, setQuickOpen] = useState(false);
+
+  const popType = (customer as any)?.pop_type as string | undefined;
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Mobile header */}
       <header className="sticky top-0 z-30 h-[62px] bg-primary text-primary-foreground px-3 flex items-center gap-2 shadow-sm">
-        <div className="h-9 w-9 rounded-full bg-primary-foreground/15 flex items-center justify-center font-bold text-sm shrink-0">
-          {customer?.name?.[0]?.toUpperCase() || "P"}
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="h-9 w-9 rounded-full bg-primary-foreground/15 flex items-center justify-center font-bold text-sm shrink-0 active:scale-95 transition-transform"
+              aria-label="User menu"
+            >
+              {customer?.name?.[0]?.toUpperCase() || "P"}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-60">
+            <DropdownMenuLabel className="flex flex-col gap-1">
+              <span className="font-semibold leading-tight">{customer?.name}</span>
+              <span className="text-xs font-normal text-muted-foreground leading-tight">
+                {customer?.username}
+              </span>
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                <Badge variant="outline" className="text-[10px]">{customer?.code}</Badge>
+                {popType && (
+                  <Badge
+                    className={cn(
+                      "uppercase text-[10px] tracking-wide font-bold border",
+                      popType.toLowerCase() === "prepaid"
+                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                        : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+                    )}
+                  >
+                    {popType}
+                  </Badge>
+                )}
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate("/pop-admin/settings")}>
+              <Settings className="h-4 w-4 mr-2" />
+              {t("সেটিংস", "Settings")}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="text-destructive focus:text-destructive"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              {t("লগআউট", "Logout")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold truncate leading-tight">
             {customer?.name || "POP Admin"}
           </div>
-          <div className="text-[10px] uppercase tracking-wide text-primary-foreground/80 leading-tight">
-            {customer?.code || "POP"} · {customer?.type === "reseller_sub" ? "Sub-user" : "Reseller"}
+          <div className="text-[10px] uppercase tracking-wide text-primary-foreground/80 leading-tight flex items-center gap-1">
+            <span>{customer?.code || "POP"}</span>
+            <span>·</span>
+            <span>{customer?.type === "reseller_sub" ? "Sub-user" : "Reseller"}</span>
+            {popType && (
+              <>
+                <span>·</span>
+                <span className="font-bold">{popType}</span>
+              </>
+            )}
           </div>
         </div>
 
