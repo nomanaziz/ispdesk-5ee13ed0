@@ -1,11 +1,12 @@
 import { ReactNode, useState } from "react";
-import { Menu, Bell, Search, Plus } from "lucide-react";
+import { Menu, Bell, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { MobileBottomTabs } from "./MobileBottomTabs";
 import { QuickCreateClientDialog } from "@/components/QuickCreateClientDialog";
+import { NotesButton } from "@/components/notes/NotesButton";
 
 interface Props {
   children: ReactNode;
@@ -65,6 +66,9 @@ export function ResellerMobileShell({ children, onOpenSidebar }: Props) {
           </button>
         </div>
 
+        <div className="text-primary-foreground">
+          <NotesButton ownerType="pop" />
+        </div>
         <Button
           variant="ghost"
           size="icon"
