@@ -16,6 +16,7 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { KeyRound } from "lucide-react";
+import NotificationBell from "@/components/portal/NotificationBell";
 
 const menuItems = [
   { bn: "ড্যাশবোর্ড", en: "Dashboard", icon: LayoutDashboard, path: "/portal/dashboard", color: "text-indigo-600 dark:text-indigo-400" },
@@ -157,6 +158,8 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
                 <span className="hidden sm:inline text-xs">{t("ওয়েবসাইট", "Website")}</span>
               </Button>
             </Link>
+
+            <NotificationBell />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
