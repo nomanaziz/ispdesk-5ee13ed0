@@ -136,7 +136,8 @@ export default function ResellerMikrotikBulkCreate() {
         }),
       );
       toast.success(`${picked.length} জন ক্লায়েন্ট তৈরি হয়েছে`);
-      qc.invalidateQueries({ queryKey: ["reseller_mt_users"] });
+      qc.invalidateQueries({ queryKey: ["pop_mt_users"] });
+      qc.invalidateQueries({ queryKey: ["pop_mt_bulk_candidates"] });
       refetch();
     } catch (e: any) {
       toast.error("তৈরি ব্যর্থ: " + (e.message || "অজানা"));
