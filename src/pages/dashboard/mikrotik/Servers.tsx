@@ -27,6 +27,8 @@ interface MikrotikDevice {
   enabled: boolean;
   order_no: number | null;
   created_at: string;
+  branch_id?: string | null;
+  assigned_to_pop_id?: string | null;
 }
 
 const defaultForm = {
