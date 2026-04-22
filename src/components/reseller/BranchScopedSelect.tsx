@@ -9,10 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 
 interface Props {
-  table: "departments" | "designations";
+  /** Source table — `positions` is used for designations (matches employees.position_id FK) */
+  table: "departments" | "positions";
   branchId: string | undefined;
-  value: string;
-  onChange: (name: string) => void;
+  /** Selected row id (uuid) */
+  value: string | null | undefined;
+  /** Returns id (uuid) of selected row */
+  onChange: (id: string) => void;
   placeholder?: string;
 }
 
@@ -27,11 +30,11 @@ export default function BranchScopedSelect({ table, branchId, value, onChange, p
     queryFn: async () => {
       const { data, error } = await supabase
         .from(table)
-        .select("name")
+        .select("id, name")
         .eq("branch_id", branchId!)
         .order("name");
       if (error) throw error;
-      return (data || []).map((d: any) => d.name as string);
+      return (data || []) as Array<{ id: string; name: string }>;
     },
   });
 
@@ -39,13 +42,17 @@ export default function BranchScopedSelect({ table, branchId, value, onChange, p
     mutationFn: async () => {
       if (!newName.trim()) throw new Error("Name আবশ্যক");
       if (!branchId) throw new Error("Branch নেই");
-      const { error } = await supabase.from(table).insert({ name: newName.trim(), branch_id: branchId, status: "active" } as any);
+      const { data, error } = await supabase
+        .from(table)
+        .insert({ name: newName.trim(), branch_id: branchId, status: "active" } as any)
+        .select("id")
+        .single();
       if (error) throw error;
-      return newName.trim();
+      return data.id as string;
     },
-    onSuccess: (name) => {
+    onSuccess: (id) => {
       qc.invalidateQueries({ queryKey: [`pop-${table}-list`, branchId] });
-      onChange(name);
+      onChange(id);
       toast.success("যোগ হয়েছে");
       setOpen(false);
       setNewName("");
@@ -60,7 +67,7 @@ export default function BranchScopedSelect({ table, branchId, value, onChange, p
           <SelectTrigger><SelectValue placeholder={placeholder || "Select"} /></SelectTrigger>
           <SelectContent>
             {items.length === 0 && <div className="px-3 py-2 text-xs text-muted-foreground">No items — Add one below</div>}
-            {items.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+            {items.map((it) => <SelectItem key={it.id} value={it.id}>{it.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Button type="button" variant="outline" size="icon" onClick={() => setOpen(true)} title="Add new">

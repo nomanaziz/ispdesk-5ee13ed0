@@ -1278,11 +1278,18 @@ Deno.serve(async (req) => {
           employee_id,
           branch_id: pop.branch_id,
         };
+        // Strip stale/non-existent column keys (legacy text fields no longer in schema)
+        delete empRow.department;
+        delete empRow.designation;
         // Strip sub-user-only fields before insert
         const hasAccess = !!p.has_user_access;
         const subUsername = p.user_username;
         const subPassword = p.user_password;
         const subPermissions = p.user_permissions || {};
+        delete empRow.has_user_access;
+        delete empRow.user_username;
+        delete empRow.user_password;
+        delete empRow.user_permissions;
 
         const { data: emp, error: empErr } = await sb
           .from("employees")

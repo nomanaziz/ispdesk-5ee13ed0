@@ -60,8 +60,8 @@ export default function PopEditEmployee() {
         address: form.address || null,
         salary: form.salary ? Number(form.salary) : null,
         status: form.status || "active",
-        designation: form.designation || null,
-        department: form.department || null,
+        position_id: form.position_id || null,
+        department_id: form.department_id || null,
         division_id: form.division_id || null,
         district_id: form.district_id || null,
         upazila_id: form.upazila_id || null,
@@ -112,8 +112,8 @@ export default function PopEditEmployee() {
             <div className="space-y-1.5"><Label>Name *</Label><Input value={form.name || ""} onChange={set("name")} required /></div>
             <div className="space-y-1.5"><Label>Email</Label><Input value={form.email || ""} onChange={set("email")} /></div>
             <div className="space-y-1.5"><Label>Phone</Label><Input value={form.phone || ""} onChange={set("phone")} /></div>
-            <div className="space-y-1.5"><Label>Designation</Label><BranchScopedSelect table="designations" branchId={branchId} value={form.designation || ""} onChange={(v) => setForm({ ...form, designation: v })} /></div>
-            <div className="space-y-1.5"><Label>Department</Label><BranchScopedSelect table="departments" branchId={branchId} value={form.department || ""} onChange={(v) => setForm({ ...form, department: v })} /></div>
+            <div className="space-y-1.5"><Label>Designation</Label><BranchScopedSelect table="positions" branchId={branchId} value={form.position_id || ""} onChange={(v) => setForm({ ...form, position_id: v })} /></div>
+            <div className="space-y-1.5"><Label>Department</Label><BranchScopedSelect table="departments" branchId={branchId} value={form.department_id || ""} onChange={(v) => setForm({ ...form, department_id: v })} /></div>
             <div className="space-y-1.5"><Label>Salary</Label><Input type="number" value={form.salary || ""} onChange={set("salary")} /></div>
             <DivisionDistrictUpazilaSelect
               divisionId={form.division_id}
