@@ -1,86 +1,91 @@
 
 
 ## লক্ষ্য
-গ্রাহক পোর্টালের **My Profile** page-কে reference image-এর মতো clean **tabbed interface**-এ রূপান্তর করা, এবং logout button duplication সরিয়ে design consistency আনা।
-
----
-
-## সমস্যা (এখন কী আছে)
-1. **দুই জায়গায় Logout** — sidebar-এর Account section-এ + top-bar dropdown-এ। Duplicate, confusing।
-2. **Profile page অগোছালো** — সব field (contact, address, name, NID, photo, nid front/back) একসাথে long form। Reference image-এ tab দিয়ে ভাগ করা।
-3. **Design inconsistency** — Public website (bn/en toggle, layout) এর সাথে portal-এর look আলাদা মনে হচ্ছে।
+গ্রাহক পোর্টালের **top-bar**-এ একটা **Notification Bell icon** যোগ করা — click করলে reference image-এর মতো একটা dropdown খুলবে যেখানে News & Events এবং Notices tab-এ recent items দেখাবে। Unread count badge সহ।
 
 ---
 
 ## সমাধান
 
-### 1. Logout duplication দূর করা
-**File: `src/components/PortalLayout.tsx`**
-- Sidebar-এর "Account" section এবং "Logout" button **সরিয়ে দেব**।
-- শুধু **top-bar avatar dropdown**-এ logout থাকবে (reference image-এর মতো)।
-- Dropdown-এ আরও add হবে: profile name + running package (small caption) + "My Profile" link + "Change Password" link + Logout (red)।
+### 1. Top-bar-এ Notification Bell
+**File: `src/components/PortalLayout.tsx`** — top-bar-এ avatar dropdown-এর বামে নতুন bell button:
+- Bell icon (lucide `Bell`)
+- উপরে red dot/count badge — যদি unread items থাকে
+- Click → Popover/DropdownMenu খুলবে (width ~360px)
 
-### 2. Profile page-কে tabbed করা
-**File: `src/pages/portal/PortalProfile.tsx`** — পুরো restructure (existing logic preserve)
+### 2. Notification Popover content (reference image অনুযায়ী)
+নতুন component **`src/components/portal/NotificationBell.tsx`** *(new)*:
 
-**Layout (reference image অনুযায়ী):**
-- **Header card**: paper icon + "Profile" + helper text।
-- **Two-column grid (lg)**:
-  - **Left (1/3)**: Avatar card with gradient header → name → Client Code, Login ID, User ID/IP, Status, Registration Date। নিচে "Discontinue Request" button (existing change-request flow-এ নিয়ে যাবে)।
-  - **Right (2/3)**: Tab interface
+**Header (gradient violet):**
+- "Notifications" title
+- Subtext: "You have **N** unread news, events and notices"
 
-**Tabs (5টা):**
-| Tab | Content |
-|---|---|
-| **Personal Information** | Name, Phone, Email, DOB, Occupation, Father/Mother name, District, Upazila, NID, Gender, Road, House, Present/Permanent address → "Update Personal Info" green button (existing `update_profile` + `submit_doc_update` mix) |
-| **Change Password** | Current password, New password, Confirm — needs new edge function action `change_password` |
-| **Update Profile Picture** | Single photo uploader (existing logic) — submits to admin approval |
-| **Change Mobile Number** | New number input + reason → `submit_doc_update` (admin approval) |
-| **Status Request History** | Existing requests table (already in current page) |
+**Two pill-tabs:**
+- **News & Events** (default active) — `client_news_events` থেকে
+- **Notices** — `client_notices` থেকে
 
-### 3. Design consistency with public website
-- Public website-এর header pattern (compact, clean) follow করব।
-- Portal top-bar-এ একই language toggle style (already আছে — শুধু polish)।
-- Sidebar item spacing/typography public site-এর মতো রাখব (already close)।
-- Color palette unchanged — existing colorful tints (per memory)।
+**List body (max-h-80, scroll):**
+- প্রতি item: colored dot (random palette per index — emerald/amber/violet/sky/rose) + title + small meta (event date / "NEW" badge if created within 24h)
+- Click → respective full page-এ নিয়ে যাবে (`/portal/notices`)
+- Empty state: "কোনো নতুন কিছু নেই"
 
-### 4. Backend — নতুন action
-**File: `supabase/functions/portal-data/index.ts`**
-- `change_password` action: payload `{current, new}` → bcrypt verify → bcrypt hash → update `clients.portal_password` (or wherever stored)। Existing portal-auth pattern follow।
+**Footer:**
+- "View All" link → `/portal/notices`
+
+### 3. Unread tracking (lightweight, localStorage-based)
+- `localStorage.portal_notif_last_seen` = ISO timestamp
+- Unread count = items with `created_at > last_seen`
+- Bell click হলে last_seen update হবে → badge শূন্য
+- কোনো DB schema change লাগবে না
+
+### 4. Data source
+Existing `get_notices` action **already returns both** `notices` ও `news`। Re-use করব:
+```ts
+const { data } = useQuery({
+  queryKey: ["portal-notif"],
+  queryFn: () => callPortal("get_notices"),
+  refetchInterval: 60_000, // 1-min poll
+});
+```
+
+### 5. Mobile behavior
+- Bell সবসময় visible (mobile + desktop)
+- Popover mobile-এ full-width-ish (max-w-[92vw])
 
 ---
 
 ## Technical Details
 
-### Files modified
-1. `src/components/PortalLayout.tsx` — sidebar logout সরানো, top dropdown enrich
-2. `src/pages/portal/PortalProfile.tsx` — full restructure to tabbed layout (Tabs primitive আছে)
-3. `supabase/functions/portal-data/index.ts` — `change_password` action যোগ
+### Files
+| File | Type |
+|---|---|
+| `src/components/portal/NotificationBell.tsx` | **new** — bell + popover UI |
+| `src/components/PortalLayout.tsx` | modify — top-bar-এ `<NotificationBell />` যোগ (avatar-এর বামে) |
 
-### Reused
-- Existing `update_profile` action (instant fields)
-- Existing `submit_doc_update` action (admin-approval fields)
-- Existing `upload_document` action (file uploads)
-- `change_requests` table-এর existing history query
+### UI primitives
+- `Popover` (already in ui/popover.tsx) — better than DropdownMenu for rich content
+- `Tabs` with pill style (or simple two-button toggle)
+- Existing colorful dot palette (per memory: colorful tints, dark text)
 
-### Validation
-- Password: min 6 char, new ≠ current, confirm match
-- Mobile: 11-digit BD format
-- Existing field rules unchanged
+### No backend change
+- `get_notices` action আগেই আছে
+- কোনো নতুন edge function action দরকার নেই
+- কোনো DB migration নেই
 
 ---
 
 ## Out of scope
-- Public website redesign
-- New languages
-- Profile activity log (last login etc. stays as small card on left)
-- 2FA / OTP
+- Real-time push notification (Supabase Realtime)
+- Per-user read/unread persistence in DB (localStorage যথেষ্ট এই scope-এ)
+- Bills/Tickets-এর notification এই bell-এ আনা (শুধু news+notices)
 
 ---
 
 ## Apply-এর পরে expected
-1. শুধু একটাই logout — top-right dropdown-এ। Sidebar পরিচ্ছন্ন।
-2. My Profile page tabbed — Personal Info / Change Password / Update Picture / Change Mobile / Request History।
-3. Left side compact info card (avatar + client meta + Discontinue button)।
-4. Top dropdown-এ name + package + quick links — reference image-এর mini-panel concept।
+1. Portal top-bar-এ avatar-এর পাশে bell icon — unread item থাকলে red badge সহ count
+2. Click করলে violet gradient header সহ popover খুলবে
+3. ভেতরে News & Events / Notices — দুই tab
+4. প্রতি item-এ colored dot + title + meta (date / NEW)
+5. "View All" link → পুরো `/portal/notices` page
+6. Bell click হলে badge clear হয়ে যায় (localStorage-এ last_seen save)
 
