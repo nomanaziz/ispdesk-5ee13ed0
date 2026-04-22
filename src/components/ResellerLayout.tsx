@@ -56,8 +56,6 @@ const groups: NavGroup[] = [
       { to: "/pop-admin/employees/add", label: "কর্মচারী যোগ", en: "Add Employee", icon: UserPlus },
       { to: "/pop-admin/employees", label: "কর্মচারী তালিকা", en: "Employee List", icon: Users },
       { to: "/pop-admin/employees/salary-sheet", label: "বেতন শীট", en: "Salary Sheet", icon: FileText },
-      { to: "/pop-admin/employees/payroll", label: "পে-রোল", en: "Payroll", icon: Wallet },
-      { to: "/pop-admin/employees/attendance", label: "উপস্থিতি", en: "Attendance", icon: Calendar },
     ],
   },
   {

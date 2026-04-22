@@ -355,6 +355,7 @@ import PopIncome from "@/pages/reseller/accounting/PopIncome";
 import PopExpense from "@/pages/reseller/accounting/PopExpense";
 import PopCashBook from "@/pages/reseller/accounting/PopCashBook";
 import PopEditEmployee from "@/pages/reseller/employee/PopEditEmployee";
+import PopSalarySheet from "@/pages/reseller/employee/PopSalarySheet";
 
 // Redirect helper: any /reseller/<rest> → /pop-admin/<rest>
 const LegacyResellerRedirect = () => {
@@ -734,9 +735,7 @@ const App = () => (
               {/* POP Admin — Employee */}
               <Route path="/pop-admin/employees" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopEmployees /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/employees/add" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopAddEmployee /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/employees/salary-sheet" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Salary Sheet" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/employees/payroll" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Payroll" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/employees/attendance" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Attendance" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/employees/salary-sheet" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSalarySheet /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
 
               {/* POP Admin — Client (reuses Admin pages, auto-scoped via usePopScope) */}
               <Route path="/pop-admin/clients" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><ClientList /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
