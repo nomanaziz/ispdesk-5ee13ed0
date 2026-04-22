@@ -50,15 +50,30 @@ export default function Import() {
     },
   });
 
+  // Cross-server username map: lowercase username -> Set of distinct mikrotik_id
+  const { data: crossServerMap = new Map<string, Set<string>>() } = useQuery({
+    queryKey: ["mikrotik_username_server_map"],
+    queryFn: async () => {
+      const { data } = await supabase.from("mikrotik_clients").select("name, mikrotik_id");
+      const m = new Map<string, Set<string>>();
+      (data || []).forEach((r: any) => {
+        const key = r.name?.toLowerCase();
+        if (!key || !r.mikrotik_id) return;
+        if (!m.has(key)) m.set(key, new Set());
+        m.get(key)!.add(r.mikrotik_id);
+      });
+      return m;
+    },
+  });
+
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ["mikrotik_clients", selectedServer, protocolFilter, profileFilter, userTypeFilter, transferStatus],
+    queryKey: ["mikrotik_clients", selectedServer, protocolFilter, profileFilter, transferStatus],
     queryFn: async () => {
       let q = supabase
         .from("mikrotik_clients")
         .select("*, mikrotik_devices:mikrotik_devices!mikrotik_clients_mikrotik_id_fkey(name), transferred_pop:branch_managers!mikrotik_clients_transferred_to_pop_id_fkey(name, pop_code), transferred_mt:mikrotik_devices!mikrotik_clients_transferred_to_mikrotik_id_fkey(name)")
         .order("created_at", { ascending: false });
       if (transferStatus === "pending") {
-        // Pending = not transferred to any POP, not converted, not exported
         q = q.is("transferred_to_pop_id", null).is("linked_client_id", null).or("exported.is.null,exported.eq.false");
       } else {
         q = q.not("transferred_to_pop_id", "is", null);
@@ -66,7 +81,6 @@ export default function Import() {
       if (selectedServer !== "all") q = q.eq("mikrotik_id", selectedServer);
       if (protocolFilter !== "all") q = q.eq("service", protocolFilter);
       if (profileFilter !== "all") q = q.eq("profile", profileFilter);
-      if (userTypeFilter !== "all") q = q.eq("user_status", userTypeFilter);
       const { data, error } = await q;
       if (error) throw error;
       return data;
@@ -192,8 +206,22 @@ export default function Import() {
   };
 
   const existingSet = new Set(existingUsernames);
+  const getServerCount = (name?: string) => {
+    if (!name) return 0;
+    return crossServerMap.get(name.toLowerCase())?.size || 0;
+  };
   const filtered = clients
     .filter((c: any) => transferStatus === "transferred" || !existingSet.has(c.name?.toLowerCase()))
+    .filter((c: any) => {
+      if (userTypeFilter === "all") return true;
+      const count = getServerCount(c.name);
+      if (userTypeFilter === "unique") return count === 1;
+      if (userTypeFilter === "duplicate") return count >= 2;
+      if (userTypeFilter === "unlisted") {
+        return !existingSet.has(c.name?.toLowerCase()) && !c.transferred_to_pop_id && !c.linked_client_id;
+      }
+      return true;
+    })
     .filter((c: any) =>
       [c.name, c.caller_id, c.server_name].some((v) => v?.toLowerCase().includes(search.toLowerCase()))
     );
@@ -241,12 +269,12 @@ export default function Import() {
               </SelectContent>
             </Select>
             <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
-              <SelectTrigger className="w-[140px]"><SelectValue placeholder="ইউজার টাইপ" /></SelectTrigger>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="ইউজার টাইপ" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">সকল</SelectItem>
-                <SelectItem value="unique">Unique</SelectItem>
-                <SelectItem value="duplicate">Duplicate</SelectItem>
-                <SelectItem value="disabled">Disabled</SelectItem>
+                <SelectItem value="all">সকল ইউজার</SelectItem>
+                <SelectItem value="unique">Unique (1 server)</SelectItem>
+                <SelectItem value="duplicate">Duplicate (multi-server)</SelectItem>
+                <SelectItem value="unlisted">Unlisted (no POP/Client)</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={clearFilters}><XCircle className="h-4 w-4 mr-1" /> ক্লিয়ার</Button>
@@ -317,7 +345,16 @@ export default function Import() {
                         }}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span>{c.name}</span>
+                        {getServerCount(c.name) >= 2 && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0">
+                            {getServerCount(c.name)} servers
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <span className="font-mono text-xs">{showPasswords[c.id] ? c.password : "••••"}</span>
