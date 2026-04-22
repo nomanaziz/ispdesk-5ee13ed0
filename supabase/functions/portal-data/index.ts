@@ -1961,6 +1961,134 @@ Deno.serve(async (req) => {
         return json({ ok: true, ticket });
       }
 
+      // ===== SMS Templates: master + per-branch override (POP scope) =====
+      case "pop_list_templates": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("branch_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+        const branchId = pop?.branch_id || null;
+
+        const { data: masters, error: mErr } = await sb
+          .from("sms_template_master")
+          .select("*")
+          .order("category", { ascending: true })
+          .order("name", { ascending: true });
+        if (mErr) return json({ error: mErr.message }, 500);
+
+        let overrides: any[] = [];
+        if (branchId) {
+          const { data: ovs, error: oErr } = await sb
+            .from("sms_template_overrides")
+            .select("*")
+            .eq("branch_id", branchId);
+          if (oErr) return json({ error: oErr.message }, 500);
+          overrides = ovs || [];
+        }
+        const ovByMaster = new Map(overrides.map((o) => [o.master_id, o]));
+        const merged = (masters || []).map((m: any) => {
+          const o = ovByMaster.get(m.id);
+          return {
+            master_id: m.id,
+            template_key: m.template_key,
+            name: o?.name ?? m.name,
+            content: o?.content ?? m.content,
+            template_type: m.template_type,
+            category: m.category,
+            variables: m.variables,
+            is_protected: m.is_protected,
+            is_active: o?.is_active ?? m.is_active,
+            branch_id: branchId,
+            is_overridden: !!o,
+            override_id: o?.id || null,
+          };
+        });
+        return json({ templates: merged });
+      }
+
+      case "pop_save_template_override": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("branch_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+
+        const masterId = String(payload.master_id || "");
+        if (!masterId) return json({ error: "master_id required" }, 400);
+
+        const { data: master } = await sb
+          .from("sms_template_master")
+          .select("id")
+          .eq("id", masterId)
+          .maybeSingle();
+        if (!master) return json({ error: "Master template not found" }, 404);
+
+        const row = {
+          master_id: masterId,
+          branch_id: pop.branch_id,
+          name: payload.name ?? null,
+          content: payload.content ?? null,
+          is_active: typeof payload.is_active === "boolean" ? payload.is_active : null,
+        };
+
+        // Check existing override for this branch
+        const { data: existing } = await sb
+          .from("sms_template_overrides")
+          .select("id")
+          .eq("master_id", masterId)
+          .eq("branch_id", pop.branch_id)
+          .maybeSingle();
+
+        if (existing) {
+          const { error } = await sb
+            .from("sms_template_overrides")
+            .update(row)
+            .eq("id", existing.id);
+          if (error) return json({ error: error.message }, 500);
+        } else {
+          const { error } = await sb.from("sms_template_overrides").insert(row);
+          if (error) return json({ error: error.message }, 500);
+        }
+        return json({ ok: true });
+      }
+
+      case "pop_reset_template": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const resellerId =
+          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data: pop } = await sb
+          .from("branch_managers")
+          .select("branch_id")
+          .eq("id", resellerId)
+          .maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+
+        const masterId = String(payload.master_id || "");
+        if (!masterId) return json({ error: "master_id required" }, 400);
+
+        const { error } = await sb
+          .from("sms_template_overrides")
+          .delete()
+          .eq("master_id", masterId)
+          .eq("branch_id", pop.branch_id);
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true });
+      }
+
       default:
         return json({ error: "Unknown action" }, 400);
     }
