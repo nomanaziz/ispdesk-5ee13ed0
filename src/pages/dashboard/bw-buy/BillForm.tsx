@@ -165,6 +165,24 @@ export default function BillForm() {
     }
   }, [isEdit, form.bill_no]);
 
+  // Default untouched lines to the selected billing month's full range (1st → last day)
+  useEffect(() => {
+    if (isEdit || !form.billing_month) return;
+    const range = getMonthRange(form.billing_month);
+    setLines((prev) =>
+      prev.map((l) => {
+        if (l.service_name || Number(l.amount) > 0) return l;
+        return {
+          ...l,
+          period_start: range.period_start,
+          period_end: range.period_end,
+          days: range.total_days,
+          total_days_in_month: range.total_days,
+        };
+      }),
+    );
+  }, [form.billing_month, isEdit]);
+
   const updateLine = (index: number, field: keyof LineItem, value: any) => {
     const updated = [...lines];
     (updated[index] as any)[field] = value;
