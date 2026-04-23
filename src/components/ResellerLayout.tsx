@@ -10,6 +10,7 @@ import {
   Cog, MapPin, Box, Package, Layers, Briefcase, BadgeCheck, Cpu,
   UserPlus, Wallet, BarChart3, FileText, Calendar,
   MessageSquare, Send, Antenna, Radar, Wifi, History, TrendingUp, BookOpen, Plus, FileSpreadsheet,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
