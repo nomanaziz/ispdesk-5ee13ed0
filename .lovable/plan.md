@@ -1,104 +1,100 @@
 
 
-## পার্চেজ বিল — Duplicate, Item Dropdown ও Manual VAT
+## Searchable Dropdown — সব জায়গায় search box
 
-### লক্ষ্য
-1. প্রতি মাসের bill renew করার জন্য **"Duplicate"** option
-2. Manual line item-এর "Service" field-এ **`bw_items` থেকে dropdown** (free-text-এর বদলে)
-3. Manual line item-এও **VAT% column** — subscription ছাড়াই VAT সহ বিল করা যাবে
+### সমস্যা
+সারা ERP-তে ১৭৩+ ফাইলে `Select` dropdown ব্যবহার হয়। অনেক জায়গায় (item, vendor, customer, package, employee, zone) ৫+ option থাকে — scroll করতে কষ্ট। যেমন Requisition page-এ "আইটেম" dropdown-এ শতাধিক item।
 
-### ১. Bill Duplicate
+### সমাধান (এক ধাপে, পুরো codebase-এ)
 
-**`Bills.tsx` (List page) — Action column-এ নতুন button:**
-- 📋 **Copy icon** → click করলে confirm dialog
-- Confirm করলে: সেই bill-এর সব data (provider, lines, VAT, discount ইত্যাদি) copy করে নতুন bill তৈরি হবে নিচের পরিবর্তন সহ:
-  - নতুন `bill_no` auto-generate (`BW-YYYYMM-XXXX`)
-  - `billing_month` → পরের মাস
-  - `period_start` / `period_end` → পরের মাসের range
-  - প্রতিটা line item-এর `period_start`, `period_end`, `days`, `total_days_in_month` → পরের মাসের অনুযায়ী recompute
-  - `paid = 0`, `status = unpaid`, `invoice_no = null`, `attachment_url = null`
-- সফল হলে নতুন bill-এর edit page-এ redirect (`/dashboard/bw-buy/bills/{newId}`) — user চেক করে save করতে পারবে
+#### ১. নতুন reusable component: `SearchableSelect`
+ফাইল: `src/components/ui/searchable-select.tsx`
 
-**Optional**: List view-এ Duplicate-এর পাশে dropdown — "Next month" / "Same month" যেন user চাইলে একই মাসে copy করতে পারে।
+বৈশিষ্ট্য:
+- **Drop-in replacement** — existing `<Select value onValueChange>` API-এর সাথে compatible, যাতে minimal change লাগে
+- ভিতরে `Popover` + `Command` (ইতিমধ্যে available) ব্যবহার করে search সহ list
+- **Auto-search threshold**: `searchThreshold` prop (default = **5**)। ৫ বা তার কম option হলে search box দেখাবে না — সাধারণ list থাকবে। ৫-এর বেশি হলে উপরে search input বসবে।
+- Bangla + English উভয় text-এ search কাজ করবে (case-insensitive, accent-insensitive)
+- `placeholder`, `disabled`, `className`, `emptyText` ("কোনো ফলাফল নেই") props
+- Items দুইভাবে accept করবে:
+  1. **Array prop**: `options={[{value, label, hint?}]}` — সবচেয়ে সহজ, একটাই tag লাগে
+  2. **Children API**: existing `<SelectItem>`-এর মতো (legacy compatibility-র জন্য)
+- Keyboard navigation (↑↓ Enter Esc) — Command primitive-এ built-in
+- Mobile-friendly: viewport ছোট হলে full-width popover
 
-### ২. Item Dropdown in Manual Line
-
-**`BillForm.tsx` পরিবর্তন:**
-
-বর্তমানে `service_name` একটা free-text Input। এটা পাল্টে **Combobox** (search সহ dropdown) বানানো হবে:
-- `bw_items` table থেকে সব active items load (filtered by selected provider যদি থাকে, না থাকলে সব)
-- User item select করলে auto-fill:
-  - `service_name` = item.name
-  - `rate` = item.price (যদি থাকে)
-  - `bandwidth_mbps` = item.bandwidth থেকে parse (যেমন "100 Mbps" → 100)
-  - `service_id` = item.id
-- "Custom" option — user চাইলে dropdown-এর বদলে নিজে টাইপ করতে পারবে (current behavior preserved)
-
-**LineItem interface-এ** `service_id` already আছে — শুধু dropdown UI বসাতে হবে।
-
-### ৩. Manual Line-এ VAT Column
-
-পূর্বের approved VAT migration plan এখনো execute হয়নি (database column add করা হয়নি)। এই plan-এ সেটাও include করছি:
-
-**Migration:**
-- `bw_buy_bill_items.vat_pct numeric DEFAULT 5`
-- `bw_buy_bill_items.vat_amount numeric DEFAULT 0`
-- `bw_purchase_bills.subtotal numeric DEFAULT 0`
-- `bw_purchase_bills.vat_total numeric DEFAULT 0`
-- `bw_providers.default_vat_pct numeric DEFAULT 5`
-- `bw_buy_provider_subscriptions.vat_pct numeric DEFAULT 5`
-- `bw_items.default_vat_pct numeric DEFAULT 5` (নতুন — item-level VAT default)
-
-**`BillForm.tsx` table-এ নতুন column:**
-- "VAT%" — editable number input, default 5
-- Item dropdown থেকে select করলে item.default_vat_pct থেকে auto-fill
-- Subscription auto-generate করলে subscription.vat_pct থেকে auto-fill
-- Manual entry-তে user চাইলে edit করতে পারবে
-
-**`recompute()` update:**
-```ts
-const base = (mbps × rate × days) / total_days_in_month
-const vat = base × vat_pct / 100
-amount = base + vat   // total = base + VAT
-vat_amount = vat       // saved separately
+ব্যবহার:
+```tsx
+<SearchableSelect
+  value={form.item_id}
+  onValueChange={(v) => setForm(p => ({...p, item_id: v}))}
+  options={items.map(i => ({ value: i.id, label: i.name }))}
+  placeholder="আইটেম নির্বাচন করুন"
+/>
 ```
 
-**Footer breakdown** (table-এ):
-```
-Subtotal:      ৳ XX,XXX
-VAT:           ৳ X,XXX
-Discount:    − ৳ XXX
-─────────────────────
-Grand Total:   ৳ XX,XXX
-```
+#### ২. Codebase migration strategy
 
-### ৪. Items.tsx পরিবর্তন (ছোট)
-- Add/Edit dialog-এ "ডিফল্ট VAT %" field (default 5) — যাতে item বানানোর সময়ই VAT সেট করা যায়
+**Approach: Targeted swap, না global blanket replace**
+- শুধু সেই Select-গুলো replace হবে যেখানে options dynamic + likely 5+ (database থেকে আসা list)
+- Static enums (status: pending/approved/rejected, payment method: cash/bkash) **অপরিবর্তিত** থাকবে — ওগুলোতে search দরকার নেই
+- চিহ্নিত pattern: `{xxx.map((x) => <SelectItem ...>)}` যেখানে xxx একটা DB query result
 
-### ৫. Files affected
-- **Migration** (new): VAT columns + item VAT default
-- `src/pages/dashboard/bw-buy/Bills.tsx` — Duplicate button + duplicate handler
-- `src/pages/dashboard/bw-buy/BillForm.tsx` — Item dropdown (Combobox), VAT column, totals breakdown, save logic update
-- `src/pages/dashboard/bw-buy/Items.tsx` — VAT% field
-- `src/lib/bwBuyProrate.ts` — segment-এ vat_pct propagate
-- `src/integrations/supabase/types.ts` — auto-update post migration
+**Sweep order (priority modules):**
+
+1. **Purchase / Inventory** (most affected — user-reported)
+   - Requisitions, Purchase Bills, Purchase Orders, Items, Vendors, Goods Receipts, Stock movements
+2. **Billing / Customers**
+   - BillEditDialog, Customer forms, Package selection, Invoice creation
+3. **BW Buy** (recently built)
+   - BillForm (provider, item, subscription dropdowns), Subscriptions, Items
+4. **HR**
+   - Employee forms (position, department, branch, designation), Attendance, Leave, Salary
+5. **Network / OLT**
+   - ONU assignment, OLT picker, Zone/SubZone/Box pickers, Customer↔ONU mapping
+6. **Config pages** (ConfigCrudPage)
+   - `ConfigCrudPage`-এর `type: "select"` field handler-এ `SearchableSelect` ব্যবহার করলে ১টা পরিবর্তনে SubZones, Boxes, ServiceTypes ইত্যাদি সব auto-cover হবে
+7. **Reports filters** (PopBillCollection ইত্যাদি)
+   - Zone, Sub Zone, Box, Package, Affiliator dropdowns
+8. **Reseller / Branch / POP scoped pages**
+   - Branch picker, POP picker, Reseller picker
+
+**শুধু skip করা হবে:**
+- Status filters ("all/pending/approved" — ৩-৪টা option)
+- Payment method (cash/bkash/nagad — ছোট list)
+- Yes/No, Active/Inactive toggles
+- Month/year selectors
+
+#### ৩. ConfigCrudPage centralized update
+`src/components/config/ConfigCrudPage.tsx`-এ যেখানে `type: "select"` field render হয়, সেখানে `Select` → `SearchableSelect`। এতে Sub Zone, Box, Service Plan, Package, Service Type — সব config পেজ এক ফাইল পরিবর্তনে cover হবে।
+
+#### ৪. বিশেষ provision
+- **Loading state**: data load হওয়ার সময় "লোড হচ্ছে..." দেখাবে
+- **Empty list**: "কোনো ফলাফল নেই" + (যেখানে relevant) "+ নতুন যোগ করুন" শর্টকাট button (optional, future)
+- **Recent/favorites** (future scope, এই sprint-এ না): সর্বশেষ ব্যবহৃত ৩টা option উপরে pinned
+
+### Files affected (estimate)
+
+| Module | Files | Note |
+|---|---|---|
+| New component | 1 | `searchable-select.tsx` |
+| ConfigCrudPage | 1 | covers ~20 config pages একসাথে |
+| Purchase | ~6 | Requisitions, PO, GRN, Vendors, Items, Bills |
+| Billing/Customers | ~10 | Customer/package/bill dialogs |
+| BW Buy | ~4 | BillForm, Subscriptions, Items, Providers |
+| HR | ~8 | Employee, Attendance, Leave, Salary |
+| Network/OLT | ~6 | ONU, OLT, Zone pickers |
+| Reports filters | ~10 | Zone/Box/Package filters |
+| Branch/POP/Reseller | ~5 | scoped pickers |
+| **Total** | **~50 files** | (১৭৩-এর মধ্যে শুধু dynamic-list dropdowns) |
+
+### Out of scope (এই sprint-এ না)
+- Static status/payment-method dropdowns
+- Native `<select>` element (যদি কোথাও থাকে — পরে দেখা যাবে)
+- Multi-select (এটা আলাদা feature, future plan)
 
 ### ফলাফল
-
-```text
-Bills List:
-  Bill #001 [👁 View] [✏ Edit] [📋 Duplicate] [🗑 Delete]
-                              ↓
-              পরের মাসের জন্য একই bill (recomputed dates)
-
-Bill Form — Manual Line:
-  Service: [🔍 Internet 100Mbps ▼]   ← bw_items dropdown
-           [Custom: ____________]    ← optional override
-  Mbps: 100  Rate: 250  Days: 30/30  VAT%: 5  Total: ৳26,250
-                                     ↑
-                              এখন manual line-এও VAT
-  
-  ─────────────────────────────────────
-  Subtotal: ৳25,000 | VAT: ৳1,250 | Total: ৳26,250
-```
+- যেকোনো dropdown যেখানে ৫+ option আসছে — উপরে search input automatically
+- Bangla টাইপ করেও খুঁজে পাওয়া যাবে
+- Existing UI/look অপরিবর্তিত — শুধু search box যোগ
+- ভবিষ্যতে নতুন কোনো dropdown বানালে শুধু `SearchableSelect` ব্যবহার করলেই default-এ ৫+ এ search পাবে
 
