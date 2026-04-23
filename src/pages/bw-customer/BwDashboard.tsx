@@ -21,7 +21,7 @@ export default function BwDashboard() {
       const [invRes, poRes, tkRes] = await Promise.all([
         supabase
           .from("bw_sales_invoices")
-          .select("id, invoice_no, amount, paid_amount, due, due_date, status, created_at")
+          .select("id, invoice_no, amount, paid_amount, due, payment_due_date, status, created_at")
           .eq("customer_id", billingId!)
           .order("created_at", { ascending: false })
           .limit(20),
@@ -34,7 +34,7 @@ export default function BwDashboard() {
         supabase
           .from("support_tickets")
           .select("id, status")
-          .eq("customer_id", billingId!),
+          .eq("client_id", billingId!),
       ]);
 
       const invoices = invRes.data || [];
@@ -106,7 +106,7 @@ export default function BwDashboard() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-xs"><Calendar className="h-3.5 w-3.5" /> পরবর্তী Due</div>
             <div className="text-lg font-semibold mt-1">
-              {data?.lastInvoice?.due_date ? new Date(data.lastInvoice.due_date).toLocaleDateString("en-GB") : "—"}
+              {data?.lastInvoice?.payment_due_date ? new Date(data.lastInvoice.payment_due_date).toLocaleDateString("en-GB") : "—"}
             </div>
           </CardContent>
         </Card>
