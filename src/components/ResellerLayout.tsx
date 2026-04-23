@@ -21,6 +21,7 @@ import { NotesButton } from "@/components/notes/NotesButton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ResellerMobileShell } from "@/components/reseller/mobile/ResellerMobileShell";
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { HeaderClock } from "@/components/HeaderClock";
 
 
 type PermKey =
