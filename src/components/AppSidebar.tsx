@@ -772,12 +772,12 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
             const count = badges?.[item.url] || 0;
             return (
               <NavLink key={item.url} to={item.url}
-                className={cn("flex items-center gap-2.5 px-4 py-[7px] text-[13px] rounded-lg transition-colors ml-3",
+                className={cn("flex items-center gap-2.5 px-3 py-[7px] text-[13px] rounded-lg transition-colors ml-3 border",
                   isActive
-                    ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                    ? "bg-primary/10 text-primary font-medium border-primary/40 shadow-sm"
                     : isLight
-                      ? "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                      ? "bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:border-border"
+                      : "bg-white/[0.03] border-white/10 text-slate-400 hover:text-white hover:bg-white/[0.07] hover:border-white/20"
                 )}>
                 <MenuIconTile icon={item.icon} tint={tintForLabel(group.label)} active={isActive} size="sm" icons8={icons8ForItem(item.url, item.title, group.label)} customIcon={hishabeeForItem(item.url, item.title, group.label)} />
                 <span className="flex-1 truncate">{tr(item.title, lang)}</span>
