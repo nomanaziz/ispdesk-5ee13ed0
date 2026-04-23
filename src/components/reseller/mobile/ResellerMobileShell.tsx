@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { MobileBottomTabs } from "./MobileBottomTabs";
 import { NotesButton } from "@/components/notes/NotesButton";
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { HeaderClock } from "@/components/HeaderClock";
 import { Smartphone } from "lucide-react";
 
 interface Props {
@@ -134,6 +135,7 @@ export function ResellerMobileShell({ children, onOpenSidebar }: Props) {
           </button>
         </div>
 
+        <HeaderClock compact onPrimary />
         <div className="text-primary-foreground">
           <NotesButton ownerType="pop" />
         </div>

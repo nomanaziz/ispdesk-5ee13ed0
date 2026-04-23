@@ -21,6 +21,7 @@ import { NotesButton } from "@/components/notes/NotesButton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ResellerMobileShell } from "@/components/reseller/mobile/ResellerMobileShell";
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { HeaderClock } from "@/components/HeaderClock";
 
 
 type PermKey =
@@ -401,7 +402,8 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                 </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                
+                <HeaderClock />
+                <HeaderClock compact className="md:hidden" />
                 <div
                   className="inline-flex items-center rounded-full border border-border/60 bg-muted/30 p-0.5 h-8"
                   role="group"

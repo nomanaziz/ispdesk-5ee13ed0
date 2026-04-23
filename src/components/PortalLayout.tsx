@@ -20,6 +20,7 @@ import NotificationBell from "@/components/portal/NotificationBell";
 import { NotesButton } from "@/components/notes/NotesButton";
 import { InstallAppBanner } from "@/components/InstallAppBanner";
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { HeaderClock } from "@/components/HeaderClock";
 
 const menuItems = [
   { bn: "ড্যাশবোর্ড", en: "Dashboard", icon: LayoutDashboard, path: "/portal/dashboard", color: "text-indigo-600 dark:text-indigo-400" },
@@ -144,6 +145,8 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            <HeaderClock />
+            <HeaderClock compact className="md:hidden" />
             <Button
               variant="ghost"
               size="sm"
