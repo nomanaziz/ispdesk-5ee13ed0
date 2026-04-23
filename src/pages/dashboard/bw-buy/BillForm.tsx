@@ -267,8 +267,10 @@ export default function BillForm() {
         period_end: range?.period_end || null,
         amount: grandTotal,
         total_amount: grandTotal,
+        subtotal: Math.round(subtotal * 100) / 100,
+        vat_total: Math.round(vatTotal * 100) / 100,
         paid: Number(form.paid || 0),
-        discount: Number(form.discount || 0),
+        discount: discountNum,
         remarks: form.remarks || null,
         status: form.status,
       };
@@ -307,6 +309,8 @@ export default function BillForm() {
           days: Number(l.days),
           total_days_in_month: Number(l.total_days_in_month),
           amount: Number(l.amount),
+          vat_pct: Number(l.vat_pct || 0),
+          vat_amount: Number(l.vat_amount || 0),
           sort_order: idx,
         }));
         const { error } = await supabase.from("bw_buy_bill_items").insert(linePayload);
