@@ -227,6 +227,7 @@ const menuGroups: MenuGroup[] = [
       { title: "বিক্রয় ইনভয়েস", url: "/dashboard/bw-sale/invoices", icon: FileText },
       { title: "বিল কালেকশন", url: "/dashboard/bw-sale/collection", icon: Wallet },
       { title: "রিকারিং ইনভয়েস", url: "/dashboard/bw-sale/recurring", icon: RefreshCw },
+      { title: "প্যানেল সাবস্ক্রিপশন প্রাইসিং", url: "/dashboard/bw-sale/panel-pricing", icon: Sparkles },
     ],
   },
   {
