@@ -178,7 +178,27 @@ export default function BillForm() {
   };
   const removeLine = (index: number) => setLines(lines.filter((_, i) => i !== index));
 
-  const grandTotal = lines.reduce((s, l) => s + Number(l.amount || 0), 0);
+  const subtotal = lines.reduce((s, l) => s + (Number(l.amount || 0) - Number(l.vat_amount || 0)), 0);
+  const vatTotal = lines.reduce((s, l) => s + Number(l.vat_amount || 0), 0);
+  const grandTotal = subtotal + vatTotal;
+  const discountNum = Number(form.discount || 0);
+  const finalTotal = grandTotal - discountNum;
+
+  // Pick an item from bw_items dropdown — auto-fills service info
+  const pickItem = (index: number, itemId: string) => {
+    const item = (bwItems || []).find((it: any) => it.id === itemId);
+    if (!item) return;
+    const updated = [...lines];
+    updated[index] = recompute({
+      ...updated[index],
+      service_id: item.id,
+      service_name: item.name,
+      bandwidth_mbps: parseMbps(item.bandwidth) || updated[index].bandwidth_mbps,
+      rate: Number(item.price ?? updated[index].rate),
+      vat_pct: Number(item.default_vat_pct ?? updated[index].vat_pct ?? 5),
+    });
+    setLines(updated);
+  };
 
   const autoGenerate = async () => {
     if (!form.provider_id) {
