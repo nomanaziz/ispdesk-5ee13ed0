@@ -24,6 +24,8 @@ interface LineItem {
   days: number;
   total_days_in_month: number;
   amount: number;
+  vat_pct: number;
+  vat_amount: number;
 }
 
 const emptyLine = (totalDays = 30): LineItem => ({
@@ -35,12 +37,25 @@ const emptyLine = (totalDays = 30): LineItem => ({
   days: 0,
   total_days_in_month: totalDays,
   amount: 0,
+  vat_pct: 5,
+  vat_amount: 0,
 });
 
 const recompute = (l: LineItem): LineItem => {
   const td = Number(l.total_days_in_month) || 30;
-  const amount = (Number(l.bandwidth_mbps) * Number(l.rate) * Number(l.days)) / td;
-  return { ...l, amount: Math.round(amount * 100) / 100 };
+  const base = (Number(l.bandwidth_mbps) * Number(l.rate) * Number(l.days)) / td;
+  const vat = (base * Number(l.vat_pct || 0)) / 100;
+  return {
+    ...l,
+    vat_amount: Math.round(vat * 100) / 100,
+    amount: Math.round((base + vat) * 100) / 100,
+  };
+};
+
+const parseMbps = (s: string | null | undefined): number => {
+  if (!s) return 0;
+  const m = String(s).match(/(\d+(?:\.\d+)?)/);
+  return m ? Number(m[1]) : 0;
 };
 
 export default function BillForm() {
