@@ -22,6 +22,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ResellerMobileShell } from "@/components/reseller/mobile/ResellerMobileShell";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { HeaderClock } from "@/components/HeaderClock";
+import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
+import { resolveIcons8 } from "@/lib/iconResolver";
 
 
 type PermKey =
@@ -285,23 +287,29 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
             const isOpen = openGroup === g.key || !!search;
             const isSingle = g.items.length === 1 && g.items[0].label === g.label;
             const groupActive = g.items.some((i) => location.pathname.startsWith(i.to));
+            const groupIcons8 = resolveIcons8({ label: g.label });
 
             if (isSingle) {
               const item = g.items[0];
               const active = location.pathname.startsWith(item.to);
+              const itemIcons8 = resolveIcons8({ url: item.to, title: item.label });
               return (
                 <Link
                   key={g.key}
                   to={item.to}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors group",
                     active
                       ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
                       : "text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  {hasIcons8Icon(itemIcons8) ? (
+                    <Icons8Icon name={itemIcons8!} size={20} />
+                  ) : (
+                    <Icon className="h-4 w-4" />
+                  )}
                   {labelOf(item)}
                 </Link>
               );
@@ -312,13 +320,17 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                 <button
                   onClick={() => toggleGroup(g.key)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                    "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors group",
                     groupActive
                       ? "text-sidebar-foreground bg-sidebar-accent/60"
                       : "text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  {hasIcons8Icon(groupIcons8) ? (
+                    <Icons8Icon name={groupIcons8!} size={20} />
+                  ) : (
+                    <Icon className="h-4 w-4" />
+                  )}
                   <span className="flex-1 text-left">{labelOf(g)}</span>
                   {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 </button>
@@ -328,19 +340,24 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                       const ItemIcon = item.icon;
                       const active = location.pathname === item.to ||
                         (item.to !== "/pop-admin/dashboard" && location.pathname.startsWith(item.to));
+                      const itemIcons8 = resolveIcons8({ url: item.to, title: item.label });
                       return (
                         <Link
                           key={item.to}
                           to={item.to}
                           onClick={() => setMobileOpen(false)}
                           className={cn(
-                            "flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium transition-colors",
+                            "flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium transition-colors group",
                             active
                               ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
                               : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                           )}
                         >
-                          <ItemIcon className="h-3.5 w-3.5" />
+                          {hasIcons8Icon(itemIcons8) ? (
+                            <Icons8Icon name={itemIcons8!} size={18} />
+                          ) : (
+                            <ItemIcon className="h-3.5 w-3.5" />
+                          )}
                           {labelOf(item)}
                         </Link>
                       );
