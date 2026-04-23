@@ -4594,23 +4594,37 @@ export type Database = {
       inventory_categories: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           name: string
+          parent_id: string | null
           status: string
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           name: string
+          parent_id?: string | null
           status?: string
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
+          parent_id?: string | null
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "inventory_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_items: {
         Row: {
