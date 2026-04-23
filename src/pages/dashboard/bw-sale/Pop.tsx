@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Eye, Pencil, Trash2, Search, ChevronLeft, ChevronRight, RefreshCw, LogIn } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Search, ChevronLeft, ChevronRight, RefreshCw, LogIn, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { loginAsUser } from "@/lib/impersonate";
+import BwCustomerPasswordDialog from "@/components/bw-sale/BwCustomerPasswordDialog";
 
 interface Customer {
   id: string;
@@ -80,6 +81,7 @@ export default function Pop() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);
+  const [pwdTarget, setPwdTarget] = useState<{ id: string; customer_name: string; username: string | null } | null>(null);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -253,6 +255,17 @@ export default function Pop() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-7 w-7"
+                              title="Password Regenerate"
+                              onClick={() => setPwdTarget({ id: c.id, customer_name: c.customer_name, username: c.username })}
+                            >
+                              <KeyRound className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-7 w-7 text-primary"
                               title="Login as Customer"
                               onClick={() =>
@@ -385,6 +398,13 @@ export default function Pop() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BwCustomerPasswordDialog
+        open={!!pwdTarget}
+        onOpenChange={(v) => { if (!v) setPwdTarget(null); }}
+        customer={pwdTarget}
+        onSaved={fetchData}
+      />
     </div>
   );
 }

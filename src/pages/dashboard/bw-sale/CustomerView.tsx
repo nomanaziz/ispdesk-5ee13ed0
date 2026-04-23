@@ -10,6 +10,7 @@ import { ArrowLeft, KeyRound, Download, User, List, LogIn } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { loginAsUser } from "@/lib/impersonate";
 import { toast } from "sonner";
+import BwInvoiceDetailDialog from "@/components/bw-sale/BwInvoiceDetailDialog";
 
 export default function CustomerView() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +20,7 @@ export default function CustomerView() {
   const [pop, setPop] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null);
 
   useEffect(() => { if (id) fetchData(); }, [id]);
 
@@ -178,7 +180,15 @@ export default function CustomerView() {
                         ) : invoices.map((inv, i) => (
                           <TableRow key={inv.id}>
                             <TableCell>{i + 1}</TableCell>
-                            <TableCell>{inv.invoice_no}</TableCell>
+                            <TableCell>
+                              <button
+                                type="button"
+                                className="font-mono text-primary underline-offset-2 hover:underline"
+                                onClick={() => setOpenInvoiceId(inv.id)}
+                              >
+                                {inv.invoice_no}
+                              </button>
+                            </TableCell>
                             <TableCell>{inv.month || "—"}</TableCell>
                             <TableCell className="text-right">৳{(inv.amount || 0).toLocaleString()}</TableCell>
                             <TableCell className="text-right">৳{(inv.paid_amount || 0).toLocaleString()}</TableCell>
@@ -208,6 +218,12 @@ export default function CustomerView() {
           </Tabs>
         </div>
       </div>
+
+      <BwInvoiceDetailDialog
+        open={!!openInvoiceId}
+        onOpenChange={(v) => { if (!v) setOpenInvoiceId(null); }}
+        invoiceId={openInvoiceId}
+      />
     </div>
   );
 }
