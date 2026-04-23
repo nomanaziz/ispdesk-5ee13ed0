@@ -167,9 +167,8 @@ function isGroupAllowed(g: NavGroup, customer: any): boolean {
   const legacyMap: Record<string, string[]> = {
     dashboard: ["dashboard"],
     configuration: ["configuration", "settings"],
-    mikrotik: ["mikrotik", "dashboard"],
     employee: ["employee", "users"],
-    client: ["client", "dashboard"],
+    client: ["client", "mikrotik", "dashboard"],
     billing: ["billing", "invoices"],
     monitoring: ["monitoring", "tickets"],
     sms: ["sms"],
