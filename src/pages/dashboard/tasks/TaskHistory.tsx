@@ -42,6 +42,41 @@ export default function TaskHistory() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [detailTask, setDetailTask] = useState<any>(null);
+  const queryClient = useQueryClient();
+
+  const revertMutation = useMutation({
+    mutationFn: async (task: any) => {
+      const ms = hoursLeft(task.completed_at, REVERT_WINDOW_MS);
+      if (ms <= 0) throw new Error("১ দিন পার হয়ে গেছে — revert করা যাবে না");
+      const { error } = await supabase
+        .from("tasks")
+        .update({ status: "in_progress", completed_at: null })
+        .eq("id", task.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks-history"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success("টাস্ক revert হয়েছে — সক্রিয় তালিকায় ফিরে গেছে");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const statusChangeMutation = useMutation({
+    mutationFn: async ({ task, status }: { task: any; status: string }) => {
+      const ms = hoursLeft(task.completed_at, STATUS_CHANGE_WINDOW_MS);
+      if (ms <= 0) throw new Error("২ দিন পার হয়ে গেছে — status পরিবর্তন করা যাবে না");
+      const payload: any = { status };
+      if (status === "completed") payload.completed_at = new Date().toISOString();
+      const { error } = await supabase.from("tasks").update(payload).eq("id", task.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks-history"] });
+      toast.success("স্ট্যাটাস পরিবর্তন হয়েছে");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const { data: categories = [] } = useQuery({
     queryKey: ["task-categories"],
