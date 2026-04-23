@@ -168,7 +168,7 @@ import PopProfile from "@/pages/dashboard/branches/PopProfile";
 import BranchFunding from "@/pages/dashboard/branches/Funding";
 import BranchFundingHistory from "@/pages/dashboard/branches/FundingHistory";
 import BranchPgwTransactions from "@/pages/dashboard/branches/PgwTransactions";
-import BranchPopNotice from "@/pages/dashboard/branches/PopNotice";
+
 
 // Events
 import Events from "@/pages/dashboard/events/Events";
@@ -177,6 +177,7 @@ import Events from "@/pages/dashboard/events/Events";
 import SupportCategories from "@/pages/dashboard/support/SupportCategories";
 import SupportTickets from "@/pages/dashboard/support/Tickets";
 import SupportHistory from "@/pages/dashboard/support/History";
+import SupportNotices from "@/pages/dashboard/support/Notices";
 
 // Tasks
 import TaskCategories from "@/pages/dashboard/tasks/TaskCategories";
@@ -564,7 +565,7 @@ const App = () => (
               <Route path="/dashboard/branches/pgw-transactions" element={<P><BranchPgwTransactions /></P>} />
               <Route path="/dashboard/branches/pgw-payments" element={<Navigate to="/dashboard/branches/pgw-transactions" replace />} />
               <Route path="/dashboard/branches/pgw-settlement" element={<Navigate to="/dashboard/branches/pgw-transactions" replace />} />
-              <Route path="/dashboard/branches/pop-notice" element={<P><BranchPopNotice /></P>} />
+              <Route path="/dashboard/branches/pop-notice" element={<Navigate to="/dashboard/support/notices" replace />} />
 
               {/* Events */}
               <Route path="/dashboard/events" element={<P><Events /></P>} />
@@ -573,6 +574,7 @@ const App = () => (
               <Route path="/dashboard/support/categories" element={<P><SupportCategories /></P>} />
               <Route path="/dashboard/support/tickets" element={<P><SupportTickets /></P>} />
               <Route path="/dashboard/support/history" element={<P><SupportHistory /></P>} />
+              <Route path="/dashboard/support/notices" element={<P><SupportNotices /></P>} />
 
               {/* Tasks */}
               <Route path="/dashboard/tasks/categories" element={<P><TaskCategories /></P>} />

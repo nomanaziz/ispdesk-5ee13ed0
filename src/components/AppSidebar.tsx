@@ -142,7 +142,6 @@ const menuGroups: MenuGroup[] = [
       { title: "ট্যারিফ কনফিগ", url: "/dashboard/branches/tariff", icon: Settings },
       { title: "POP ফান্ডিং", url: "/dashboard/branches/funding", icon: Banknote },
       { title: "PGW ট্রানজেকশন", url: "/dashboard/branches/pgw-transactions", icon: CreditCardIcon },
-      { title: "POP নোটিশ", url: "/dashboard/branches/pop-notice", icon: Bell },
     ],
   },
   {
@@ -254,6 +253,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: "ক্লায়েন্ট সাপোর্ট", url: "/dashboard/support/tickets", icon: Headphones },
       { title: "সাপোর্ট হিস্টরি", url: "/dashboard/support/history", icon: History },
+      { title: "নোটিশ", url: "/dashboard/support/notices", icon: Bell },
     ],
   },
   {
