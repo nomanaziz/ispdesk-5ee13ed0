@@ -1,104 +1,144 @@
 
 
-## পার্চেজ বিল — Duplicate, Item Dropdown ও Manual VAT
+## মোবাইল অ্যাপ স্টাইল রিডিজাইন — POP Admin ও Client Portal
 
 ### লক্ষ্য
-1. প্রতি মাসের bill renew করার জন্য **"Duplicate"** option
-2. Manual line item-এর "Service" field-এ **`bw_items` থেকে dropdown** (free-text-এর বদলে)
-3. Manual line item-এও **VAT% column** — subscription ছাড়াই VAT সহ বিল করা যাবে
+আপনার দেখানো MyHisab অ্যাপের মতো **clean, colorful, icon-driven, mobile-first** ডিজাইনে POP Admin এবং Client Portal সাজানো। ব্যবসা আলাদা (ISP/ERP) — তাই content আপনার, কিন্তু **look & feel** ওই ধরনের।
 
-### ১. Bill Duplicate
+### Reference থেকে যা নিচ্ছি (image-210, image-211)
+- **Top gradient header** — bold রঙিন (pink/teal) ব্যানার, balance/summary বড় করে
+- **Card grid icons** — ৩-column grid, প্রতিটা feature একটা colorful icon + Bangla label
+- **Soft rounded cards** — বড় border-radius, light shadow, প্রচুর white space
+- **Bottom nav bar** — ৪-৫ icon + center floating "+" FAB
+- **Tab pills** — rounded pills (selected = filled gradient)
+- **List rows** — left circular icon + title + subtitle + right amount (color coded)
+- **Bengali typography** — বড়, পরিষ্কার, বেশি line-height
 
-**`Bills.tsx` (List page) — Action column-এ নতুন button:**
-- 📋 **Copy icon** → click করলে confirm dialog
-- Confirm করলে: সেই bill-এর সব data (provider, lines, VAT, discount ইত্যাদি) copy করে নতুন bill তৈরি হবে নিচের পরিবর্তন সহ:
-  - নতুন `bill_no` auto-generate (`BW-YYYYMM-XXXX`)
-  - `billing_month` → পরের মাস
-  - `period_start` / `period_end` → পরের মাসের range
-  - প্রতিটা line item-এর `period_start`, `period_end`, `days`, `total_days_in_month` → পরের মাসের অনুযায়ী recompute
-  - `paid = 0`, `status = unpaid`, `invoice_no = null`, `attachment_url = null`
-- সফল হলে নতুন bill-এর edit page-এ redirect (`/dashboard/bw-buy/bills/{newId}`) — user চেক করে save করতে পারবে
+### Scope (২ surface, Admin বাদ)
 
-**Optional**: List view-এ Duplicate-এর পাশে dropdown — "Next month" / "Same month" যেন user চাইলে একই মাসে copy করতে পারে।
+**A. Client Portal** (`/portal/*`) — গ্রাহক যা মোবাইলে দেখে
+- Home (dashboard)
+- Bills / Payments
+- Tickets / Support
+- Profile
 
-### ২. Item Dropdown in Manual Line
+**B. POP Admin Mobile** (`/pop-admin/*` ও `/reseller/*`) — মাঠ পর্যায়ের POP মালিক
+- Dashboard summary
+- Clients
+- Collections / Bills
+- Tickets
+- Reports
+- Settings
 
-**`BillForm.tsx` পরিবর্তন:**
+**Admin (`/dashboard/*`) — অপরিবর্তিত** (desktop ERP, আলাদা design system)
 
-বর্তমানে `service_name` একটা free-text Input। এটা পাল্টে **Combobox** (search সহ dropdown) বানানো হবে:
-- `bw_items` table থেকে সব active items load (filtered by selected provider যদি থাকে, না থাকলে সব)
-- User item select করলে auto-fill:
-  - `service_name` = item.name
-  - `rate` = item.price (যদি থাকে)
-  - `bandwidth_mbps` = item.bandwidth থেকে parse (যেমন "100 Mbps" → 100)
-  - `service_id` = item.id
-- "Custom" option — user চাইলে dropdown-এর বদলে নিজে টাইপ করতে পারবে (current behavior preserved)
+### ডিজাইন সিস্টেম (নতুন mobile theme tokens)
 
-**LineItem interface-এ** `service_id` already আছে — শুধু dropdown UI বসাতে হবে।
+`src/index.css` + `tailwind.config.ts`-এ নতুন scoped tokens (admin theme touch হবে না):
 
-### ৩. Manual Line-এ VAT Column
-
-পূর্বের approved VAT migration plan এখনো execute হয়নি (database column add করা হয়নি)। এই plan-এ সেটাও include করছি:
-
-**Migration:**
-- `bw_buy_bill_items.vat_pct numeric DEFAULT 5`
-- `bw_buy_bill_items.vat_amount numeric DEFAULT 0`
-- `bw_purchase_bills.subtotal numeric DEFAULT 0`
-- `bw_purchase_bills.vat_total numeric DEFAULT 0`
-- `bw_providers.default_vat_pct numeric DEFAULT 5`
-- `bw_buy_provider_subscriptions.vat_pct numeric DEFAULT 5`
-- `bw_items.default_vat_pct numeric DEFAULT 5` (নতুন — item-level VAT default)
-
-**`BillForm.tsx` table-এ নতুন column:**
-- "VAT%" — editable number input, default 5
-- Item dropdown থেকে select করলে item.default_vat_pct থেকে auto-fill
-- Subscription auto-generate করলে subscription.vat_pct থেকে auto-fill
-- Manual entry-তে user চাইলে edit করতে পারবে
-
-**`recompute()` update:**
-```ts
-const base = (mbps × rate × days) / total_days_in_month
-const vat = base × vat_pct / 100
-amount = base + vat   // total = base + VAT
-vat_amount = vat       // saved separately
+```css
+[data-theme-scope="portal"], 
+[data-theme-scope="pop"] {
+  --m-primary: 340 82% 52%;        /* pink-rose, MyHisab style */
+  --m-primary-2: 173 58% 45%;      /* teal accent */
+  --m-bg: 0 0% 98%;
+  --m-card: 0 0% 100%;
+  --m-success: 142 71% 38%;
+  --m-danger: 0 84% 55%;
+  --m-warning: 38 92% 50%;
+  --m-radius-card: 1.25rem;
+  --m-radius-pill: 9999px;
+  --m-shadow-soft: 0 4px 14px hsl(0 0% 0% / 0.06);
+}
 ```
 
-**Footer breakdown** (table-এ):
-```
-Subtotal:      ৳ XX,XXX
-VAT:           ৳ X,XXX
-Discount:    − ৳ XXX
-─────────────────────
-Grand Total:   ৳ XX,XXX
-```
+User চাইলে পরে অন্য রঙ pick করতে পারবে (ThemeContext-এ already scope-aware)।
 
-### ৪. Items.tsx পরিবর্তন (ছোট)
-- Add/Edit dialog-এ "ডিফল্ট VAT %" field (default 5) — যাতে item বানানোর সময়ই VAT সেট করা যায়
+### নতুন reusable mobile components
 
-### ৫. Files affected
-- **Migration** (new): VAT columns + item VAT default
-- `src/pages/dashboard/bw-buy/Bills.tsx` — Duplicate button + duplicate handler
-- `src/pages/dashboard/bw-buy/BillForm.tsx` — Item dropdown (Combobox), VAT column, totals breakdown, save logic update
-- `src/pages/dashboard/bw-buy/Items.tsx` — VAT% field
-- `src/lib/bwBuyProrate.ts` — segment-এ vat_pct propagate
-- `src/integrations/supabase/types.ts` — auto-update post migration
+`src/components/mobile/`:
+- `MobileShell.tsx` — gradient header + content area + bottom nav wrapper
+- `GradientHeader.tsx` — top pink/teal gradient banner with title, balance/stat box, action icons
+- `IconCard.tsx` — colorful rounded square with icon + Bangla label (3-col grid item)
+- `IconGrid.tsx` — responsive 3-column grid container
+- `StatCardPair.tsx` — green income / red expense বড় card jodi (image-210 মতো)
+- `PillTabs.tsx` — rounded filled pills (image-211 মতো tabs)
+- `ListRow.tsx` — circular icon + text + amount row
+- `BottomNav.tsx` — 4 nav + center floating FAB "+"
+- `FloatingAddButton.tsx` — center "+" with gradient
+- `ScreenTitle.tsx` — bold red-script style page title (top centered)
 
-### ফলাফল
+প্রতিটা lucide-react icon ব্যবহার করবে, রঙ category অনুযায়ী।
+
+### Page-by-page changes
+
+**Client Portal (`src/pages/portal/`)**
+1. `PortalDashboard` → MobileShell + GradientHeader (Balance: ৳ due) + StatCardPair (এই মাসের বিল / পরিশোধিত) + IconGrid (বিল, পেমেন্ট, টিকেট, ব্যবহার, প্যাকেজ, সাপোর্ট, অভিযোগ, প্রোফাইল) + BottomNav
+2. `PortalBills` → GradientHeader + PillTabs (Recent / Paid / Due) + ListRow তালিকা
+3. `PortalTickets` → একই pattern
+4. `PortalProfile` → header + cards
+
+**POP Admin (`src/pages/reseller/` ও `src/pages/pop-admin/`)**
+1. Dashboard → GradientHeader (আজকের কালেকশন) + StatCardPair (মোট ক্লায়েন্ট / Active) + IconGrid (ক্লায়েন্ট, বিল, কালেকশন, টিকেট, রিপোর্ট, কমিশন, ব্যান্ডউইথ, সেটিংস) + BottomNav
+2. Clients list → ListRow (ক্লায়েন্ট icon + নাম + প্যাকেজ + due)
+3. Collections → PillTabs + ListRow
+4. Reports → IconGrid (রিপোর্ট ক্যাটাগরি)
+
+**Layout wiring**
+- `src/layouts/PortalLayout.tsx` ও `src/layouts/PopAdminLayout.tsx` (যেটা আছে) → MobileShell দিয়ে wrap, পুরনো sidebar mobile-এ hidden
+- Desktop-এ (md+) — same components কিন্তু centered max-width 480px container ("phone frame" feel) অথবা wider grid (configurable)
+
+### Responsiveness
+- Mobile-first (default)
+- Tablet/desktop-এ centered phone-style container (max-w-md mx-auto) — যেহেতু এটা mobile-app feel
+- Existing `useIsMobile` hook ব্যবহার
+
+### যা বদলাবে না
+- Admin ERP (`/dashboard/*`) — আগের desktop look অপরিবর্তিত
+- Database, business logic, routes — কিছুই না
+- ThemeContext scope mechanism — already আছে, শুধু tokens যোগ
+- Bengali fonts — Hind Siliguri preserved
+
+### Files (estimate)
+
+| Group | Count | Note |
+|---|---|---|
+| New mobile components | ~10 | `src/components/mobile/*` |
+| Theme tokens | 2 | `index.css`, `tailwind.config.ts` |
+| Portal pages | ~6 | Dashboard, Bills, Tickets, Profile, Payments, Usage |
+| POP Admin pages | ~8 | Dashboard, Clients, Collections, Tickets, Reports, Commission, Bandwidth, Settings |
+| Layouts | 2 | PortalLayout, PopAdminLayout |
+| **Total** | **~28 files** | Admin ERP touched: 0 |
+
+### দুই ধাপে delivery (recommended)
+
+**Phase 1 (এই sprint):** Design system + reusable components + Client Portal ৩ প্রধান page (Dashboard, Bills, Tickets) — আপনি দেখে feedback দিবেন
+
+**Phase 2:** Feedback অনুযায়ী tweak + POP Admin সব page + বাকি Portal pages
+
+### ফলাফল preview
 
 ```text
-Bills List:
-  Bill #001 [👁 View] [✏ Edit] [📋 Duplicate] [🗑 Delete]
-                              ↓
-              পরের মাসের জন্য একই bill (recomputed dates)
-
-Bill Form — Manual Line:
-  Service: [🔍 Internet 100Mbps ▼]   ← bw_items dropdown
-           [Custom: ____________]    ← optional override
-  Mbps: 100  Rate: 250  Days: 30/30  VAT%: 5  Total: ৳26,250
-                                     ↑
-                              এখন manual line-এও VAT
-  
-  ─────────────────────────────────────
-  Subtotal: ৳25,000 | VAT: ৳1,250 | Total: ৳26,250
+┌─────────────────────────────┐
+│ ▓▓▓ Gradient Pink Header ▓▓▓│
+│  বকেয়া বিল                  │
+│  ৳ 1,200.00      🔔  ⚙      │
+└─────────────────────────────┘
+   ┌────────┐  ┌──────────────┐
+   │ 🟢 Paid│  │ 💰 মোট আয়   │
+   │ ৳800   │  │ ৳60,000      │
+   └────────┘  └──────────────┘
+   ╭─── Quick Actions ───╮
+   │ 💵    📄    🎫       │
+   │ পেমেন্ট  বিল   টিকেট  │
+   │                      │
+   │ 📊    📦    👤       │
+   │ ব্যবহার প্যাকেজ প্রোফাইল│
+   ╰──────────────────────╯
+┌─────────────────────────────┐
+│  🏠   💳   ➕   🎫   ⚙       │
+└─────────────────────────────┘
 ```
+
+Phase 1 দিয়ে শুরু করি — approve করলে design system + Client Portal Dashboard/Bills/Tickets বানিয়ে দেখাচ্ছি।
 
