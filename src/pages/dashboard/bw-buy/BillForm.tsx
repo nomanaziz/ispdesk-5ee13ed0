@@ -28,13 +28,13 @@ interface LineItem {
   vat_amount: number;
 }
 
-const emptyLine = (totalDays = 30): LineItem => ({
+const emptyLine = (totalDays = 30, periodStart = "", periodEnd = ""): LineItem => ({
   service_name: "",
   bandwidth_mbps: 0,
   rate: 0,
-  period_start: "",
-  period_end: "",
-  days: 0,
+  period_start: periodStart,
+  period_end: periodEnd,
+  days: totalDays,
   total_days_in_month: totalDays,
   amount: 0,
   vat_pct: 5,
@@ -165,6 +165,24 @@ export default function BillForm() {
     }
   }, [isEdit, form.bill_no]);
 
+  // Default untouched lines to the selected billing month's full range (1st → last day)
+  useEffect(() => {
+    if (isEdit || !form.billing_month) return;
+    const range = getMonthRange(form.billing_month);
+    setLines((prev) =>
+      prev.map((l) => {
+        if (l.service_name || Number(l.amount) > 0) return l;
+        return {
+          ...l,
+          period_start: range.period_start,
+          period_end: range.period_end,
+          days: range.total_days,
+          total_days_in_month: range.total_days,
+        };
+      }),
+    );
+  }, [form.billing_month, isEdit]);
+
   const updateLine = (index: number, field: keyof LineItem, value: any) => {
     const updated = [...lines];
     (updated[index] as any)[field] = value;
@@ -174,7 +192,7 @@ export default function BillForm() {
 
   const addLine = () => {
     const range = form.billing_month ? getMonthRange(form.billing_month) : null;
-    setLines([...lines, emptyLine(range?.total_days || 30)]);
+    setLines([...lines, emptyLine(range?.total_days || 30, range?.period_start || "", range?.period_end || "")]);
   };
   const removeLine = (index: number) => setLines(lines.filter((_, i) => i !== index));
 
