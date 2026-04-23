@@ -81,6 +81,7 @@ export default function Pop() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);
+  const [pwdTarget, setPwdTarget] = useState<{ id: string; customer_name: string; username: string | null } | null>(null);
 
   useEffect(() => { fetchData(); }, []);
 
