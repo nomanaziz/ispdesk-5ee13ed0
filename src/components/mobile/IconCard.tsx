@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HishabeeIcon, hasHishabeeIcon } from "@/components/icons/HishabeeIcon";
+import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
 
 export type IconTint =
   | "rose" | "violet" | "indigo" | "sky" | "teal" | "emerald"
@@ -29,26 +30,33 @@ interface Props {
   tint?: IconTint;
   badge?: string | number;
   className?: string;
+  /** Optional Icons8 PNG name. Highest priority — overrides customSvg + lucide. */
+  icons8?: string | null;
   /** Optional Hishabee SVG name. When set & known, replaces the lucide icon. */
   customSvg?: string | null;
 }
 
-export function IconCard({ to, onClick, icon: Icon, label, tint = "rose", badge, className, customSvg }: Props) {
-  const useCustom = hasHishabeeIcon(customSvg);
+export function IconCard({ to, onClick, icon: Icon, label, tint = "rose", badge, className, icons8, customSvg }: Props) {
+  const useIcons8 = hasIcons8Icon(icons8);
+  const useCustom = !useIcons8 && hasHishabeeIcon(customSvg);
   const inner = (
     <div className={cn(
-      "flex flex-col items-center justify-center gap-2 py-4 px-2 rounded-2xl bg-card",
+      "group flex flex-col items-center justify-center gap-2 py-4 px-2 rounded-2xl bg-card",
       "shadow-[var(--m-shadow-soft)] active:scale-95 transition-transform",
       "hover:shadow-md cursor-pointer text-center",
       className,
     )}>
       <div className="relative">
-        {useCustom ? (
+        {useIcons8 ? (
+          <span className="h-12 w-12 rounded-2xl flex items-center justify-center bg-muted/40 dark:bg-white/5">
+            <Icons8Icon name={icons8!} size={38} />
+          </span>
+        ) : useCustom ? (
           <span className="h-12 w-12 rounded-2xl flex items-center justify-center bg-muted/50 dark:bg-white/5">
             <HishabeeIcon name={customSvg!} size={36} />
           </span>
         ) : (
-          <span className={cn("h-12 w-12 rounded-2xl flex items-center justify-center", tintMap[tint])}>
+          <span className={cn("h-12 w-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110", tintMap[tint])}>
             <Icon className="h-6 w-6" strokeWidth={2.2} />
           </span>
         )}
