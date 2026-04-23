@@ -307,7 +307,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
             const prevIsBwExtra = gi > 0 && visibleGroups[gi - 1].key === "bw_setup";
             const showDivider = isBwExtra && !prevIsBwExtra;
 
-            if (isSingle) {
+            const groupBody = isSingle ? (() => {
               const item = g.items[0];
               const active = location.pathname.startsWith(item.to);
               const itemIcons8 = resolveIcons8({ url: item.to, title: item.label });
@@ -331,9 +331,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                   {labelOf(item)}
                 </Link>
               );
-            }
-
-            return (
+            })() : (
               <div key={g.key}>
                 <button
                   onClick={() => toggleGroup(g.key)}
@@ -382,6 +380,21 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                     })}
                   </div>
                 )}
+              </div>
+            );
+
+            return (
+              <div key={g.key} className={cn(isBwExtra && "bg-emerald-500/5 rounded-md px-1 py-1 mt-1")}>
+                {showDivider && (
+                  <div className="mt-3 mb-2 px-2">
+                    <div className="border-t border-sidebar-border/60 mb-2" />
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400">
+                      <Sparkles className="h-3 w-3" />
+                      {t("আমার নিজস্ব সেটআপ", "My Own Setup")}
+                    </div>
+                  </div>
+                )}
+                {groupBody}
               </div>
             );
           })}
