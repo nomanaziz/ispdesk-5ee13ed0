@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Search, Download, CheckCircle, XCircle, Clock, Eye } from "lucide-react";
+import { Search, Download, CheckCircle, XCircle, Clock, Eye, Undo2 } from "lucide-react";
+import { toast } from "sonner";
+
+const REVERT_WINDOW_MS = 24 * 60 * 60 * 1000;       // 1 day → revert (back to in_progress)
+const STATUS_CHANGE_WINDOW_MS = 2 * 24 * 60 * 60 * 1000; // 2 days → status change allowed
+
+function hoursLeft(completedAt: string | null, windowMs: number) {
+  if (!completedAt) return 0;
+  const elapsed = Date.now() - new Date(completedAt).getTime();
+  return Math.max(0, windowMs - elapsed);
+}
 
 const statusLabels: Record<string, string> = { completed: "সম্পন্ন", cancelled: "বাতিল" };
 const statusColors: Record<string, string> = { completed: "bg-green-100 text-green-800", cancelled: "bg-red-100 text-red-800" };
