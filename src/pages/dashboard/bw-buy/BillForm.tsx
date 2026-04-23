@@ -468,13 +468,14 @@ export default function BillForm() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[160px]">সার্ভিস</TableHead>
+                  <TableHead className="min-w-[220px]">সার্ভিস</TableHead>
                   <TableHead className="w-24 text-right">Mbps</TableHead>
                   <TableHead className="w-28 text-right">রেট/Mbps</TableHead>
                   <TableHead className="w-32">হতে</TableHead>
                   <TableHead className="w-32">পর্যন্ত</TableHead>
                   <TableHead className="w-20 text-right">দিন</TableHead>
                   <TableHead className="w-20 text-right">মাসের দিন</TableHead>
+                  <TableHead className="w-20 text-right">VAT %</TableHead>
                   <TableHead className="w-28 text-right">মোট</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
@@ -483,12 +484,38 @@ export default function BillForm() {
                 {lines.map((line, i) => (
                   <TableRow key={i}>
                     <TableCell>
-                      <Input
-                        className="h-8 text-xs"
-                        value={line.service_name}
-                        placeholder="Internet / NIX..."
-                        onChange={(e) => updateLine(i, "service_name", e.target.value)}
-                      />
+                      <div className="space-y-1">
+                        <Select
+                          value={line.service_id || "__custom__"}
+                          onValueChange={(v) => {
+                            if (v === "__custom__") {
+                              const u = [...lines];
+                              u[i] = { ...u[i], service_id: null };
+                              setLines(u);
+                            } else {
+                              pickItem(i, v);
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="আইটেম নির্বাচন..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__custom__">— কাস্টম —</SelectItem>
+                            {(bwItems || []).map((it: any) => (
+                              <SelectItem key={it.id} value={it.id}>
+                                {it.name}{it.bandwidth ? ` (${it.bandwidth})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          className="h-8 text-xs"
+                          value={line.service_name}
+                          placeholder="সার্ভিস নাম..."
+                          onChange={(e) => updateLine(i, "service_name", e.target.value)}
+                        />
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Input
