@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Bell, Clapperboard, Newspaper, Rocket, Users } from "lucide-react";
-import NoticesTab from "@/components/portal-manage/NoticesTab";
+import { Clapperboard, Newspaper, Rocket, Users } from "lucide-react";
 import MediaServersTab from "@/components/portal-manage/MediaServersTab";
 import NewsEventsTab from "@/components/portal-manage/NewsEventsTab";
 import SpeedTestTab from "@/components/portal-manage/SpeedTestTab";
@@ -9,7 +8,6 @@ import RegisteredClientsTab from "@/components/portal-manage/RegisteredClientsTa
 import DefaultPasswordSettings from "@/components/portal-manage/DefaultPasswordSettings";
 
 const TABS = [
-  { key: "notices", label: "Notices", icon: Bell },
   { key: "media", label: "Media Servers", icon: Clapperboard },
   { key: "news", label: "News & Events", icon: Newspaper },
   { key: "speed", label: "Speed Test", icon: Rocket },
@@ -49,7 +47,6 @@ export default function PortalManage() {
         </aside>
 
         <div className="flex-1 min-w-0">
-          {active === "notices" && <NoticesTab />}
           {active === "media" && <MediaServersTab />}
           {active === "news" && <NewsEventsTab />}
           {active === "speed" && <SpeedTestTab />}

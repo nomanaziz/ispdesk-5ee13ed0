@@ -2455,6 +2455,7 @@ export type Database = {
         Row: {
           active: boolean
           attachment_url: string | null
+          audience_groups: string[] | null
           body: string
           branch_id: string | null
           created_at: string
@@ -2463,6 +2464,9 @@ export type Database = {
           id: string
           pinned: boolean
           starts_at: string
+          target_bw_pop_ids: string[] | null
+          target_client_ids: string[] | null
+          target_pop_ids: string[] | null
           target_scope: string
           title: string
           type: string
@@ -2472,6 +2476,7 @@ export type Database = {
         Insert: {
           active?: boolean
           attachment_url?: string | null
+          audience_groups?: string[] | null
           body: string
           branch_id?: string | null
           created_at?: string
@@ -2480,6 +2485,9 @@ export type Database = {
           id?: string
           pinned?: boolean
           starts_at?: string
+          target_bw_pop_ids?: string[] | null
+          target_client_ids?: string[] | null
+          target_pop_ids?: string[] | null
           target_scope?: string
           title: string
           type?: string
@@ -2489,6 +2497,7 @@ export type Database = {
         Update: {
           active?: boolean
           attachment_url?: string | null
+          audience_groups?: string[] | null
           body?: string
           branch_id?: string | null
           created_at?: string
@@ -2497,6 +2506,9 @@ export type Database = {
           id?: string
           pinned?: boolean
           starts_at?: string
+          target_bw_pop_ids?: string[] | null
+          target_client_ids?: string[] | null
+          target_pop_ids?: string[] | null
           target_scope?: string
           title?: string
           type?: string
