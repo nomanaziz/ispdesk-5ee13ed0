@@ -26,6 +26,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
+import { ICONS8_BY_URL, ICONS8_BY_TITLE, ICONS8_BY_LABEL } from "@/lib/iconResolver";
+
+function icons8ForItem(url: string, title: string, groupLabel?: string): string | undefined {
+  return (
+    ICONS8_BY_URL[url] ??
+    ICONS8_BY_TITLE[title] ??
+    (groupLabel ? ICONS8_BY_LABEL[groupLabel] : undefined)
+  );
+}
+function icons8ForGroup(label: string): string | undefined {
+  return ICONS8_BY_LABEL[label];
+}
 
 interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
 interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
@@ -678,7 +690,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
             )}
             title={groupLabel}
           >
-            <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} customIcon={hishabeeForItem(primaryItem.url, primaryItem.title, group.label)} />
+            <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} icons8={icons8ForItem(primaryItem.url, primaryItem.title, group.label)} customIcon={hishabeeForItem(primaryItem.url, primaryItem.title, group.label)} />
             {groupBadgeCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                 {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
@@ -699,7 +711,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
               : isLight ? "text-muted-foreground hover:text-foreground hover:bg-muted/50" : "text-slate-400 hover:text-white hover:bg-white/5"
           )}
         >
-          <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} customIcon={hishabeeForItem(primaryItem.url, primaryItem.title, group.label)} />
+          <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} icons8={icons8ForItem(primaryItem.url, primaryItem.title, group.label)} customIcon={hishabeeForItem(primaryItem.url, primaryItem.title, group.label)} />
           <span className="flex-1 truncate">{groupLabel}</span>
           {groupBadgeCount > 0 && (
             <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
@@ -723,7 +735,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
                   ? "bg-primary/15 text-primary"
                   : isLight ? "text-muted-foreground hover:text-primary hover:bg-primary/5" : "text-slate-400 hover:text-white hover:bg-white/5"
               )} title={groupLabel}>
-              <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} customIcon={hishabeeForGroup(group.label)} />
+              <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} icons8={icons8ForGroup(group.label)} customIcon={hishabeeForGroup(group.label)} />
               {groupBadgeCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                   {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
@@ -744,7 +756,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
             ? "text-primary"
             : isLight ? "text-muted-foreground hover:text-foreground" : "text-slate-400 hover:text-white"
         )} style={{ width: "calc(100% - 16px)" }}>
-        <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActiveGroup} customIcon={hishabeeForGroup(group.label)} />
+        <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActiveGroup} icons8={icons8ForGroup(group.label)} customIcon={hishabeeForGroup(group.label)} />
         <span className="flex-1 text-left truncate">{groupLabel}</span>
         {groupBadgeCount > 0 && !effectiveOpen && (
           <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
@@ -767,7 +779,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
                       ? "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       : "text-slate-400 hover:text-white hover:bg-white/5"
                 )}>
-                <MenuIconTile icon={item.icon} tint={tintForLabel(group.label)} active={isActive} size="sm" customIcon={hishabeeForItem(item.url, item.title, group.label)} />
+                <MenuIconTile icon={item.icon} tint={tintForLabel(group.label)} active={isActive} size="sm" icons8={icons8ForItem(item.url, item.title, group.label)} customIcon={hishabeeForItem(item.url, item.title, group.label)} />
                 <span className="flex-1 truncate">{tr(item.title, lang)}</span>
                 {count > 0 && (
                   <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">

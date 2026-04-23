@@ -21,6 +21,7 @@ import { NotesButton } from "@/components/notes/NotesButton";
 import { InstallAppBanner } from "@/components/InstallAppBanner";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { HeaderClock } from "@/components/HeaderClock";
+import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
 
 type IconTint =
   | "indigo" | "blue" | "green" | "amber" | "teal" | "purple"
@@ -43,30 +44,30 @@ const tintTile: Record<IconTint, string> = {
   sky:     "bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300",
 };
 
-const menuItems: { bn: string; en: string; icon: any; path: string; tint: IconTint }[] = [
-  { bn: "ড্যাশবোর্ড", en: "Dashboard", icon: Home, path: "/portal/dashboard", tint: "indigo" },
-  { bn: "আমার প্রোফাইল", en: "My Profile", icon: UserCog, path: "/portal/profile", tint: "blue" },
-  { bn: "লাইভ ব্যবহার", en: "Live Usage", icon: Activity, path: "/portal/live-usage", tint: "green" },
-  { bn: "নোটিশ", en: "Notices", icon: Bell, path: "/portal/notices", tint: "amber" },
-  { bn: "চেঞ্জ/আপডেট", en: "Change/Update", icon: Send, path: "/portal/change-request", tint: "teal" },
-  { bn: "মুভি/FTP সার্ভার", en: "Movie/FTP Servers", icon: Clapperboard, path: "/portal/media", tint: "purple" },
-  { bn: "স্পিড টেস্ট", en: "Speed Test", icon: Rocket, path: "/portal/speed-test", tint: "rose" },
-  { bn: "আমার লেজার", en: "My Ledger", icon: BookOpen, path: "/portal/ledger", tint: "cyan" },
-  { bn: "মাসিক বিল", en: "Monthly Bills", icon: Receipt, path: "/portal/bills", tint: "emerald" },
-  { bn: "ইনভয়েস", en: "Invoices", icon: FileText, path: "/portal/invoices", tint: "teal" },
-  { bn: "শপ", en: "Shop", icon: ShoppingBag, path: "/portal/shop", tint: "pink" },
-  { bn: "আমার অর্ডার", en: "My Orders", icon: Package, path: "/portal/my-orders", tint: "orange" },
-  { bn: "আমার মেসেজ", en: "My Messages", icon: MessageSquare, path: "/portal/messages", tint: "violet" },
-  { bn: "সাপোর্ট টিকেট", en: "Support Tickets", icon: HeadphonesIcon, path: "/portal/support", tint: "red" },
+const menuItems: { bn: string; en: string; icon: any; path: string; tint: IconTint; icons8?: string }[] = [
+  { bn: "ড্যাশবোর্ড", en: "Dashboard", icon: Home, path: "/portal/dashboard", tint: "indigo", icons8: "business" },
+  { bn: "আমার প্রোফাইল", en: "My Profile", icon: UserCog, path: "/portal/profile", tint: "blue", icons8: "manager" },
+  { bn: "লাইভ ব্যবহার", en: "Live Usage", icon: Activity, path: "/portal/live-usage", tint: "green", icons8: "data-transfer" },
+  { bn: "নোটিশ", en: "Notices", icon: Bell, path: "/portal/notices", tint: "amber", icons8: "news" },
+  { bn: "চেঞ্জ/আপডেট", en: "Change/Update", icon: Send, path: "/portal/change-request", tint: "teal", icons8: "process" },
+  { bn: "মুভি/FTP সার্ভার", en: "Movie/FTP Servers", icon: Clapperboard, path: "/portal/media", tint: "purple", icons8: "shared-folder" },
+  { bn: "স্পিড টেস্ট", en: "Speed Test", icon: Rocket, path: "/portal/speed-test", tint: "rose", icons8: "increase" },
+  { bn: "আমার লেজার", en: "My Ledger", icon: BookOpen, path: "/portal/ledger", tint: "cyan", icons8: "address-book" },
+  { bn: "মাসিক বিল", en: "Monthly Bills", icon: Receipt, path: "/portal/bills", tint: "emerald", icons8: "documents" },
+  { bn: "ইনভয়েস", en: "Invoices", icon: FileText, path: "/portal/invoices", tint: "teal", icons8: "documents" },
+  { bn: "শপ", en: "Shop", icon: ShoppingBag, path: "/portal/shop", tint: "pink", icons8: "shopping-mall" },
+  { bn: "আমার অর্ডার", en: "My Orders", icon: Package, path: "/portal/my-orders", tint: "orange", icons8: "delivery-time" },
+  { bn: "আমার মেসেজ", en: "My Messages", icon: MessageSquare, path: "/portal/messages", tint: "violet", icons8: "comments" },
+  { bn: "সাপোর্ট টিকেট", en: "Support Tickets", icon: HeadphonesIcon, path: "/portal/support", tint: "red", icons8: "online-support" },
 ];
 
 // Single source-of-truth bottom nav (used on mobile + tablet, every page)
-const bottomNav: { bn: string; en: string; icon: any; path: string; matchPrefix?: string }[] = [
-  { bn: "হোম",     en: "Home",     icon: Home,           path: "/portal/dashboard" },
-  { bn: "বিল",     en: "Bills",    icon: Receipt,        path: "/portal/bills",   matchPrefix: "/portal/bills" },
-  { bn: "সাপোর্ট", en: "Support",  icon: HeadphonesIcon, path: "/portal/support" },
-  { bn: "লেজার",   en: "Ledger",   icon: BookOpen,       path: "/portal/ledger" },
-  { bn: "প্রোফাইল", en: "Profile", icon: UserCog,        path: "/portal/profile" },
+const bottomNav: { bn: string; en: string; icon: any; path: string; matchPrefix?: string; icons8?: string }[] = [
+  { bn: "হোম",     en: "Home",     icon: Home,           path: "/portal/dashboard",                              icons8: "business" },
+  { bn: "বিল",     en: "Bills",    icon: Receipt,        path: "/portal/bills",   matchPrefix: "/portal/bills", icons8: "documents" },
+  { bn: "সাপোর্ট", en: "Support",  icon: HeadphonesIcon, path: "/portal/support",                                icons8: "online-support" },
+  { bn: "লেজার",   en: "Ledger",   icon: BookOpen,       path: "/portal/ledger",                                 icons8: "address-book" },
+  { bn: "প্রোফাইল", en: "Profile", icon: UserCog,        path: "/portal/profile",                                icons8: "manager" },
 ];
 
 interface Props {
@@ -128,13 +129,14 @@ export const PortalLayout = ({ children, fullBleedMobile = true }: Props) => {
             {menuItems.map((item) => {
               const active = location.pathname === item.path;
               const Icon = item.icon;
+              const useIcons8 = hasIcons8Icon(item.icons8);
               return (
                 <Link
                   key={item.path}
                   to={item.path}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm transition-all font-medium group",
+                    "group flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm transition-all font-medium",
                     active
                       ? "bg-sidebar-primary/10 text-sidebar-foreground shadow-sm"
                       : "text-sidebar-foreground hover:bg-sidebar-accent",
@@ -143,11 +145,16 @@ export const PortalLayout = ({ children, fullBleedMobile = true }: Props) => {
                   <span
                     className={cn(
                       "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 transition-transform",
-                      tintTile[item.tint],
-                      active && "scale-105 shadow",
+                      useIcons8 ? "bg-transparent" : tintTile[item.tint],
+                      active && "scale-105",
+                      !useIcons8 && active && "shadow",
                     )}
                   >
-                    <Icon className="h-5 w-5" strokeWidth={2.2} />
+                    {useIcons8 ? (
+                      <Icons8Icon name={item.icons8!} size={28} />
+                    ) : (
+                      <Icon className="h-5 w-5" strokeWidth={2.2} />
+                    )}
                   </span>
                   <span className="truncate">{t(item.bn, item.en)}</span>
                 </Link>
@@ -271,16 +278,25 @@ export const PortalLayout = ({ children, fullBleedMobile = true }: Props) => {
                 ? location.pathname.startsWith(item.matchPrefix)
                 : location.pathname === item.path;
               const Icon = item.icon;
+              const useIcons8 = hasIcons8Icon(item.icons8);
               return (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10.5px] font-medium transition-colors min-h-[56px]",
+                    "group flex flex-col items-center justify-center gap-0.5 py-2 text-[10.5px] font-medium transition-colors min-h-[56px]",
                     active ? "text-rose-600" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} strokeWidth={2.2} />
+                  {useIcons8 ? (
+                    <Icons8Icon
+                      name={item.icons8!}
+                      size={26}
+                      className={cn("transition-transform", active && "scale-110")}
+                    />
+                  ) : (
+                    <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} strokeWidth={2.2} />
+                  )}
                   <span className="leading-none">{t(item.bn, item.en)}</span>
                 </Link>
               );
