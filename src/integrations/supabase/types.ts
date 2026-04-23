@@ -6787,6 +6787,103 @@ export type Database = {
           },
         ]
       }
+      pop_recharge_logs: {
+        Row: {
+          amount_charged: number
+          branch_id: string | null
+          client_id: string
+          client_name: string | null
+          client_username: string | null
+          created_at: string
+          daily_rate: number
+          days_added: number
+          expire_after: string | null
+          expire_before: string | null
+          id: string
+          note: string | null
+          package_id: string | null
+          package_name: string | null
+          payment_method: string | null
+          pop_balance_after: number
+          pop_balance_before: number
+          pop_id: string
+          recharge_type: string
+          recharged_by: string | null
+          recharged_by_name: string | null
+          transaction_id: string | null
+        }
+        Insert: {
+          amount_charged?: number
+          branch_id?: string | null
+          client_id: string
+          client_name?: string | null
+          client_username?: string | null
+          created_at?: string
+          daily_rate?: number
+          days_added?: number
+          expire_after?: string | null
+          expire_before?: string | null
+          id?: string
+          note?: string | null
+          package_id?: string | null
+          package_name?: string | null
+          payment_method?: string | null
+          pop_balance_after?: number
+          pop_balance_before?: number
+          pop_id: string
+          recharge_type?: string
+          recharged_by?: string | null
+          recharged_by_name?: string | null
+          transaction_id?: string | null
+        }
+        Update: {
+          amount_charged?: number
+          branch_id?: string | null
+          client_id?: string
+          client_name?: string | null
+          client_username?: string | null
+          created_at?: string
+          daily_rate?: number
+          days_added?: number
+          expire_after?: string | null
+          expire_before?: string | null
+          id?: string
+          note?: string | null
+          package_id?: string | null
+          package_name?: string | null
+          payment_method?: string | null
+          pop_balance_after?: number
+          pop_balance_before?: number
+          pop_id?: string
+          recharge_type?: string
+          recharged_by?: string | null
+          recharged_by_name?: string | null
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pop_recharge_logs_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pop_recharge_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pop_recharge_logs_pop_id_fkey"
+            columns: ["pop_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pop_transactions: {
         Row: {
           amount: number
