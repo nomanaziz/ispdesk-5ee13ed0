@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search } from "lucide-react";
 import { useState } from "react";
+import { PageHeader } from "@/components/common/PageHeader";
+import { StatCard } from "@/components/common/StatCard";
 
 export default function Transactions() {
   const [search, setSearch] = useState("");
@@ -40,15 +42,12 @@ export default function Transactions() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">লেনদেন</h1>
-        <p className="text-muted-foreground text-sm">সকল আয় ও ব্যয়ের লেনদেন</p>
-      </div>
+      <PageHeader title="লেনদেন" description="সকল আয় ও ব্যয়ের লেনদেন" />
 
-      <div className="grid grid-cols-3 gap-3">
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">মোট আয়</p><p className="text-xl font-bold text-green-600">৳{totalIncome.toLocaleString()}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">মোট ব্যয়</p><p className="text-xl font-bold text-red-500">৳{totalExpense.toLocaleString()}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">নেট</p><p className="text-xl font-bold">৳{(totalIncome - totalExpense).toLocaleString()}</p></CardContent></Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <StatCard label="মোট আয়" value={`৳${totalIncome.toLocaleString()}`} icons8="profit" />
+        <StatCard label="মোট ব্যয়" value={`৳${totalExpense.toLocaleString()}`} icons8="high-priority" />
+        <StatCard label="নেট" value={`৳${(totalIncome - totalExpense).toLocaleString()}`} icons8="calculator" />
       </div>
 
       <div className="relative">

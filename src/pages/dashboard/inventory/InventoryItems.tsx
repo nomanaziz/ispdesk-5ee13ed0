@@ -11,6 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Search, Package, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/common/PageHeader";
+import { StatCard } from "@/components/common/StatCard";
 
 type Item = {
   id: string;
@@ -139,15 +141,16 @@ export default function InventoryItems() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">আইটেম তালিকা</h1>
-        <Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" /> আইটেম যোগ করুন</Button>
-      </div>
+      <PageHeader
+        title="আইটেম তালিকা"
+        description="ইনভেন্টরি আইটেম, স্টক ও ক্যাটাগরি পরিচালনা"
+        action={<Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" /> আইটেম যোগ করুন</Button>}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><Package className="h-8 w-8 text-primary" /><div><p className="text-sm text-muted-foreground">মোট আইটেম</p><p className="text-2xl font-bold">{items.length}</p></div></div></CardContent></Card>
-        <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center"><div className="h-3 w-3 rounded-full bg-green-500" /></div><div><p className="text-sm text-muted-foreground">সক্রিয়</p><p className="text-2xl font-bold">{items.filter(i => i.status === "active").length}</p></div></div></CardContent></Card>
-        <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><AlertTriangle className="h-8 w-8 text-orange-500" /><div><p className="text-sm text-muted-foreground">লো স্টক (&lt;10)</p><p className="text-2xl font-bold">{lowStock}</p></div></div></CardContent></Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <StatCard label="মোট আইটেম" value={items.length} icons8="stack" />
+        <StatCard label="সক্রিয়" value={items.filter(i => i.status === "active").length} icons8="checked" />
+        <StatCard label="লো স্টক (<10)" value={lowStock} icons8="high-priority" />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
