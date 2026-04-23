@@ -10,6 +10,7 @@ import { ArrowLeft, KeyRound, Download, User, List, LogIn } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { loginAsUser } from "@/lib/impersonate";
 import { toast } from "sonner";
+import BwInvoiceDetailDialog from "@/components/bw-sale/BwInvoiceDetailDialog";
 
 export default function CustomerView() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +20,7 @@ export default function CustomerView() {
   const [pop, setPop] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null);
 
   useEffect(() => { if (id) fetchData(); }, [id]);
 
