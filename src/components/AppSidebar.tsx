@@ -21,6 +21,7 @@ import {
 import { NavLink, useLocation } from "react-router-dom";
 import { Sidebar, SidebarContent, useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { MenuIconTile, tintForLabel } from "@/components/sidebar/MenuIconTile";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -616,7 +617,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
             )}
             title={groupLabel}
           >
-            <group.icon className={cn("h-4 w-4", !isActive && groupColor)} />
+            <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} />
             {groupBadgeCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                 {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
@@ -637,7 +638,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
               : isLight ? "text-muted-foreground hover:text-foreground hover:bg-muted/50" : "text-slate-400 hover:text-white hover:bg-white/5"
           )}
         >
-          <group.icon className={cn("h-4 w-4 shrink-0", !isActive && groupColor)} />
+          <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} />
           <span className="flex-1 truncate">{groupLabel}</span>
           {groupBadgeCount > 0 && (
             <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
@@ -661,7 +662,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
                   ? "bg-primary/15 text-primary"
                   : isLight ? "text-muted-foreground hover:text-primary hover:bg-primary/5" : "text-slate-400 hover:text-white hover:bg-white/5"
               )} title={groupLabel}>
-              <group.icon className={cn("h-4 w-4", !isActive && groupColor)} />
+              <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} />
               {groupBadgeCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                   {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
@@ -682,7 +683,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
             ? "text-primary"
             : isLight ? "text-muted-foreground hover:text-foreground" : "text-slate-400 hover:text-white"
         )} style={{ width: "calc(100% - 16px)" }}>
-        <group.icon className={cn("h-4 w-4 shrink-0", !isActiveGroup && groupColor)} />
+        <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActiveGroup} />
         <span className="flex-1 text-left truncate">{groupLabel}</span>
         {groupBadgeCount > 0 && !effectiveOpen && (
           <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
@@ -705,7 +706,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
                       ? "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       : "text-slate-400 hover:text-white hover:bg-white/5"
                 )}>
-                <item.icon className={cn("h-3.5 w-3.5 shrink-0", !isActive && groupColor, !isActive && "opacity-70")} />
+                <MenuIconTile icon={item.icon} tint={tintForLabel(group.label)} active={isActive} size="sm" />
                 <span className="flex-1 truncate">{tr(item.title, lang)}</span>
                 {count > 0 && (
                   <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
