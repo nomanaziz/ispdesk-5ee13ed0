@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
     if (user_type === "bw_customer") {
       const { data: bw } = await supabase
         .from("bw_sale_customers")
-        .select("id, customer_name, customer_code, username, pop_id, email, mobile, contact_person, address")
+        .select("id, customer_name, customer_code, username, pop_id, email, mobile, contact_person, address, panel_access_enabled, panel_user_limit, panel_subscription_expires_at, panel_branch_id")
         .eq("id", user_id)
         .maybeSingle();
       if (!bw) return json({ error: "BW customer not found" }, 404);
@@ -170,13 +170,20 @@ Deno.serve(async (req) => {
         mobile: bw.mobile,
         contact_person: bw.contact_person,
         address: bw.address,
+        panel_access_enabled: !!(bw as any).panel_access_enabled,
+        panel_user_limit: (bw as any).panel_user_limit,
+        panel_subscription_expires_at: (bw as any).panel_subscription_expires_at
+          ? new Date((bw as any).panel_subscription_expires_at).getTime()
+          : null,
+        panel_branch_id: (bw as any).panel_branch_id,
+        branch_id: (bw as any).panel_branch_id,
       });
       await supabase.from("portal_login_log").insert({
         username: bw.username,
         user_type: "bw_customer",
         ip_address: ip, user_agent: ua, session_id: sid, status: "active",
       });
-      return json({ token, customer, redirect: "/portal/dashboard" });
+      return json({ token, customer, redirect: "/bw/dashboard" });
     }
 
     return json({ error: "Invalid user_type" }, 400);
