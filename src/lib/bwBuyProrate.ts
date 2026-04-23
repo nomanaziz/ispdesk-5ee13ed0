@@ -39,6 +39,7 @@ export async function buildBuyBillItems(
     start_date: s.start_date,
     end_date: s.end_date,
     status: s.status,
+    vat_pct: Number(s.vat_pct ?? 5),
   }));
 
   return buildSegments(enriched, period_start, period_end, total_days);
