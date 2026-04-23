@@ -255,7 +255,7 @@ export default function Pop() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 text-amber-600"
+                              className="h-7 w-7 text-warning"
                               title="Password Regenerate"
                               onClick={() => setPwdTarget({ id: c.id, customer_name: c.customer_name, username: c.username })}
                             >
@@ -398,6 +398,13 @@ export default function Pop() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BwCustomerPasswordDialog
+        open={!!pwdTarget}
+        onOpenChange={(v) => { if (!v) setPwdTarget(null); }}
+        customer={pwdTarget}
+        onSaved={fetchData}
+      />
     </div>
   );
 }
