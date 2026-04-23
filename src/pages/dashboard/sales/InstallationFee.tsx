@@ -238,7 +238,7 @@ export default function InstallationFee() {
                     <TableCell>৳{fee.paid?.toLocaleString("bn-BD")}</TableCell>
                     <TableCell className="font-semibold">৳{((fee.amount || 0) - (fee.paid || 0)).toLocaleString("bn-BD")}</TableCell>
                     <TableCell>{fee.fee_date ? format(new Date(fee.fee_date), "dd MMM yyyy", { locale: bn }) : "-"}</TableCell>
-                    <TableCell>{statusBadge(fee.status)}</TableCell>
+                    <TableCell>{statusBadge(deriveStatus(fee.amount, fee.paid))}</TableCell>
                     <TableCell className="max-w-[150px] truncate">{fee.notes || "-"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
