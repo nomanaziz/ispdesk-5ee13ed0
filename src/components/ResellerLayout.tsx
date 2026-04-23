@@ -151,6 +151,15 @@ const groups: NavGroup[] = [
       { to: "/pop-admin/fund-history/debit", label: "ডেবিট হিস্ট্রি", en: "Debit History", icon: History },
     ],
   },
+  {
+    key: "bw_setup", label: "আমার নিজস্ব সেটআপ", en: "My Own Setup", icon: Sparkles,
+    items: [
+      { to: "/pop-admin/config/devices", label: "MikroTik সার্ভার যোগ", en: "Add MikroTik Server", icon: Server },
+      { to: "/pop-admin/clients/add", label: "ক্লায়েন্ট যোগ", en: "Add Client", icon: UserPlus },
+      { to: "/pop-admin/clients", label: "আমার ক্লায়েন্ট তালিকা", en: "My Client List", icon: Users },
+      { to: "/pop-admin/billing/list", label: "আমার বিলিং তালিকা", en: "My Billing List", icon: Receipt },
+    ],
+  },
 ];
 
 function isGroupAllowed(g: NavGroup, customer: any): boolean {
