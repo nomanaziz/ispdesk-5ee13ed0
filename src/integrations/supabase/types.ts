@@ -1481,6 +1481,89 @@ export type Database = {
           },
         ]
       }
+      bw_panel_pricing_slabs: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          monthly_price: number
+          updated_at: string
+          user_limit: number
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          monthly_price: number
+          updated_at?: string
+          user_limit: number
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          monthly_price?: number
+          updated_at?: string
+          user_limit?: number
+        }
+        Relationships: []
+      }
+      bw_panel_subscriptions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          monthly_price: number
+          paid_amount: number
+          payment_method: string | null
+          payment_reference: string | null
+          period_end: string
+          period_start: string
+          status: string
+          user_limit: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          id?: string
+          monthly_price: number
+          paid_amount?: number
+          payment_method?: string | null
+          payment_reference?: string | null
+          period_end: string
+          period_start?: string
+          status?: string
+          user_limit: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          id?: string
+          monthly_price?: number
+          paid_amount?: number
+          payment_method?: string | null
+          payment_reference?: string | null
+          period_end?: string
+          period_start?: string
+          status?: string
+          user_limit?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bw_panel_subscriptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bw_providers: {
         Row: {
           address: string | null
@@ -1881,6 +1964,11 @@ export type Database = {
           mobile: string | null
           nttn_info: string | null
           own_bkash_number: string | null
+          panel_access_enabled: boolean
+          panel_branch_id: string | null
+          panel_subscription_expires_at: string | null
+          panel_subscription_started_at: string | null
+          panel_user_limit: number | null
           password: string | null
           payment_mode: string | null
           phone: string | null
@@ -1910,6 +1998,11 @@ export type Database = {
           mobile?: string | null
           nttn_info?: string | null
           own_bkash_number?: string | null
+          panel_access_enabled?: boolean
+          panel_branch_id?: string | null
+          panel_subscription_expires_at?: string | null
+          panel_subscription_started_at?: string | null
+          panel_user_limit?: number | null
           password?: string | null
           payment_mode?: string | null
           phone?: string | null
@@ -1939,6 +2032,11 @@ export type Database = {
           mobile?: string | null
           nttn_info?: string | null
           own_bkash_number?: string | null
+          panel_access_enabled?: boolean
+          panel_branch_id?: string | null
+          panel_subscription_expires_at?: string | null
+          panel_subscription_started_at?: string | null
+          panel_user_limit?: number | null
           password?: string | null
           payment_mode?: string | null
           phone?: string | null
@@ -1954,6 +2052,13 @@ export type Database = {
           website?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "bw_sale_customers_panel_branch_id_fkey"
+            columns: ["panel_branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bw_sale_customers_pop_id_fkey"
             columns: ["pop_id"]
