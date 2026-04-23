@@ -172,14 +172,14 @@ const ResellerDashboard = () => {
 
       {/* Row 2 — Internal POP stats */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
-        <Stat icon={<UserPlus className="h-5 w-5" />} label="New Client (this month)" value={String(internal?.newThisMonth ?? 0)} tone="success" />
-        <Stat icon={<Users className="h-5 w-5" />} label="Total Client" value={String(internal?.totalClients ?? 0)} sub={`Active ${internal?.activeClients ?? 0}`} />
-        <Stat icon={<Wifi className="h-5 w-5" />} label="Online Clients" value={String(internal?.onlineClients ?? 0)} tone="success" />
-        <Stat icon={<Receipt className="h-5 w-5" />} label="Monthly Bill" value={tk(internal?.monthlyBillSum)} />
-        <Stat icon={<CheckCircle2 className="h-5 w-5" />} label="Collected" value={tk(internal?.collected)} tone="success" />
-        <Stat icon={<Gift className="h-5 w-5" />} label="Discount" value={tk(internal?.totalDiscount)} />
-        <Stat icon={<AlertTriangle className="h-5 w-5" />} label="Total Due" value={tk(internal?.totalDue)} tone={internal && internal.totalDue > 0 ? "warning" : undefined} />
-        <Stat icon={<Banknote className="h-5 w-5" />} label="Cash on Hand" value={tk(internal?.cashOnHand)} />
+        <Stat icons8="add-user-male" icon={<UserPlus className="h-5 w-5" />} label="New Client (this month)" value={String(internal?.newThisMonth ?? 0)} tone="success" />
+        <Stat icons8="people" icon={<Users className="h-5 w-5" />} label="Total Client" value={String(internal?.totalClients ?? 0)} sub={`Active ${internal?.activeClients ?? 0}`} />
+        <Stat icons8="wi-fi-connected" icon={<Wifi className="h-5 w-5" />} label="Online Clients" value={String(internal?.onlineClients ?? 0)} tone="success" />
+        <Stat icons8="documents" icon={<Receipt className="h-5 w-5" />} label="Monthly Bill" value={tk(internal?.monthlyBillSum)} />
+        <Stat icons8="checked" icon={<CheckCircle2 className="h-5 w-5" />} label="Collected" value={tk(internal?.collected)} tone="success" />
+        <Stat icons8="discount" icon={<Gift className="h-5 w-5" />} label="Discount" value={tk(internal?.totalDiscount)} />
+        <Stat icons8="high-priority" icon={<AlertTriangle className="h-5 w-5" />} label="Total Due" value={tk(internal?.totalDue)} tone={internal && internal.totalDue > 0 ? "warning" : undefined} />
+        <Stat icons8="coins" icon={<Banknote className="h-5 w-5" />} label="Cash on Hand" value={tk(internal?.cashOnHand)} />
       </div>
 
       {/* Bottom row */}
