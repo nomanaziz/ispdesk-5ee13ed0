@@ -16,7 +16,7 @@ import {
   CheckSquare, History, Wifi, Map, CircleDot,
   FolderOpen, Store, Tag, BarChart, FileBarChart,
   Bell, Users2, Building, Briefcase, ScrollText,
-  ShoppingBag, ShieldCheck,
+  ShoppingBag, ShieldCheck, Sparkles,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Sidebar, SidebarContent, useSidebar } from "@/components/ui/sidebar";

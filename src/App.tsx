@@ -204,6 +204,7 @@ import BwSaleRecurring from "@/pages/dashboard/bw-sale/Recurring";
 import BwSaleCustomerView from "@/pages/dashboard/bw-sale/CustomerView";
 import BwSaleServices from "@/pages/dashboard/bw-sale/Services";
 import BwSaleRecurringForm from "@/pages/dashboard/bw-sale/RecurringForm";
+import BwSalePanelPricing from "@/pages/dashboard/bw-sale/PanelPricing";
 
 // Purchase
 import PurchaseVendors from "@/pages/dashboard/purchases/Vendors";
@@ -615,6 +616,7 @@ const App = () => (
               <Route path="/dashboard/bw-sale/recurring" element={<P><BwSaleRecurring /></P>} />
               <Route path="/dashboard/bw-sale/recurring/new" element={<P><BwSaleRecurringForm /></P>} />
               <Route path="/dashboard/bw-sale/recurring/:id/edit" element={<P><BwSaleRecurringForm /></P>} />
+              <Route path="/dashboard/bw-sale/panel-pricing" element={<P><BwSalePanelPricing /></P>} />
 
               {/* Purchase */}
               <Route path="/dashboard/purchases/vendors" element={<P><PurchaseVendors /></P>} />
