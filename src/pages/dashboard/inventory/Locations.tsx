@@ -15,12 +15,13 @@ import { toast } from "sonner";
 type Location = {
   id: string;
   name: string;
+  code: string | null;
   address: string | null;
   status: string;
   created_at: string;
 };
 
-const emptyForm = { name: "", address: "", status: "active" };
+const emptyForm = { name: "", code: "", address: "", status: "active" };
 
 export default function Locations() {
   const queryClient = useQueryClient();
