@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Search, Receipt, DollarSign, AlertTriangle } from "lucide-react";
 
@@ -146,12 +145,10 @@ export default function PurchaseBills() {
           <div className="space-y-4">
             <div><Label>বিল নং *</Label><Input value={form.bill_no} onChange={e => setForm(p => ({ ...p, bill_no: e.target.value }))} /></div>
             <div><Label>ভেন্ডর</Label>
-              <SearchableSelect
-                value={form.vendor_id}
-                onValueChange={v => setForm(p => ({ ...p, vendor_id: v }))}
-                options={vendors.map((v: any) => ({ value: v.id, label: v.name }))}
-                placeholder="ভেন্ডর নির্বাচন করুন"
-              />
+              <Select value={form.vendor_id} onValueChange={v => setForm(p => ({ ...p, vendor_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="ভেন্ডর নির্বাচন করুন" /></SelectTrigger>
+                <SelectContent>{vendors.map((v: any) => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div><Label>পরিমাণ</Label><Input type="number" value={form.amount} onChange={e => updateDue(Number(e.target.value), form.paid)} /></div>

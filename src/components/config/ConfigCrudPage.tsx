@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Search, Trash2, Edit, Power, PowerOff, Settings } from "lucide-react";
 
@@ -351,12 +351,12 @@ export default function ConfigCrudPage({
               <div key={f.key} className="space-y-1.5">
                 <label className="text-sm font-medium">{f.label} {f.required && <span className="text-destructive">*</span>}</label>
                 {f.type === "select" && f.options ? (
-                  <SearchableSelect
-                    value={formData[f.key] || ""}
-                    onValueChange={(v) => setFormData({ ...formData, [f.key]: v })}
-                    options={f.options.map((o) => ({ value: o.value, label: o.label }))}
-                    placeholder={f.placeholder || "নির্বাচন করুন"}
-                  />
+                  <Select value={formData[f.key] || ""} onValueChange={(v) => setFormData({ ...formData, [f.key]: v })}>
+                    <SelectTrigger><SelectValue placeholder={f.placeholder || "নির্বাচন করুন"} /></SelectTrigger>
+                    <SelectContent>
+                      {f.options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 ) : f.type === "color" ? (
                   <div className="flex gap-2">
                     <input

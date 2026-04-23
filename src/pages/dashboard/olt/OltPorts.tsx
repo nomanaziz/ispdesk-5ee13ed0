@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -165,14 +164,13 @@ export default function OltPorts() {
           <div className="flex flex-wrap gap-3 items-end">
             <div className="min-w-[220px]">
               <Label>OLT</Label>
-              <SearchableSelect
-                value={oltFilter}
-                onValueChange={setOltFilter}
-                options={[
-                  { value: "all", label: "সকল OLT" },
-                  ...olts.map((o: any) => ({ value: o.id, label: o.name })),
-                ]}
-              />
+              <Select value={oltFilter} onValueChange={setOltFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">সকল OLT</SelectItem>
+                  {olts.map((o: any) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             {oltFilter !== "all" && (
               <>

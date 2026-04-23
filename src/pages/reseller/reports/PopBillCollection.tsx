@@ -5,7 +5,6 @@ import { ReportLayout } from "@/components/reports/ReportLayout";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Button } from "@/components/ui/button";
 import { fmtDate, fmtMoney } from "@/lib/reportExport";
 import { usePopScope } from "@/hooks/usePopScope";
@@ -100,31 +99,46 @@ export default function PopBillCollection() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div><Label className="text-xs">Username/Code/Name</Label><Input value={filters.username} onChange={(e) => upd("username", e.target.value)} className="h-9" /></div>
           <div><Label className="text-xs">Payment Method</Label>
-            <SearchableSelect value={filters.payment_method} onValueChange={(v) => upd("payment_method", v)} options={[{value:"all",label:"All"}, ...((pmethods||[]).map((p:any)=>({value:p.name,label:p.name})))]} className="h-9" />
+            <Select value={filters.payment_method} onValueChange={(v) => upd("payment_method", v)}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="all">All</SelectItem>{(pmethods || []).map((p: any) => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <div>
-            <Label className="text-xs mb-1">Package</Label>
-            <SearchableSelect value={filters.package_id} onValueChange={(v) => upd("package_id", v)} options={[{value:"all",label:"All"}, ...((packages||[]).map((p:any)=>({value:p.id,label:p.name})))]} className="h-9" />
+          <div><Label className="text-xs">Package</Label>
+            <Select value={filters.package_id} onValueChange={(v) => upd("package_id", v)}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="all">All</SelectItem>{(packages || []).map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <div>
-            <Label className="text-xs mb-1">Billing Status</Label>
-            <SearchableSelect value={filters.billing_status} onValueChange={(v) => upd("billing_status", v)} options={[{value:"all",label:"All"}, ...((bstatuses||[]).map((p:any)=>({value:p.name,label:p.name})))]} className="h-9" />
+          <div><Label className="text-xs">Billing Status</Label>
+            <Select value={filters.billing_status} onValueChange={(v) => upd("billing_status", v)}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="all">All</SelectItem>{(bstatuses || []).map((p: any) => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <div>
-            <Label className="text-xs mb-1">Zone</Label>
-            <SearchableSelect value={filters.zone_id} onValueChange={(v) => upd("zone_id", v)} options={[{value:"all",label:"All"}, ...((zones||[]).map((p:any)=>({value:p.id,label:p.name})))]} className="h-9" />
+          <div><Label className="text-xs">Zone</Label>
+            <Select value={filters.zone_id} onValueChange={(v) => upd("zone_id", v)}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="all">All</SelectItem>{(zones || []).map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <div>
-            <Label className="text-xs mb-1">Sub Zone</Label>
-            <SearchableSelect value={filters.sub_zone_id} onValueChange={(v) => upd("sub_zone_id", v)} options={[{value:"all",label:"All"}, ...((subZones||[]).map((p:any)=>({value:p.id,label:p.name})))]} className="h-9" />
+          <div><Label className="text-xs">Sub Zone</Label>
+            <Select value={filters.sub_zone_id} onValueChange={(v) => upd("sub_zone_id", v)}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="all">All</SelectItem>{(subZones || []).map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <div>
-            <Label className="text-xs mb-1">Box</Label>
-            <SearchableSelect value={filters.box_id} onValueChange={(v) => upd("box_id", v)} options={[{value:"all",label:"All"}, ...((boxes||[]).map((p:any)=>({value:p.id,label:p.name})))]} className="h-9" />
+          <div><Label className="text-xs">Box</Label>
+            <Select value={filters.box_id} onValueChange={(v) => upd("box_id", v)}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="all">All</SelectItem>{(boxes || []).map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
-          <div>
-            <Label className="text-xs mb-1">Affiliator</Label>
-            <SearchableSelect value={filters.affiliator_id} onValueChange={(v) => upd("affiliator_id", v)} options={[{value:"all",label:"All"}, ...((affiliates||[]).map((p:any)=>({value:p.id,label:p.name})))]} className="h-9" />
+          <div><Label className="text-xs">Affiliator</Label>
+            <Select value={filters.affiliator_id} onValueChange={(v) => upd("affiliator_id", v)}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="all">All</SelectItem>{(affiliates || []).map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
           <div><Label className="text-xs">Creation From</Label><Input type="date" value={filters.creation_from} onChange={(e) => upd("creation_from", e.target.value)} className="h-9" /></div>
           <div><Label className="text-xs">Creation To</Label><Input type="date" value={filters.creation_to} onChange={(e) => upd("creation_to", e.target.value)} className="h-9" /></div>
