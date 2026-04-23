@@ -28,6 +28,7 @@ import BulkDateExtendDialog from "@/components/billing/BulkDateExtendDialog";
 import BulkDistrictChangeDialog from "@/components/billing/BulkDistrictChangeDialog";
 import BulkThanaChangeDialog from "@/components/billing/BulkThanaChangeDialog";
 import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows } from "@/lib/exportClients";
+import { PageHeader } from "@/components/common/PageHeader";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
 
@@ -244,10 +245,11 @@ export default function ClientList() {
 
   return (
     <div className="space-y-3 p-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-xl font-bold">ক্লায়েন্ট তালিকা <span className="text-sm font-normal text-muted-foreground">সকল ক্লায়েন্ট দেখুন</span></h1>
-        <Button asChild size="sm"><Link to={isPopMode ? "/pop-admin/clients/add" : "/dashboard/clients/add"}><Plus className="h-4 w-4 mr-1" /> নতুন ক্লায়েন্ট</Link></Button>
-      </div>
+      <PageHeader
+        title="ক্লায়েন্ট তালিকা"
+        description="সকল ক্লায়েন্ট দেখুন ও পরিচালনা করুন"
+        action={<Button asChild size="sm"><Link to={isPopMode ? "/pop-admin/clients/add" : "/dashboard/clients/add"}><Plus className="h-4 w-4 mr-1" /> নতুন ক্লায়েন্ট</Link></Button>}
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
