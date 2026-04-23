@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,18 +8,32 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Bell, Send } from "lucide-react";
+import { Bell, Send, Search } from "lucide-react";
 
 export default function PopNotice() {
   const [form, setForm] = useState({ reseller_id: "", title: "", message: "" });
+  const [search, setSearch] = useState("");
 
   const { data: resellers } = useQuery({
     queryKey: ["resellers-notice-select"],
     queryFn: async () => {
-      const { data } = await supabase.from("branch_managers").select("id, name, contact").eq("status", "active");
+      const { data } = await supabase
+        .from("branch_managers")
+        .select("id, name, contact")
+        .ilike("status", "active")
+        .order("name");
       return data ?? [];
     },
   });
+
+  const filteredResellers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return resellers ?? [];
+    return (resellers ?? []).filter(
+      (r: any) =>
+        r.name?.toLowerCase().includes(q) || r.contact?.toLowerCase().includes(q)
+    );
+  }, [resellers, search]);
 
   const handleSend = () => {
     if (!form.title || !form.message) {
