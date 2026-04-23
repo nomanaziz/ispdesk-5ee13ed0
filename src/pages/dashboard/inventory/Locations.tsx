@@ -41,7 +41,7 @@ export default function Locations() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = { name: form.name, address: form.address || null, status: form.status };
+      const payload = { name: form.name, code: form.code || null, address: form.address || null, status: form.status };
       if (editingId) {
         const { error } = await supabase.from("store_locations").update(payload).eq("id", editingId);
         if (error) throw error;
@@ -71,9 +71,9 @@ export default function Locations() {
   });
 
   const closeDialog = () => { setDialogOpen(false); setEditingId(null); setForm(emptyForm); };
-  const openEdit = (l: Location) => { setForm({ name: l.name, address: l.address || "", status: l.status }); setEditingId(l.id); setDialogOpen(true); };
+  const openEdit = (l: Location) => { setForm({ name: l.name, code: l.code || "", address: l.address || "", status: l.status }); setEditingId(l.id); setDialogOpen(true); };
 
-  const filtered = locations.filter(l => l.name.toLowerCase().includes(search.toLowerCase()) || (l.address || "").toLowerCase().includes(search.toLowerCase()));
+  const filtered = locations.filter(l => l.name.toLowerCase().includes(search.toLowerCase()) || (l.code || "").toLowerCase().includes(search.toLowerCase()) || (l.address || "").toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="space-y-6">
