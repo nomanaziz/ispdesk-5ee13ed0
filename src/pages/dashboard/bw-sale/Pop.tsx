@@ -255,7 +255,7 @@ export default function Pop() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 text-warning"
+                              className="h-7 w-7"
                               title="Password Regenerate"
                               onClick={() => setPwdTarget({ id: c.id, customer_name: c.customer_name, username: c.username })}
                             >

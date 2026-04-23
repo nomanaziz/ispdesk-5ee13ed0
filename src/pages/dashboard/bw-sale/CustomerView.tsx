@@ -178,7 +178,15 @@ export default function CustomerView() {
                         ) : invoices.map((inv, i) => (
                           <TableRow key={inv.id}>
                             <TableCell>{i + 1}</TableCell>
-                            <TableCell>{inv.invoice_no}</TableCell>
+                            <TableCell>
+                              <button
+                                type="button"
+                                className="font-mono text-primary underline-offset-2 hover:underline"
+                                onClick={() => setOpenInvoiceId(inv.id)}
+                              >
+                                {inv.invoice_no}
+                              </button>
+                            </TableCell>
                             <TableCell>{inv.month || "—"}</TableCell>
                             <TableCell className="text-right">৳{(inv.amount || 0).toLocaleString()}</TableCell>
                             <TableCell className="text-right">৳{(inv.paid_amount || 0).toLocaleString()}</TableCell>
