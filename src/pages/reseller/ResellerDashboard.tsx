@@ -252,38 +252,44 @@ const ResellerDashboard = () => {
 };
 
 const Stat = ({
-  icon, label, value, sub, tone,
+  icon, label, value, sub, tone, icons8,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   sub?: string;
   tone?: "warning" | "success" | "primary";
-}) => (
-  <Card>
-    <CardContent className="p-3.5">
-      <div className="flex items-center gap-3">
-        <div
-          className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
-            tone === "warning"
-              ? "bg-orange-500/10 text-orange-600"
-              : tone === "success"
-              ? "bg-green-500/10 text-green-600"
-              : tone === "primary"
-              ? "bg-primary/10 text-primary"
-              : "bg-muted text-muted-foreground"
-          }`}
-        >
-          {icon}
+  icons8?: string;
+}) => {
+  const useIcons8 = hasIcons8Icon(icons8);
+  return (
+    <Card>
+      <CardContent className="p-3.5">
+        <div className="flex items-center gap-3">
+          <div
+            className={`h-11 w-11 rounded-lg flex items-center justify-center shrink-0 ${
+              useIcons8
+                ? "bg-muted/40"
+                : tone === "warning"
+                ? "bg-orange-500/10 text-orange-600"
+                : tone === "success"
+                ? "bg-green-500/10 text-green-600"
+                : tone === "primary"
+                ? "bg-primary/10 text-primary"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {useIcons8 ? <Icons8Icon name={icons8!} size={32} /> : icon}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-xs text-muted-foreground truncate">{label}</div>
+            <div className="text-base font-semibold truncate">{value}</div>
+            {sub && <div className="text-[10px] text-muted-foreground truncate">{sub}</div>}
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-xs text-muted-foreground truncate">{label}</div>
-          <div className="text-base font-semibold truncate">{value}</div>
-          {sub && <div className="text-[10px] text-muted-foreground truncate">{sub}</div>}
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
+      </CardContent>
+    </Card>
+  );
+};
 
 export default ResellerDashboard;
