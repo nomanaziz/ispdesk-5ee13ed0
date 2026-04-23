@@ -146,7 +146,7 @@ export default function BwDashboard() {
         {/* Purchase orders */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> পার্চেজ অর্ডার</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> সার্ভিস অর্ডার</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {(data?.purchaseOrders || []).map((po: any) => (

@@ -27,14 +27,17 @@ interface NavItem {
   label: string;
   en: string;
   icon: any;
+  icons8: string;
 }
 
+// Icons8 names are explicitly bound here so the BW portal sidebar/bottom-bar
+// always gets the same colorful PNG set used elsewhere.
 const navItems: NavItem[] = [
-  { to: "/bw/dashboard", label: "ড্যাশবোর্ড", en: "Dashboard", icon: LayoutDashboard },
-  { to: "/bw/invoices", label: "বিলিং ইনভয়েস", en: "Billing & Invoices", icon: Receipt },
-  { to: "/bw/purchase-orders", label: "পার্চেজ অর্ডার", en: "Purchase Orders", icon: ShoppingCart },
-  { to: "/bw/tickets", label: "সাপোর্ট টিকেট", en: "Support Tickets", icon: LifeBuoy },
-  { to: "/bw/settings", label: "কোম্পানি সেটিংস", en: "Company Settings", icon: Settings },
+  { to: "/bw/dashboard",        label: "ড্যাশবোর্ড",       en: "Dashboard",        icon: LayoutDashboard, icons8: "business" },
+  { to: "/bw/invoices",         label: "বিলিং ইনভয়েস",     en: "Billing & Invoices", icon: Receipt,       icons8: "folder-invoices" },
+  { to: "/bw/purchase-orders",  label: "সার্ভিস অর্ডার",   en: "Service Orders",   icon: ShoppingCart,    icons8: "purchase-order" },
+  { to: "/bw/tickets",          label: "সাপোর্ট টিকেট",    en: "Support Tickets",  icon: LifeBuoy,        icons8: "online-support" },
+  { to: "/bw/settings",         label: "কোম্পানি সেটিংস",  en: "Company Settings", icon: Settings,        icons8: "settings" },
 ];
 
 export default function BwCustomerLayout({ children }: { children: ReactNode }) {
@@ -128,20 +131,19 @@ export default function BwCustomerLayout({ children }: { children: ReactNode }) 
           const active = location.pathname === item.to ||
             (item.to !== "/bw/dashboard" && location.pathname.startsWith(item.to));
           const Icon = item.icon;
-          const itemIcons8 = resolveIcons8({ url: item.to, title: item.en });
           return (
             <Link
               key={item.to}
               to={item.to}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors group",
                 active
                   ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
                   : "text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               )}
             >
-              {hasIcons8Icon(itemIcons8) ? (
-                <Icons8Icon name={itemIcons8!} size={20} />
+              {hasIcons8Icon(item.icons8) ? (
+                <Icons8Icon name={item.icons8} size={22} />
               ) : (
                 <Icon className="h-4 w-4" />
               )}
@@ -266,18 +268,17 @@ export default function BwCustomerLayout({ children }: { children: ReactNode }) 
           const active = location.pathname === item.to ||
             (item.to !== "/bw/dashboard" && location.pathname.startsWith(item.to));
           const Icon = item.icon;
-          const itemIcons8 = resolveIcons8({ url: item.to, title: item.en });
           return (
             <Link
               key={item.to}
               to={item.to}
               className={cn(
-                "flex flex-col items-center justify-center gap-0.5 text-[10px] transition-colors",
+                "flex flex-col items-center justify-center gap-0.5 text-[10px] transition-colors group",
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {hasIcons8Icon(itemIcons8) ? (
-                <Icons8Icon name={itemIcons8!} size={22} />
+              {hasIcons8Icon(item.icons8) ? (
+                <Icons8Icon name={item.icons8} size={22} />
               ) : (
                 <Icon className="h-5 w-5" />
               )}

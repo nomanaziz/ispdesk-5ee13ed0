@@ -31,10 +31,10 @@ export default function BwPurchaseOrders() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <ShoppingCart className="h-6 w-6" /> পার্চেজ অর্ডার
+          <ShoppingCart className="h-6 w-6" /> সার্ভিস অর্ডার
         </h1>
         <p className="text-sm text-muted-foreground">
-          আপনার ব্যান্ডউইথ কেনার অর্ডার ও স্ট্যাটাস
+          আপনার ব্যান্ডউইথ সার্ভিস অর্ডার ও স্ট্যাটাস
         </p>
       </div>
 
