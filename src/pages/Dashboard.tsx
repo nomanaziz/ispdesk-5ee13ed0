@@ -368,12 +368,13 @@ function StatSkeleton() {
 }
 
 function SectionCard({
-  title, icon: Icon, tint, children,
+  title, icon: Icon, tint, children, icons8,
 }: {
   title: string;
   icon: React.ElementType;
   tint: string; // e.g. "blue" | "emerald" | "amber" | ...
   children: React.ReactNode;
+  icons8?: string;
 }) {
   // Map tint name → tailwind classes (must be literal for JIT)
   const tintMap: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
@@ -387,11 +388,16 @@ function SectionCard({
     teal:    { bg: "bg-teal-500/5",    border: "border-teal-500/20",    text: "text-teal-600 dark:text-teal-400",       iconBg: "bg-teal-500/15" },
   };
   const t = tintMap[tint] || tintMap.blue;
+  const useIcons8 = hasIcons8Icon(icons8);
   return (
     <div className={`rounded-xl border ${t.border} ${t.bg} p-3 sm:p-4`}>
       <div className="flex items-center gap-2 mb-3">
-        <div className={`p-1.5 rounded-md ${t.iconBg} ${t.text}`}>
-          <Icon className="h-4 w-4" />
+        <div className={`p-1.5 rounded-md ${t.iconBg} ${t.text} flex items-center justify-center group`}>
+          {useIcons8 ? (
+            <Icons8Icon name={icons8!} size={22} />
+          ) : (
+            <Icon className="h-4 w-4" />
+          )}
         </div>
         <h2 className={`text-sm font-semibold uppercase tracking-wider ${t.text}`}>{title}</h2>
       </div>
