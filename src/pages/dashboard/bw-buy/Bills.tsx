@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Search, Trash2, Edit, Eye, Receipt, DollarSign, CreditCard, TrendingDown, FileText } from "lucide-react";
+import { Plus, Search, Trash2, Edit, Eye, Receipt, DollarSign, CreditCard, TrendingDown, FileText, Copy } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Bills() {
@@ -50,6 +50,89 @@ export default function Bills() {
       queryClient.invalidateQueries({ queryKey: ["bw_purchase_bills"] });
       toast.success("সফলভাবে মুছে ফেলা হয়েছে");
       setDeleteDialogOpen(false);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // Load source bill
+      const { data: src, error: e1 } = await supabase.from("bw_purchase_bills").select("*").eq("id", id).single();
+      if (e1) throw e1;
+      const { data: srcItems, error: e2 } = await supabase.from("bw_buy_bill_items").select("*").eq("bill_id", id).order("sort_order");
+      if (e2) throw e2;
+
+      // Compute next month
+      const baseMonth: string = (src.billing_month || src.month || new Date().toISOString()).slice(0, 7);
+      const [y, m] = baseMonth.split("-").map(Number);
+      const nextDate = new Date(y, m, 1); // m is 1-12, new Date month is 0-11 → m gives next month
+      const ny = nextDate.getFullYear();
+      const nm = nextDate.getMonth() + 1;
+      const nextMonth = `${ny}-${String(nm).padStart(2, "0")}`;
+      const totalDays = new Date(ny, nm, 0).getDate();
+      const periodStart = `${nextMonth}-01`;
+      const periodEnd = `${nextMonth}-${String(totalDays).padStart(2, "0")}`;
+
+      const newBillNo = `BW-${ny}${String(nm).padStart(2, "0")}-${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`;
+      const subtotalSum = (srcItems || []).reduce((s: number, it: any) => s + (Number(it.amount) - Number(it.vat_amount || 0)), 0);
+      const vatSum = (srcItems || []).reduce((s: number, it: any) => s + Number(it.vat_amount || 0), 0);
+      const totalSum = subtotalSum + vatSum;
+
+      // Insert new bill
+      const { data: newBill, error: e3 } = await supabase.from("bw_purchase_bills").insert({
+        provider_id: src.provider_id,
+        bill_no: newBillNo,
+        invoice_no: null,
+        billing_month: `${nextMonth}-01`,
+        month: `${nextMonth}-01`,
+        period_start: periodStart,
+        period_end: periodEnd,
+        amount: totalSum,
+        total_amount: totalSum,
+        subtotal: subtotalSum,
+        vat_total: vatSum,
+        paid: 0,
+        discount: Number(src.discount || 0),
+        remarks: src.remarks,
+        status: "unpaid",
+        payment_due: null,
+        attachment_url: null,
+      }).select("id").single();
+      if (e3) throw e3;
+
+      // Insert recomputed line items
+      if ((srcItems || []).length > 0) {
+        const newLines = (srcItems || []).map((it: any, idx: number) => {
+          const base = (Number(it.bandwidth_mbps) * Number(it.rate) * totalDays) / totalDays;
+          const vat = (base * Number(it.vat_pct || 0)) / 100;
+          return {
+            bill_id: newBill.id,
+            subscription_id: it.subscription_id,
+            service_id: it.service_id,
+            service_name: it.service_name,
+            bandwidth_mbps: Number(it.bandwidth_mbps),
+            rate: Number(it.rate),
+            period_start: periodStart,
+            period_end: periodEnd,
+            days: totalDays,
+            total_days_in_month: totalDays,
+            amount: Math.round((base + vat) * 100) / 100,
+            vat_pct: Number(it.vat_pct || 0),
+            vat_amount: Math.round(vat * 100) / 100,
+            sort_order: idx,
+            remarks: it.remarks,
+          };
+        });
+        const { error: e4 } = await supabase.from("bw_buy_bill_items").insert(newLines);
+        if (e4) throw e4;
+      }
+
+      return newBill.id as string;
+    },
+    onSuccess: (newId) => {
+      queryClient.invalidateQueries({ queryKey: ["bw_purchase_bills"] });
+      toast.success("বিল কপি হয়েছে — পরের মাসের জন্য");
+      navigate(`/dashboard/bw-buy/bills/${newId}/edit`);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -225,13 +308,16 @@ export default function Bills() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            <Button size="icon" variant="ghost" onClick={() => navigate(`/dashboard/bw-buy/bills/${b.id}`)}>
+                            <Button size="icon" variant="ghost" onClick={() => navigate(`/dashboard/bw-buy/bills/${b.id}`)} title="দেখুন">
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" variant="ghost" onClick={() => navigate(`/dashboard/bw-buy/bills/${b.id}/edit`)}>
+                            <Button size="icon" variant="ghost" onClick={() => navigate(`/dashboard/bw-buy/bills/${b.id}/edit`)} title="সম্পাদনা">
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" variant="ghost" className="text-destructive" onClick={() => { setDeleteId(b.id); setDeleteDialogOpen(true); }}>
+                            <Button size="icon" variant="ghost" onClick={() => duplicateMutation.mutate(b.id)} disabled={duplicateMutation.isPending} title="পরের মাসের জন্য কপি">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="text-destructive" onClick={() => { setDeleteId(b.id); setDeleteDialogOpen(true); }} title="মুছুন">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
