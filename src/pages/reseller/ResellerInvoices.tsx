@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { getBillingCustomerId } from "@/lib/portalIdentity";
@@ -15,6 +15,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 const ResellerInvoices = () => {
   const { customer } = usePortalAuth();
   const { t } = useLanguage();
+  const location = useLocation();
+  // Detect whether we're inside the BW customer portal so links stay in /bw/*
+  const base = location.pathname.startsWith("/bw") ? "/bw/invoices" : "/reseller/invoices";
   const resellerId = getBillingCustomerId(customer);
   const [payOpen, setPayOpen] = useState(false);
   const [activeInv, setActiveInv] = useState<any>(null);
