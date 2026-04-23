@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Eye, Pencil, Trash2, Search, ChevronLeft, ChevronRight, RefreshCw, LogIn } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Search, ChevronLeft, ChevronRight, RefreshCw, LogIn, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { loginAsUser } from "@/lib/impersonate";
+import BwCustomerPasswordDialog from "@/components/bw-sale/BwCustomerPasswordDialog";
 
 interface Customer {
   id: string;
