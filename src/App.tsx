@@ -383,6 +383,15 @@ import PopDesignations from "@/pages/reseller/config/PopDesignations";
 import PopBulkClientImport from "@/pages/reseller/clients/PopBulkClientImport";
 import BulkClientImportHub from "@/pages/reseller/clients/BulkClientImportHub";
 
+// Bandwidth Customer Portal
+import BwProtectedRoute from "@/components/BwProtectedRoute";
+import BwCustomerLayout from "@/components/BwCustomerLayout";
+import BwDashboard from "@/pages/bw-customer/BwDashboard";
+import BwInvoices from "@/pages/bw-customer/BwInvoices";
+import BwPurchaseOrders from "@/pages/bw-customer/BwPurchaseOrders";
+import BwTickets from "@/pages/bw-customer/BwTickets";
+import BwSettings from "@/pages/bw-customer/BwSettings";
+
 // Redirect helper: any /reseller/<rest> → /pop-admin/<rest>
 const LegacyResellerRedirect = () => {
   const path = window.location.pathname.replace(/^\/reseller/, "/pop-admin");
@@ -736,6 +745,14 @@ const App = () => (
               <Route path="/portal/profile" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalProfile /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/messages" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalMessages /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/change-request" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalChangeRequest /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+
+              {/* Bandwidth Customer Portal (5 mandatory pages + upgrade) */}
+              <Route path="/bw" element={<Navigate to="/bw/dashboard" replace />} />
+              <Route path="/bw/dashboard" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwDashboard /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/invoices" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwInvoices /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/purchase-orders" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwPurchaseOrders /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/tickets" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwTickets /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/settings" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwSettings /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
 
               {/* POP Admin Portal */}
               <Route path="/pop-admin" element={<Navigate to="/pop-admin/dashboard" replace />} />

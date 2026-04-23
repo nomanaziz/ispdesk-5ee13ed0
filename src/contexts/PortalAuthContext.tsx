@@ -37,6 +37,11 @@ interface PortalCustomer {
   parent_reseller_id?: string | null;
   pop_type?: string | null;
   permissions?: ResellerPermissions | null;
+  // Bandwidth-customer panel subscription
+  panel_access_enabled?: boolean;
+  panel_user_limit?: number | null;
+  panel_subscription_expires_at?: number | null; // epoch ms
+  panel_branch_id?: string | null;
   iat: number;
   exp: number;
 }
@@ -47,6 +52,7 @@ interface PortalAuthContextType {
   loading: boolean;
   login: (username: string, password: string) => Promise<{ error?: string; type?: PortalUserType }>;
   logout: () => void;
+  refresh: () => Promise<void>;
 }
 
 const PortalAuthContext = createContext<PortalAuthContextType>({
@@ -55,6 +61,7 @@ const PortalAuthContext = createContext<PortalAuthContextType>({
   loading: true,
   login: async () => ({}),
   logout: () => {},
+  refresh: async () => {},
 });
 
 export const usePortalAuth = () => useContext(PortalAuthContext);
@@ -123,6 +130,30 @@ export const PortalAuthProvider = ({ children }: { children: React.ReactNode }) 
     }
   };
 
+  const refresh = async () => {
+    // Re-issue token using the same identifier — used after panel activation
+    if (!customer?.username) return;
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/portal-auth`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "refresh", session_id: customer.session_id, sub: customer.sub, type: customer.type }),
+        }
+      );
+      const data = await res.json();
+      if (res.ok && data.token) {
+        localStorage.setItem("portal_token", data.token);
+        setToken(data.token);
+        setCustomer(data.customer);
+      }
+    } catch {
+      // ignore — caller can retry
+    }
+  };
+
   const logout = () => {
     const sid = customer?.session_id;
     if (sid) {
@@ -139,7 +170,7 @@ export const PortalAuthProvider = ({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <PortalAuthContext.Provider value={{ customer, token, loading, login, logout }}>
+    <PortalAuthContext.Provider value={{ customer, token, loading, login, logout, refresh }}>
       {children}
     </PortalAuthContext.Provider>
   );

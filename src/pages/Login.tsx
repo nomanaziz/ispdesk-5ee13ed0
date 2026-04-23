@@ -48,9 +48,11 @@ const LoginInner = () => {
         return;
       }
       switch (result.type) {
+        case "bw_customer":
+          navigate("/bw/dashboard", { replace: true });
+          break;
         case "reseller":
         case "reseller_sub":
-        case "bw_customer":
           navigate("/pop-admin/dashboard", { replace: true });
           break;
         case "client":
