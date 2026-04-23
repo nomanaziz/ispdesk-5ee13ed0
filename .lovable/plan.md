@@ -1,93 +1,96 @@
 
 
-## Client Portal-এর Layout Consistency Fix
+## Icons8 আইকন প্যাক — পুরো প্রজেক্টে integration
 
-### সমস্যা (root cause)
-`src/App.tsx`-এ portal routes দুই রকম pattern-এ আছে:
+### লক্ষ্য
+আপনার আপলোড করা `Icons8.zip` + `Icons8_1.zip`-এর ভিতরের animated/interactive আইকনগুলো প্রজেক্টের সব panel-এ (Admin, POP/Reseller, Client Portal — desktop + tablet + mobile) যেখানে যেটা মানানসই, সেখানে বসানো হবে। পুরনো Hishabee আইকনগুলো যেখানে Icons8-এ ভালো alternative আছে, সেখানে replace হবে; বাকি জায়গায় Hishabee + lucide fallback থাকবে।
 
-| Pattern | কোন pages | কী দেখায় |
+### Pipeline (default mode-এ execute হবে)
+
+#### Phase 1 — Inventory + setup
+১. দুটো zip extract → `src/assets/icons/icons8/`
+- ফাইলগুলো সম্ভবত `.png` / `.svg` / `.gif` / `Lottie.json` mix
+- প্রতিটা file open করে preview দেখে semantic নাম দেব (যেমন `download (12).png` → `wallet.png`)
+- Format-wise count আপনাকে report করব
+২. নতুন reusable component `src/components/icons/Icons8Icon.tsx`
+- `import.meta.glob` দিয়ে eager-load
+- Props: `name`, `size`, `className`, `alt`
+- Lottie support: `.json` থাকলে `lottie-react` দিয়ে hover-play (interactive feel)
+- Fallback: name না পেলে `null` → caller Hishabee/lucide-এ পড়বে
+৩. Resolution helper `src/lib/iconResolver.ts`
+- Priority: **Icons8 → Hishabee → Lucide**
+- একটা central map: `{ "ড্যাশবোর্ড": "dashboard", "ক্রয়": "cart", ... }`
+- সব panel এই helper ব্যবহার করবে — single source of truth
+
+#### Phase 2 — Panel-wise rollout
+| Panel | File | কোথায় বসবে |
 |---|---|---|
-| **MobileShell-only** (নতুন MyHisab style) | Dashboard, Bills, Support | Gradient header + bottom nav, **max-w-md centered** — desktop-এও মোবাইল frame |
-| **PortalLayout wrapper** (পুরনো) | Profile, Notices, Ledger, Invoices, Live-usage, Speed-test, Shop, Orders, Media, Messages, Change-request, Bill-detail, Company | Sidebar + topbar — পুরনো ডিজাইন |
+| **Admin Sidebar** | `src/components/AppSidebar.tsx` + `MenuIconTile.tsx` | প্রতিটা menu group + item-এ Icons8 priority |
+| **Admin Dashboard cards** | `src/pages/Dashboard.tsx` | KPI card top-left আইকন (৪০-৪৮px) |
+| **POP/Reseller layout** | `src/components/reseller/ResellerLayout.tsx` ও `ResellerDashboard.tsx` | Sidebar + quick action grid |
+| **Client Portal sidebar** | `src/components/PortalLayout.tsx` | Desktop sidebar tile + drawer |
+| **Client Portal Dashboard/Bills/Support** | `PortalDashboard.tsx`, `PortalBills.tsx`, `PortalSupport.tsx` | `IconGrid` quick actions |
+| **Mobile bottom nav** | `PortalLayout` ও `ResellerLayout` bottom nav | ৫টা bottom item Icons8 দিয়ে |
+| **Empty states / Section headers** | বিভিন্ন list page (Customers, Invoices, Tickets, OLT, Inventory) | Empty state-এ বড় Icons8 illustration |
 
-তাই Dashboard থেকে Notice/Profile-এ গেলে সম্পূর্ণ layout বদলে সাইডবার চলে আসে, "হোম" আইকনও বদলে যায় (MobileShell-এ `Home`, PortalLayout bottom nav-এ `LayoutDashboard`)। Desktop-এ Dashboard একটা ছোট মোবাইল frame হয়ে আটকে থাকে।
+#### Phase 3 — Preview + handoff
+- `/dashboard/_icons` page upgrade — তিন tab: **Icons8 | Hishabee | Lucide**
+- প্রতিটা আইকনের পাশে filename + "Copy name" button
+- আপনি browse করে যেকোনোটা যেকোনো menu-তে assign করতে বললেই পরবর্তী sprint-এ map হবে
 
-### সমাধান
-**একটাই layout** — `PortalLayout` — সব portal page wrap করবে। Mobile/Tablet/Desktop তিন breakpoint-এ একই layout আলাদা responsive variants দেখাবে। MobileShell-এর সুন্দর mobile look টা PortalLayout-এর ভিতরেই move করা হবে যাতে route বদলালে কিচ্ছু "jump" না করে।
-
-### নতুন responsive PortalLayout structure
-
-```text
-            ┌──────────────────────────────────────────┐
-Desktop ≥lg │ [Sidebar 260px] │ [Topbar]               │
-            │   - বড় colorful │ [Page content normal]  │
-            │   icon menu     │                        │
-            └──────────────────────────────────────────┘
-            ┌──────────────────────────────────────────┐
-Tablet md   │ [Topbar with menu button]                │
-            │ [Page content full width, padded]        │
-            │ [Bottom nav 5 items]                     │
-            └──────────────────────────────────────────┘
-            ┌─────────────────────┐
-Mobile <md  │ [GradientHeader]    │ ← per-page (kept)
-            │ [Page content]      │
-            │ [Bottom nav + FAB]  │ ← single, from layout
-            └─────────────────────┘
-```
-
-### কী করা হবে
-
-#### ১. `PortalLayout` কে responsive করা
-- **Desktop (lg+)**: এখনকার sidebar + topbar বহাল, কিন্তু sidebar item-এ Hishabee/colorful tile আইকন (admin sidebar-এর `MenuIconTile` reuse) — বড় বড় আইকন user যেটা চেয়েছেন
-- **Tablet (md - lg)**: Sidebar drawer-এ লুকানো, top bar + bottom nav (5 item)
-- **Mobile (<md)**: Sidebar পুরো hidden, content area কোনো extra padding ছাড়া (যাতে per-page MobileShell header full-bleed দেখায়), bottom nav layout থেকে আসবে
-- **Single source bottom nav**: Mobile + Tablet দুই জায়গায় same 5-item nav (হোম=Home icon, বিল, টিকেট, লেজার, প্রোফাইল) — কোনো page-এ আর বদলাবে না
-
-#### ২. সব portal route-কে PortalLayout-এ wrap করা
-`src/App.tsx`-এ ১৩টা portal route fix:
-- `/portal/dashboard`, `/portal/bills`, `/portal/support` — এগুলো এখন PortalLayout-এ যাবে
-- বাকিগুলো আগে থেকেই PortalLayout-এ আছে — শুধু verify
-
-#### ৩. Page-level cleanup
-- `PortalDashboard.tsx`, `PortalBills.tsx`, `PortalSupport.tsx` থেকে `MobileShell` + `BottomNav` import সরাবো
-- সুন্দর `GradientHeader` + `IconGrid` + `StatCardPair` content **থাকবে** — শুধু shell wrapper সরবে; layout নিজে wrapper দেবে
-- Mobile-এ header full-width edge-to-edge দেখাতে layout-এর `<main>` mobile-এ `px-0`, tablet+desktop-এ padded
-
-#### ৪. Sidebar আইকন বড় ও colorful
-Reference image-এর মতো desktop sidebar item-এ:
-- Lucide icon → `MenuIconTile`-এর মতো ৩২px rounded colored tile (admin sidebar-এর সাথে consistent)
-- Active item-এ tile একটু bright + slight scale
-- Mobile drawer-এ same style
-
-#### ৫. Bottom nav consistency
-এই **একই 5 items সর্বত্র**, কোনো page-এ না বদলাবে:
-| icon | label |
+### Mapping confidence (filename দেখার পরে confirm হবে)
+| Menu / Action | Icons8 candidate |
 |---|---|
-| Home (lucide) | হোম |
-| Receipt | বিল |
-| HeadphonesIcon | সাপোর্ট |
-| BookOpen | লেজার |
-| UserCog | প্রোফাইল |
+| ড্যাশবোর্ড / Home | dashboard, home |
+| ক্রয় / Purchase | cart, shopping-bag |
+| বিক্রয় / Sales | invoice, sale |
+| ক্যাশবক্স / Accounting | wallet, money, cash |
+| ইনভেন্টরি | box, warehouse |
+| HR / Employee | user-group, employee |
+| OLT / Network | router, wifi, network |
+| টিকেট / Support | headphones, ticket |
+| রিপোর্ট | bar-chart, report |
+| SMS | message, sms |
+| Settings | gear, settings |
+| Notice | bell |
+| Profile | user-circle |
+| Bills | receipt |
+| Ledger | book |
 
-(`PortalDashboard`-এ আগে `Home` icon, `PortalLayout`-এ আগে `LayoutDashboard` ছিল — এই mismatch-ই user-এর "হোম আইকন বদলে যাচ্ছে" complaint। এখন সব জায়গায় একটাই source of truth।)
+### যা বদলাবে না
+- Database, RBAC, business logic, routing
+- Layout structure (recently fixed PortalLayout consistency বহাল)
+- Hishabee + Lucide pack বহাল থাকবে fallback হিসেবে — কিছু break হবে না
+- Mobile/tablet/desktop responsive behavior
 
 ### Files
 
 | File | Change |
 |---|---|
-| `src/components/PortalLayout.tsx` | Responsive 3-breakpoint layout, colorful icon tiles, single bottom nav |
-| `src/App.tsx` | ৩টা route-এ `<PortalLayout>` wrap যোগ |
-| `src/pages/portal/PortalDashboard.tsx` | `MobileShell`/`BottomNav` সরিয়ে শুধু content + header |
-| `src/pages/portal/PortalBills.tsx` | একই cleanup |
-| `src/pages/portal/PortalSupport.tsx` | একই cleanup |
-| **মোট** | **৫ files** |
+| `src/assets/icons/icons8/*` | Zip extract + rename |
+| `src/components/icons/Icons8Icon.tsx` | নতুন wrapper (Lottie support সহ) |
+| `src/lib/iconResolver.ts` | নতুন central resolver |
+| `src/components/sidebar/MenuIconTile.tsx` | Resolver ব্যবহার |
+| `src/components/AppSidebar.tsx` | Map update |
+| `src/components/PortalLayout.tsx` | Sidebar + bottom nav icons |
+| `src/components/reseller/ResellerLayout.tsx` | একইভাবে |
+| `src/pages/Dashboard.tsx` | KPI card icons |
+| `src/pages/portal/PortalDashboard.tsx` + Bills + Support | IconGrid icons |
+| `src/pages/reseller/ResellerDashboard.tsx` | IconGrid icons |
+| `src/components/mobile/IconCard.tsx` | Resolver integration |
+| `src/pages/dashboard/dev/IconPreview.tsx` | 3-tab preview upgrade |
+| **মোট** | **~12-14 files + asset folder** |
 
-### যা বদলাবে না
-- Page content, queries, business logic, RBAC
-- Hishabee icon set
-- Reseller/POP-Admin layout (আলাদা)
-- Mobile-এ MyHisab-style colorful look — শুধু consistent থাকবে
+### Lottie / animated handling
+যদি zip-এ `.json` (Lottie) বা `.gif` থাকে:
+- Sidebar/bottom nav-এ static PNG variant ব্যবহার (performance)
+- Dashboard quick-action card hover/active state-এ animated variant — "interactive" feel
+- `lottie-react` package add করা হবে (~25KB gz, lazy-loaded)
 
-### Outcome
-যেকোনো portal page-এ গেলে — Dashboard থেকে Notice থেকে Profile — same sidebar (desktop), same topbar, same bottom nav (mobile/tablet)। কোনো "হঠাৎ sidebar আসা" বা "icon বদলে যাওয়া" নেই। Desktop-এ আর মোবাইল frame-এ আটকানো না, পুরো width ব্যবহার হবে।
+### Delivery flow
+1. Phase 1 শেষ করে আপনাকে file count + sample preview দেখাবো
+2. Phase 2 — confident match (১৫-২০টা) একসাথে সব panel-এ বসাবো
+3. `/dashboard/_icons`-এ গিয়ে বাকিগুলো আপনি pick করবেন
+
+Approve করলে শুরু করি।
 
