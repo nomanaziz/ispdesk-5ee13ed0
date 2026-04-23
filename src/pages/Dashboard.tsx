@@ -12,7 +12,7 @@ import {
   Package, Truck, Building2, Wallet, CircleDollarSign, HandCoins, Landmark,
   ClipboardList, TicketCheck, ListTodo, Award, Globe, Share2, Network
 } from "lucide-react";
-import { ImportantLinksSection } from "@/components/dashboard/ImportantLinksSection";
+
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -753,8 +753,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Important Links — Admin & Employee only */}
-      <ImportantLinksSection />
     </div>
   );
 };

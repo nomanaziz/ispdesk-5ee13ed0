@@ -68,9 +68,9 @@ const menuGroups: MenuGroup[] = [
     label: "ড্যাশবোর্ড",
     icon: LayoutDashboard,
     defaultOpen: true,
-    direct: true,
     items: [
       { title: "ড্যাশবোর্ড", url: "/dashboard", icon: LayoutDashboard },
+      { title: "লিংক", url: "/dashboard/links", icon: Link2 },
     ],
   },
   {

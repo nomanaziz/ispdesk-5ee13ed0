@@ -118,6 +118,7 @@ import HrShiftManagement from "@/pages/dashboard/hr/ShiftManagement";
 import HrZktecoDevices from "@/pages/dashboard/hr/ZktecoDevices";
 import HrAttendanceRules from "@/pages/dashboard/hr/AttendanceRules";
 import HrSettings from "@/pages/dashboard/hr/HrSettings";
+import DashboardLinks from "@/pages/dashboard/Links";
 
 // OLT
 import OltDevices from "@/pages/dashboard/olt/OltDevices";
@@ -439,6 +440,7 @@ const App = () => (
 
               {/* Dashboard */}
               <Route path="/dashboard" element={<P><Dashboard /></P>} />
+              <Route path="/dashboard/links" element={<P><DashboardLinks /></P>} />
               <Route path="/dashboard/billing-overview" element={<P><CompanyOverview /></P>} />
               <Route path="/dashboard/olt-overview" element={<P><OltOverview /></P>} />
 
