@@ -1,105 +1,100 @@
 
 
-## Centralized Notice System — সব জায়গা থেকে উঠিয়ে এক জায়গায়
+## নতুন পার্চেজ বিল — VAT সাপোর্ট ও মাল্টি-সাবস্ক্রিপশন
 
 ### লক্ষ্য
-- বিদ্যমান সব notice entry point (Portal Manager > Notices, POP নোটিশ, Website > নোটিশ) থেকে notice management সরিয়ে নেওয়া।
-- "সাপোর্ট ও টিকেটিং" menu-র নিচে নতুন **"নোটিশ"** sub-menu যোগ করা।
-- Admin এক জায়গা থেকেই notice তৈরি করে multiple recipient group বেছে দিতে পারবে — সবাই / নির্দিষ্ট POP / নির্দিষ্ট BW POP / নির্দিষ্ট Client।
-- Centralized notice automatic-ভাবে portal (`/portal/notices`), notification bell, এবং dashboard-এ দেখাবে।
+- প্রতিটা প্রোভাইডার/সাবস্ক্রিপশনে VAT% সেট করে রাখা যাবে (ডিফল্ট 5%)।
+- বিল তৈরি করার সময় সেই VAT auto আসবে — manual edit-ও করা যাবে।
+- একই প্রোভাইডার থেকে একাধিক সাবস্ক্রিপশন একসাথে বিলে যোগ করা যাবে (পিকার দিয়ে multi-select)।
+- Subtotal, VAT, Discount, Grand Total — পরিষ্কার breakdown।
 
 ### Database পরিবর্তন (Migration)
 
-**`client_notices` table-এ নতুন columns:**
-- `audience_groups text[]` — যেমন `['all_pops','all_bw_pops','all_clients']` — group-level selection
-- `target_pop_ids uuid[]` — নির্দিষ্ট POP IDs (`branch_managers.id`)
-- `target_bw_pop_ids uuid[]` — নির্দিষ্ট BW POP IDs (BW pop_type)
-- `target_client_ids uuid[]` — নির্দিষ্ট client IDs (`clients.id`)
+**`bw_providers` table:**
+- `default_vat_pct numeric DEFAULT 5` — প্রোভাইডার-level ডিফল্ট VAT
 
-(পুরোনো `target_scope`, `branch_id`, `zone_id` রেখে দেওয়া — backward compatibility।)
+**`bw_buy_provider_subscriptions` table:**
+- `vat_pct numeric DEFAULT 5` — প্রতিটা সাবস্ক্রিপশনে আলাদা override করা যাবে
 
-### নতুন Page — `/dashboard/support/notices`
+**`bw_buy_bill_items` table:**
+- `vat_pct numeric DEFAULT 0` — বিল লাইনে VAT%
+- `vat_amount numeric DEFAULT 0` — calculated VAT টাকা
 
-**File**: `src/pages/dashboard/support/Notices.tsx`
+**`bw_purchase_bills` table:**
+- `subtotal numeric DEFAULT 0` — VAT-এর আগের মোট
+- `vat_total numeric DEFAULT 0` — সব লাইনের মোট VAT
 
-**UI Layout:**
-1. **Header** — "নোটিশ ম্যানেজমেন্ট" + "নতুন নোটিশ" button
-2. **List view** — সব notice দেখাবে (title, type, audience summary, pinned, active, created date, edit/delete)
-3. **Create/Edit Dialog**:
-   - Title, Body, Type (info/warning/success/event)
-   - Pinned toggle, Active toggle, Attachment URL
-   - **Audience selector** — checkbox group:
-     - ☐ সকল POP
-     - ☐ সকল ব্যান্ডউইথ POP
-     - ☐ সকল ক্লায়েন্ট
-   - **Specific selectors** (যখন কোনো group select করা না-ও থাকে):
-     - "নির্দিষ্ট POP" — searchable multi-select (branch_managers থেকে regular pop)
-     - "নির্দিষ্ট BW POP" — searchable multi-select (branch_managers থেকে BW pop_type)
-     - "নির্দিষ্ট ক্লায়েন্ট" — searchable multi-select (clients table)
-   - সব selector-এ search box (recurring pattern, ছোট 1-line search input)
+(সব column nullable/default — পুরোনো rows-এর সাথে compatible।)
 
-### Sidebar পরিবর্তন (`AppSidebar.tsx`)
+### UI পরিবর্তন
 
-"সাপোর্ট ও টিকেটিং" group-এ নতুন entry যোগ:
+**1. `Providers.tsx` — Add/Edit Dialog-এ:**
+- নতুন field: "ডিফল্ট VAT %" (number, default 5)
+
+**2. `Subscriptions.tsx` — New Subscription dialog + Change dialog-এ:**
+- নতুন field: "VAT %" (number, প্রোভাইডার select করলে provider.default_vat_pct থেকে auto-fill)
+- টেবিলে VAT% column যোগ
+
+**3. `BillForm.tsx` — মূল পরিবর্তন:**
+
+a) **Auto-generate flow** (already exists) — এখন `subscription.vat_pct` লাইনে copy হবে।
+
+b) **নতুন "Add Subscription" picker** — manual line-এর পাশাপাশি:
+   - Provider select করার পর একটা button "+ সাবস্ক্রিপশন থেকে যোগ করুন"
+   - Click করলে Dialog খুলবে — সেই প্রোভাইডারের সব active subscription checkbox list (search সহ)
+   - Multi-select করে "Add Selected" → সব selected subscription একসাথে pro-rated line হিসেবে যোগ হবে (VAT সহ)
+
+c) **Line items table-এ নতুন column:** "VAT %" (editable)
+
+d) **Totals breakdown** (table footer-এ):
 ```
-সাপোর্ট ও টিকেটিং
-  ├─ ক্লায়েন্ট সাপোর্ট
-  ├─ সাপোর্ট হিস্টরি
-  └─ 🔔 নোটিশ  → /dashboard/support/notices  (NEW)
+Subtotal:      ৳ XX,XXX
+VAT:           ৳ X,XXX
+Discount:    − ৳ XXX
+─────────────────────
+Grand Total:   ৳ XX,XXX
 ```
 
-### Routing (`App.tsx`)
-- নতুন route: `/dashboard/support/notices` → `SupportNotices` page
-
-### সরিয়ে নেওয়া হবে (Notice management UI)
-
-| জায়গা | কী হবে |
-|---|---|
-| **Portal Manager** (`/dashboard/clients/portal-manage`) — "Notices" tab | tab টা সরানো হবে। News & Events, Media, Speed Test, Clients থাকবে। |
-| **POP নোটিশ** (`/dashboard/branches/pop-notice`) | sidebar entry সরানো + page redirect → `/dashboard/support/notices` |
-| **Website > নোটিশ** (`/dashboard/website/notices`) | এটা public website-এর notice (`website_notices` ভিন্ন table) — **এটা থাকবে**, কারণ এটা public website-এ দেখায়, portal/client-এ না। শুধু নাম পরিষ্কার রাখতে "ওয়েবসাইট নোটিশ" করে দেওয়া হবে। |
-
-### Backend (Edge Function — `portal-data/index.ts`)
-
-`get_notices` action update — audience filter logic যোগ:
+e) **Calc helper update** (`recompute`):
 ```ts
-// User type, pop_id, client_id জেনে filter করবে
-// একটা notice দেখাবে যদি:
-//   - audience_groups-এ match করে (all_clients/all_pops/all_bw_pops), অথবা
-//   - target_client_ids-এ user থাকে, অথবা
-//   - target_pop_ids/target_bw_pop_ids-এ user-এর POP থাকে
+const base = (mbps × rate × days) / total_days_in_month
+const vat = base × vat_pct / 100
+amount = base + vat   // line total includes VAT
+vat_amount = vat       // saved separately
 ```
 
-### Component cleanup
-- `src/components/portal-manage/NoticesTab.tsx` — delete (Portal Manager থেকে সরানো)
-- `src/pages/dashboard/branches/PopNotice.tsx` — delete
-- `PortalManage.tsx` — `notices` tab entry সরানো
+### `bwBuyProrate.ts` পরিবর্তন
+- `buildBuyBillItems()` → segment-এ `vat_pct` যোগ করবে (subscription থেকে)
+- `bandwidthBilling.ts`-এর `BillingSegment` type-এ `vat_pct` field যোগ
+
+### Save logic update
+- `bw_buy_bill_items` insert-এ `vat_pct`, `vat_amount` সহ save
+- `bw_purchase_bills`-এ `subtotal`, `vat_total`, `total_amount` (=subtotal+vat-discount) save
 
 ### ফলাফল
 
 ```text
-Admin Workflow:
-┌─────────────────────────────────┐
-│ সাপোর্ট ও টিকেটিং > নোটিশ      │
-└──────────────┬──────────────────┘
-               ↓
-   [+ নতুন নোটিশ] লিখি
-               ↓
-   Audience বেছে নিই:
-   ☑ সকল POP
-   ☑ সকল ক্লায়েন্ট
-   বা/সাথে: 🔍 specific POP/BW POP/Client search-select
-               ↓
-   [Save] → Centralized table-এ যায়
-               ↓
-   Auto-distribute:
-   ├─→ Portal /portal/notices (filtered by audience)
-   ├─→ NotificationBell (portal-এ)
-   └─→ Dashboard widget (POP/BW POP-এর জন্য)
+Provider (default VAT 5%)
+   ↓
+Subscriptions (inherit 5%, override-able)
+   ↓
+Bill Form:
+  ┌─ Provider: BTRC Ltd  [+ subscription থেকে যোগ করুন]
+  │  ┌──────────────────────────────────────────┐
+  │  │ ☑ Internet — 100 Mbps @ 250 (VAT 5%)     │
+  │  │ ☑ NIX — 50 Mbps @ 100 (VAT 5%)            │
+  │  │ ☐ Akamai — 30 Mbps @ 80 (VAT 0%)          │
+  │  └─────────────────── [Add Selected] ──────┘
+  └─ Lines:
+     Service │ Mbps │ Rate │ Days │ VAT% │ Total(incl VAT)
+     ────────┼──────┼──────┼──────┼──────┼─────────────────
+     Internet│ 100  │ 250  │ 30/30│  5   │ ৳26,250
+     NIX     │ 50   │ 100  │ 30/30│  5   │ ৳5,250
+     ────────────────────────────────────────────────
+     Subtotal:  ৳30,000  |  VAT: ৳1,500  |  Total: ৳31,500
 ```
 
-- এক জায়গা থেকে সব notice manage হবে
-- Duplicate UI নেই
-- প্রতিটি list/select-এ search box (১০০+ POP/client হলেও সহজে খুঁজে পাবে)
-- Backward compatible — পুরোনো notices ও `website_notices` (public site) আগের মতই কাজ করবে
+- যেই কোম্পানি VAT সহ বিক্রি করে — তাদের সাবস্ক্রিপশনে VAT 5% থাকবে → বিলে auto আসবে
+- যাদের VAT নেই — সাবস্ক্রিপশন/প্রোভাইডারে 0 দিয়ে রাখলে auto 0 আসবে
+- এক প্রোভাইডার থেকে একসাথে একাধিক সাবস্ক্রিপশন এক ক্লিকে যোগ — ক্যালকুলেশন pro-rated + VAT সহ automatic
 
