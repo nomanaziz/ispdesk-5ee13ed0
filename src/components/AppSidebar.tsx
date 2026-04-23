@@ -706,7 +706,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
                       ? "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       : "text-slate-400 hover:text-white hover:bg-white/5"
                 )}>
-                <item.icon className={cn("h-3.5 w-3.5 shrink-0", !isActive && groupColor, !isActive && "opacity-70")} />
+                <MenuIconTile icon={item.icon} tint={tintForLabel(group.label)} active={isActive} size="sm" />
                 <span className="flex-1 truncate">{tr(item.title, lang)}</span>
                 {count > 0 && (
                   <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
