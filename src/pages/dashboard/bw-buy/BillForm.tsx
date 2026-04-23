@@ -28,13 +28,13 @@ interface LineItem {
   vat_amount: number;
 }
 
-const emptyLine = (totalDays = 30): LineItem => ({
+const emptyLine = (totalDays = 30, periodStart = "", periodEnd = ""): LineItem => ({
   service_name: "",
   bandwidth_mbps: 0,
   rate: 0,
-  period_start: "",
-  period_end: "",
-  days: 0,
+  period_start: periodStart,
+  period_end: periodEnd,
+  days: totalDays,
   total_days_in_month: totalDays,
   amount: 0,
   vat_pct: 5,
