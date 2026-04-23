@@ -4,12 +4,11 @@ import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { callPortal } from "@/lib/portalApi";
 import {
-  MobileShell, GradientHeader, PillTabs, ListRow, BottomNav, StatCardPair,
+  GradientHeader, PillTabs, ListRow, StatCardPair,
 } from "@/components/mobile";
 import { Badge } from "@/components/ui/badge";
 import {
   Receipt, Wallet, ChevronLeft, FileText, CreditCard, TrendingUp, TrendingDown,
-  Home, HeadphonesIcon, UserCog, Plus,
 } from "lucide-react";
 
 const PortalBills = () => {
@@ -41,35 +40,21 @@ const PortalBills = () => {
   }, [bills, tab]);
 
   return (
-    <MobileShell
-      scope="portal"
-      header={
-        <GradientHeader
-          variant="rose"
-          leftSlot={
-            <Link to="/portal/dashboard" className="h-9 w-9 rounded-full bg-white/15 flex items-center justify-center">
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          }
-          title="মাসিক বিল"
-          subtitle="আপনার সকল বিল ও পেমেন্ট"
-          statLabel="মোট বকেয়া"
-          statValue={`৳ ${totals.due.toLocaleString()}`}
-        />
-      }
-      bottomNav={
-        <BottomNav
-          items={[
-            { to: "/portal/dashboard", label: "হোম", icon: Home },
-            { to: "/portal/bills", label: "বিল", icon: Receipt, matchPrefix: "/portal/bills" },
-            { to: "/portal/support", label: "সাপোর্ট", icon: HeadphonesIcon },
-            { to: "/portal/profile", label: "প্রোফাইল", icon: UserCog },
-          ]}
-          fab={{ to: "/portal/bills", icon: Plus, label: "Pay Bill" }}
-        />
-      }
-    >
-      <div className="space-y-4 pt-3">
+    <div className="md:max-w-3xl md:mx-auto">
+      <GradientHeader
+        variant="rose"
+        leftSlot={
+          <Link to="/portal/dashboard" className="h-9 w-9 rounded-full bg-white/15 flex items-center justify-center">
+            <ChevronLeft className="h-4 w-4" />
+          </Link>
+        }
+        title="মাসিক বিল"
+        subtitle="আপনার সকল বিল ও পেমেন্ট"
+        statLabel="মোট বকেয়া"
+        statValue={`৳ ${totals.due.toLocaleString()}`}
+      />
+
+      <div className="px-4 -mt-6 relative z-10 space-y-4 pt-3">
         <StatCardPair
           left={{ label: "মোট বিল", value: `৳${totals.amount.toLocaleString()}`, icon: TrendingUp, tone: "info" }}
           right={{ label: "পরিশোধিত", value: `৳${totals.paid.toLocaleString()}`, icon: TrendingDown, tone: "success", hint: `${totals.paidCount} টি` }}
@@ -132,7 +117,7 @@ const PortalBills = () => {
           </div>
         )}
       </div>
-    </MobileShell>
+    </div>
   );
 };
 
