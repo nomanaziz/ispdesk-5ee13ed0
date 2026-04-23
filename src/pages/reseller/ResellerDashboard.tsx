@@ -62,9 +62,14 @@ const ResellerDashboard = () => {
   });
 
   // ============ Internal POP data via portal API (service-role; bypasses RLS) ============
+  // Only resellers (POP managers) and their sub-users can call POP overview.
+  // bw_customer logs into the reseller area but does not own a POP.
+  const isPopManager =
+    customer?.type === "reseller" || customer?.type === "reseller_sub";
+
   const { data: internal } = useQuery({
     queryKey: ["reseller-internal-portal", popId],
-    enabled: !!popId,
+    enabled: !!popId && isPopManager,
     queryFn: async () => {
       const res = await callPortal<any>("pop_dashboard_overview", {});
       if (res?.error) throw new Error(res.error);
