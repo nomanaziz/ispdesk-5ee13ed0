@@ -28,6 +28,7 @@ export default function ManageClientsUpgradeModal({
   const { customer, refresh } = usePortalAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
+  const [trialing, setTrialing] = useState(false);
 
   const { data: slabs = [] } = useQuery({
     queryKey: ["bw-panel-pricing-slabs"],
@@ -41,39 +42,76 @@ export default function ManageClientsUpgradeModal({
     },
   });
 
+  const { data: customerRow } = useQuery({
+    queryKey: ["bw-customer-demo-status", customer?.sub],
+    enabled: !!customer?.sub && open,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("bw_sale_customers")
+        .select("panel_demo_used, panel_subscription_expires_at")
+        .eq("id", customer!.sub)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const demoUsed = !!(customerRow as any)?.panel_demo_used;
+
   const selected = slabs.find((s) => s.id === selectedId);
+
+  const callActivate = async (body: Record<string, unknown>) => {
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    const res = await fetch(
+      `https://${projectId}.supabase.co/functions/v1/activate-panel-access`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Activation failed");
+    return data;
+  };
 
   const handlePay = async () => {
     if (!selected || !customer?.sub) return;
     setPaying(true);
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      // NOTE: real payment gateway integration would happen here. For now we
-      // call activate-panel-access directly to record the subscription.
-      const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/activate-panel-access`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customer_id: customer.sub,
-            slab_id: selected.id,
-            payment_method: "online",
-            paid_amount: selected.monthly_price,
-          }),
-        },
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Activation failed");
+      await callActivate({
+        customer_id: customer.sub,
+        slab_id: selected.id,
+        payment_method: "online",
+        paid_amount: selected.monthly_price,
+      });
       toast.success(`প্যানেল অ্যাক্সেস সক্রিয় হয়েছে — ${selected.user_limit} ইউজার পর্যন্ত`);
       await refresh();
       onOpenChange(false);
-      // Soft-reload so layouts pick up new permissions
       setTimeout(() => window.location.reload(), 600);
     } catch (e: any) {
       toast.error(e.message || "Payment failed");
     } finally {
       setPaying(false);
+    }
+  };
+
+  const handleTrial = async () => {
+    if (!customer?.sub) return;
+    if (demoUsed) {
+      toast.error("ফ্রি ট্রায়াল ইতিমধ্যে ব্যবহার করা হয়েছে");
+      return;
+    }
+    setTrialing(true);
+    try {
+      await callActivate({ customer_id: customer.sub, trial: true });
+      toast.success("ফ্রি ট্রায়াল শুরু হয়েছে — ৫০ ইউজার, ৩০ দিন");
+      await refresh();
+      onOpenChange(false);
+      setTimeout(() => window.location.reload(), 600);
+    } catch (e: any) {
+      toast.error(e.message || "Trial failed");
+    } finally {
+      setTrialing(false);
     }
   };
 
