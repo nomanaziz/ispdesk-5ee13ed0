@@ -218,6 +218,12 @@ export default function CustomerView() {
           </Tabs>
         </div>
       </div>
+
+      <BwInvoiceDetailDialog
+        open={!!openInvoiceId}
+        onOpenChange={(v) => { if (!v) setOpenInvoiceId(null); }}
+        invoiceId={openInvoiceId}
+      />
     </div>
   );
 }
