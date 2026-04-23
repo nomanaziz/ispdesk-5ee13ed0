@@ -569,6 +569,15 @@ export default function BillForm() {
                         }
                       />
                     </TableCell>
+                    <TableCell>
+                      <Input
+                        className="h-8 text-xs text-right"
+                        type="number"
+                        step="0.01"
+                        value={line.vat_pct}
+                        onChange={(e) => updateLine(i, "vat_pct", Number(e.target.value))}
+                      />
+                    </TableCell>
                     <TableCell className="text-right font-medium text-sm">
                       ৳{Number(line.amount).toLocaleString()}
                     </TableCell>
@@ -586,13 +595,26 @@ export default function BillForm() {
                     </TableCell>
                   </TableRow>
                 ))}
+                <TableRow>
+                  <TableCell colSpan={8} className="text-right text-sm">Subtotal:</TableCell>
+                  <TableCell className="text-right text-sm">৳{subtotal.toLocaleString()}</TableCell>
+                  <TableCell />
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={8} className="text-right text-sm">VAT:</TableCell>
+                  <TableCell className="text-right text-sm">৳{vatTotal.toLocaleString()}</TableCell>
+                  <TableCell />
+                </TableRow>
+                {discountNum > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-right text-sm">Discount:</TableCell>
+                    <TableCell className="text-right text-sm">− ৳{discountNum.toLocaleString()}</TableCell>
+                    <TableCell />
+                  </TableRow>
+                )}
                 <TableRow className="bg-muted/50 font-bold">
-                  <TableCell colSpan={7} className="text-right">
-                    সর্বমোট:
-                  </TableCell>
-                  <TableCell className="text-right text-primary">
-                    ৳{grandTotal.toLocaleString()}
-                  </TableCell>
+                  <TableCell colSpan={8} className="text-right">সর্বমোট:</TableCell>
+                  <TableCell className="text-right text-primary">৳{finalTotal.toLocaleString()}</TableCell>
                   <TableCell />
                 </TableRow>
               </TableBody>
