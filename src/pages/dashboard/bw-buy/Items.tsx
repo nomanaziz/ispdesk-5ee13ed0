@@ -60,6 +60,7 @@ export default function Items() {
         bandwidth: data.bandwidth || null,
         price: data.price ? Number(data.price) : null,
         description: data.description || null,
+        default_vat_pct: Number(data.default_vat_pct ?? 5),
       };
       if (editingItem) {
         const { error } = await supabase.from("bw_items").update(payload).eq("id", editingItem.id);
@@ -100,11 +101,11 @@ export default function Items() {
     },
   });
 
-  const closeDialog = () => { setDialogOpen(false); setEditingItem(null); setFormData({ name: "", category_id: "", provider_id: "", bandwidth: "", price: "", description: "" }); };
+  const closeDialog = () => { setDialogOpen(false); setEditingItem(null); setFormData({ name: "", category_id: "", provider_id: "", bandwidth: "", price: "", description: "", default_vat_pct: "5" }); };
 
   const openAdd = (categoryId?: string) => {
     setEditingItem(null);
-    setFormData({ name: "", category_id: categoryId || "", provider_id: "", bandwidth: "", price: "", description: "" });
+    setFormData({ name: "", category_id: categoryId || "", provider_id: "", bandwidth: "", price: "", description: "", default_vat_pct: "5" });
     setDialogOpen(true);
   };
 
@@ -117,6 +118,7 @@ export default function Items() {
       bandwidth: item.bandwidth || "",
       price: item.price?.toString() || "",
       description: item.description || "",
+      default_vat_pct: (item.default_vat_pct ?? 5).toString(),
     });
     setDialogOpen(true);
   };
