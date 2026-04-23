@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Search, Download, CheckCircle, XCircle, Clock, Eye } from "lucide-react";
+import { Search, Download, CheckCircle, XCircle, Clock, Eye, Undo2 } from "lucide-react";
+import { toast } from "sonner";
+
+const REVERT_WINDOW_MS = 24 * 60 * 60 * 1000;       // 1 day → revert (back to in_progress)
+const STATUS_CHANGE_WINDOW_MS = 2 * 24 * 60 * 60 * 1000; // 2 days → status change allowed
+
+function hoursLeft(completedAt: string | null, windowMs: number) {
+  if (!completedAt) return 0;
+  const elapsed = Date.now() - new Date(completedAt).getTime();
+  return Math.max(0, windowMs - elapsed);
+}
 
 const statusLabels: Record<string, string> = { completed: "সম্পন্ন", cancelled: "বাতিল" };
 const statusColors: Record<string, string> = { completed: "bg-green-100 text-green-800", cancelled: "bg-red-100 text-red-800" };
@@ -32,6 +42,41 @@ export default function TaskHistory() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [detailTask, setDetailTask] = useState<any>(null);
+  const queryClient = useQueryClient();
+
+  const revertMutation = useMutation({
+    mutationFn: async (task: any) => {
+      const ms = hoursLeft(task.completed_at, REVERT_WINDOW_MS);
+      if (ms <= 0) throw new Error("১ দিন পার হয়ে গেছে — revert করা যাবে না");
+      const { error } = await supabase
+        .from("tasks")
+        .update({ status: "in_progress", completed_at: null })
+        .eq("id", task.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks-history"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success("টাস্ক revert হয়েছে — সক্রিয় তালিকায় ফিরে গেছে");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const statusChangeMutation = useMutation({
+    mutationFn: async ({ task, status }: { task: any; status: string }) => {
+      const ms = hoursLeft(task.completed_at, STATUS_CHANGE_WINDOW_MS);
+      if (ms <= 0) throw new Error("২ দিন পার হয়ে গেছে — status পরিবর্তন করা যাবে না");
+      const payload: any = { status };
+      if (status === "completed") payload.completed_at = new Date().toISOString();
+      const { error } = await supabase.from("tasks").update(payload).eq("id", task.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks-history"] });
+      toast.success("স্ট্যাটাস পরিবর্তন হয়েছে");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const { data: categories = [] } = useQuery({
     queryKey: ["task-categories"],
@@ -198,7 +243,7 @@ export default function TaskHistory() {
                   <TableHead>সম্পন্নের তারিখ</TableHead>
                   <TableHead>সময়কাল</TableHead>
                   <TableHead>স্ট্যাটাস</TableHead>
-                  <TableHead className="w-16">দেখুন</TableHead>
+                  <TableHead className="w-32">অ্যাকশন</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -208,6 +253,8 @@ export default function TaskHistory() {
                   <TableRow><TableCell colSpan={10} className="text-center py-8">কোনো হিস্ট্রি পাওয়া যায়নি</TableCell></TableRow>
                 ) : filtered.map((task, i) => {
                   const taskAssignees = getTaskAssignees(task.id);
+                  const canRevert = hoursLeft(task.completed_at, REVERT_WINDOW_MS) > 0;
+                  const canChangeStatus = hoursLeft(task.completed_at, STATUS_CHANGE_WINDOW_MS) > 0;
                   return (
                     <TableRow key={task.id}>
                       <TableCell>{i + 1}</TableCell>
@@ -230,12 +277,38 @@ export default function TaskHistory() {
                       <TableCell>{task.completed_at ? new Date(task.completed_at).toLocaleDateString("bn-BD") : "—"}</TableCell>
                       <TableCell>{formatDuration(task.created_at, task.completed_at)}</TableCell>
                       <TableCell>
-                        <Badge className={statusColors[task.status]}>{statusLabels[task.status]}</Badge>
+                        {canChangeStatus ? (
+                          <Select
+                            value={task.status}
+                            onValueChange={(v) => statusChangeMutation.mutate({ task, status: v })}
+                          >
+                            <SelectTrigger className="h-7 w-28 text-xs">
+                              <Badge className={statusColors[task.status]}>{statusLabels[task.status]}</Badge>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="completed">সম্পন্ন</SelectItem>
+                              <SelectItem value="cancelled">বাতিল</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge className={statusColors[task.status]}>{statusLabels[task.status]}</Badge>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => setDetailTask(task)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => setDetailTask(task)} title="বিবরণ">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={!canRevert || revertMutation.isPending}
+                            onClick={() => revertMutation.mutate(task)}
+                            title={canRevert ? "Revert (১ দিনের মধ্যে)" : "১ দিন পার — revert বন্ধ"}
+                          >
+                            <Undo2 className={`h-4 w-4 ${canRevert ? "text-primary" : "text-muted-foreground"}`} />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
