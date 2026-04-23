@@ -30,6 +30,67 @@ import { useSidebarBadges } from "@/hooks/useSidebarBadges";
 interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
 interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
 
+// Map a sidebar URL or group label to a Hishabee illustration name.
+// Only confident matches; everything else falls back to lucide+tint.
+const HISHABEE_BY_URL: Record<string, string> = {
+  "/dashboard": "home",
+  "/dashboard/billing-overview": "business-overview",
+  "/dashboard/olt-overview": "business-overview",
+};
+const HISHABEE_BY_LABEL: Record<string, string> = {
+  "ড্যাশবোর্ড": "home",
+  "ক্রয়": "purchase",
+  "বিক্রয় ও সার্ভিস": "sell",
+  "ব্যান্ডউইথ ক্রয়": "purchase-list",
+  "ইনভেন্টরি": "stock-management",
+  "অ্যাকাউন্টিং": "transaction",
+  "রিপোর্ট": "business-overview",
+  "SMS সার্ভিস": "sms-marketing",
+  "সাপোর্ট ও টিকেটিং": "contact",
+  "HR ও পেরোল": "access-management",
+  "সিস্টেম": "access-management",
+  "ই-কমার্স": "online-shop",
+};
+const HISHABEE_BY_TITLE: Record<string, string> = {
+  "ড্যাশবোর্ড": "home",
+  "ক্যাশবক্স": "cashbox",
+  "এক্সপেন্স": "expense",
+  "খরচ": "expense",
+  "বকেয়া": "due",
+  "লেনদেন": "transaction",
+  "প্রোডাক্ট": "product-list",
+  "পণ্য তালিকা": "product-list",
+  "স্টক": "stock-management",
+  "প্রিন্টার": "printer",
+  "SMS মার্কেটিং": "sms-marketing",
+  "অনলাইন শপ": "online-shop",
+  "ই-কমার্স": "online-shop",
+  "ট্রেনিং": "training",
+  "ওয়ারেন্টি": "warranty",
+  "রিসাইকেল বিন": "recycle-bin",
+  "মেয়াদোত্তীর্ণ": "expired",
+  "সাবস্ক্রিপশন": "buy-subscription",
+  "কুইক সেল": "quick-sell",
+  "দ্রুত বিক্রয়": "quick-sell",
+  "ক্রয় তালিকা": "purchase-list",
+  "কেনার তালিকা": "purchase-list",
+  "বিজনেস ওভারভিউ": "business-overview",
+  "কোম্পানি ওভারভিউ": "business-overview",
+  "কন্টাক্ট": "contact",
+  "যোগাযোগ": "contact",
+};
+
+function hishabeeForItem(url: string, title: string, groupLabel?: string): string | undefined {
+  return (
+    HISHABEE_BY_URL[url] ??
+    HISHABEE_BY_TITLE[title] ??
+    (groupLabel ? HISHABEE_BY_LABEL[groupLabel] : undefined)
+  );
+}
+function hishabeeForGroup(label: string): string | undefined {
+  return HISHABEE_BY_LABEL[label];
+}
+
 // Rainbow candy-tone color per group label. Light: -600, Dark: -400 for readability.
 const GROUP_COLORS: Record<string, string> = {
   "ড্যাশবোর্ড": "text-indigo-600 dark:text-indigo-400",
@@ -617,7 +678,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
             )}
             title={groupLabel}
           >
-            <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} />
+            <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} customIcon={hishabeeForItem(primaryItem.url, primaryItem.title, group.label)} />
             {groupBadgeCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                 {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
@@ -638,7 +699,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
               : isLight ? "text-muted-foreground hover:text-foreground hover:bg-muted/50" : "text-slate-400 hover:text-white hover:bg-white/5"
           )}
         >
-          <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} />
+          <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} customIcon={hishabeeForItem(primaryItem.url, primaryItem.title, group.label)} />
           <span className="flex-1 truncate">{groupLabel}</span>
           {groupBadgeCount > 0 && (
             <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
@@ -662,7 +723,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
                   ? "bg-primary/15 text-primary"
                   : isLight ? "text-muted-foreground hover:text-primary hover:bg-primary/5" : "text-slate-400 hover:text-white hover:bg-white/5"
               )} title={groupLabel}>
-              <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} />
+              <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} customIcon={hishabeeForGroup(group.label)} />
               {groupBadgeCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                   {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
@@ -683,7 +744,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
             ? "text-primary"
             : isLight ? "text-muted-foreground hover:text-foreground" : "text-slate-400 hover:text-white"
         )} style={{ width: "calc(100% - 16px)" }}>
-        <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActiveGroup} />
+        <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActiveGroup} customIcon={hishabeeForGroup(group.label)} />
         <span className="flex-1 text-left truncate">{groupLabel}</span>
         {groupBadgeCount > 0 && !effectiveOpen && (
           <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
@@ -706,7 +767,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
                       ? "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       : "text-slate-400 hover:text-white hover:bg-white/5"
                 )}>
-                <MenuIconTile icon={item.icon} tint={tintForLabel(group.label)} active={isActive} size="sm" />
+                <MenuIconTile icon={item.icon} tint={tintForLabel(group.label)} active={isActive} size="sm" customIcon={hishabeeForItem(item.url, item.title, group.label)} />
                 <span className="flex-1 truncate">{tr(item.title, lang)}</span>
                 {count > 0 && (
                   <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">

@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HishabeeIcon, hasHishabeeIcon } from "@/components/icons/HishabeeIcon";
 
 export type Tint =
   | "rose" | "orange" | "amber" | "yellow" | "lime"
@@ -73,6 +74,12 @@ interface MenuIconTileProps {
   active?: boolean;
   size?: "sm" | "md";
   className?: string;
+  /**
+   * Optional Hishabee illustration name (e.g. "home", "purchase", "sell").
+   * If provided and found, renders the colorful SVG instead of the lucide icon
+   * inside a neutral background tile. Falls back to lucide when missing.
+   */
+  customIcon?: string | null;
 }
 
 /**
@@ -86,12 +93,32 @@ export function MenuIconTile({
   active = false,
   size = "md",
   className,
+  customIcon,
 }: MenuIconTileProps) {
+  const useCustom = hasHishabeeIcon(customIcon);
   const dims =
     size === "sm"
       ? "w-5 h-5 rounded-[6px]"
       : "w-6 h-6 rounded-[7px]";
   const iconSize = size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
+  const customPx = size === "sm" ? 16 : 20;
+
+  if (useCustom) {
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center justify-center shrink-0 transition-all",
+          dims,
+          "bg-muted/60 dark:bg-white/5",
+          active && "shadow-sm scale-[1.05] bg-muted dark:bg-white/10",
+          className,
+        )}
+        aria-hidden="true"
+      >
+        <HishabeeIcon name={customIcon!} size={customPx} />
+      </span>
+    );
+  }
 
   return (
     <span

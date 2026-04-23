@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HishabeeIcon, hasHishabeeIcon } from "@/components/icons/HishabeeIcon";
 
 export type IconTint =
   | "rose" | "violet" | "indigo" | "sky" | "teal" | "emerald"
@@ -28,9 +29,12 @@ interface Props {
   tint?: IconTint;
   badge?: string | number;
   className?: string;
+  /** Optional Hishabee SVG name. When set & known, replaces the lucide icon. */
+  customSvg?: string | null;
 }
 
-export function IconCard({ to, onClick, icon: Icon, label, tint = "rose", badge, className }: Props) {
+export function IconCard({ to, onClick, icon: Icon, label, tint = "rose", badge, className, customSvg }: Props) {
+  const useCustom = hasHishabeeIcon(customSvg);
   const inner = (
     <div className={cn(
       "flex flex-col items-center justify-center gap-2 py-4 px-2 rounded-2xl bg-card",
@@ -39,9 +43,15 @@ export function IconCard({ to, onClick, icon: Icon, label, tint = "rose", badge,
       className,
     )}>
       <div className="relative">
-        <span className={cn("h-12 w-12 rounded-2xl flex items-center justify-center", tintMap[tint])}>
-          <Icon className="h-6 w-6" strokeWidth={2.2} />
-        </span>
+        {useCustom ? (
+          <span className="h-12 w-12 rounded-2xl flex items-center justify-center bg-muted/50 dark:bg-white/5">
+            <HishabeeIcon name={customSvg!} size={36} />
+          </span>
+        ) : (
+          <span className={cn("h-12 w-12 rounded-2xl flex items-center justify-center", tintMap[tint])}>
+            <Icon className="h-6 w-6" strokeWidth={2.2} />
+          </span>
+        )}
         {badge != null && (
           <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center shadow">
             {badge}

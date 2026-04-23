@@ -120,18 +120,18 @@ const PortalDashboardMobile = () => {
 
         {/* Quick Actions */}
         <IconGrid title="দ্রুত অ্যাকশন" cols={4}>
-          <IconCard to="/portal/bills"      icon={Receipt}        label="মাসিক বিল" tint="emerald" />
-          <IconCard to="/portal/invoices"   icon={FileText}       label="ইনভয়েস" tint="teal" />
-          <IconCard to="/portal/ledger"     icon={BookOpen}       label="লেজার" tint="cyan" />
+          <IconCard to="/portal/bills"      icon={Receipt}        label="মাসিক বিল" tint="emerald" customSvg="due" />
+          <IconCard to="/portal/invoices"   icon={FileText}       label="ইনভয়েস" tint="teal" customSvg="transaction" />
+          <IconCard to="/portal/ledger"     icon={BookOpen}       label="লেজার" tint="cyan" customSvg="business-overview" />
           <IconCard to="/portal/live-usage" icon={Activity}       label="ব্যবহার" tint="emerald" />
           <IconCard to="/portal/speed-test" icon={Rocket}         label="স্পিড টেস্ট" tint="rose" />
-          <IconCard to="/portal/profile"    icon={Package}        label="প্যাকেজ" tint="violet" />
-          <IconCard to="/portal/messages"   icon={MessageSquare}  label="মেসেজ" tint="violet" />
-          <IconCard to="/portal/support"    icon={HeadphonesIcon} label="সাপোর্ট" tint="rose" />
+          <IconCard to="/portal/profile"    icon={Package}        label="প্যাকেজ" tint="violet" customSvg="product-list" />
+          <IconCard to="/portal/messages"   icon={MessageSquare}  label="মেসেজ" tint="violet" customSvg="sms-marketing" />
+          <IconCard to="/portal/support"    icon={HeadphonesIcon} label="সাপোর্ট" tint="rose" customSvg="contact" />
           <IconCard to="/portal/notices"    icon={Megaphone}      label="নোটিশ" tint="amber" />
-          <IconCard to="/portal/shop"       icon={ShoppingBag}    label="শপ" tint="pink" />
+          <IconCard to="/portal/shop"       icon={ShoppingBag}    label="শপ" tint="pink" customSvg="online-shop" />
           <IconCard to="/portal/media"      icon={Wifi}           label="মিডিয়া" tint="indigo" />
-          <IconCard to="/portal/profile"    icon={UserCog}        label="প্রোফাইল" tint="sky" />
+          <IconCard to="/portal/profile"    icon={UserCog}        label="প্রোফাইল" tint="sky" customSvg="access-management" />
         </IconGrid>
 
         {/* Recent Bills */}
