@@ -26,6 +26,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
+import { ICONS8_BY_URL, ICONS8_BY_TITLE, ICONS8_BY_LABEL } from "@/lib/iconResolver";
+
+function icons8ForItem(url: string, title: string, groupLabel?: string): string | undefined {
+  return (
+    ICONS8_BY_URL[url] ??
+    ICONS8_BY_TITLE[title] ??
+    (groupLabel ? ICONS8_BY_LABEL[groupLabel] : undefined)
+  );
+}
+function icons8ForGroup(label: string): string | undefined {
+  return ICONS8_BY_LABEL[label];
+}
 
 interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
 interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
