@@ -15,12 +15,13 @@ import { toast } from "sonner";
 type Location = {
   id: string;
   name: string;
+  code: string | null;
   address: string | null;
   status: string;
   created_at: string;
 };
 
-const emptyForm = { name: "", address: "", status: "active" };
+const emptyForm = { name: "", code: "", address: "", status: "active" };
 
 export default function Locations() {
   const queryClient = useQueryClient();
@@ -40,7 +41,7 @@ export default function Locations() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = { name: form.name, address: form.address || null, status: form.status };
+      const payload = { name: form.name, code: form.code || null, address: form.address || null, status: form.status };
       if (editingId) {
         const { error } = await supabase.from("store_locations").update(payload).eq("id", editingId);
         if (error) throw error;
@@ -70,9 +71,9 @@ export default function Locations() {
   });
 
   const closeDialog = () => { setDialogOpen(false); setEditingId(null); setForm(emptyForm); };
-  const openEdit = (l: Location) => { setForm({ name: l.name, address: l.address || "", status: l.status }); setEditingId(l.id); setDialogOpen(true); };
+  const openEdit = (l: Location) => { setForm({ name: l.name, code: l.code || "", address: l.address || "", status: l.status }); setEditingId(l.id); setDialogOpen(true); };
 
-  const filtered = locations.filter(l => l.name.toLowerCase().includes(search.toLowerCase()) || (l.address || "").toLowerCase().includes(search.toLowerCase()));
+  const filtered = locations.filter(l => l.name.toLowerCase().includes(search.toLowerCase()) || (l.code || "").toLowerCase().includes(search.toLowerCase()) || (l.address || "").toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="space-y-6">
@@ -94,13 +95,14 @@ export default function Locations() {
 
       <div className="rounded-md border overflow-x-auto">
         <Table>
-          <TableHeader><TableRow><TableHead>#</TableHead><TableHead>নাম</TableHead><TableHead>ঠিকানা</TableHead><TableHead>স্ট্যাটাস</TableHead><TableHead>তারিখ</TableHead><TableHead>অ্যাকশন</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>#</TableHead><TableHead>স্টোর কোড</TableHead><TableHead>নাম</TableHead><TableHead>ঠিকানা</TableHead><TableHead>স্ট্যাটাস</TableHead><TableHead>তারিখ</TableHead><TableHead>অ্যাকশন</TableHead></TableRow></TableHeader>
           <TableBody>
-            {isLoading ? <TableRow><TableCell colSpan={6} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow> :
-            filtered.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-8">কোনো লোকেশন পাওয়া যায়নি</TableCell></TableRow> :
+            {isLoading ? <TableRow><TableCell colSpan={7} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow> :
+            filtered.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center py-8">কোনো লোকেশন পাওয়া যায়নি</TableCell></TableRow> :
             filtered.map((l, i) => (
               <TableRow key={l.id}>
                 <TableCell>{i + 1}</TableCell>
+                <TableCell className="font-mono text-xs">{l.code || "-"}</TableCell>
                 <TableCell className="font-medium">{l.name}</TableCell>
                 <TableCell>{l.address || "-"}</TableCell>
                 <TableCell><Badge variant={l.status === "active" ? "default" : "secondary"}>{l.status === "active" ? "সক্রিয়" : "নিষ্ক্রিয়"}</Badge></TableCell>
@@ -117,6 +119,7 @@ export default function Locations() {
           <DialogHeader><DialogTitle>{editingId ? "লোকেশন সম্পাদনা" : "নতুন লোকেশন"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>নাম *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="যেমন: প্রধান গুদাম" /></div>
+            <div><Label>স্টোর কোড</Label><Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="যেমন: MAIN-01" /></div>
             <div><Label>ঠিকানা</Label><Input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="ঠিকানা লিখুন" /></div>
             <div><Label>স্ট্যাটাস</Label><Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">সক্রিয়</SelectItem><SelectItem value="inactive">নিষ্ক্রিয়</SelectItem></SelectContent></Select></div>
           </div>

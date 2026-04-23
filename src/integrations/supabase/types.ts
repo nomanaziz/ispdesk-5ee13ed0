@@ -8696,6 +8696,7 @@ export type Database = {
       store_locations: {
         Row: {
           address: string | null
+          code: string | null
           created_at: string
           id: string
           name: string
@@ -8703,6 +8704,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          code?: string | null
           created_at?: string
           id?: string
           name: string
@@ -8710,6 +8712,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          code?: string | null
           created_at?: string
           id?: string
           name?: string
