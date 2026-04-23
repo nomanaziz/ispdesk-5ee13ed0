@@ -1,41 +1,45 @@
 
 
-## POP Admin Sidebar — MikroTik Group Merge into Client
+## Bulk Client Import — দুটো Page একসাথে Merge
 
-### বর্তমান অবস্থা
-POP Admin sidebar-এ এখন আলাদা দুটো group আছে:
-- **মাইক্রোটিক ক্লায়েন্ট** — মাইক্রোটিক ইউজার, বাল্ক ক্লায়েন্ট ইম্পোর্ট
-- **ক্লায়েন্ট** — Add Client, Excel Bulk Import, Client List, Billing List, Daily Collection, Left Clients, Scheduler
+### সমস্যা
+POP Admin sidebar-এর "ক্লায়েন্ট" group-এ এখন দুটো similar item:
+1. **এক্সেল ইম্পোর্ট** → `/pop-admin/clients/bulk-import` (Excel file থেকে নতুন client)
+2. **বাল্ক ক্লায়েন্ট ইম্পোর্ট** → `/pop-admin/mikrotik-users/bulk-create` (MikroTik transferred users থেকে client)
 
-### পরিবর্তন
-`src/components/ResellerLayout.tsx`-এ "mikrotik" group **পুরোপুরি বাদ** এবং এর items "client" group-এর মধ্যে merge হবে। নতুন order:
+দুটোর purpose আলাদা কিন্তু sidebar-এ পাশাপাশি দেখে confusing লাগছে।
+
+### সমাধান — Tabbed Single Page
+একটাই sidebar entry **"বাল্ক ক্লায়েন্ট ইম্পোর্ট"** রাখা হবে, যেটা একটা page খুলবে — page-এর ভিতরে দুটো **Tab** থাকবে:
 
 ```text
-ক্লায়েন্ট (Client)
-├─ ক্লায়েন্ট যোগ           (Add Client)
-├─ ক্লায়েন্ট তালিকা         (Client List)
-├─ মাইক্রোটিক ইউজার          ← MikroTik group থেকে আনা
-├─ এক্সেল ইম্পোর্ট           (Excel Bulk Import)
-├─ বাল্ক ক্লায়েন্ট ইম্পোর্ট    ← MikroTik group থেকে আনা
-├─ বিলিং তালিকা
-├─ দৈনিক সংগ্রহ
-├─ চলে যাওয়া ক্লায়েন্ট
-└─ শিডিউলার
+বাল্ক ক্লায়েন্ট ইম্পোর্ট  (/pop-admin/clients/bulk-import)
+├─ Tab 1: 📄 Excel/CSV থেকে ইম্পোর্ট     (existing PopBulkClientImport logic)
+└─ Tab 2: 🌐 MikroTik ইউজার থেকে ইম্পোর্ট  (existing ResellerMikrotikBulkCreate logic)
 ```
 
-### Code-level changes (ResellerLayout.tsx only)
-1. Lines 65–71 (পুরো `mikrotik` group object) — **delete**
-2. Lines 81–91 (`client` group items array) — দুটো নতুন entry insert: `mikrotik-users` (Client List-এর পরে) এবং `mikrotik-users/bulk-create` (Excel Import-এর পরে)
-3. `PermKey` union (line 30) থেকে `"mikrotik"` বাদ
-4. Permission expand map (line 175) থেকে `mikrotik:` line বাদ
-5. `client:` permission expand-এ `"mikrotik"` যোগ করা যাতে বর্তমান `mikrotik` permission-ধারী users নতুন items দেখতে পান (backward-compat)
+### Files to Change
+
+| File | Change |
+|---|---|
+| **NEW** `src/pages/reseller/clients/BulkClientImportHub.tsx` | Wrapper page with `<Tabs>` — দুটো existing component render করবে |
+| `src/pages/reseller/clients/PopBulkClientImport.tsx` | Top header/back button সরিয়ে dialog/embeddable করে দেওয়া (page wrapper বাদ) |
+| `src/pages/reseller/ResellerMikrotikBulkCreate.tsx` | একই — top header/back button সরানো (Tab-এ embed হবে) |
+| `src/components/ResellerLayout.tsx` (line 78–80) | `মাইক্রোটিক ইউজার` রাখব (separate page), দুটো import item মুছে দিয়ে শুধু একটাই entry: `বাল্ক ক্লায়েন্ট ইম্পোর্ট` → `/pop-admin/clients/bulk-import` |
+| `src/App.tsx` (line 772) | `/pop-admin/clients/bulk-import` → নতুন `BulkClientImportHub` render করবে। `/pop-admin/mikrotik-users/bulk-create` route রাখব backward-compat-এর জন্য, একই Hub render করবে (default tab=mikrotik) |
+| `src/lib/iconResolver.ts` | অপরিবর্তিত (পথ একই থাকছে) |
+
+### Tab Behavior
+- URL query param `?tab=excel` বা `?tab=mikrotik` দিয়ে default tab control
+- `/pop-admin/mikrotik-users/bulk-create` route hit করলে auto `?tab=mikrotik` open হবে (পুরনো link ভাঙবে না)
+- Default tab: **Excel** (বেশি common use)
 
 ### যা বদলাবে না
-- Routes (`/pop-admin/mikrotik-users`, `/pop-admin/mikrotik-users/bulk-create`) — অপরিবর্তিত, শুধু sidebar parent বদলাবে
-- Page components, RBAC enforcement, business logic
-- Admin sidebar (non-POP) — affected নয়
-- Mobile bottom nav, icons, styling
+- দুটো page-এর core logic, validation, API calls — সম্পূর্ণ অপরিবর্তিত
+- "মাইক্রোটিক ইউজার" sidebar item — আলাদা থাকবে (এটা list view, import না)
+- Routes দুটোই কাজ করবে (backward-compat)
+- Database, RBAC, business logic
 
 ### Outcome
-POP Admin sidebar-এ আর আলাদা "মাইক্রোটিক ক্লায়েন্ট" group থাকবে না — সব client-related items একটাই "ক্লায়েন্ট" group-এর নিচে clean ভাবে থাকবে।
+Sidebar-এ একটাই clean "বাল্ক ক্লায়েন্ট ইম্পোর্ট" entry — ভিতরে গিয়ে user নিজে choose করবে Excel থেকে আনবে নাকি MikroTik থেকে। কোনো feature loss নেই, শুধু confusion দূর।
 
