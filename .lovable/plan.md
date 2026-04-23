@@ -1,96 +1,88 @@
 
 
-## Icons8 আইকন প্যাক — পুরো প্রজেক্টে integration
+## Icons8 Skeuomorphism — Coverage Expansion
 
 ### লক্ষ্য
-আপনার আপলোড করা `Icons8.zip` + `Icons8_1.zip`-এর ভিতরের animated/interactive আইকনগুলো প্রজেক্টের সব panel-এ (Admin, POP/Reseller, Client Portal — desktop + tablet + mobile) যেখানে যেটা মানানসই, সেখানে বসানো হবে। পুরনো Hishabee আইকনগুলো যেখানে Icons8-এ ভালো alternative আছে, সেখানে replace হবে; বাকি জায়গায় Hishabee + lucide fallback থাকবে।
+Icons8 Skeuomorphism collection (https://icons8.com/icons/skeuomorphism — 900 icons, 42 categories, free PNG) থেকে আমাদের প্রজেক্টের যত menu/page এখনো generic lucide icon দেখাচ্ছে, সবগুলোতে matching skeuomorphism PNG বসানো। Style একদম current 76টা Icons8 PNG-র মতোই (3D, colorful, interactive) — কোনো visual inconsistency হবে না।
 
-### Pipeline (default mode-এ execute হবে)
+### কেন এই approach
+- **License**: Icons8 free tier — PNG up to 100px attribution ছাড়া ব্যবহারযোগ্য (CC BY-ND 3.0 equivalent)। আমরা ৬৪px PNG নেব — perfect for sidebar/cards।
+- **Direct download URL**: `https://img.icons8.com/skeuomorphism/64/{icon-name}.png` — কোনো API key লাগে না, scriptable।
+- **Style match**: Already-shipped 76টা icon এই collection থেকেই এসেছে — নতুনগুলো indistinguishable হবে।
 
-#### Phase 1 — Inventory + setup
-১. দুটো zip extract → `src/assets/icons/icons8/`
-- ফাইলগুলো সম্ভবত `.png` / `.svg` / `.gif` / `Lottie.json` mix
-- প্রতিটা file open করে preview দেখে semantic নাম দেব (যেমন `download (12).png` → `wallet.png`)
-- Format-wise count আপনাকে report করব
-২. নতুন reusable component `src/components/icons/Icons8Icon.tsx`
-- `import.meta.glob` দিয়ে eager-load
-- Props: `name`, `size`, `className`, `alt`
-- Lottie support: `.json` থাকলে `lottie-react` দিয়ে hover-play (interactive feel)
-- Fallback: name না পেলে `null` → caller Hishabee/lucide-এ পড়বে
-৩. Resolution helper `src/lib/iconResolver.ts`
-- Priority: **Icons8 → Hishabee → Lucide**
-- একটা central map: `{ "ড্যাশবোর্ড": "dashboard", "ক্রয়": "cart", ... }`
-- সব panel এই helper ব্যবহার করবে — single source of truth
+### Pipeline (default mode-এ execute)
 
-#### Phase 2 — Panel-wise rollout
-| Panel | File | কোথায় বসবে |
-|---|---|---|
-| **Admin Sidebar** | `src/components/AppSidebar.tsx` + `MenuIconTile.tsx` | প্রতিটা menu group + item-এ Icons8 priority |
-| **Admin Dashboard cards** | `src/pages/Dashboard.tsx` | KPI card top-left আইকন (৪০-৪৮px) |
-| **POP/Reseller layout** | `src/components/reseller/ResellerLayout.tsx` ও `ResellerDashboard.tsx` | Sidebar + quick action grid |
-| **Client Portal sidebar** | `src/components/PortalLayout.tsx` | Desktop sidebar tile + drawer |
-| **Client Portal Dashboard/Bills/Support** | `PortalDashboard.tsx`, `PortalBills.tsx`, `PortalSupport.tsx` | `IconGrid` quick actions |
-| **Mobile bottom nav** | `PortalLayout` ও `ResellerLayout` bottom nav | ৫টা bottom item Icons8 দিয়ে |
-| **Empty states / Section headers** | বিভিন্ন list page (Customers, Invoices, Tickets, OLT, Inventory) | Empty state-এ বড় Icons8 illustration |
+#### Phase 1 — Gap analysis + bulk download (~80-100 নতুন icon)
+স্ক্রিপ্ট দিয়ে current `iconResolver.ts`-এর সব URL/title/label scan করে যেগুলো এখনো resolve হয় না সেই list বানাবো, তারপর Icons8-এর সাথে map করব এই categories থেকে:
 
-#### Phase 3 — Preview + handoff
-- `/dashboard/_icons` page upgrade — তিন tab: **Icons8 | Hishabee | Lucide**
-- প্রতিটা আইকনের পাশে filename + "Copy name" button
-- আপনি browse করে যেকোনোটা যেকোনো menu-তে assign করতে বললেই পরবর্তী sprint-এ map হবে
-
-### Mapping confidence (filename দেখার পরে confirm হবে)
-| Menu / Action | Icons8 candidate |
+| Skeuomorphism category | যে gap পূরণ করবে |
 |---|---|
-| ড্যাশবোর্ড / Home | dashboard, home |
-| ক্রয় / Purchase | cart, shopping-bag |
-| বিক্রয় / Sales | invoice, sale |
-| ক্যাশবক্স / Accounting | wallet, money, cash |
-| ইনভেন্টরি | box, warehouse |
-| HR / Employee | user-group, employee |
-| OLT / Network | router, wifi, network |
-| টিকেট / Support | headphones, ticket |
-| রিপোর্ট | bar-chart, report |
-| SMS | message, sms |
-| Settings | gear, settings |
-| Notice | bell |
-| Profile | user-circle |
-| Bills | receipt |
-| Ledger | book |
+| **User interface** (47) | settings, search, edit, add, delete, filter, error, help, checked |
+| **Profile** (34) | user, user-group, add-user, change-user, name, contact card |
+| **Time and date** (27) | calendar, clock, alarm, today, hourglass, schedule, leave |
+| **Files** (31) | document, pdf, copy, edit-file, image-file, add-file, archive |
+| **Folders** (23) | opened-folder, browse-folder, archive-folder, invoices-folder |
+| **Shopping** (42) | discount, gift, money, price-tag, cart, shopping-bag, basket |
+| **Network** (26) | wifi, router, bluetooth, nas, cloud-sync, shared-folder |
+| **City** (30) | bank, hospital, school-building, city-buildings (Branch icons) |
+| **Transport** (35) | car, truck, bus, gas-station (Logistics/Delivery menus) |
+| **Maps** (25) | address, map, marker, compass, world-map (Customer location) |
+| **Media controls** (21) | play, pause, stop, repeat, shuffle (Live monitoring) |
+| **Popular** (45) | box, cancel, document, edit, file, calculator |
 
-### যা বদলাবে না
-- Database, RBAC, business logic, routing
-- Layout structure (recently fixed PortalLayout consistency বহাল)
-- Hishabee + Lucide pack বহাল থাকবে fallback হিসেবে — কিছু break হবে না
-- Mobile/tablet/desktop responsive behavior
+ডাউনলোড script: `curl https://img.icons8.com/skeuomorphism/64/{name}.png -o src/assets/icons/icons8/{name}.png` — parallelized, ~30 sec total।
+
+#### Phase 2 — Resolver expansion
+`src/lib/iconResolver.ts`-এ map বাড়ানো হবে — আরো ~80টা entry:
+- `ICONS8_BY_URL`: প্রতিটা untouched menu route
+- `ICONS8_BY_TITLE`: Bangla item titles যেগুলো resolver-এ নেই
+- `ICONS8_BY_LABEL`: কয়েকটা missing group label
+
+কোনো component code change লাগবে না — সব panel আগে থেকেই resolver consume করে।
+
+#### Phase 3 — Coverage targets
+যেসব panel/page-এ আরো icon coverage দরকার:
+
+| Area | Current state | After |
+|---|---|---|
+| Admin sidebar (120 routes) | ~30% Icons8 | **~95%** |
+| Client Portal sidebar | ~70% Icons8 | **100%** |
+| POP/Reseller sidebar | ~50% Icons8 | **95%** |
+| Mobile bottom navs | 100% (already) | unchanged |
+| KPI cards (Dashboard.tsx, ResellerDashboard) | Lucide | Icons8 via resolver |
+| Empty states (Customers, Invoices, Tickets, OLT, Inventory list pages) | text-only | বড় Icons8 illustration |
+| Section headers (page titles with icon) | Lucide | Icons8 64px |
+
+#### Phase 4 — Empty-state component
+নতুন reusable: `src/components/common/EmptyState.tsx`
+- Props: `icons8` name, `title`, `description`, optional `action`
+- Default 96px Icons8 illustration + muted text
+- ১২টা list page-এ replace করা হবে
 
 ### Files
 
 | File | Change |
 |---|---|
-| `src/assets/icons/icons8/*` | Zip extract + rename |
-| `src/components/icons/Icons8Icon.tsx` | নতুন wrapper (Lottie support সহ) |
-| `src/lib/iconResolver.ts` | নতুন central resolver |
-| `src/components/sidebar/MenuIconTile.tsx` | Resolver ব্যবহার |
-| `src/components/AppSidebar.tsx` | Map update |
-| `src/components/PortalLayout.tsx` | Sidebar + bottom nav icons |
-| `src/components/reseller/ResellerLayout.tsx` | একইভাবে |
-| `src/pages/Dashboard.tsx` | KPI card icons |
-| `src/pages/portal/PortalDashboard.tsx` + Bills + Support | IconGrid icons |
-| `src/pages/reseller/ResellerDashboard.tsx` | IconGrid icons |
-| `src/components/mobile/IconCard.tsx` | Resolver integration |
-| `src/pages/dashboard/dev/IconPreview.tsx` | 3-tab preview upgrade |
-| **মোট** | **~12-14 files + asset folder** |
+| `src/assets/icons/icons8/*.png` | ~৮০ নতুন icon (script দিয়ে download) |
+| `src/lib/iconResolver.ts` | Map expansion (~৮০ নতুন entry) |
+| `src/components/common/EmptyState.tsx` | নতুন reusable component |
+| `src/pages/dashboard/customers/*`, `invoices/*`, `tickets/*` ইত্যাদি (~12 list page) | EmptyState integration |
+| `src/pages/Dashboard.tsx`, `ResellerDashboard.tsx` | KPI card icon swap |
+| **মোট** | **~17 file + 80টা PNG asset** |
 
-### Lottie / animated handling
-যদি zip-এ `.json` (Lottie) বা `.gif` থাকে:
-- Sidebar/bottom nav-এ static PNG variant ব্যবহার (performance)
-- Dashboard quick-action card hover/active state-এ animated variant — "interactive" feel
-- `lottie-react` package add করা হবে (~25KB gz, lazy-loaded)
+### যা বদলাবে না
+- Database, RBAC, business logic, routing, layout
+- Hishabee + Lucide fallback বহাল
+- Existing 76টা icon — শুধু new addition
 
-### Delivery flow
-1. Phase 1 শেষ করে আপনাকে file count + sample preview দেখাবো
-2. Phase 2 — confident match (১৫-২০টা) একসাথে সব panel-এ বসাবো
-3. `/dashboard/_icons`-এ গিয়ে বাকিগুলো আপনি pick করবেন
+### License note
+Icons8 free tier-এ link-back optional (we can include a tiny "Icons by Icons8" footer note on the dev `/dashboard/_icons` page only — production UI clean থাকবে)। এখানে কোনো license issue নেই, আপনি যেহেতু confirm করেছেন এটা open-source category থেকে।
 
-Approve করলে শুরু করি।
+### Delivery
+আপনার approval-এর পর:
+1. Gap-analysis script run → exact missing names list
+2. Bulk download (~30 sec)
+3. Resolver map বাড়ানো
+4. EmptyState rollout
+5. আপনাকে coverage report (before/after percentage per panel) দেব
 
