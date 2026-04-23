@@ -1873,6 +1873,19 @@ Deno.serve(async (req) => {
       }
 
       case "pop_ticket_clients": {
+        // BW customers don't have downstream clients — return self as the only "client"
+        if (tok.type === "bw_customer") {
+          return json({
+            clients: [{
+              id: tok.sub,
+              name: (tok as any).name || "Self",
+              client_id: (tok as any).code || "",
+              username: (tok as any).username || "",
+              contact: (tok as any).mobile || "",
+              mobile: (tok as any).mobile || "",
+            }],
+          });
+        }
         if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
           return json({ error: "Not allowed" }, 403);
         }
@@ -1895,7 +1908,11 @@ Deno.serve(async (req) => {
       }
 
       case "pop_ticket_categories": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+        if (
+          tok.type !== "reseller" &&
+          tok.type !== "reseller_sub" &&
+          tok.type !== "bw_customer"
+        ) {
           return json({ error: "Not allowed" }, 403);
         }
         const { data, error } = await sb
@@ -1908,33 +1925,44 @@ Deno.serve(async (req) => {
       }
 
       case "pop_create_ticket": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+        const isBw = tok.type === "bw_customer";
+        if (!isBw && tok.type !== "reseller" && tok.type !== "reseller_sub") {
           return json({ error: "Not allowed" }, 403);
         }
-        const resellerId =
-          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
-        const clientId = String(payload.client_id || "");
         const subject = String(payload.subject || "").trim();
         const description = String(payload.description || "");
         const priority = String(payload.priority || "normal");
         const categoryId = payload.category_id || null;
-        if (!clientId) return json({ error: "client_id required" }, 400);
         if (!subject) return json({ error: "subject required" }, 400);
 
-        const { data: pop } = await sb
-          .from("branch_managers")
-          .select("branch_id")
-          .eq("id", resellerId)
-          .maybeSingle();
-        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+        let clientId: string;
+        let zoneId: string | null = null;
 
-        const { data: client } = await sb
-          .from("clients")
-          .select("id, branch_id, zone_id")
-          .eq("id", clientId)
-          .maybeSingle();
-        if (!client || client.branch_id !== pop.branch_id) {
-          return json({ error: "Client not in your POP" }, 403);
+        if (isBw) {
+          // BW customer files a ticket against themselves
+          clientId = tok.sub;
+        } else {
+          const resellerId =
+            tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+          clientId = String(payload.client_id || "");
+          if (!clientId) return json({ error: "client_id required" }, 400);
+
+          const { data: pop } = await sb
+            .from("branch_managers")
+            .select("branch_id")
+            .eq("id", resellerId)
+            .maybeSingle();
+          if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+
+          const { data: client } = await sb
+            .from("clients")
+            .select("id, branch_id, zone_id")
+            .eq("id", clientId)
+            .maybeSingle();
+          if (!client || client.branch_id !== pop.branch_id) {
+            return json({ error: "Client not in your POP" }, 403);
+          }
+          zoneId = client.zone_id || null;
         }
 
         const ticket_no = `TK${Date.now().toString().slice(-8)}`;
@@ -1947,9 +1975,9 @@ Deno.serve(async (req) => {
             priority,
             category_id: categoryId,
             client_id: clientId,
-            zone_id: client.zone_id || null,
+            zone_id: zoneId,
             status: "open",
-            source: "pop_admin",
+            source: isBw ? "bw_customer" : "pop_admin",
             created_by: null,
           })
           .select()
@@ -1959,9 +1987,9 @@ Deno.serve(async (req) => {
         if (ticket) {
           await sb.from("support_ticket_messages").insert({
             ticket_id: ticket.id,
-            sender_type: "agent",
+            sender_type: isBw ? "client" : "agent",
             sender_id: null,
-            sender_name: tok.name || "POP Admin",
+            sender_name: tok.name || (isBw ? "BW Customer" : "POP Admin"),
             message: description || subject,
           });
         }
