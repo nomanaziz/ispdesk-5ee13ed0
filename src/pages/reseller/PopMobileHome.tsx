@@ -7,6 +7,7 @@ import { getBillingCustomerId } from "@/lib/portalIdentity";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
 import {
   Receipt, CheckCircle2, UserPlus, LifeBuoy, Wallet, History,
   TrendingUp, ArrowDownCircle, AlertTriangle, Gift, Users, Banknote,
@@ -24,17 +25,18 @@ interface Shortcut {
   bn: string;
   en: string;
   tone: string;
+  icons8?: string;
 }
 
 const shortcuts: Shortcut[] = [
-  { to: "/pop-admin/billing/list", icon: Receipt, bn: "বিল রিসিভ", en: "Bill Receive", tone: "bg-blue-500/10 text-blue-600" },
-  { to: "/pop-admin/billing/list?tab=approval", icon: CheckCircle2, bn: "বিল অনুমোদন", en: "Bill Approval", tone: "bg-emerald-500/10 text-emerald-600" },
-  { to: "/pop-admin/clients/add", icon: UserPlus, bn: "ক্লায়েন্ট যোগ", en: "Add Client", tone: "bg-violet-500/10 text-violet-600" },
-  { to: "/pop-admin/tickets", icon: LifeBuoy, bn: "টিকেট", en: "Tickets", tone: "bg-orange-500/10 text-orange-600" },
-  { to: "/pop-admin/fund-history/credit?action=recharge", icon: Wallet, bn: "ফান্ড রিচার্জ", en: "Fund Recharge", tone: "bg-pink-500/10 text-pink-600" },
-  { to: "/pop-admin/fund-history/debit", icon: ArrowDownCircle, bn: "ডেবিট হিস্ট্রি", en: "Debit History", tone: "bg-rose-500/10 text-rose-600" },
-  { to: "/pop-admin/fund-history/credit", icon: History, bn: "রিচার্জ লগ", en: "Recharge Log", tone: "bg-cyan-500/10 text-cyan-600" },
-  { to: "/pop-admin/monitoring/online", icon: TrendingUp, bn: "মনিটরিং", en: "Monitoring", tone: "bg-amber-500/10 text-amber-700" },
+  { to: "/pop-admin/billing/list", icon: Receipt, bn: "বিল রিসিভ", en: "Bill Receive", tone: "bg-blue-500/10 text-blue-600", icons8: "documents" },
+  { to: "/pop-admin/billing/list?tab=approval", icon: CheckCircle2, bn: "বিল অনুমোদন", en: "Bill Approval", tone: "bg-emerald-500/10 text-emerald-600", icons8: "checked" },
+  { to: "/pop-admin/clients/add", icon: UserPlus, bn: "ক্লায়েন্ট যোগ", en: "Add Client", tone: "bg-violet-500/10 text-violet-600", icons8: "add-user-male" },
+  { to: "/pop-admin/tickets", icon: LifeBuoy, bn: "টিকেট", en: "Tickets", tone: "bg-orange-500/10 text-orange-600", icons8: "online-support" },
+  { to: "/pop-admin/fund-history/credit?action=recharge", icon: Wallet, bn: "ফান্ড রিচার্জ", en: "Fund Recharge", tone: "bg-pink-500/10 text-pink-600", icons8: "wallet" },
+  { to: "/pop-admin/fund-history/debit", icon: ArrowDownCircle, bn: "ডেবিট হিস্ট্রি", en: "Debit History", tone: "bg-rose-500/10 text-rose-600", icons8: "data-transfer" },
+  { to: "/pop-admin/fund-history/credit", icon: History, bn: "রিচার্জ লগ", en: "Recharge Log", tone: "bg-cyan-500/10 text-cyan-600", icons8: "coins" },
+  { to: "/pop-admin/monitoring/online", icon: TrendingUp, bn: "মনিটরিং", en: "Monitoring", tone: "bg-amber-500/10 text-amber-700", icons8: "wi-fi-connected" },
 ];
 
 export default function PopMobileHome() {
@@ -143,14 +145,15 @@ export default function PopMobileHome() {
       <div className="grid grid-cols-4 gap-2">
         {shortcuts.map((s) => {
           const Icon = s.icon;
+          const useIcons8 = hasIcons8Icon(s.icons8);
           return (
             <Link
               key={s.to}
               to={s.to}
               className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-card border border-border/60 active:scale-95 transition-transform min-h-[80px]"
             >
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${s.tone}`}>
-                <Icon className="h-5 w-5" />
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${useIcons8 ? "bg-muted/40" : s.tone}`}>
+                {useIcons8 ? <Icons8Icon name={s.icons8!} size={30} /> : <Icon className="h-5 w-5" />}
               </div>
               <span className="text-[10px] font-medium text-center leading-tight line-clamp-2">
                 {lang === "bn" ? s.bn : s.en}
