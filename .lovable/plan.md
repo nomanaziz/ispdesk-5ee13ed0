@@ -1,46 +1,105 @@
 
 
-## গুরুত্বপূর্ণ লিংক — আলাদা Page এবং Sidebar Menu
+## Centralized Notice System — সব জায়গা থেকে উঠিয়ে এক জায়গায়
 
 ### লক্ষ্য
-- `Dashboard.tsx` থেকে `<ImportantLinksSection />` widget সরিয়ে নেওয়া।
-- Sidebar-এর "ড্যাশবোর্ড" group-এর নিচে নতুন "লিংক" নামে menu item add করা।
-- নতুন route `/dashboard/links` তৈরি — যেখানে শুধু গুরুত্বপূর্ণ লিংক page আকারে দেখাবে।
+- বিদ্যমান সব notice entry point (Portal Manager > Notices, POP নোটিশ, Website > নোটিশ) থেকে notice management সরিয়ে নেওয়া।
+- "সাপোর্ট ও টিকেটিং" menu-র নিচে নতুন **"নোটিশ"** sub-menu যোগ করা।
+- Admin এক জায়গা থেকেই notice তৈরি করে multiple recipient group বেছে দিতে পারবে — সবাই / নির্দিষ্ট POP / নির্দিষ্ট BW POP / নির্দিষ্ট Client।
+- Centralized notice automatic-ভাবে portal (`/portal/notices`), notification bell, এবং dashboard-এ দেখাবে।
 
-### পরিবর্তন
+### Database পরিবর্তন (Migration)
 
-**1. নতুন Page — `src/pages/dashboard/Links.tsx`**
-- Simple wrapper page: page title + `<ImportantLinksSection />` render করবে।
-- Existing component পুরোপুরি reuse — ImportantLinksSection-এ কোনো পরিবর্তন নয় (সব CRUD, dialog, category logic যেমন আছে তেমনই কাজ করবে)।
+**`client_notices` table-এ নতুন columns:**
+- `audience_groups text[]` — যেমন `['all_pops','all_bw_pops','all_clients']` — group-level selection
+- `target_pop_ids uuid[]` — নির্দিষ্ট POP IDs (`branch_managers.id`)
+- `target_bw_pop_ids uuid[]` — নির্দিষ্ট BW POP IDs (BW pop_type)
+- `target_client_ids uuid[]` — নির্দিষ্ট client IDs (`clients.id`)
 
-**2. `src/pages/Dashboard.tsx` — widget সরানো**
-- Line 15-এর `import { ImportantLinksSection }` remove।
-- Line 757-এর `<ImportantLinksSection />` render block remove।
+(পুরোনো `target_scope`, `branch_id`, `zone_id` রেখে দেওয়া — backward compatibility।)
 
-**3. `src/components/AppSidebar.tsx` — menu update**
-- "ড্যাশবোর্ড" group (line 67-75) এ:
-    - `direct: true` সরানো (যাতে expandable group হয়, নিচে "লিংক" menu দেখা যায়)।
-    - `items` array-এ নতুন entry যোগ:
-      ```ts
-      { title: "লিংক", url: "/dashboard/links", icon: Link2, titleEn: "Links" }
-      ```
-- ফলে sidebar-এ:
-    ```
-    📊 ড্যাশবোর্ড
-       ├─ ড্যাশবোর্ড  → /dashboard
-       └─ 🔗 লিংক     → /dashboard/links
-    ```
+### নতুন Page — `/dashboard/support/notices`
 
-**4. `src/App.tsx` — route add**
-- Dashboard routes section-এ (line 441-এর কাছে):
-  ```tsx
-  import Links from "./pages/dashboard/Links";
-  <Route path="/dashboard/links" element={<P><Links /></P>} />
-  ```
+**File**: `src/pages/dashboard/support/Notices.tsx`
+
+**UI Layout:**
+1. **Header** — "নোটিশ ম্যানেজমেন্ট" + "নতুন নোটিশ" button
+2. **List view** — সব notice দেখাবে (title, type, audience summary, pinned, active, created date, edit/delete)
+3. **Create/Edit Dialog**:
+   - Title, Body, Type (info/warning/success/event)
+   - Pinned toggle, Active toggle, Attachment URL
+   - **Audience selector** — checkbox group:
+     - ☐ সকল POP
+     - ☐ সকল ব্যান্ডউইথ POP
+     - ☐ সকল ক্লায়েন্ট
+   - **Specific selectors** (যখন কোনো group select করা না-ও থাকে):
+     - "নির্দিষ্ট POP" — searchable multi-select (branch_managers থেকে regular pop)
+     - "নির্দিষ্ট BW POP" — searchable multi-select (branch_managers থেকে BW pop_type)
+     - "নির্দিষ্ট ক্লায়েন্ট" — searchable multi-select (clients table)
+   - সব selector-এ search box (recurring pattern, ছোট 1-line search input)
+
+### Sidebar পরিবর্তন (`AppSidebar.tsx`)
+
+"সাপোর্ট ও টিকেটিং" group-এ নতুন entry যোগ:
+```
+সাপোর্ট ও টিকেটিং
+  ├─ ক্লায়েন্ট সাপোর্ট
+  ├─ সাপোর্ট হিস্টরি
+  └─ 🔔 নোটিশ  → /dashboard/support/notices  (NEW)
+```
+
+### Routing (`App.tsx`)
+- নতুন route: `/dashboard/support/notices` → `SupportNotices` page
+
+### সরিয়ে নেওয়া হবে (Notice management UI)
+
+| জায়গা | কী হবে |
+|---|---|
+| **Portal Manager** (`/dashboard/clients/portal-manage`) — "Notices" tab | tab টা সরানো হবে। News & Events, Media, Speed Test, Clients থাকবে। |
+| **POP নোটিশ** (`/dashboard/branches/pop-notice`) | sidebar entry সরানো + page redirect → `/dashboard/support/notices` |
+| **Website > নোটিশ** (`/dashboard/website/notices`) | এটা public website-এর notice (`website_notices` ভিন্ন table) — **এটা থাকবে**, কারণ এটা public website-এ দেখায়, portal/client-এ না। শুধু নাম পরিষ্কার রাখতে "ওয়েবসাইট নোটিশ" করে দেওয়া হবে। |
+
+### Backend (Edge Function — `portal-data/index.ts`)
+
+`get_notices` action update — audience filter logic যোগ:
+```ts
+// User type, pop_id, client_id জেনে filter করবে
+// একটা notice দেখাবে যদি:
+//   - audience_groups-এ match করে (all_clients/all_pops/all_bw_pops), অথবা
+//   - target_client_ids-এ user থাকে, অথবা
+//   - target_pop_ids/target_bw_pop_ids-এ user-এর POP থাকে
+```
+
+### Component cleanup
+- `src/components/portal-manage/NoticesTab.tsx` — delete (Portal Manager থেকে সরানো)
+- `src/pages/dashboard/branches/PopNotice.tsx` — delete
+- `PortalManage.tsx` — `notices` tab entry সরানো
 
 ### ফলাফল
-- Dashboard page থেকে গুরুত্বপূর্ণ লিংক widget সরে যাবে → page পরিষ্কার হবে।
-- Sidebar-এর "ড্যাশবোর্ড" group expand করলে "লিংক" সাব-মেনু দেখাবে।
-- `/dashboard/links` page-এ পুরো গুরুত্বপূর্ণ লিংক UI আলাদা দেখা যাবে — সব category/link CRUD যেমন আগে কাজ করছিল ঠিক তেমনই কাজ করবে।
-- কোনো database পরিবর্তন নেই, শুধু UI re-organization।
+
+```text
+Admin Workflow:
+┌─────────────────────────────────┐
+│ সাপোর্ট ও টিকেটিং > নোটিশ      │
+└──────────────┬──────────────────┘
+               ↓
+   [+ নতুন নোটিশ] লিখি
+               ↓
+   Audience বেছে নিই:
+   ☑ সকল POP
+   ☑ সকল ক্লায়েন্ট
+   বা/সাথে: 🔍 specific POP/BW POP/Client search-select
+               ↓
+   [Save] → Centralized table-এ যায়
+               ↓
+   Auto-distribute:
+   ├─→ Portal /portal/notices (filtered by audience)
+   ├─→ NotificationBell (portal-এ)
+   └─→ Dashboard widget (POP/BW POP-এর জন্য)
+```
+
+- এক জায়গা থেকে সব notice manage হবে
+- Duplicate UI নেই
+- প্রতিটি list/select-এ search box (১০০+ POP/client হলেও সহজে খুঁজে পাবে)
+- Backward compatible — পুরোনো notices ও `website_notices` (public site) আগের মতই কাজ করবে
 
