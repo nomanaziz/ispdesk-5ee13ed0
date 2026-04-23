@@ -177,6 +177,26 @@ export default function ManageClientsUpgradeModal({
           </ul>
         </div>
 
+        <div className="rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 p-3 mt-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-sm">
+            <div className="font-semibold flex items-center gap-1.5">
+              <Sparkles className="h-4 w-4 text-primary" /> Try Free for 1 Month
+            </div>
+            <div className="text-muted-foreground text-xs">
+              ৫০ ইউজার পর্যন্ত — কোনো পেমেন্ট ছাড়াই ৩০ দিন ব্যবহার করুন। প্রতি কাস্টমার একবারই।
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleTrial}
+            disabled={trialing || demoUsed}
+            className="gap-2"
+          >
+            {trialing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {demoUsed ? "ট্রায়াল ব্যবহৃত" : trialing ? "শুরু হচ্ছে..." : "Start Free Trial"}
+          </Button>
+        </div>
+
         <div className="flex items-center justify-between pt-4 border-t mt-2">
           <div className="text-sm text-muted-foreground">
             {selected ? (
