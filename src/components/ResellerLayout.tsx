@@ -335,7 +335,7 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                   {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 </button>
                 {isOpen && (
-                  <div className="ml-3 pl-3 border-l border-sidebar-border space-y-0.5 mt-0.5 mb-1">
+                  <div className="ml-3 pl-3 border-l border-sidebar-border space-y-1 mt-1 mb-1">
                     {g.items.map((item) => {
                       const ItemIcon = item.icon;
                       const active = location.pathname === item.to ||
@@ -347,10 +347,10 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
                           to={item.to}
                           onClick={() => setMobileOpen(false)}
                           className={cn(
-                            "flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium transition-colors group",
+                            "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors group border",
                             active
-                              ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                              : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm border-sidebar-primary"
+                              : "bg-sidebar-accent/30 border-sidebar-border/60 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:border-sidebar-border",
                           )}
                         >
                           {hasIcons8Icon(itemIcons8) ? (
