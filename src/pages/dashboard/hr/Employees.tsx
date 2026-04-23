@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 import { Plus, Search, Edit, Trash2, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -100,13 +101,16 @@ export default function Employees() {
       <div className="flex flex-wrap items-center gap-3">
         <Button size="sm" variant={statusFilter === "active" ? "default" : "outline"} onClick={() => setStatusFilter("active")}>সক্রিয়</Button>
         <Button size="sm" variant={statusFilter === "inactive" ? "default" : "outline"} onClick={() => setStatusFilter("inactive")}>নিষ্ক্রিয়</Button>
-        <Select value={deptFilter} onValueChange={setDeptFilter}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="ডিপার্টমেন্ট" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">সকল ডিপার্টমেন্ট</SelectItem>
-            {(departments || []).map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={deptFilter}
+          onValueChange={setDeptFilter}
+          options={[
+            { value: "all", label: "সকল ডিপার্টমেন্ট" },
+            ...((departments || []).map((d: any) => ({ value: d.id, label: d.name }))),
+          ]}
+          placeholder="ডিপার্টমেন্ট"
+          className="w-48"
+        />
         <div className="relative w-64 ml-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="অনুসন্ধান..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />

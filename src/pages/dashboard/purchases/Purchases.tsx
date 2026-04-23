@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Search, ShoppingCart, DollarSign, CheckCircle, Clock, Store } from "lucide-react";
@@ -152,16 +153,20 @@ export default function Purchases() {
             <div><Label>ক্রয় নং *</Label><Input value={form.purchase_no} onChange={e => setForm(p => ({ ...p, purchase_no: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>ভেন্ডর</Label>
-                <Select value={form.vendor_id} onValueChange={v => setForm(p => ({ ...p, vendor_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>{vendors.map((v: any) => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={form.vendor_id}
+                  onValueChange={v => setForm(p => ({ ...p, vendor_id: v }))}
+                  options={vendors.map((v: any) => ({ value: v.id, label: v.name }))}
+                  placeholder="নির্বাচন করুন"
+                />
               </div>
               <div><Label>আইটেম</Label>
-                <Select value={form.item_id} onValueChange={v => setForm(p => ({ ...p, item_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>{items.map((it: any) => <SelectItem key={it.id} value={it.id}>{it.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={form.item_id}
+                  onValueChange={v => setForm(p => ({ ...p, item_id: v }))}
+                  options={items.map((it: any) => ({ value: it.id, label: it.name }))}
+                  placeholder="নির্বাচন করুন"
+                />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">

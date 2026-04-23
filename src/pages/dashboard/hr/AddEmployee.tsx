@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -355,26 +356,32 @@ export default function AddEmployee() {
               <div><Label>রেফারেন্স</Label><Input value={form.reference} onChange={(e) => set("reference", e.target.value)} placeholder="রেফারেন্স ব্যক্তি" /></div>
               <div>
                 <Label>বিভাগ</Label>
-                <Select value={form.division_id} onValueChange={(v) => { set("division_id", v); set("district", ""); set("district_id", ""); set("upazila", ""); }}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>{(divisions || []).map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={form.division_id}
+                  onValueChange={(v) => { set("division_id", v); set("district", ""); set("district_id", ""); set("upazila", ""); }}
+                  options={(divisions || []).map((d: any) => ({ value: d.id, label: d.name }))}
+                  placeholder="নির্বাচন করুন"
+                />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>জেলা</Label>
-                <Select value={form.district_id} onValueChange={(v) => { const d = (districts || []).find((x: any) => x.id === v); set("district_id", v); set("district", d?.name || ""); set("upazila", ""); }}>
-                  <SelectTrigger><SelectValue placeholder={form.division_id ? "নির্বাচন করুন" : "আগে বিভাগ নির্বাচন করুন"} /></SelectTrigger>
-                  <SelectContent>{(districts || []).map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={form.district_id}
+                  onValueChange={(v) => { const d = (districts || []).find((x: any) => x.id === v); set("district_id", v); set("district", d?.name || ""); set("upazila", ""); }}
+                  options={(districts || []).map((d: any) => ({ value: d.id, label: d.name }))}
+                  placeholder={form.division_id ? "নির্বাচন করুন" : "আগে বিভাগ নির্বাচন করুন"}
+                />
               </div>
               <div>
                 <Label>উপজেলা</Label>
-                <Select value={form.upazila} onValueChange={(v) => { const u = (upazilas || []).find((x: any) => x.id === v); set("upazila", u?.name || ""); }}>
-                  <SelectTrigger><SelectValue placeholder={form.district_id ? "নির্বাচন করুন" : "আগে জেলা নির্বাচন করুন"} /></SelectTrigger>
-                  <SelectContent>{(upazilas || []).map((u: any) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={form.upazila}
+                  onValueChange={(v) => { const u = (upazilas || []).find((x: any) => x.id === v); set("upazila", u?.name || ""); }}
+                  options={(upazilas || []).map((u: any) => ({ value: u.id, label: u.name }))}
+                  placeholder={form.district_id ? "নির্বাচন করুন" : "আগে জেলা নির্বাচন করুন"}
+                />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -395,10 +402,12 @@ export default function AddEmployee() {
           <CardContent className="p-4 space-y-4">
             <div>
               <Label>ডিভাইস (ZKTeco)</Label>
-              <Select value={form.zkteco_device_id} onValueChange={(v) => set("zkteco_device_id", v)}>
-                <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                <SelectContent>{(zktecoDevices || []).map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
-              </Select>
+              <SearchableSelect
+                value={form.zkteco_device_id}
+                onValueChange={(v) => set("zkteco_device_id", v)}
+                options={(zktecoDevices || []).map((d: any) => ({ value: d.id, label: d.name }))}
+                placeholder="নির্বাচন করুন"
+              />
             </div>
             <div><Label>পাঞ্চ কার্ড আইডি</Label><Input value={form.punch_card_id} onChange={(e) => set("punch_card_id", e.target.value)} placeholder="কার্ড আইডি" /></div>
             <div className="grid grid-cols-2 gap-4">

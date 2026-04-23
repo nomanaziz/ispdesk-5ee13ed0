@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -626,7 +627,7 @@ export default function AddClient() {
         <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <Label>সার্ভার *</Label>
-            <Select
+            <SearchableSelect
               value={form.mikrotik_id}
               disabled={isPopMode}
               onValueChange={v => {
@@ -641,63 +642,61 @@ export default function AddClient() {
                   .catch(() => setMikrotikProfiles([]))
                   .finally(() => setLoadingProfiles(false));
               }}
-            >
-              <SelectTrigger><SelectValue placeholder={isPopMode ? "POP-এর ডিফল্ট সার্ভার" : "নির্বাচন করুন"} /></SelectTrigger>
-              <SelectContent>
-                {mikrotiks?.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+              options={(mikrotiks || []).map((m: any) => ({ value: m.id, label: m.name }))}
+              placeholder={isPopMode ? "POP-এর ডিফল্ট সার্ভার" : "নির্বাচন করুন"}
+            />
             {isPopMode && (
               <p className="text-xs text-muted-foreground mt-1">POP প্রোফাইল থেকে স্বয়ংক্রিয়</p>
             )}
           </div>
           <div>
             <Label>প্রোটোকল টাইপ *</Label>
-            <Select value={form.protocol_type} onValueChange={v => setField("protocol_type", v)} disabled={isPopMode}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-              <SelectContent>
-                {(protocolTypes as any[])?.map((p: any) => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.protocol_type}
+              onValueChange={v => setField("protocol_type", v)}
+              disabled={isPopMode}
+              options={((protocolTypes as any[]) || []).map((p: any) => ({ value: p.name, label: p.name }))}
+              placeholder="নির্বাচন করুন"
+            />
             {isPopMode && (
               <p className="text-xs text-muted-foreground mt-1">POP-এর জন্য PPPoE লক করা</p>
             )}
           </div>
           <div>
             <Label>জোন *</Label>
-            <Select value={form.zone_id} onValueChange={v => { setField("zone_id", v); setField("sub_zone_id", ""); setField("box_id", ""); }}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-              <SelectContent>
-                {zones?.map(z => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.zone_id}
+              onValueChange={v => { setField("zone_id", v); setField("sub_zone_id", ""); setField("box_id", ""); }}
+              options={(zones || []).map((z: any) => ({ value: z.id, label: z.name }))}
+              placeholder="নির্বাচন করুন"
+            />
           </div>
           <div>
             <Label>সাব জোন</Label>
-            <Select value={form.sub_zone_id} onValueChange={v => setField("sub_zone_id", v)}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-              <SelectContent>
-                {filteredSubZones?.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.sub_zone_id}
+              onValueChange={v => setField("sub_zone_id", v)}
+              options={(filteredSubZones || []).map((s: any) => ({ value: s.id, label: s.name }))}
+              placeholder="নির্বাচন করুন"
+            />
           </div>
           <div>
             <Label>বক্স</Label>
-            <Select value={form.box_id} onValueChange={v => setField("box_id", v)}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-              <SelectContent>
-                {filteredBoxes?.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.box_id}
+              onValueChange={v => setField("box_id", v)}
+              options={(filteredBoxes || []).map((b: any) => ({ value: b.id, label: b.name }))}
+              placeholder="নির্বাচন করুন"
+            />
           </div>
           <div>
             <Label>কানেকশন টাইপ *</Label>
-            <Select value={form.connection_type} onValueChange={v => setField("connection_type", v)}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-              <SelectContent>
-                {connectionTypes?.map(ct => <SelectItem key={ct.id} value={ct.name}>{ct.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.connection_type}
+              onValueChange={v => setField("connection_type", v)}
+              options={(connectionTypes || []).map((ct: any) => ({ value: ct.name, label: ct.name }))}
+              placeholder="নির্বাচন করুন"
+            />
           </div>
           <div>
             <Label>ক্যাবল প্রয়োজন (মিটার)</Label>
@@ -766,24 +765,22 @@ export default function AddClient() {
           </div>
           <div>
             <Label>প্যাকেজ *</Label>
-            <Select value={form.package_id} onValueChange={v => {
-              setField("package_id", v);
-              const pkg: any = packages?.find((p: any) => p.id === v);
-              if (pkg && form.billing_status === "Active") setField("monthly_bill", pkg.price);
-              // POP mode: auto-set profile from tariff package's mikrotik_profile (locked from tariff config)
-              if (isPopMode && pkg?.mikrotik_profile) setField("profile", pkg.mikrotik_profile);
-              // Warn if reseller hasn't set a selling rate yet
-              if (isPopMode && pkg && (!pkg.price || pkg.price <= 0)) {
-                toast.error("Selling Rate সেট করা নেই", {
-                  description: "এই প্যাকেজের জন্য Package page-এ গিয়ে আপনার Selling Rate সেট করুন।",
-                });
-              }
-            }}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-              <SelectContent>
-                {packages?.map(p => <SelectItem key={p.id} value={p.id}>{p.name} - ৳{p.price}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.package_id}
+              onValueChange={v => {
+                setField("package_id", v);
+                const pkg: any = packages?.find((p: any) => p.id === v);
+                if (pkg && form.billing_status === "Active") setField("monthly_bill", pkg.price);
+                if (isPopMode && pkg?.mikrotik_profile) setField("profile", pkg.mikrotik_profile);
+                if (isPopMode && pkg && (!pkg.price || pkg.price <= 0)) {
+                  toast.error("Selling Rate সেট করা নেই", {
+                    description: "এই প্যাকেজের জন্য Package page-এ গিয়ে আপনার Selling Rate সেট করুন।",
+                  });
+                }
+              }}
+              options={(packages || []).map((p: any) => ({ value: p.id, label: `${p.name} - ৳${p.price}` }))}
+              placeholder="নির্বাচন করুন"
+            />
           </div>
           <div>
             <Label>প্রোফাইল</Label>
@@ -805,12 +802,12 @@ export default function AddClient() {
           </div>
           <div>
             <Label>ক্লায়েন্ট টাইপ *</Label>
-            <Select value={form.client_type} onValueChange={v => setField("client_type", v)}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-              <SelectContent>
-                {clientTypes?.map((ct: any) => <SelectItem key={ct.id} value={ct.name}>{ct.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.client_type}
+              onValueChange={v => setField("client_type", v)}
+              options={(clientTypes || []).map((ct: any) => ({ value: ct.name, label: ct.name }))}
+              placeholder="নির্বাচন করুন"
+            />
           </div>
           <div>
             <Label>বিলিং স্ট্যাটাস *</Label>
