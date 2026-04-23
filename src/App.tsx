@@ -715,12 +715,12 @@ const App = () => (
 
               {/* Portal */}
               <Route path="/portal/login" element={<PortalAuthProvider><PortalLogin /></PortalAuthProvider>} />
-              <Route path="/portal/dashboard" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalDashboard /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/dashboard" element={<PortalAuthProvider><PortalProtectedRoute><PortalDashboard /></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/invoices" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalInvoices /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
-              <Route path="/portal/bills" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalBills /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/bills" element={<PortalAuthProvider><PortalProtectedRoute><PortalBills /></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/bills/:id" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalBillInvoice /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               
-              <Route path="/portal/support" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalSupport /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/support" element={<PortalAuthProvider><PortalProtectedRoute><PortalSupport /></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/notices" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalNotices /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/company" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalCompanyInfo /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/media" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalMediaServers /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
