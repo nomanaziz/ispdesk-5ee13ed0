@@ -175,15 +175,10 @@ export default function InstallationFee() {
                   <Input type="date" value={form.fee_date} onChange={(e) => setForm({ ...form, fee_date: e.target.value })} />
                 </div>
                 <div>
-                  <Label>স্ট্যাটাস</Label>
-                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unpaid">বকেয়া</SelectItem>
-                      <SelectItem value="paid">পেইড</SelectItem>
-                      <SelectItem value="partial">আংশিক</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>স্ট্যাটাস (স্বয়ংক্রিয়)</Label>
+                  <div className="h-10 flex items-center px-3 rounded-md border bg-muted/40">
+                    {statusBadge(deriveStatus(form.amount, form.paid))}
+                  </div>
                 </div>
               </div>
               <div>
