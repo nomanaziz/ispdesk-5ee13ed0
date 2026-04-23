@@ -301,7 +301,7 @@ export default function Items() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">ব্যান্ডউইথ</label>
                 <Input value={formData.bandwidth} onChange={(e) => setFormData({ ...formData, bandwidth: e.target.value })} placeholder="e.g. 100 Mbps" />
@@ -309,6 +309,10 @@ export default function Items() {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">মূল্য (৳)</label>
                 <Input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} placeholder="0" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">ডিফল্ট VAT %</label>
+                <Input type="number" step="0.01" value={formData.default_vat_pct} onChange={(e) => setFormData({ ...formData, default_vat_pct: e.target.value })} placeholder="5" />
               </div>
             </div>
             <div className="space-y-1.5">
