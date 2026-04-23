@@ -129,13 +129,14 @@ export const PortalLayout = ({ children, fullBleedMobile = true }: Props) => {
             {menuItems.map((item) => {
               const active = location.pathname === item.path;
               const Icon = item.icon;
+              const useIcons8 = hasIcons8Icon(item.icons8);
               return (
                 <Link
                   key={item.path}
                   to={item.path}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm transition-all font-medium group",
+                    "group flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm transition-all font-medium",
                     active
                       ? "bg-sidebar-primary/10 text-sidebar-foreground shadow-sm"
                       : "text-sidebar-foreground hover:bg-sidebar-accent",
@@ -144,11 +145,16 @@ export const PortalLayout = ({ children, fullBleedMobile = true }: Props) => {
                   <span
                     className={cn(
                       "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 transition-transform",
-                      tintTile[item.tint],
-                      active && "scale-105 shadow",
+                      useIcons8 ? "bg-transparent" : tintTile[item.tint],
+                      active && "scale-105",
+                      !useIcons8 && active && "shadow",
                     )}
                   >
-                    <Icon className="h-5 w-5" strokeWidth={2.2} />
+                    {useIcons8 ? (
+                      <Icons8Icon name={item.icons8!} size={28} />
+                    ) : (
+                      <Icon className="h-5 w-5" strokeWidth={2.2} />
+                    )}
                   </span>
                   <span className="truncate">{t(item.bn, item.en)}</span>
                 </Link>
@@ -272,16 +278,25 @@ export const PortalLayout = ({ children, fullBleedMobile = true }: Props) => {
                 ? location.pathname.startsWith(item.matchPrefix)
                 : location.pathname === item.path;
               const Icon = item.icon;
+              const useIcons8 = hasIcons8Icon(item.icons8);
               return (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10.5px] font-medium transition-colors min-h-[56px]",
+                    "group flex flex-col items-center justify-center gap-0.5 py-2 text-[10.5px] font-medium transition-colors min-h-[56px]",
                     active ? "text-rose-600" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} strokeWidth={2.2} />
+                  {useIcons8 ? (
+                    <Icons8Icon
+                      name={item.icons8!}
+                      size={26}
+                      className={cn("transition-transform", active && "scale-110")}
+                    />
+                  ) : (
+                    <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} strokeWidth={2.2} />
+                  )}
                   <span className="leading-none">{t(item.bn, item.en)}</span>
                 </Link>
               );
