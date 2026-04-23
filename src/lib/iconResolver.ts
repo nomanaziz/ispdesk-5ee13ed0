@@ -334,3 +334,21 @@ export function resolveIcons8(input: IconLookup): string | undefined {
   if (label && ICONS8_BY_LABEL[label]) return ICONS8_BY_LABEL[label];
   return undefined;
 }
+
+/**
+ * Resolve an Icons8 name from a URL pathname.
+ * Tries exact match, then progressively trims trailing path segments
+ * so /dashboard/billing/list/details still resolves to /dashboard/billing/list.
+ */
+export function resolveByPath(pathname?: string): string | undefined {
+  if (!pathname) return undefined;
+  const clean = pathname.split("?")[0].split("#")[0].replace(/\/$/, "");
+  if (ICONS8_BY_URL[clean]) return ICONS8_BY_URL[clean];
+  const parts = clean.split("/").filter(Boolean);
+  while (parts.length > 1) {
+    parts.pop();
+    const candidate = "/" + parts.join("/");
+    if (ICONS8_BY_URL[candidate]) return ICONS8_BY_URL[candidate];
+  }
+  return undefined;
+}
