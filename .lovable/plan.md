@@ -1,144 +1,107 @@
 
 
-## মোবাইল অ্যাপ স্টাইল রিডিজাইন — POP Admin ও Client Portal
+## সাইডবার Icon Style — MyHisab-এর মতো Colorful Filled Icons
 
 ### লক্ষ্য
-আপনার দেখানো MyHisab অ্যাপের মতো **clean, colorful, icon-driven, mobile-first** ডিজাইনে POP Admin এবং Client Portal সাজানো। ব্যবসা আলাদা (ISP/ERP) — তাই content আপনার, কিন্তু **look & feel** ওই ধরনের।
+আপনার দেখানো reference image-এর মতো **colorful, filled, rounded-square** আইকন admin sidebar-এ ব্যবহার করা। এখনকার plain lucide outline icons-এর বদলে প্রতিটা menu item-এর পাশে একটা **রঙিন ছোট tile** (যেমন: কেনা = কমলা, বেচা = সবুজ, ক্যাশবক্স = নীল)।
 
-### Reference থেকে যা নিচ্ছি (image-210, image-211)
-- **Top gradient header** — bold রঙিন (pink/teal) ব্যানার, balance/summary বড় করে
-- **Card grid icons** — ৩-column grid, প্রতিটা feature একটা colorful icon + Bangla label
-- **Soft rounded cards** — বড় border-radius, light shadow, প্রচুর white space
-- **Bottom nav bar** — ৪-৫ icon + center floating "+" FAB
-- **Tab pills** — rounded pills (selected = filled gradient)
-- **List rows** — left circular icon + title + subtitle + right amount (color coded)
-- **Bengali typography** — বড়, পরিষ্কার, বেশি line-height
+### Reference থেকে যা নিচ্ছি
+- প্রতিটা menu item-এর পাশে **২২-২৬px rounded-square colored tile**
+- ভিতরে সাদা/dark filled-style icon
+- প্রতিটা category-র নিজস্ব রঙ (consistent palette)
+- Active item-এ tile একটু বড়/bright হবে
+- Section divider-এর মাঝে spacing থাকবে
 
-### Scope (২ surface, Admin বাদ)
+### Scope (শুধু Admin Sidebar)
 
-**A. Client Portal** (`/portal/*`) — গ্রাহক যা মোবাইলে দেখে
-- Home (dashboard)
-- Bills / Payments
-- Tickets / Support
-- Profile
+**যা বদলাবে:**
+- `src/components/AppSidebar.tsx` — sidebar menu rendering
+- নতুন helper: `src/components/sidebar/MenuIconTile.tsx` — colored tile wrapper
+- Menu config (যেখানে icon define আছে) — প্রতিটা item-এ একটা `tint` color প্রপার্টি যোগ
 
-**B. POP Admin Mobile** (`/pop-admin/*` ও `/reseller/*`) — মাঠ পর্যায়ের POP মালিক
-- Dashboard summary
-- Clients
-- Collections / Bills
-- Tickets
-- Reports
-- Settings
+**যা বদলাবে না:**
+- Sidebar-এর structure, routing, RBAC
+- Mobile bottom nav (আলাদা design)
+- Portal/POP mobile shells (আগেই MyHisab-style হয়ে গেছে)
+- Dark mode support — tile রঙ dark-এ slightly muted হবে
 
-**Admin (`/dashboard/*`) — অপরিবর্তিত** (desktop ERP, আলাদা design system)
+### ডিজাইন approach
 
-### ডিজাইন সিস্টেম (নতুন mobile theme tokens)
+#### ১. নতুন `MenuIconTile` component
+```tsx
+<MenuIconTile tint="orange" icon={ShoppingCart} active={isActive} />
+```
+- ২৪px rounded-[8px] tile
+- Tint variants: `rose | orange | amber | emerald | teal | sky | indigo | violet | pink | slate | gray`
+- Light mode: bright bg + white icon (e.g., `bg-orange-500 text-white`)
+- Dark mode: softer (`bg-orange-500/20 text-orange-300`)
+- Active state: একটু shadow + slightly larger
+- Collapsed sidebar-এ tile centered, label hidden
 
-`src/index.css` + `tailwind.config.ts`-এ নতুন scoped tokens (admin theme touch হবে না):
+#### ২. Icon palette mapping (category-wise)
+ERP-র ১২০+ menu আছে — তাই category অনুযায়ী রঙ assign:
 
-```css
-[data-theme-scope="portal"], 
-[data-theme-scope="pop"] {
-  --m-primary: 340 82% 52%;        /* pink-rose, MyHisab style */
-  --m-primary-2: 173 58% 45%;      /* teal accent */
-  --m-bg: 0 0% 98%;
-  --m-card: 0 0% 100%;
-  --m-success: 142 71% 38%;
-  --m-danger: 0 84% 55%;
-  --m-warning: 38 92% 50%;
-  --m-radius-card: 1.25rem;
-  --m-radius-pill: 9999px;
-  --m-shadow-soft: 0 4px 14px hsl(0 0% 0% / 0.06);
-}
+| Category | Tint | Examples |
+|---|---|---|
+| Dashboard / Home | `indigo` | হোম, ড্যাশবোর্ড |
+| Sales / বেচা | `emerald` | Invoices, Customers, Collections |
+| Purchase / কেনা | `orange` | Vendors, PO, GRN, Purchase Bills |
+| Inventory / স্টক | `amber` | Items, Stock, Warehouse |
+| Cash / Finance | `sky` | Cashbox, Bank, Expenses, Ledger |
+| Network / OLT | `cyan` | OLT, ONU, MikroTik, VLAN |
+| HR / People | `violet` | Employees, Attendance, Payroll |
+| CRM / Tickets | `pink` | Leads, Tickets, Complaints |
+| Reports | `teal` | All reports |
+| Marketing | `rose` | Campaigns, SMS, Notices |
+| Settings / Config | `slate` | Settings, Users, Roles, Branches |
+| Website CMS | `violet` | Pages, Banners, Testimonials |
+
+#### ৩. Sidebar config update
+যেখানে menu items define হয় (sidebar config বা AppSidebar-এর ভিতরে), প্রতিটা item-এ `tint` field যোগ:
+```ts
+{ title: "কেনার বিল", url: "/dashboard/purchase/bills", icon: Receipt, tint: "orange" }
 ```
 
-User চাইলে পরে অন্য রঙ pick করতে পারবে (ThemeContext-এ already scope-aware)।
+#### ৪. Section dividers
+Reference-এ সেকশনের মাঝে subtle space আছে — sidebar-এ `SidebarGroup`-এর মাঝে একটু বেশি `gap` যোগ করব। Section labels (যেমন "Inventory", "Network") slightly smaller + uppercase.
 
-### নতুন reusable mobile components
+#### ৫. Hover & Active state
+- Hover: tile-এ slight brightness boost
+- Active: tile-এ subtle shadow + row background = `bg-accent/50`
+- Collapsed mode: শুধু tile দেখাবে, hover-এ tooltip-এ Bangla label
 
-`src/components/mobile/`:
-- `MobileShell.tsx` — gradient header + content area + bottom nav wrapper
-- `GradientHeader.tsx` — top pink/teal gradient banner with title, balance/stat box, action icons
-- `IconCard.tsx` — colorful rounded square with icon + Bangla label (3-col grid item)
-- `IconGrid.tsx` — responsive 3-column grid container
-- `StatCardPair.tsx` — green income / red expense বড় card jodi (image-210 মতো)
-- `PillTabs.tsx` — rounded filled pills (image-211 মতো tabs)
-- `ListRow.tsx` — circular icon + text + amount row
-- `BottomNav.tsx` — 4 nav + center floating FAB "+"
-- `FloatingAddButton.tsx` — center "+" with gradient
-- `ScreenTitle.tsx` — bold red-script style page title (top centered)
+### Files affected
 
-প্রতিটা lucide-react icon ব্যবহার করবে, রঙ category অনুযায়ী।
+| File | Change |
+|---|---|
+| `src/components/sidebar/MenuIconTile.tsx` | নতুন component |
+| `src/components/AppSidebar.tsx` | tile integration + spacing |
+| Menu config (AppSidebar-এর ভিতরে বা আলাদা file) | প্রতিটা item-এ `tint` যোগ |
+| `src/index.css` (optional) | কোনো নতুন token দরকার হলে |
+| **Total** | **~3-4 files** |
 
-### Page-by-page changes
+### Out of scope (এই sprint-এ না)
+- Mobile drawer sidebar (already different)
+- TopBar icons
+- Dashboard cards-এর icon style
+- Custom SVG illustration (lucide-react ব্যবহার করেই হবে)
 
-**Client Portal (`src/pages/portal/`)**
-1. `PortalDashboard` → MobileShell + GradientHeader (Balance: ৳ due) + StatCardPair (এই মাসের বিল / পরিশোধিত) + IconGrid (বিল, পেমেন্ট, টিকেট, ব্যবহার, প্যাকেজ, সাপোর্ট, অভিযোগ, প্রোফাইল) + BottomNav
-2. `PortalBills` → GradientHeader + PillTabs (Recent / Paid / Due) + ListRow তালিকা
-3. `PortalTickets` → একই pattern
-4. `PortalProfile` → header + cards
-
-**POP Admin (`src/pages/reseller/` ও `src/pages/pop-admin/`)**
-1. Dashboard → GradientHeader (আজকের কালেকশন) + StatCardPair (মোট ক্লায়েন্ট / Active) + IconGrid (ক্লায়েন্ট, বিল, কালেকশন, টিকেট, রিপোর্ট, কমিশন, ব্যান্ডউইথ, সেটিংস) + BottomNav
-2. Clients list → ListRow (ক্লায়েন্ট icon + নাম + প্যাকেজ + due)
-3. Collections → PillTabs + ListRow
-4. Reports → IconGrid (রিপোর্ট ক্যাটাগরি)
-
-**Layout wiring**
-- `src/layouts/PortalLayout.tsx` ও `src/layouts/PopAdminLayout.tsx` (যেটা আছে) → MobileShell দিয়ে wrap, পুরনো sidebar mobile-এ hidden
-- Desktop-এ (md+) — same components কিন্তু centered max-width 480px container ("phone frame" feel) অথবা wider grid (configurable)
-
-### Responsiveness
-- Mobile-first (default)
-- Tablet/desktop-এ centered phone-style container (max-w-md mx-auto) — যেহেতু এটা mobile-app feel
-- Existing `useIsMobile` hook ব্যবহার
-
-### যা বদলাবে না
-- Admin ERP (`/dashboard/*`) — আগের desktop look অপরিবর্তিত
-- Database, business logic, routes — কিছুই না
-- ThemeContext scope mechanism — already আছে, শুধু tokens যোগ
-- Bengali fonts — Hind Siliguri preserved
-
-### Files (estimate)
-
-| Group | Count | Note |
-|---|---|---|
-| New mobile components | ~10 | `src/components/mobile/*` |
-| Theme tokens | 2 | `index.css`, `tailwind.config.ts` |
-| Portal pages | ~6 | Dashboard, Bills, Tickets, Profile, Payments, Usage |
-| POP Admin pages | ~8 | Dashboard, Clients, Collections, Tickets, Reports, Commission, Bandwidth, Settings |
-| Layouts | 2 | PortalLayout, PopAdminLayout |
-| **Total** | **~28 files** | Admin ERP touched: 0 |
-
-### দুই ধাপে delivery (recommended)
-
-**Phase 1 (এই sprint):** Design system + reusable components + Client Portal ৩ প্রধান page (Dashboard, Bills, Tickets) — আপনি দেখে feedback দিবেন
-
-**Phase 2:** Feedback অনুযায়ী tweak + POP Admin সব page + বাকি Portal pages
-
-### ফলাফল preview
+### Preview
 
 ```text
 ┌─────────────────────────────┐
-│ ▓▓▓ Gradient Pink Header ▓▓▓│
-│  বকেয়া বিল                  │
-│  ৳ 1,200.00      🔔  ⚙      │
-└─────────────────────────────┘
-   ┌────────┐  ┌──────────────┐
-   │ 🟢 Paid│  │ 💰 মোট আয়   │
-   │ ৳800   │  │ ৳60,000      │
-   └────────┘  └──────────────┘
-   ╭─── Quick Actions ───╮
-   │ 💵    📄    🎫       │
-   │ পেমেন্ট  বিল   টিকেট  │
-   │                      │
-   │ 📊    📦    👤       │
-   │ ব্যবহার প্যাকেজ প্রোফাইল│
-   ╰──────────────────────╯
-┌─────────────────────────────┐
-│  🏠   💳   ➕   🎫   ⚙       │
+│  [🟦] হোম                    │
+│  [🟧] কেনার বিল              │
+│  [🟩] বেচার বিল              │
+│  [🟦] ক্যাশবক্স              │
+│  ─────────────               │
+│  [🟨] স্টক                   │
+│  [🟪] কর্মচারী               │
+│  [🟦] OLT                    │
+│  ─────────────               │
+│  [🟫] সেটিংস                 │
 └─────────────────────────────┘
 ```
 
-Phase 1 দিয়ে শুরু করি — approve করলে design system + Client Portal Dashboard/Bills/Tickets বানিয়ে দেখাচ্ছি।
+Approve করলে শুরু করছি — Admin sidebar-এ category-অনুযায়ী colorful tile icons বসানো হবে, কিছুই break হবে না।
 
