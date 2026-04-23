@@ -24,6 +24,8 @@ interface LineItem {
   days: number;
   total_days_in_month: number;
   amount: number;
+  vat_pct: number;
+  vat_amount: number;
 }
 
 const emptyLine = (totalDays = 30): LineItem => ({
@@ -35,12 +37,25 @@ const emptyLine = (totalDays = 30): LineItem => ({
   days: 0,
   total_days_in_month: totalDays,
   amount: 0,
+  vat_pct: 5,
+  vat_amount: 0,
 });
 
 const recompute = (l: LineItem): LineItem => {
   const td = Number(l.total_days_in_month) || 30;
-  const amount = (Number(l.bandwidth_mbps) * Number(l.rate) * Number(l.days)) / td;
-  return { ...l, amount: Math.round(amount * 100) / 100 };
+  const base = (Number(l.bandwidth_mbps) * Number(l.rate) * Number(l.days)) / td;
+  const vat = (base * Number(l.vat_pct || 0)) / 100;
+  return {
+    ...l,
+    vat_amount: Math.round(vat * 100) / 100,
+    amount: Math.round((base + vat) * 100) / 100,
+  };
+};
+
+const parseMbps = (s: string | null | undefined): number => {
+  if (!s) return 0;
+  const m = String(s).match(/(\d+(?:\.\d+)?)/);
+  return m ? Number(m[1]) : 0;
 };
 
 export default function BillForm() {
@@ -68,9 +83,21 @@ export default function BillForm() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bw_providers")
-        .select("id, name")
+        .select("id, name, default_vat_pct")
         .eq("status", "active")
         .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Items for the manual line dropdown — filtered by provider when set
+  const { data: bwItems } = useQuery({
+    queryKey: ["bw_items_for_bill", form.provider_id],
+    queryFn: async () => {
+      let q = supabase.from("bw_items").select("id, name, bandwidth, price, default_vat_pct, provider_id").eq("status", "active").order("name");
+      if (form.provider_id) q = q.or(`provider_id.eq.${form.provider_id},provider_id.is.null`);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
@@ -119,6 +146,8 @@ export default function BillForm() {
             days: Number(li.days),
             total_days_in_month: Number(li.total_days_in_month),
             amount: Number(li.amount),
+            vat_pct: Number(li.vat_pct ?? 0),
+            vat_amount: Number(li.vat_amount ?? 0),
           })),
         );
       }
@@ -149,7 +178,27 @@ export default function BillForm() {
   };
   const removeLine = (index: number) => setLines(lines.filter((_, i) => i !== index));
 
-  const grandTotal = lines.reduce((s, l) => s + Number(l.amount || 0), 0);
+  const subtotal = lines.reduce((s, l) => s + (Number(l.amount || 0) - Number(l.vat_amount || 0)), 0);
+  const vatTotal = lines.reduce((s, l) => s + Number(l.vat_amount || 0), 0);
+  const grandTotal = subtotal + vatTotal;
+  const discountNum = Number(form.discount || 0);
+  const finalTotal = grandTotal - discountNum;
+
+  // Pick an item from bw_items dropdown — auto-fills service info
+  const pickItem = (index: number, itemId: string) => {
+    const item = (bwItems || []).find((it: any) => it.id === itemId);
+    if (!item) return;
+    const updated = [...lines];
+    updated[index] = recompute({
+      ...updated[index],
+      service_id: item.id,
+      service_name: item.name,
+      bandwidth_mbps: parseMbps(item.bandwidth) || updated[index].bandwidth_mbps,
+      rate: Number(item.price ?? updated[index].rate),
+      vat_pct: Number(item.default_vat_pct ?? updated[index].vat_pct ?? 5),
+    });
+    setLines(updated);
+  };
 
   const autoGenerate = async () => {
     if (!form.provider_id) {
@@ -178,6 +227,8 @@ export default function BillForm() {
           days: s.days,
           total_days_in_month: s.total_days_in_month,
           amount: s.amount,
+          vat_pct: s.vat_pct,
+          vat_amount: s.vat_amount,
         })),
       );
       toast.success(`${segments.length}টি লাইন আইটেম তৈরি হয়েছে`);
@@ -216,8 +267,10 @@ export default function BillForm() {
         period_end: range?.period_end || null,
         amount: grandTotal,
         total_amount: grandTotal,
+        subtotal: Math.round(subtotal * 100) / 100,
+        vat_total: Math.round(vatTotal * 100) / 100,
         paid: Number(form.paid || 0),
-        discount: Number(form.discount || 0),
+        discount: discountNum,
         remarks: form.remarks || null,
         status: form.status,
       };
@@ -256,6 +309,8 @@ export default function BillForm() {
           days: Number(l.days),
           total_days_in_month: Number(l.total_days_in_month),
           amount: Number(l.amount),
+          vat_pct: Number(l.vat_pct || 0),
+          vat_amount: Number(l.vat_amount || 0),
           sort_order: idx,
         }));
         const { error } = await supabase.from("bw_buy_bill_items").insert(linePayload);
@@ -413,13 +468,14 @@ export default function BillForm() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[160px]">সার্ভিস</TableHead>
+                  <TableHead className="min-w-[220px]">সার্ভিস</TableHead>
                   <TableHead className="w-24 text-right">Mbps</TableHead>
                   <TableHead className="w-28 text-right">রেট/Mbps</TableHead>
                   <TableHead className="w-32">হতে</TableHead>
                   <TableHead className="w-32">পর্যন্ত</TableHead>
                   <TableHead className="w-20 text-right">দিন</TableHead>
                   <TableHead className="w-20 text-right">মাসের দিন</TableHead>
+                  <TableHead className="w-20 text-right">VAT %</TableHead>
                   <TableHead className="w-28 text-right">মোট</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
@@ -428,12 +484,38 @@ export default function BillForm() {
                 {lines.map((line, i) => (
                   <TableRow key={i}>
                     <TableCell>
-                      <Input
-                        className="h-8 text-xs"
-                        value={line.service_name}
-                        placeholder="Internet / NIX..."
-                        onChange={(e) => updateLine(i, "service_name", e.target.value)}
-                      />
+                      <div className="space-y-1">
+                        <Select
+                          value={line.service_id || "__custom__"}
+                          onValueChange={(v) => {
+                            if (v === "__custom__") {
+                              const u = [...lines];
+                              u[i] = { ...u[i], service_id: null };
+                              setLines(u);
+                            } else {
+                              pickItem(i, v);
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="আইটেম নির্বাচন..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__custom__">— কাস্টম —</SelectItem>
+                            {(bwItems || []).map((it: any) => (
+                              <SelectItem key={it.id} value={it.id}>
+                                {it.name}{it.bandwidth ? ` (${it.bandwidth})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          className="h-8 text-xs"
+                          value={line.service_name}
+                          placeholder="সার্ভিস নাম..."
+                          onChange={(e) => updateLine(i, "service_name", e.target.value)}
+                        />
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Input
@@ -487,6 +569,15 @@ export default function BillForm() {
                         }
                       />
                     </TableCell>
+                    <TableCell>
+                      <Input
+                        className="h-8 text-xs text-right"
+                        type="number"
+                        step="0.01"
+                        value={line.vat_pct}
+                        onChange={(e) => updateLine(i, "vat_pct", Number(e.target.value))}
+                      />
+                    </TableCell>
                     <TableCell className="text-right font-medium text-sm">
                       ৳{Number(line.amount).toLocaleString()}
                     </TableCell>
@@ -504,13 +595,26 @@ export default function BillForm() {
                     </TableCell>
                   </TableRow>
                 ))}
+                <TableRow>
+                  <TableCell colSpan={8} className="text-right text-sm">Subtotal:</TableCell>
+                  <TableCell className="text-right text-sm">৳{subtotal.toLocaleString()}</TableCell>
+                  <TableCell />
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={8} className="text-right text-sm">VAT:</TableCell>
+                  <TableCell className="text-right text-sm">৳{vatTotal.toLocaleString()}</TableCell>
+                  <TableCell />
+                </TableRow>
+                {discountNum > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-right text-sm">Discount:</TableCell>
+                    <TableCell className="text-right text-sm">− ৳{discountNum.toLocaleString()}</TableCell>
+                    <TableCell />
+                  </TableRow>
+                )}
                 <TableRow className="bg-muted/50 font-bold">
-                  <TableCell colSpan={7} className="text-right">
-                    সর্বমোট:
-                  </TableCell>
-                  <TableCell className="text-right text-primary">
-                    ৳{grandTotal.toLocaleString()}
-                  </TableCell>
+                  <TableCell colSpan={8} className="text-right">সর্বমোট:</TableCell>
+                  <TableCell className="text-right text-primary">৳{finalTotal.toLocaleString()}</TableCell>
                   <TableCell />
                 </TableRow>
               </TableBody>

@@ -21,7 +21,7 @@ export default function Items() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: "", category_id: "", provider_id: "", bandwidth: "", price: "", description: "" });
+  const [formData, setFormData] = useState({ name: "", category_id: "", provider_id: "", bandwidth: "", price: "", description: "", default_vat_pct: "5" });
   const queryClient = useQueryClient();
 
   const { data: items, isLoading } = useQuery({
@@ -60,6 +60,7 @@ export default function Items() {
         bandwidth: data.bandwidth || null,
         price: data.price ? Number(data.price) : null,
         description: data.description || null,
+        default_vat_pct: Number(data.default_vat_pct ?? 5),
       };
       if (editingItem) {
         const { error } = await supabase.from("bw_items").update(payload).eq("id", editingItem.id);
@@ -100,11 +101,11 @@ export default function Items() {
     },
   });
 
-  const closeDialog = () => { setDialogOpen(false); setEditingItem(null); setFormData({ name: "", category_id: "", provider_id: "", bandwidth: "", price: "", description: "" }); };
+  const closeDialog = () => { setDialogOpen(false); setEditingItem(null); setFormData({ name: "", category_id: "", provider_id: "", bandwidth: "", price: "", description: "", default_vat_pct: "5" }); };
 
   const openAdd = (categoryId?: string) => {
     setEditingItem(null);
-    setFormData({ name: "", category_id: categoryId || "", provider_id: "", bandwidth: "", price: "", description: "" });
+    setFormData({ name: "", category_id: categoryId || "", provider_id: "", bandwidth: "", price: "", description: "", default_vat_pct: "5" });
     setDialogOpen(true);
   };
 
@@ -117,6 +118,7 @@ export default function Items() {
       bandwidth: item.bandwidth || "",
       price: item.price?.toString() || "",
       description: item.description || "",
+      default_vat_pct: (item.default_vat_pct ?? 5).toString(),
     });
     setDialogOpen(true);
   };
@@ -299,7 +301,7 @@ export default function Items() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">ব্যান্ডউইথ</label>
                 <Input value={formData.bandwidth} onChange={(e) => setFormData({ ...formData, bandwidth: e.target.value })} placeholder="e.g. 100 Mbps" />
@@ -307,6 +309,10 @@ export default function Items() {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">মূল্য (৳)</label>
                 <Input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} placeholder="0" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">ডিফল্ট VAT %</label>
+                <Input type="number" step="0.01" value={formData.default_vat_pct} onChange={(e) => setFormData({ ...formData, default_vat_pct: e.target.value })} placeholder="5" />
               </div>
             </div>
             <div className="space-y-1.5">

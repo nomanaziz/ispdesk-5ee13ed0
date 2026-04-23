@@ -1101,6 +1101,8 @@ export type Database = {
           sort_order: number
           subscription_id: string | null
           total_days_in_month: number
+          vat_amount: number
+          vat_pct: number
         }
         Insert: {
           amount?: number
@@ -1118,6 +1120,8 @@ export type Database = {
           sort_order?: number
           subscription_id?: string | null
           total_days_in_month?: number
+          vat_amount?: number
+          vat_pct?: number
         }
         Update: {
           amount?: number
@@ -1135,6 +1139,8 @@ export type Database = {
           sort_order?: number
           subscription_id?: string | null
           total_days_in_month?: number
+          vat_amount?: number
+          vat_pct?: number
         }
         Relationships: [
           {
@@ -1174,6 +1180,7 @@ export type Database = {
           start_date: string
           status: string
           updated_at: string
+          vat_pct: number
         }
         Insert: {
           bandwidth_mbps?: number
@@ -1188,6 +1195,7 @@ export type Database = {
           start_date?: string
           status?: string
           updated_at?: string
+          vat_pct?: number
         }
         Update: {
           bandwidth_mbps?: number
@@ -1202,6 +1210,7 @@ export type Database = {
           start_date?: string
           status?: string
           updated_at?: string
+          vat_pct?: number
         }
         Relationships: [
           {
@@ -1423,6 +1432,7 @@ export type Database = {
           bandwidth: string | null
           category_id: string | null
           created_at: string
+          default_vat_pct: number
           description: string | null
           id: string
           name: string
@@ -1434,6 +1444,7 @@ export type Database = {
           bandwidth?: string | null
           category_id?: string | null
           created_at?: string
+          default_vat_pct?: number
           description?: string | null
           id?: string
           name: string
@@ -1445,6 +1456,7 @@ export type Database = {
           bandwidth?: string | null
           category_id?: string | null
           created_at?: string
+          default_vat_pct?: number
           description?: string | null
           id?: string
           name?: string
@@ -1474,6 +1486,7 @@ export type Database = {
           address: string | null
           contact: string | null
           created_at: string
+          default_vat_pct: number
           email: string | null
           id: string
           logo_url: string | null
@@ -1485,6 +1498,7 @@ export type Database = {
           address?: string | null
           contact?: string | null
           created_at?: string
+          default_vat_pct?: number
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -1496,6 +1510,7 @@ export type Database = {
           address?: string | null
           contact?: string | null
           created_at?: string
+          default_vat_pct?: number
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -1523,7 +1538,9 @@ export type Database = {
           provider_id: string | null
           remarks: string | null
           status: string
+          subtotal: number
           total_amount: number
+          vat_total: number
         }
         Insert: {
           amount?: number | null
@@ -1542,7 +1559,9 @@ export type Database = {
           provider_id?: string | null
           remarks?: string | null
           status?: string
+          subtotal?: number
           total_amount?: number
+          vat_total?: number
         }
         Update: {
           amount?: number | null
@@ -1561,7 +1580,9 @@ export type Database = {
           provider_id?: string | null
           remarks?: string | null
           status?: string
+          subtotal?: number
           total_amount?: number
+          vat_total?: number
         }
         Relationships: [
           {

@@ -18,6 +18,7 @@ export interface SubscriptionLike {
   start_date: string; // YYYY-MM-DD
   end_date: string | null;
   status?: string;
+  vat_pct?: number;
 }
 
 export interface BillingSegment {
@@ -31,6 +32,8 @@ export interface BillingSegment {
   days: number;
   total_days_in_month: number;
   amount: number;
+  vat_pct: number;
+  vat_amount: number;
   sort_order: number;
 }
 
@@ -112,6 +115,9 @@ export function buildSegments(
       days,
       totalDaysInMonth,
     );
+    const vatPct = Number(sub.vat_pct ?? 0);
+    const vatAmount = (raw * vatPct) / 100;
+    const total = raw + vatAmount;
     segments.push({
       subscription_id: sub.id ?? null,
       service_id: sub.service_id ?? null,
@@ -122,7 +128,9 @@ export function buildSegments(
       period_end: fmt(segEnd),
       days,
       total_days_in_month: totalDaysInMonth,
-      amount: Math.round(raw * factor) / factor,
+      amount: Math.round(total * factor) / factor,
+      vat_pct: vatPct,
+      vat_amount: Math.round(vatAmount * factor) / factor,
       sort_order: order++,
     });
   }
