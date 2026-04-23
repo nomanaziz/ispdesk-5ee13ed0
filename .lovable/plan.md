@@ -1,88 +1,59 @@
 
 
-## Icons8 Skeuomorphism — Coverage Expansion
+## সব Page-এ Icons8 Rollout — কোনো জায়গা বাদ নয়
 
-### লক্ষ্য
-Icons8 Skeuomorphism collection (https://icons8.com/icons/skeuomorphism — 900 icons, 42 categories, free PNG) থেকে আমাদের প্রজেক্টের যত menu/page এখনো generic lucide icon দেখাচ্ছে, সবগুলোতে matching skeuomorphism PNG বসানো। Style একদম current 76টা Icons8 PNG-র মতোই (3D, colorful, interactive) — কোনো visual inconsistency হবে না।
+### সমস্যা
+গত sprint-এ resolver expand হয়েছে আর sidebar/dashboard/bottom-nav-এ Icons8 বসেছে — কিন্তু **page-এর ভিতরের content** (page header, KPI cards, tab triggers, action buttons, empty states, table empty rows) এখনো lucide icon ব্যবহার করছে। তাই Property page বা অন্যান্য inner page-এ ঢুকলে পুরনো look-ই দেখা যাচ্ছে।
 
-### কেন এই approach
-- **License**: Icons8 free tier — PNG up to 100px attribution ছাড়া ব্যবহারযোগ্য (CC BY-ND 3.0 equivalent)। আমরা ৬৪px PNG নেব — perfect for sidebar/cards।
-- **Direct download URL**: `https://img.icons8.com/skeuomorphism/64/{icon-name}.png` — কোনো API key লাগে না, scriptable।
-- **Style match**: Already-shipped 76টা icon এই collection থেকেই এসেছে — নতুনগুলো indistinguishable হবে।
+### সমাধান — তিন স্তরে coverage
+পুরো `src/pages/` জুড়ে ১২০+ page scan করে যেখানে যেখানে lucide icon decoratively (header, card, empty state) ব্যবহার হচ্ছে, সেখানে Icons8 বসানো। Action button-এর ভিতরের ছোট icon (Edit/Delete/Plus inside Button) lucide-ই থাকবে — কারণ skeuomorphism PNG button-এ বেমানান।
 
-### Pipeline (default mode-এ execute)
+#### স্তর ১ — Page Header Icon (সব ১২০ page)
+প্রতিটা page-এর top-এ যে title icon আছে (যেমন Property page-এ `<Building />` + "প্রপার্টি"), সেটা auto-resolve হবে route URL দেখে। নতুন reusable: `src/components/common/PageHeader.tsx`
+- Props: `title`, `description`, optional `icons8` override, optional `action` slot
+- Default — current `useLocation().pathname` দিয়ে resolver call করে Icons8 খুঁজবে, না পেলে lucide fallback
+- ৪৮px icon + Bangla title + muted description — সব page consistent
 
-#### Phase 1 — Gap analysis + bulk download (~80-100 নতুন icon)
-স্ক্রিপ্ট দিয়ে current `iconResolver.ts`-এর সব URL/title/label scan করে যেগুলো এখনো resolve হয় না সেই list বানাবো, তারপর Icons8-এর সাথে map করব এই categories থেকে:
+#### স্তর ২ — KPI / Stat Card Icon
+Dashboard, Property, Customers, Invoices ইত্যাদিতে যে stat card-গুলোতে top-right corner-এ ছোট icon আছে — সব Icons8-এ swap। নতুন helper component:
+- `src/components/common/StatCard.tsx` (যদি না থাকে) বা existing variant update
+- Props: `label`, `value`, `icons8`, `tint`, `trend`
+- ৩২px Icons8 + colored tile background
 
-| Skeuomorphism category | যে gap পূরণ করবে |
-|---|---|
-| **User interface** (47) | settings, search, edit, add, delete, filter, error, help, checked |
-| **Profile** (34) | user, user-group, add-user, change-user, name, contact card |
-| **Time and date** (27) | calendar, clock, alarm, today, hourglass, schedule, leave |
-| **Files** (31) | document, pdf, copy, edit-file, image-file, add-file, archive |
-| **Folders** (23) | opened-folder, browse-folder, archive-folder, invoices-folder |
-| **Shopping** (42) | discount, gift, money, price-tag, cart, shopping-bag, basket |
-| **Network** (26) | wifi, router, bluetooth, nas, cloud-sync, shared-folder |
-| **City** (30) | bank, hospital, school-building, city-buildings (Branch icons) |
-| **Transport** (35) | car, truck, bus, gas-station (Logistics/Delivery menus) |
-| **Maps** (25) | address, map, marker, compass, world-map (Customer location) |
-| **Media controls** (21) | play, pause, stop, repeat, shuffle (Live monitoring) |
-| **Popular** (45) | box, cancel, document, edit, file, calculator |
+#### স্তর ৩ — Empty State + Tab Icons
+- প্রতিটা list page-এর "কোনো ডেটা নেই" row → `EmptyState` component (গত sprint-এ তৈরি) বসবে
+- Tab triggers (`<TabsList>`)-এ icon থাকলে Icons8 swap
 
-ডাউনলোড script: `curl https://img.icons8.com/skeuomorphism/64/{name}.png -o src/assets/icons/icons8/{name}.png` — parallelized, ~30 sec total।
+### Files (rollout scope)
 
-#### Phase 2 — Resolver expansion
-`src/lib/iconResolver.ts`-এ map বাড়ানো হবে — আরো ~80টা entry:
-- `ICONS8_BY_URL`: প্রতিটা untouched menu route
-- `ICONS8_BY_TITLE`: Bangla item titles যেগুলো resolver-এ নেই
-- `ICONS8_BY_LABEL`: কয়েকটা missing group label
-
-কোনো component code change লাগবে না — সব panel আগে থেকেই resolver consume করে।
-
-#### Phase 3 — Coverage targets
-যেসব panel/page-এ আরো icon coverage দরকার:
-
-| Area | Current state | After |
+| Group | Files | Change |
 |---|---|---|
-| Admin sidebar (120 routes) | ~30% Icons8 | **~95%** |
-| Client Portal sidebar | ~70% Icons8 | **100%** |
-| POP/Reseller sidebar | ~50% Icons8 | **95%** |
-| Mobile bottom navs | 100% (already) | unchanged |
-| KPI cards (Dashboard.tsx, ResellerDashboard) | Lucide | Icons8 via resolver |
-| Empty states (Customers, Invoices, Tickets, OLT, Inventory list pages) | text-only | বড় Icons8 illustration |
-| Section headers (page titles with icon) | Lucide | Icons8 64px |
+| **নতুন component** | `PageHeader.tsx` | Auto-resolve page header with Icons8 |
+| **Property module** | `properties/Properties.tsx`, `PropertyDetail.tsx`, etc. | Header + KPI + empty state |
+| **Billing module** (8 page) | Invoices, Payments, BillRun, Discounts | একইভাবে |
+| **CRM/Customers** (10 page) | Customers, Leads, Tickets | একইভাবে |
+| **Inventory** (6 page) | Stock, Items, Vendors | একইভাবে |
+| **HR** (8 page) | Employees, Attendance, Payroll, Leave | একইভাবে |
+| **Network/OLT** (12 page) | OLT, ONU, Pop, MikroTik | একইভাবে |
+| **Accounting** (7 page) | Cashbox, Ledger, Journal | একইভাবে |
+| **VAS/SMS/Reports** (10 page) | একইভাবে | একইভাবে |
+| **Settings** (5 page) | একইভাবে | একইভাবে |
+| **Resolver expansion** | `iconResolver.ts` | যা যা missing — আরো ~30 mapping যোগ |
+| **Resolver export** | `iconResolver.ts` | নতুন `resolveByPath(pathname)` helper |
+| **মোট** | **~70 page + 2 component + resolver** |
 
-#### Phase 4 — Empty-state component
-নতুন reusable: `src/components/common/EmptyState.tsx`
-- Props: `icons8` name, `title`, `description`, optional `action`
-- Default 96px Icons8 illustration + muted text
-- ১২টা list page-এ replace করা হবে
-
-### Files
-
-| File | Change |
-|---|---|
-| `src/assets/icons/icons8/*.png` | ~৮০ নতুন icon (script দিয়ে download) |
-| `src/lib/iconResolver.ts` | Map expansion (~৮০ নতুন entry) |
-| `src/components/common/EmptyState.tsx` | নতুন reusable component |
-| `src/pages/dashboard/customers/*`, `invoices/*`, `tickets/*` ইত্যাদি (~12 list page) | EmptyState integration |
-| `src/pages/Dashboard.tsx`, `ResellerDashboard.tsx` | KPI card icon swap |
-| **মোট** | **~17 file + 80টা PNG asset** |
+### Approach — efficiency
+- প্রথমে `PageHeader` + resolver helper বানাবো
+- তারপর **batch find-replace** — প্রতিটা page-এর top-এ যে hand-rolled `<div>title + Icon</div>` pattern আছে, সেটা `<PageHeader>` দিয়ে replace
+- Empty state pattern (`<TableRow><TableCell colSpan={X}>কোনো ... পাওয়া যায়নি</TableCell></TableRow>`) → conditional `<EmptyState>` swap
+- ~70 file update হবে কিন্তু প্রতিটা ছোট, mechanical change
 
 ### যা বদলাবে না
-- Database, RBAC, business logic, routing, layout
+- Business logic, queries, RBAC, routing, layout
+- Form fields, table columns, dialog content
+- Action buttons-এর ভিতরের small lucide icons (Edit/Delete/Plus/Search) — UI-তে fit
 - Hishabee + Lucide fallback বহাল
-- Existing 76টা icon — শুধু new addition
 
-### License note
-Icons8 free tier-এ link-back optional (we can include a tiny "Icons by Icons8" footer note on the dev `/dashboard/_icons` page only — production UI clean থাকবে)। এখানে কোনো license issue নেই, আপনি যেহেতু confirm করেছেন এটা open-source category থেকে।
-
-### Delivery
-আপনার approval-এর পর:
-1. Gap-analysis script run → exact missing names list
-2. Bulk download (~30 sec)
-3. Resolver map বাড়ানো
-4. EmptyState rollout
-5. আপনাকে coverage report (before/after percentage per panel) দেব
+### Outcome
+Property page-এ ঢুকলে header-এ ঝকঝকে 3D Icons8 building, stat card-গুলোতে colored Icons8, empty state-এ বড় illustration। প্রতিটা inner page একই treatment পাবে — কোথাও পুরনো flat lucide-only look আর থাকবে না।
 
