@@ -1,149 +1,116 @@
 
 
-## Install as App — সবার জন্য (PWA)
+## Important Links — Dashboard-এর নিচে quick-access bookmarks
 
-### লক্ষ্য
-পুরো ISP ERP application-কে **installable web app (PWA)** বানাবো — যাতে Admin, POP Admin, Reseller, Client (Customer Portal) যে কেউ phone বা desktop-এ home screen-এ icon হিসেবে install করতে পারে। Install করার পর native app-এর মত standalone window-এ চলবে (browser address bar/tabs থাকবে না)।
-
-### সমস্যা — কেন এখন কাজ করছে না
-- Project-এ এখন কোনো `manifest.json`, PWA icon, বা service worker নেই
-- Browser তাই "Install app" prompt show করে না
-- Mobile-এ "Add to Home Screen" করলেও browser tab-এর মত খুলবে, app-এর মত না
+### দুটি কাজ একসাথে
+1. **Build error fix** — PWA service worker 4.61 MB JS chunk reject করছে; cache size limit বাড়াতে হবে
+2. **নতুন module** — Important Links (Admin + Employee/Operator only)
 
 ---
 
-### সমাধান (৩টা layer)
-
-#### Layer 1 — Web App Manifest (installable ৯০% কাজ)
-`public/manifest.json` তৈরি — এতে icon, theme color, display mode থাকবে।
-
-```json
-{
-  "name": "ISP Desk — ERP & Customer Portal",
-  "short_name": "ISP Desk",
-  "description": "ISP business management system",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#0F172A",
-  "theme_color": "#3B82F6",
-  "orientation": "any",
-  "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ]
+### ১) Build Error Fix
+`vite.config.ts`-এ workbox config-এ এক line যোগ:
+```ts
+workbox: {
+  maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8 MiB
+  ...
 }
 ```
-
-`index.html`-এ link tags + iOS support meta:
-```html
-<link rel="manifest" href="/manifest.json" />
-<meta name="theme-color" content="#3B82F6" />
-<link rel="apple-touch-icon" href="/icons/icon-192.png" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<meta name="apple-mobile-web-app-title" content="ISP Desk" />
-```
-
-#### Layer 2 — App Icons তৈরি
-Existing favicon থেকে generate করব (অথবা placeholder gradient icon — user পরে নিজের লোগো দিতে পারবে):
-- `public/icons/icon-192.png` (192×192)
-- `public/icons/icon-512.png` (512×512)
-- `public/icons/icon-maskable-512.png` (512×512, padded for Android adaptive icons)
-- `public/icons/apple-touch-icon.png` (180×180)
-
-Build script `/tmp/gen-icons.mjs` দিয়ে SVG → PNG generate করব (sharp library) — gradient + "ID" text।
-
-#### Layer 3 — "Install Now" Button Component
-নতুন reusable component: `src/components/InstallAppButton.tsx`
-- `beforeinstallprompt` event capture (Chrome/Edge/Android)
-- iOS Safari detect → modal-এ instruction দেখাবে: "Share → Add to Home Screen"
-- ইতিমধ্যে installed হলে button hide
-- Already-dismissed হলে localStorage-এ remember + 7 দিন পর আবার show
-
-UI:
-```
-┌─────────────────────────────────────┐
-│ 📱 অ্যাপ হিসেবে ইনস্টল করুন        │
-│ ফোন/ডেস্কটপে আইকন যোগ করুন         │
-│              [ Install Now ]        │
-└─────────────────────────────────────┘
-```
-
-#### Where the button appears (সব portal-এ)
-| Portal | Location |
-|---|---|
-| **Admin** (`TopBar.tsx`) | Header-এ ছোট icon button (download icon) |
-| **POP Admin mobile** (`ResellerMobileShell.tsx`) | Sidebar drawer + dropdown menu item |
-| **POP Admin desktop** (`ResellerLayout.tsx`) | Top header-এ icon |
-| **Client portal** (`PortalLayout` / dashboard top) | Prominent banner (top of dashboard, dismissible) |
-| **Public website** (`PublicLayout.tsx`) | Floating WiFi button-এর পাশে, "📲 Install App" floating chip |
-| **Login pages** | Login form-এর নিচে subtle link |
-
-#### Layer 4 — Service Worker — সাবধানে
-PWA install prompt-এর জন্য service worker **mandatory** (Chrome requirement)। কিন্তু Lovable preview iframe-এ service worker সমস্যা করে — তাই:
-- `vite-plugin-pwa` install করব
-- `devOptions.enabled: false` (preview-তে SW off)
-- `main.tsx`-এ guard: iframe / `id-preview--*` / `lovableproject.com` host হলে SW register **হবে না** + existing SW unregister
-- শুধু production deploy (`ispdesk.lovable.app` + custom domain)-এ SW active
-- `navigateFallbackDenylist`: `/~oauth`, `/api`, supabase function paths exclude
-
-Caching strategy:
-- HTML → NetworkFirst (always fresh)
-- JS/CSS → CacheFirst (versioned hash)
-- API calls → NetworkOnly (real-time data)
+এতে বড় JS bundle precache হবে এবং build pass করবে।
 
 ---
 
-### User experience flow
+### ২) Important Links Module
 
-**Android Chrome / Desktop Chrome/Edge**:
-1. User visits site → service worker register (production only)
-2. কয়েক সেকেন্ড পর `beforeinstallprompt` fire
-3. Header / banner-এ "Install Now" button appear
-4. Click → native install dialog → home screen-এ icon
+#### Concept (sample image-এর মত)
+- Dashboard page (`/dashboard`)-এর ঠিক নিচে নতুন section: **"Important Links"**
+- Group/category-তে link গুলো organized (e.g. "Support & Billing", "Monitoring Tools", "POP OLT IP")
+- প্রতিটি link card-এ: **Title + Icon/Logo image + URL** (click → new tab)
+- শুধু `super_admin`, `admin`, `operator` (employee) দেখবে — অন্য কেউ না
+- Admin/Operator → CRUD (add/edit/delete category & link, upload icon image)
+- Operator (employee) → শুধু view (অথবা optional add — নিচে question দেখুন)
 
-**iOS Safari** (no native prompt support):
-1. "Install Now" click → modal খুলবে
-2. Animated guide: Share button → "Add to Home Screen" → Add
-3. Screenshot/illustration সহ Bangla + English instruction
+#### Database (নতুন tables)
 
-**Already installed**:
-- `display-mode: standalone` detect → button hide
-- `appinstalled` event → toast: "✅ Installed successfully"
+**`important_link_categories`**
+| column | type |
+|---|---|
+| id | uuid PK |
+| name | text |
+| icon | text (lucide icon name) |
+| sort_order | int |
+| created_by | uuid |
+| created_at | timestamptz |
+
+**`important_links`**
+| column | type |
+|---|---|
+| id | uuid PK |
+| category_id | uuid FK |
+| title | text |
+| url | text |
+| icon_url | text (uploaded image in storage) |
+| description | text nullable |
+| sort_order | int |
+| created_by | uuid |
+| created_at | timestamptz |
+
+**RLS**: only `super_admin`, `admin`, `operator` roles can `SELECT`. Only `super_admin`/`admin` can `INSERT/UPDATE/DELETE`.
+
+**Storage bucket**: `important-link-icons` (public read, admin write)
+
+#### UI Components (new files)
+
+1. **`src/components/dashboard/ImportantLinksSection.tsx`**
+   - Dashboard-এ embed করা section
+   - Categories accordion-style (collapsible) — sample image-এর মত
+   - প্রতিটি category-তে responsive grid: `grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7`
+   - Card: small square (~120px) with icon image (centered) + title above
+   - Hover: border highlight + shadow
+   - Click → `window.open(url, '_blank', 'noopener')`
+   - Admin দেখলে: top-right "+ Add Link" + each card-এ edit/delete on hover
+
+2. **`src/components/dashboard/ImportantLinkCard.tsx`** — single card
+
+3. **`src/components/dashboard/ImportantLinkDialog.tsx`** — add/edit modal (title, URL, category dropdown, icon image upload)
+
+4. **`src/components/dashboard/ImportantLinkCategoryDialog.tsx`** — add/edit category (name + lucide icon picker)
+
+5. **`src/pages/dashboard/ImportantLinksManage.tsx`** *(optional full-page manager)* — bulk reorder, drag-drop sort
+
+#### Dashboard integration
+- `src/pages/dashboard/Dashboard.tsx` (অথবা যেটা `/dashboard` route render করে) — existing widgets-এর নিচে `<ImportantLinksSection />` mount
+- Visibility guard: `useAuth().hasRole('super_admin' || 'admin' || 'operator')` — false হলে section render হবে না
+
+#### Sidebar (optional)
+- "ড্যাশবোর্ড" group-এর under-এ একটা sub-link: **"গুরুত্বপূর্ণ লিংক"** → `/dashboard/important-links` (full-screen manage view)
+- শুধু admin দেখবে
+
+#### Default seed data (image থেকে নেওয়া)
+Migration-এ কিছু sample category + link insert করব যাতে user সাথে সাথে কিছু দেখে:
+- **Support & Billing**: Billing software, ONU Config, Mail Admin, FreePBX, BDCOM Balance
+- **Monitoring Tools**: Log server, Ping, IPAM, Cacti, Uptime Kuma, Observium, Promox, etc.
+- **POP OLT IP**: placeholder entries
+
+User পরে edit/delete/add করতে পারবে।
 
 ---
 
 ### Files to create
-- `public/manifest.json`
-- `public/icons/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`
-- `src/components/InstallAppButton.tsx` — main button + modal
-- `src/components/InstallAppBanner.tsx` — dismissible banner variant
-- `src/hooks/useInstallPrompt.ts` — install logic hook
+- `src/components/dashboard/ImportantLinksSection.tsx`
+- `src/components/dashboard/ImportantLinkCard.tsx`
+- `src/components/dashboard/ImportantLinkDialog.tsx`
+- `src/components/dashboard/ImportantLinkCategoryDialog.tsx`
+- Migration: 2 tables + RLS + storage bucket + seed data
 
 ### Files to edit
-- `index.html` — manifest link, theme-color, apple meta tags
-- `vite.config.ts` — `vite-plugin-pwa` setup (production-only SW)
-- `src/main.tsx` — iframe/preview SW guard
-- `src/components/TopBar.tsx` — install icon button
-- `src/components/reseller/mobile/ResellerMobileShell.tsx` — install option in dropdown
-- `src/components/ResellerLayout.tsx` — install button in header
-- `src/components/PublicLayout.tsx` — floating install chip
-- Customer portal layout — install banner
-
-### Dependencies
-- `vite-plugin-pwa` (dev)
-- Icons generated via existing `sharp` (no extra dep)
-
-### Constraints respected
-- Preview iframe-এ SW register হবে না (Lovable rule)
-- ThemeProvider rule অপরিবর্তিত (App.tsx-এ থাকবে)
-- Multi-tenant subdomain routing-এ effect নেই (manifest universal)
+- `vite.config.ts` — workbox `maximumFileSizeToCacheInBytes`
+- `src/pages/dashboard/Dashboard.tsx` (or main dashboard file) — mount section
+- `src/components/AppSidebar.tsx` — optional manage link
 
 ### ফলাফল
-- যেকোনো user (Admin/POP/Reseller/Client) phone বা desktop-এ এক click-এ app install করতে পারবে
-- Install-এর পর native app-এর মত icon, splash screen, standalone window
-- Browser tab/address bar invisible — full app experience
-- Offline static assets cache (page navigation কাজ করবে network ছাড়াও)
-- iOS-এও step-by-step guide-এর মাধ্যমে install possible
+- Build error সমাধান
+- Dashboard-এ একটা সুন্দর "Important Links" hub — Admin/Employee এক click-এ যেকোনো work tool-এ পৌঁছাবে
+- Admin live add/edit/delete করতে পারবে, icon upload সহ
+- Sample image-এর exact look-and-feel (category-grouped cards with icons)
 
