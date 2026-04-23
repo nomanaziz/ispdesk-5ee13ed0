@@ -95,13 +95,14 @@ export default function Locations() {
 
       <div className="rounded-md border overflow-x-auto">
         <Table>
-          <TableHeader><TableRow><TableHead>#</TableHead><TableHead>নাম</TableHead><TableHead>ঠিকানা</TableHead><TableHead>স্ট্যাটাস</TableHead><TableHead>তারিখ</TableHead><TableHead>অ্যাকশন</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>#</TableHead><TableHead>স্টোর কোড</TableHead><TableHead>নাম</TableHead><TableHead>ঠিকানা</TableHead><TableHead>স্ট্যাটাস</TableHead><TableHead>তারিখ</TableHead><TableHead>অ্যাকশন</TableHead></TableRow></TableHeader>
           <TableBody>
-            {isLoading ? <TableRow><TableCell colSpan={6} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow> :
-            filtered.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-8">কোনো লোকেশন পাওয়া যায়নি</TableCell></TableRow> :
+            {isLoading ? <TableRow><TableCell colSpan={7} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow> :
+            filtered.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center py-8">কোনো লোকেশন পাওয়া যায়নি</TableCell></TableRow> :
             filtered.map((l, i) => (
               <TableRow key={l.id}>
                 <TableCell>{i + 1}</TableCell>
+                <TableCell className="font-mono text-xs">{l.code || "-"}</TableCell>
                 <TableCell className="font-medium">{l.name}</TableCell>
                 <TableCell>{l.address || "-"}</TableCell>
                 <TableCell><Badge variant={l.status === "active" ? "default" : "secondary"}>{l.status === "active" ? "সক্রিয়" : "নিষ্ক্রিয়"}</Badge></TableCell>
