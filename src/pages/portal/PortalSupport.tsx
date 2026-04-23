@@ -134,7 +134,6 @@ const PortalSupport = () => {
       {activeTicket && (
         <TicketConversation
           ticket={activeTicket}
-          open={!!activeTicket}
           onOpenChange={(o) => !o && setActiveTicket(null)}
         />
       )}
