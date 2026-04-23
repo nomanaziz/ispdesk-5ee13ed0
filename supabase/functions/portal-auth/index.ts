@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { username, password, action, session_id } = body || {};
+    const { username, password, action, session_id, sub, type } = body || {};
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -33,6 +33,51 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    const issueToken = (payload: Record<string, unknown>) => {
+      const sid = (payload.session_id as string) || crypto.randomUUID();
+      const tokenPayload = {
+        ...payload,
+        session_id: sid,
+        iat: Date.now(),
+        exp: Date.now() + 24 * 60 * 60 * 1000,
+      };
+      return { token: btoa(JSON.stringify(tokenPayload)), customer: tokenPayload, sid };
+    };
+
+    // Refresh action — re-issue token with latest panel fields
+    if (action === "refresh" && sub && type) {
+      if (type === "bw_customer") {
+        const { data: bwCustomer } = await supabase
+          .from("bw_sale_customers")
+          .select("id, customer_name, customer_code, username, activity_status, pop_id, email, mobile, contact_person, address, panel_access_enabled, panel_user_limit, panel_subscription_expires_at, panel_branch_id")
+          .eq("id", sub)
+          .maybeSingle();
+        if (!bwCustomer) return json({ error: "Customer not found" }, 404);
+        const { token, customer } = issueToken({
+          sub: bwCustomer.id,
+          name: bwCustomer.customer_name,
+          code: bwCustomer.customer_code,
+          username: bwCustomer.username,
+          type: "bw_customer",
+          pop_id: bwCustomer.pop_id,
+          email: bwCustomer.email,
+          mobile: bwCustomer.mobile,
+          contact_person: bwCustomer.contact_person,
+          address: bwCustomer.address,
+          session_id,
+          panel_access_enabled: !!bwCustomer.panel_access_enabled,
+          panel_user_limit: bwCustomer.panel_user_limit,
+          panel_subscription_expires_at: bwCustomer.panel_subscription_expires_at
+            ? new Date(bwCustomer.panel_subscription_expires_at).getTime()
+            : null,
+          panel_branch_id: bwCustomer.panel_branch_id,
+          branch_id: bwCustomer.panel_branch_id, // so POP-scoped pages auto-target this branch
+        });
+        return json({ token, customer });
+      }
+      return json({ error: "Refresh not supported for this user type" }, 400);
+    }
+
     if (!username || !password) {
       return json({ error: "Username and password are required" }, 400);
     }
@@ -43,17 +88,6 @@ Deno.serve(async (req) => {
       req.headers.get("x-real-ip") ||
       "unknown";
     const ua = req.headers.get("user-agent") || "unknown";
-
-    const issueToken = (payload: Record<string, unknown>) => {
-      const sid = crypto.randomUUID();
-      const tokenPayload = {
-        ...payload,
-        session_id: sid,
-        iat: Date.now(),
-        exp: Date.now() + 24 * 60 * 60 * 1000,
-      };
-      return { token: btoa(JSON.stringify(tokenPayload)), customer: tokenPayload, sid };
-    };
 
     // 1. CLIENT
     const { data: clients } = await supabase
@@ -174,7 +208,7 @@ Deno.serve(async (req) => {
     // 3. BW SALE CUSTOMER
     const { data: bwCustomer } = await supabase
       .from("bw_sale_customers")
-      .select("id, customer_name, customer_code, username, password, activity_status, pop_id, email, mobile, contact_person, address")
+      .select("id, customer_name, customer_code, username, password, activity_status, pop_id, email, mobile, contact_person, address, panel_access_enabled, panel_user_limit, panel_subscription_expires_at, panel_branch_id")
       .eq("username", username)
       .maybeSingle();
 
@@ -194,6 +228,13 @@ Deno.serve(async (req) => {
         mobile: bwCustomer.mobile,
         contact_person: bwCustomer.contact_person,
         address: bwCustomer.address,
+        panel_access_enabled: !!bwCustomer.panel_access_enabled,
+        panel_user_limit: bwCustomer.panel_user_limit,
+        panel_subscription_expires_at: bwCustomer.panel_subscription_expires_at
+          ? new Date(bwCustomer.panel_subscription_expires_at).getTime()
+          : null,
+        panel_branch_id: bwCustomer.panel_branch_id,
+        branch_id: bwCustomer.panel_branch_id, // POP-scoped pages key off branch_id
       });
       await supabase.from("portal_login_log").insert({
         username: bwCustomer.username,
