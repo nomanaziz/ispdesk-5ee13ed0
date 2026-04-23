@@ -40,13 +40,13 @@ const ResellerInvoiceDetail = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Button asChild variant="ghost" size="sm">
-          <Link to="/reseller/invoices">
+          <Link to={base}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back to Invoices
           </Link>
         </Button>
         {inv && (
           <Button asChild>
-            <Link to={`/reseller/invoices/${inv.id}/print`}>
+            <Link to={`${base}/${inv.id}/print`}>
               <Printer className="h-4 w-4 mr-1" /> Print / PDF
             </Link>
           </Button>
