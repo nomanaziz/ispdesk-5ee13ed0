@@ -65,7 +65,7 @@ const COLUMNS: { key: keyof ImportRow; label: string; w?: string }[] = [
   { key: "ExpDate", label: "Exp.Date" },
 ];
 
-export default function PopBulkClientImport() {
+export default function PopBulkClientImport({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
   const { customer } = usePortalAuth();
   const { branchId } = getPopScope(customer);
@@ -250,26 +250,19 @@ export default function PopBulkClientImport() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FileSpreadsheet className="h-6 w-6" /> Bulk Clients Import
-          </h1>
-          <p className="text-sm text-muted-foreground">Excel sheet upload করে multiple client একবারে যোগ করুন</p>
+      {!embedded && (
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <FileSpreadsheet className="h-6 w-6" /> Bulk Clients Import
+            </h1>
+            <p className="text-sm text-muted-foreground">Excel sheet upload করে multiple client একবারে যোগ করুন</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/pop-admin/clients")}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back
+          </Button>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => navigate("/pop-admin/clients")}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back
-        </Button>
-      </div>
-
-      <Tabs value="bulk-import">
-        <TabsList>
-          <TabsTrigger value="mikrotik" onClick={() => navigate("/pop-admin/mikrotik-users/bulk-create")}>
-            MikroTik Bulk Create
-          </TabsTrigger>
-          <TabsTrigger value="bulk-import">Bulk Clients Import (Excel)</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      )}
 
       <Collapsible>
         <Card className="border-amber-500/30 bg-amber-500/5">

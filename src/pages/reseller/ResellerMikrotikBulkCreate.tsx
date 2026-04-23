@@ -33,7 +33,7 @@ type Row = {
   selected: boolean;
 };
 
-export default function ResellerMikrotikBulkCreate() {
+export default function ResellerMikrotikBulkCreate({ embedded = false }: { embedded?: boolean } = {}) {
   const { customer } = usePortalAuth();
   const qc = useQueryClient();
   const popId = customer?.type === "reseller_sub" ? (customer as any)?.parent_reseller_id : customer?.sub;
@@ -149,18 +149,22 @@ export default function ResellerMikrotikBulkCreate() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Layers className="h-6 w-6" /> Bulk Client Import
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Transferred MikroTik users থেকে একসাথে multiple billing client তৈরি করুন।
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link to="/pop-admin/mikrotik-users"><ArrowLeft className="h-4 w-4 mr-1" /> ফিরে যান</Link>
-          </Button>
+        {!embedded ? (
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Layers className="h-6 w-6" /> Bulk Client Import
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Transferred MikroTik users থেকে একসাথে multiple billing client তৈরি করুন।
+            </p>
+          </div>
+        ) : <div />}
+        <div className="flex gap-2 flex-wrap">
+          {!embedded && (
+            <Button variant="outline" asChild>
+              <Link to="/pop-admin/mikrotik-users"><ArrowLeft className="h-4 w-4 mr-1" /> ফিরে যান</Link>
+            </Button>
+          )}
           <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} /> রিফ্রেশ
           </Button>
