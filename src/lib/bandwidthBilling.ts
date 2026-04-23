@@ -18,6 +18,7 @@ export interface SubscriptionLike {
   start_date: string; // YYYY-MM-DD
   end_date: string | null;
   status?: string;
+  vat_pct?: number;
 }
 
 export interface BillingSegment {
@@ -31,6 +32,8 @@ export interface BillingSegment {
   days: number;
   total_days_in_month: number;
   amount: number;
+  vat_pct: number;
+  vat_amount: number;
   sort_order: number;
 }
 
