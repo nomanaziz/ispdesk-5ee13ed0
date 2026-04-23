@@ -1966,6 +1966,7 @@ export type Database = {
           own_bkash_number: string | null
           panel_access_enabled: boolean
           panel_branch_id: string | null
+          panel_demo_used: boolean
           panel_subscription_expires_at: string | null
           panel_subscription_started_at: string | null
           panel_user_limit: number | null
@@ -2000,6 +2001,7 @@ export type Database = {
           own_bkash_number?: string | null
           panel_access_enabled?: boolean
           panel_branch_id?: string | null
+          panel_demo_used?: boolean
           panel_subscription_expires_at?: string | null
           panel_subscription_started_at?: string | null
           panel_user_limit?: number | null
@@ -2034,6 +2036,7 @@ export type Database = {
           own_bkash_number?: string | null
           panel_access_enabled?: boolean
           panel_branch_id?: string | null
+          panel_demo_used?: boolean
           panel_subscription_expires_at?: string | null
           panel_subscription_started_at?: string | null
           panel_user_limit?: number | null
