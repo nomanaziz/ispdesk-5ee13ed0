@@ -255,6 +255,17 @@ export default function Pop() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-7 w-7 text-amber-600"
+                              title="Password Regenerate"
+                              onClick={() => setPwdTarget({ id: c.id, customer_name: c.customer_name, username: c.username })}
+                            >
+                              <KeyRound className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-7 w-7 text-primary"
                               title="Login as Customer"
                               onClick={() =>
