@@ -76,7 +76,7 @@ const ResellerInvoices = () => {
                     <TableRow key={inv.id}>
                       <TableCell>{i + 1}</TableCell>
                       <TableCell>
-                        <Link to={`/reseller/invoices/${inv.id}`} className="text-primary font-mono hover:underline">
+                        <Link to={`${base}/${inv.id}`} className="text-primary font-mono hover:underline">
                           {inv.invoice_no}
                         </Link>
                       </TableCell>
@@ -93,12 +93,12 @@ const ResellerInvoices = () => {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button asChild size="icon" variant="ghost" className="h-8 w-8">
-                            <Link to={`/reseller/invoices/${inv.id}`} title="View">
+                            <Link to={`${base}/${inv.id}`} title="View">
                               <FileText className="h-4 w-4" />
                             </Link>
                           </Button>
                           <Button asChild size="icon" variant="ghost" className="h-8 w-8">
-                            <Link to={`/reseller/invoices/${inv.id}/print`} title="PDF">
+                            <Link to={`${base}/${inv.id}/print`} title="PDF">
                               <Printer className="h-4 w-4" />
                             </Link>
                           </Button>
