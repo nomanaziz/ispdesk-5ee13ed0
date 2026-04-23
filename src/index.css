@@ -125,7 +125,46 @@
     --tw-shadow: none !important;
     box-shadow: none !important;
   }
+
+  /* ── Mobile App Theme (Portal + POP Admin mobile surfaces) ── */
+  [data-theme-scope="portal"],
+  [data-theme-scope="pop"] {
+    --m-primary: 340 82% 52%;
+    --m-primary-2: 173 58% 45%;
+    --m-primary-foreground: 0 0% 100%;
+
+    --m-bg: 220 20% 98%;
+    --m-card: 0 0% 100%;
+    --m-card-foreground: 224 30% 12%;
+    --m-muted: 220 14% 95%;
+    --m-muted-foreground: 220 10% 46%;
+
+    --m-success: 142 71% 38%;
+    --m-success-soft: 142 71% 94%;
+    --m-danger: 0 84% 55%;
+    --m-danger-soft: 0 84% 95%;
+    --m-warning: 38 92% 50%;
+    --m-warning-soft: 38 92% 94%;
+    --m-info: 199 89% 48%;
+    --m-info-soft: 199 89% 94%;
+    --m-violet: 258 90% 66%;
+    --m-violet-soft: 258 90% 96%;
+
+    --m-radius-card: 1.25rem;
+    --m-radius-pill: 9999px;
+    --m-shadow-soft: 0 4px 14px hsl(0 0% 0% / 0.06);
+    --m-shadow-pop: 0 8px 24px hsl(340 82% 52% / 0.25);
+    --m-gradient-hero: linear-gradient(135deg, hsl(340 82% 56%) 0%, hsl(330 78% 48%) 60%, hsl(280 70% 50%) 100%);
+    --m-gradient-teal: linear-gradient(135deg, hsl(173 58% 45%) 0%, hsl(190 70% 45%) 100%);
+  }
 }
+
+/* Mobile shell utilities */
+.m-screen { background: hsl(var(--m-bg)); color: hsl(var(--m-card-foreground)); }
+.m-card { background: hsl(var(--m-card)); border-radius: var(--m-radius-card); box-shadow: var(--m-shadow-soft); }
+.m-hero-gradient { background: var(--m-gradient-hero); color: hsl(var(--m-primary-foreground)); }
+.m-teal-gradient { background: var(--m-gradient-teal); color: hsl(var(--m-primary-foreground)); }
+.m-pill { border-radius: var(--m-radius-pill); }
 
 @layer base {
   * {
