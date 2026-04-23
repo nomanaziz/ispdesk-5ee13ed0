@@ -30,9 +30,16 @@ const defaultForm = {
   client_id: "",
   amount: 0,
   paid: 0,
-  status: "unpaid",
   fee_date: new Date().toISOString().split("T")[0],
   notes: "",
+};
+
+const deriveStatus = (amount: number, paid: number): "paid" | "partial" | "unpaid" => {
+  const a = Number(amount) || 0;
+  const p = Number(paid) || 0;
+  if (p <= 0) return "unpaid";
+  if (p >= a) return "paid";
+  return "partial";
 };
 
 export default function InstallationFee() {
