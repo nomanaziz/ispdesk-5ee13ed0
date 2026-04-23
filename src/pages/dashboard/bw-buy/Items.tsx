@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -282,23 +283,27 @@ export default function Items() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">ক্যাটাগরি</label>
-                <Select value={formData.category_id} onValueChange={(v) => setFormData({ ...formData, category_id: v === "none" ? "" : v })}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">কোনোটি নয়</SelectItem>
-                    {(categories || []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={formData.category_id || "none"}
+                  onValueChange={(v) => setFormData({ ...formData, category_id: v === "none" ? "" : v })}
+                  options={[
+                    { value: "none", label: "কোনোটি নয়" },
+                    ...((categories || []).map((c: any) => ({ value: c.id, label: c.name }))),
+                  ]}
+                  placeholder="নির্বাচন করুন"
+                />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">প্রোভাইডার</label>
-                <Select value={formData.provider_id} onValueChange={(v) => setFormData({ ...formData, provider_id: v === "none" ? "" : v })}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">কোনোটি নয়</SelectItem>
-                    {(providers || []).map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>প্রোভাইডার</Label>
+                <SearchableSelect
+                  value={formData.provider_id || "none"}
+                  onValueChange={(v) => setFormData({ ...formData, provider_id: v === "none" ? "" : v })}
+                  options={[
+                    { value: "none", label: "কোনোটি নয়" },
+                    ...((providers || []).map((p: any) => ({ value: p.id, label: p.name }))),
+                  ]}
+                  placeholder="নির্বাচন করুন"
+                />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">

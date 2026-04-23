@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Trash2, ArrowLeft, Save, Wand2 } from "lucide-react";
@@ -370,21 +371,12 @@ export default function BillForm() {
               <label className="text-sm font-medium">
                 প্রোভাইডার <span className="text-destructive">*</span>
               </label>
-              <Select
+              <SearchableSelect
                 value={form.provider_id}
                 onValueChange={(v) => setForm({ ...form, provider_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="প্রোভাইডার নির্বাচন" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(providers || []).map((p: any) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={(providers || []).map((p: any) => ({ value: p.id, label: p.name }))}
+                placeholder="প্রোভাইডার নির্বাচন"
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">
@@ -503,7 +495,7 @@ export default function BillForm() {
                   <TableRow key={i}>
                     <TableCell>
                       <div className="space-y-1">
-                        <Select
+                        <SearchableSelect
                           value={line.service_id || "__custom__"}
                           onValueChange={(v) => {
                             if (v === "__custom__") {
@@ -514,19 +506,16 @@ export default function BillForm() {
                               pickItem(i, v);
                             }
                           }}
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="আইটেম নির্বাচন..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__custom__">— কাস্টম —</SelectItem>
-                            {(bwItems || []).map((it: any) => (
-                              <SelectItem key={it.id} value={it.id}>
-                                {it.name}{it.bandwidth ? ` (${it.bandwidth})` : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          options={[
+                            { value: "__custom__", label: "— কাস্টম —" },
+                            ...((bwItems || []).map((it: any) => ({
+                              value: it.id,
+                              label: `${it.name}${it.bandwidth ? ` (${it.bandwidth})` : ""}`,
+                            }))),
+                          ]}
+                          placeholder="আইটেম নির্বাচন..."
+                          className="h-8 text-xs"
+                        />
                         <Input
                           className="h-8 text-xs"
                           value={line.service_name}
