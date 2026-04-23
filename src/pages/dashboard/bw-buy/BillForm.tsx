@@ -174,7 +174,7 @@ export default function BillForm() {
 
   const addLine = () => {
     const range = form.billing_month ? getMonthRange(form.billing_month) : null;
-    setLines([...lines, emptyLine(range?.total_days || 30)]);
+    setLines([...lines, emptyLine(range?.total_days || 30, range?.period_start || "", range?.period_end || "")]);
   };
   const removeLine = (index: number) => setLines(lines.filter((_, i) => i !== index));
 
