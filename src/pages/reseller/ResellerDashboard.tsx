@@ -108,14 +108,14 @@ const ResellerDashboard = () => {
 
       {/* Row 1 — Company-level stats */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
-        <Stat icon={<Mail className="h-5 w-5" />} label="SMS Balance" value={String(company?.smsBalance ?? 0)} sub="বাকি SMS" />
-        <Stat icon={<Wallet className="h-5 w-5" />} label="Remaining Balance" value={tk(internal?.balance)} tone="primary" />
-        <Stat icon={<TrendingDown className="h-5 w-5" />} label="Daily Charge" value={tk(internal?.dailyCharged)} sub="approx per day" />
-        <Stat icon={<Banknote className="h-5 w-5" />} label="Approximate Rechargeable" value={tk(internal?.approxRechargeable)} sub="বাকি দিনের জন্য" />
-        <Stat icon={<BarChart3 className="h-5 w-5" />} label="Monthly Charged" value={tk(company?.monthlyCharged)} />
-        <Stat icon={<CheckCircle2 className="h-5 w-5" />} label="Monthly Payment" value={tk(company?.monthlyPaid)} tone="success" />
-        <Stat icon={<Gift className="h-5 w-5" />} label="Monthly Discount" value={tk(company?.monthlyDiscount)} />
-        <Stat icon={<AlertTriangle className="h-5 w-5" />} label="Balance Due" value={tk(company?.totalDue)} tone={company && company.totalDue > 0 ? "warning" : undefined} />
+        <Stat icons8="sms" icon={<Mail className="h-5 w-5" />} label="SMS Balance" value={String(company?.smsBalance ?? 0)} sub="বাকি SMS" />
+        <Stat icons8="wallet" icon={<Wallet className="h-5 w-5" />} label="Remaining Balance" value={tk(internal?.balance)} tone="primary" />
+        <Stat icons8="data-transfer" icon={<TrendingDown className="h-5 w-5" />} label="Daily Charge" value={tk(internal?.dailyCharged)} sub="approx per day" />
+        <Stat icons8="coins" icon={<Banknote className="h-5 w-5" />} label="Approximate Rechargeable" value={tk(internal?.approxRechargeable)} sub="বাকি দিনের জন্য" />
+        <Stat icons8="bar-chart" icon={<BarChart3 className="h-5 w-5" />} label="Monthly Charged" value={tk(company?.monthlyCharged)} />
+        <Stat icons8="checked" icon={<CheckCircle2 className="h-5 w-5" />} label="Monthly Payment" value={tk(company?.monthlyPaid)} tone="success" />
+        <Stat icons8="discount" icon={<Gift className="h-5 w-5" />} label="Monthly Discount" value={tk(company?.monthlyDiscount)} />
+        <Stat icons8="high-priority" icon={<AlertTriangle className="h-5 w-5" />} label="Balance Due" value={tk(company?.totalDue)} tone={company && company.totalDue > 0 ? "warning" : undefined} />
       </div>
 
       {/* Charts row (middle separator) */}
