@@ -1,49 +1,68 @@
 
 
-## Top Bar Clock — সব panel-এ live ঘড়ি
+## প্রতিটি Category-তে Default Items যোগ করা
 
 ### লক্ষ্য
-Admin, POP Admin, Reseller, Customer portal — সব panel-এর header-এ একটা live clock দেখাবে। Bangla locale-এ time + date।
+আগে যেসব networking categories/sub-categories add করা হয়েছে — প্রতিটিতে অন্তত ১-২টা realistic networking item seed করে দেওয়া, যাতে inventory খালি না থাকে এবং Network Node-এ assign করার সময় readymade options পাওয়া যায়।
 
-### Design
-```
-12:34:56 PM
-২৩ এপ্রিল, বুধবার
-```
-- বড় digit-এ time (HH:MM:SS, 12-hour with AM/PM)
-- নিচে ছোট font-এ Bangla date + day name
-- Auto-update প্রতি 1 second-এ
-- Search bar আর Quick Add button-এর মাঝখানে header-এ বসবে
-- Mobile-এ (sm-এর নিচে) শুধু time দেখাবে, date hide
-- Lang-aware: Bangla হলে `bn-BD` locale, English হলে `en-US`
+### Approach
+Database-এ `inventory_items` table-এ bulk INSERT করা হবে। প্রতিটি item-এর জন্য:
+- `name` — brand/model সহ realistic নাম
+- `code` — auto-generated SKU (e.g., `UTP-CAT5-001`)
+- `category_id` — sub-category-এর সাথে link
+- `unit_id` — appropriate unit (Meters/Pcs/Box)
+- `purchase_price` + `sale_price` — Bangladesh market-এ realistic BDT rate
+- `quantity` — default starting stock (10-100)
+- `store_id` — "Main Store" (MAIN-01)
+- `status` — active
 
-### Implementation
+### Items যোগ হবে (sub-category অনুযায়ী)
 
-**নতুন file**: `src/components/HeaderClock.tsx`
-- `useState` + `useEffect` with `setInterval(1000)`
-- `Intl.DateTimeFormat` দিয়ে locale-aware formatting
-- `useLanguage()` hook থেকে current lang নিবে
-- Cleanup interval on unmount
+**Cables:**
+- Cat 5 → D-Link Cat5e UTP, AMP Cat5e UTP (Meters)
+- Cat 6 → D-Link Cat6 UTP, Systimax Cat6 (Meters)
+- 2/4/6/12/16/24 Core Fiber → প্রতিটিতে ১টা single-mode fiber roll (Meters)
 
-**Edit করব** (header-এ mount):
-- `src/components/TopBar.tsx` — Admin panel header
-- `src/components/ResellerLayout.tsx` — POP Admin desktop header
-- `src/components/reseller/mobile/ResellerMobileShell.tsx` — POP Admin mobile (compact variant)
-- `src/components/PortalLayout.tsx` — Customer portal header
+**Server (Bandwidth Mgmt):**
+- MikroTik → CCR2004-1G-12S+2XS, RB5009UG+S+IN (Pcs)
+- Cisco → ISR 4321, Catalyst 2960 (Pcs)
 
-Component-এর দুটি variant থাকবে:
-- `<HeaderClock />` — full (time + date)
-- `<HeaderClock compact />` — শুধু time, mobile-এর জন্য
+**Switch:**
+- Manageable → Cisco SG350-28, MikroTik CRS328 (Pcs)
+- Unmanaged → TP-Link TL-SG1008D, D-Link DES-1008A (Pcs)
 
-### Styling
-- `font-mono` for time digits (alignment ভালো হবে)
-- `text-sm font-semibold` time, `text-[10px] text-muted-foreground` date
-- subtle border/background — header-এর rest-এর সাথে match
-- Tabular numerals (`tabular-nums`) যাতে digits jitter না করে
+**OLT:**
+- GEPON OLT → BDCOM GP3600-08, V-SOL V1600D (Pcs)
+- EPON OLT → C-Data FD1108S, BDCOM P3310B (Pcs)
+
+**ONU:**
+- EPON ONU → V-SOL V2801RW, BDCOM GP1704-4F (Pcs)
+- GEPON ONU → C-Data FD511GW, Huawei HG8310M (Pcs)
+
+**Router (WiFi):**
+- 1/2/3/4 Antenna → TP-Link, TENDA, D-Link variants (Pcs)
+
+**Equipment:**
+- Ethernet Crimp Tool → Standard RJ45 Crimper (Pcs)
+- (extras: Fiber Cleaver, OTDR যদি থাকে)
+
+**PON Module:**
+- EPON OLT Module, GPON OLT Module — SFP modules (Pcs)
+
+**Splitter:**
+- 1*2, 1*4, 1*8, 1*16, 1*32, 1*64 → প্রতিটি size-এর FTTH splitter (Pcs)
+
+মোট ≈ 35-40টা item।
+
+### Technical Steps
+1. **Read current data**: query `inventory_categories` (id+name+parent_id), `inventory_units`, `store_locations` দিয়ে actual UUIDs পাওয়া।
+2. **Build INSERT script**: প্রতিটি sub-category-এর leaf node-এ items map করা।
+3. **Execute via insert tool** (data operation, migration না): `INSERT INTO inventory_items ... ON CONFLICT (name) DO NOTHING` — duplicate prevent করতে।
+4. **Verify**: `SELECT count(*)` দিয়ে confirm যে items add হয়েছে।
 
 ### ফলাফল
-- প্রতিটি panel-এর header-এ live ঘড়ি
-- Bangla/English language toggle-এর সাথে auto switch
-- Mobile responsive
-- Performance impact zero (single 1s interval per mount)
+- `/dashboard/inventory/items` page-এ ৩৫+ readymade networking item দেখা যাবে
+- প্রতিটির default stock থাকবে (Network Node-এ assign করা যাবে সাথে সাথে)
+- Bangla locale-এ price display হবে (existing UI already supports)
+- কোনো UI/code change লাগবে না — শুধু data seed
 
