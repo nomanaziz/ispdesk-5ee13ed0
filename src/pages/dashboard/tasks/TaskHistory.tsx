@@ -243,7 +243,7 @@ export default function TaskHistory() {
                   <TableHead>সম্পন্নের তারিখ</TableHead>
                   <TableHead>সময়কাল</TableHead>
                   <TableHead>স্ট্যাটাস</TableHead>
-                  <TableHead className="w-16">দেখুন</TableHead>
+                  <TableHead className="w-32">অ্যাকশন</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -253,6 +253,8 @@ export default function TaskHistory() {
                   <TableRow><TableCell colSpan={10} className="text-center py-8">কোনো হিস্ট্রি পাওয়া যায়নি</TableCell></TableRow>
                 ) : filtered.map((task, i) => {
                   const taskAssignees = getTaskAssignees(task.id);
+                  const canRevert = hoursLeft(task.completed_at, REVERT_WINDOW_MS) > 0;
+                  const canChangeStatus = hoursLeft(task.completed_at, STATUS_CHANGE_WINDOW_MS) > 0;
                   return (
                     <TableRow key={task.id}>
                       <TableCell>{i + 1}</TableCell>
@@ -275,12 +277,38 @@ export default function TaskHistory() {
                       <TableCell>{task.completed_at ? new Date(task.completed_at).toLocaleDateString("bn-BD") : "—"}</TableCell>
                       <TableCell>{formatDuration(task.created_at, task.completed_at)}</TableCell>
                       <TableCell>
-                        <Badge className={statusColors[task.status]}>{statusLabels[task.status]}</Badge>
+                        {canChangeStatus ? (
+                          <Select
+                            value={task.status}
+                            onValueChange={(v) => statusChangeMutation.mutate({ task, status: v })}
+                          >
+                            <SelectTrigger className="h-7 w-28 text-xs">
+                              <Badge className={statusColors[task.status]}>{statusLabels[task.status]}</Badge>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="completed">সম্পন্ন</SelectItem>
+                              <SelectItem value="cancelled">বাতিল</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge className={statusColors[task.status]}>{statusLabels[task.status]}</Badge>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => setDetailTask(task)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => setDetailTask(task)} title="বিবরণ">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={!canRevert || revertMutation.isPending}
+                            onClick={() => revertMutation.mutate(task)}
+                            title={canRevert ? "Revert (১ দিনের মধ্যে)" : "১ দিন পার — revert বন্ধ"}
+                          >
+                            <Undo2 className={`h-4 w-4 ${canRevert ? "text-primary" : "text-muted-foreground"}`} />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
