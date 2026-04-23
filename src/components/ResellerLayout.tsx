@@ -30,7 +30,8 @@ import { resolveIcons8 } from "@/lib/iconResolver";
 type PermKey =
   | "dashboard" | "configuration" | "employee" | "client"
   | "billing" | "monitoring" | "sms" | "reports"
-  | "tickets" | "support" | "system" | "fund_history" | "settings" | "users" | "invoices" | "accounting";
+  | "tickets" | "support" | "system" | "fund_history" | "settings" | "users" | "invoices" | "accounting"
+  | "bw_setup";
 
 interface NavLink { to: string; label: string; en: string; icon: any }
 interface NavGroup {
