@@ -44,44 +44,30 @@ const PortalSupport = () => {
   const list = tab === "open" ? openT : closedT;
 
   return (
-    <MobileShell
-      scope="portal"
-      header={
-        <GradientHeader
-          variant="rose"
-          leftSlot={
-            <Link to="/portal/dashboard" className="h-9 w-9 rounded-full bg-white/15 flex items-center justify-center">
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          }
-          title="সাপোর্ট টিকেট"
-          subtitle="সাপোর্ট টিমের সাথে যোগাযোগ"
-          rightSlot={
-            <button
-              type="button"
-              onClick={() => setCreateOpen(true)}
-              className="h-9 px-3 rounded-full bg-white text-rose-600 text-xs font-bold shadow inline-flex items-center gap-1 active:scale-95 transition-transform"
-            >
-              <Plus className="h-3.5 w-3.5" /> নতুন
-            </button>
-          }
-          statLabel="খোলা টিকেট"
-          statValue={openT.length}
-        />
-      }
-      bottomNav={
-        <BottomNav
-          items={[
-            { to: "/portal/dashboard", label: "হোম", icon: Home },
-            { to: "/portal/bills", label: "বিল", icon: Receipt, matchPrefix: "/portal/bills" },
-            { to: "/portal/support", label: "সাপোর্ট", icon: HeadphonesIcon },
-            { to: "/portal/profile", label: "প্রোফাইল", icon: UserCog },
-          ]}
-          fab={{ onClick: () => setCreateOpen(true), icon: Plus, label: "New Ticket" }}
-        />
-      }
-    >
-      <div className="space-y-4 pt-3">
+    <div className="md:max-w-3xl md:mx-auto">
+      <GradientHeader
+        variant="rose"
+        leftSlot={
+          <Link to="/portal/dashboard" className="h-9 w-9 rounded-full bg-white/15 flex items-center justify-center">
+            <ChevronLeft className="h-4 w-4" />
+          </Link>
+        }
+        title="সাপোর্ট টিকেট"
+        subtitle="সাপোর্ট টিমের সাথে যোগাযোগ"
+        rightSlot={
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="h-9 px-3 rounded-full bg-white text-rose-600 text-xs font-bold shadow inline-flex items-center gap-1 active:scale-95 transition-transform"
+          >
+            <Plus className="h-3.5 w-3.5" /> নতুন
+          </button>
+        }
+        statLabel="খোলা টিকেট"
+        statValue={openT.length}
+      />
+
+      <div className="px-4 -mt-6 relative z-10 space-y-4 pt-3">
         <PillTabs
           value={tab}
           onChange={(v) => setTab(v as any)}
@@ -137,7 +123,7 @@ const PortalSupport = () => {
           onOpenChange={(o) => !o && setActiveTicket(null)}
         />
       )}
-    </MobileShell>
+    </div>
   );
 };
 
