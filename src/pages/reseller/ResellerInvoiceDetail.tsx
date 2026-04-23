@@ -10,7 +10,8 @@ import { format } from "date-fns";
 
 const ResellerInvoiceDetail = () => {
   const { id = "" } = useParams();
-
+  const location = useLocation();
+  const base = location.pathname.startsWith("/bw") ? "/bw/invoices" : "/reseller/invoices";
   const { data } = useQuery({
     queryKey: ["reseller-invoice-detail", id],
     enabled: !!id,
