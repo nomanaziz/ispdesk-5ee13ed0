@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/common/PageHeader";
 
 interface Page { id: string; title: string; slug: string; content: string | null; status: string; sort_order: number | null; created_at: string; }
 const empty: Partial<Page> = { title: "", slug: "", content: "", status: "draft", sort_order: 0 };
@@ -51,10 +52,11 @@ export default function WebsitePages() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold text-foreground">CMS পেজ</h1><p className="text-muted-foreground">ওয়েবসাইটের পেজ ম্যানেজ করুন</p></div>
-        <Button onClick={openNew}><Plus className="h-4 w-4 mr-2" />নতুন পেজ</Button>
-      </div>
+      <PageHeader
+        title="CMS পেজ"
+        description="ওয়েবসাইটের পেজ ম্যানেজ করুন"
+        action={<Button onClick={openNew}><Plus className="h-4 w-4 mr-2" />নতুন পেজ</Button>}
+      />
       {isLoading ? <Skeleton className="h-64 w-full" /> : (
         <Table>
           <TableHeader><TableRow><TableHead>শিরোনাম</TableHead><TableHead>স্লাগ</TableHead><TableHead>ক্রম</TableHead><TableHead>স্ট্যাটাস</TableHead><TableHead className="text-right">অ্যাকশন</TableHead></TableRow></TableHeader>

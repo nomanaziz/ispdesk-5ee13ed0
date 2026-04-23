@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { PageHeader } from "@/components/common/PageHeader";
 import { toast } from "sonner";
 
 type Category = {
@@ -102,10 +103,11 @@ export default function SupportCategories() {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">সাপোর্ট ক্যাটাগরি</h1>
-        <Button onClick={() => setDialogOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />ক্যাটাগরি যোগ করুন</Button>
-      </div>
+      <PageHeader
+        title="সাপোর্ট ক্যাটাগরি"
+        description="ক্লায়েন্ট, POP ও Bandwidth POP-এর জন্য আলাদা ক্যাটাগরি"
+        action={<Button onClick={() => setDialogOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />ক্যাটাগরি যোগ করুন</Button>}
+      />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>

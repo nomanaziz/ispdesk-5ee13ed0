@@ -95,6 +95,18 @@ export const ICONS8_BY_URL: Record<string, string> = {
   "/dashboard/ecommerce/orders": "delivery-time",
   "/dashboard/training": "training",
   "/dashboard/warranty": "warranty",
+  "/dashboard/website/dashboard": "website",
+  "/dashboard/website/pages": "opened-folder",
+  "/dashboard/website/notices": "news",
+  "/dashboard/website/offers": "discount",
+  "/dashboard/website/menu": "menu",
+  "/dashboard/website/media": "gallery",
+  "/dashboard/website/settings": "settings",
+  "/dashboard/accounting/transactions": "data-transfer",
+  "/dashboard/config/locations": "map-marker",
+  "/dashboard/config/divisions": "map-marker",
+  "/dashboard/config/districts": "address",
+  "/dashboard/support/categories": "opened-folder",
 
   // Client Portal
   "/portal/dashboard": "business",
@@ -332,5 +344,23 @@ export function resolveIcons8(input: IconLookup): string | undefined {
   if (url && ICONS8_BY_URL[url]) return ICONS8_BY_URL[url];
   if (title && ICONS8_BY_TITLE[title]) return ICONS8_BY_TITLE[title];
   if (label && ICONS8_BY_LABEL[label]) return ICONS8_BY_LABEL[label];
+  return undefined;
+}
+
+/**
+ * Resolve an Icons8 name from a URL pathname.
+ * Tries exact match, then progressively trims trailing path segments
+ * so /dashboard/billing/list/details still resolves to /dashboard/billing/list.
+ */
+export function resolveByPath(pathname?: string): string | undefined {
+  if (!pathname) return undefined;
+  const clean = pathname.split("?")[0].split("#")[0].replace(/\/$/, "");
+  if (ICONS8_BY_URL[clean]) return ICONS8_BY_URL[clean];
+  const parts = clean.split("/").filter(Boolean);
+  while (parts.length > 1) {
+    parts.pop();
+    const candidate = "/" + parts.join("/");
+    if (ICONS8_BY_URL[candidate]) return ICONS8_BY_URL[candidate];
+  }
   return undefined;
 }

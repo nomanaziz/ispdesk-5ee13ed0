@@ -3,6 +3,7 @@ import Divisions from "./Divisions";
 import Districts from "./Districts";
 import Upazilas from "./Upazilas";
 import { useSearchParams } from "react-router-dom";
+import { PageHeader } from "@/components/common/PageHeader";
 
 export default function Locations() {
   const [params, setParams] = useSearchParams();
@@ -10,10 +11,7 @@ export default function Locations() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">এলাকা ব্যবস্থাপনা</h1>
-        <p className="text-sm text-muted-foreground">বিভাগ, জেলা ও উপজেলা একসাথে পরিচালনা করুন</p>
-      </div>
+      <PageHeader title="এলাকা ব্যবস্থাপনা" description="বিভাগ, জেলা ও উপজেলা একসাথে পরিচালনা করুন" />
       <Tabs
         value={tab}
         onValueChange={(v) => setParams({ tab: v }, { replace: true })}
