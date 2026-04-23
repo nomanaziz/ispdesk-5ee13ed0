@@ -21,7 +21,6 @@ import { HeaderClock } from "@/components/HeaderClock";
 import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
 import { resolveIcons8 } from "@/lib/iconResolver";
 import ManageClientsUpgradeModal from "./ManageClientsUpgradeModal";
-import { MobileBottomTabs } from "@/components/reseller/mobile/MobileBottomTabs";
 
 interface NavItem {
   to: string;
