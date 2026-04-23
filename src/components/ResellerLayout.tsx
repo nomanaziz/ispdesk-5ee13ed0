@@ -27,7 +27,7 @@ import { resolveIcons8 } from "@/lib/iconResolver";
 
 
 type PermKey =
-  | "dashboard" | "configuration" | "mikrotik" | "employee" | "client"
+  | "dashboard" | "configuration" | "employee" | "client"
   | "billing" | "monitoring" | "sms" | "reports"
   | "tickets" | "support" | "system" | "fund_history" | "settings" | "users" | "invoices" | "accounting";
 
@@ -63,13 +63,6 @@ const groups: NavGroup[] = [
     ],
   },
   {
-    key: "mikrotik", label: "মাইক্রোটিক ক্লায়েন্ট", en: "MikroTik Client", icon: Server,
-    items: [
-      { to: "/pop-admin/mikrotik-users", label: "মাইক্রোটিক ইউজার", en: "MikroTik Users", icon: Server },
-      { to: "/pop-admin/mikrotik-users/bulk-create", label: "বাল্ক ক্লায়েন্ট ইম্পোর্ট", en: "Bulk Client Import", icon: FileText },
-    ],
-  },
-  {
     key: "employee", label: "কর্মচারী", en: "Employee", icon: Users,
     items: [
       { to: "/pop-admin/employees/add", label: "কর্মচারী যোগ", en: "Add Employee", icon: UserPlus },
@@ -81,8 +74,10 @@ const groups: NavGroup[] = [
     key: "client", label: "ক্লায়েন্ট", en: "Client", icon: Users,
     items: [
       { to: "/pop-admin/clients/add", label: "ক্লায়েন্ট যোগ", en: "Add Client", icon: UserPlus },
-      { to: "/pop-admin/clients/bulk-import", label: "এক্সেল ইম্পোর্ট", en: "Excel Bulk Import", icon: FileSpreadsheet },
       { to: "/pop-admin/clients", label: "ক্লায়েন্ট তালিকা", en: "Client List", icon: Users },
+      { to: "/pop-admin/mikrotik-users", label: "মাইক্রোটিক ইউজার", en: "MikroTik Users", icon: Server },
+      { to: "/pop-admin/clients/bulk-import", label: "এক্সেল ইম্পোর্ট", en: "Excel Bulk Import", icon: FileSpreadsheet },
+      { to: "/pop-admin/mikrotik-users/bulk-create", label: "বাল্ক ক্লায়েন্ট ইম্পোর্ট", en: "Bulk Client Import", icon: FileText },
       { to: "/pop-admin/billing/list", label: "বিলিং তালিকা", en: "Billing List", icon: Receipt },
       { to: "/pop-admin/billing/daily-collection", label: "দৈনিক সংগ্রহ", en: "Daily Collection", icon: Wallet },
       { to: "/pop-admin/clients/left", label: "চলে যাওয়া ক্লায়েন্ট", en: "Left Clients", icon: Users },
@@ -172,9 +167,8 @@ function isGroupAllowed(g: NavGroup, customer: any): boolean {
   const legacyMap: Record<string, string[]> = {
     dashboard: ["dashboard"],
     configuration: ["configuration", "settings"],
-    mikrotik: ["mikrotik", "dashboard"],
     employee: ["employee", "users"],
-    client: ["client", "dashboard"],
+    client: ["client", "mikrotik", "dashboard"],
     billing: ["billing", "invoices"],
     monitoring: ["monitoring", "tickets"],
     sms: ["sms"],
