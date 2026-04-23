@@ -145,8 +145,9 @@ export const PortalLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
 
           <div className="flex items-center gap-2">
-            <HeaderClock />
-            <HeaderClock compact className="md:hidden" />
+            <div className="hidden lg:block">
+              <HeaderClock />
+            </div>
             <Button
               variant="ghost"
               size="sm"

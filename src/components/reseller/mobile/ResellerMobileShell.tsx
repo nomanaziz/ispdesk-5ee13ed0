@@ -135,7 +135,7 @@ export function ResellerMobileShell({ children, onOpenSidebar }: Props) {
           </button>
         </div>
 
-        <HeaderClock compact onPrimary />
+        
         <div className="text-primary-foreground">
           <NotesButton ownerType="pop" />
         </div>
