@@ -119,6 +119,7 @@ export default function Locations() {
           <DialogHeader><DialogTitle>{editingId ? "লোকেশন সম্পাদনা" : "নতুন লোকেশন"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>নাম *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="যেমন: প্রধান গুদাম" /></div>
+            <div><Label>স্টোর কোড</Label><Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="যেমন: MAIN-01" /></div>
             <div><Label>ঠিকানা</Label><Input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="ঠিকানা লিখুন" /></div>
             <div><Label>স্ট্যাটাস</Label><Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">সক্রিয়</SelectItem><SelectItem value="inactive">নিষ্ক্রিয়</SelectItem></SelectContent></Select></div>
           </div>
