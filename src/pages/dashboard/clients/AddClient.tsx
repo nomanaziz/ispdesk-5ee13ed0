@@ -790,12 +790,13 @@ export default function AddClient() {
             <Select value={form.profile} onValueChange={v => setField("profile", v)} disabled={loadingProfiles || isPopMode}>
               <SelectTrigger><SelectValue placeholder={loadingProfiles ? "লোড হচ্ছে..." : isPopMode ? "প্যাকেজ থেকে স্বয়ংক্রিয়" : mikrotikProfiles.length > 0 ? "প্রোফাইল নির্বাচন" : "প্রথমে সার্ভার নির্বাচন"} /></SelectTrigger>
               <SelectContent>
+                {/* Preserve existing profile if not yet in fetched list (edit mode / loading) */}
+                {form.profile && !mikrotikProfiles.some(p => p.name === form.profile) && (
+                  <SelectItem value={form.profile}>{form.profile} (বর্তমান)</SelectItem>
+                )}
                 {mikrotikProfiles.map(p => (
                   <SelectItem key={p.name} value={p.name}>{p.name}{p.rateLimit ? ` (${p.rateLimit})` : ""}</SelectItem>
                 ))}
-                {isPopMode && form.profile && !mikrotikProfiles.some(p => p.name === form.profile) && (
-                  <SelectItem value={form.profile}>{form.profile}</SelectItem>
-                )}
               </SelectContent>
             </Select>
             {isPopMode && (
