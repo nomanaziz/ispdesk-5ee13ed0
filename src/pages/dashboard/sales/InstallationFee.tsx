@@ -30,9 +30,16 @@ const defaultForm = {
   client_id: "",
   amount: 0,
   paid: 0,
-  status: "unpaid",
   fee_date: new Date().toISOString().split("T")[0],
   notes: "",
+};
+
+const deriveStatus = (amount: number, paid: number): "paid" | "partial" | "unpaid" => {
+  const a = Number(amount) || 0;
+  const p = Number(paid) || 0;
+  if (p <= 0) return "unpaid";
+  if (p >= a) return "paid";
+  return "partial";
 };
 
 export default function InstallationFee() {
@@ -66,7 +73,7 @@ export default function InstallationFee() {
         client_id: formData.client_id || null,
         amount: formData.amount,
         paid: formData.paid,
-        status: formData.status,
+        status: deriveStatus(formData.amount, formData.paid),
         fee_date: formData.fee_date,
         notes: formData.notes || null,
       };
@@ -105,7 +112,6 @@ export default function InstallationFee() {
       client_id: fee.client_id || "",
       amount: fee.amount,
       paid: fee.paid,
-      status: fee.status,
       fee_date: fee.fee_date,
       notes: fee.notes || "",
     });
@@ -169,15 +175,10 @@ export default function InstallationFee() {
                   <Input type="date" value={form.fee_date} onChange={(e) => setForm({ ...form, fee_date: e.target.value })} />
                 </div>
                 <div>
-                  <Label>স্ট্যাটাস</Label>
-                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unpaid">বকেয়া</SelectItem>
-                      <SelectItem value="paid">পেইড</SelectItem>
-                      <SelectItem value="partial">আংশিক</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>স্ট্যাটাস (স্বয়ংক্রিয়)</Label>
+                  <div className="h-10 flex items-center px-3 rounded-md border bg-muted/40">
+                    {statusBadge(deriveStatus(form.amount, form.paid))}
+                  </div>
                 </div>
               </div>
               <div>
@@ -237,7 +238,7 @@ export default function InstallationFee() {
                     <TableCell>৳{fee.paid?.toLocaleString("bn-BD")}</TableCell>
                     <TableCell className="font-semibold">৳{((fee.amount || 0) - (fee.paid || 0)).toLocaleString("bn-BD")}</TableCell>
                     <TableCell>{fee.fee_date ? format(new Date(fee.fee_date), "dd MMM yyyy", { locale: bn }) : "-"}</TableCell>
-                    <TableCell>{statusBadge(fee.status)}</TableCell>
+                    <TableCell>{statusBadge(deriveStatus(fee.amount, fee.paid))}</TableCell>
                     <TableCell className="max-w-[150px] truncate">{fee.notes || "-"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
