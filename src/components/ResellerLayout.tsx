@@ -168,8 +168,19 @@ function isGroupAllowed(g: NavGroup, customer: any): boolean {
   const isSub = customer.type === "reseller_sub";
 
   if (isBw) {
+    const panelActive = !!customer.panel_access_enabled
+      && customer.panel_subscription_expires_at
+      && customer.panel_subscription_expires_at > Date.now();
+    // Standard BW menus + (when panel is active) full POP-admin clone + extras
+    if (panelActive) {
+      // bw_setup is BW-only; all others standard groups visible
+      return g.key !== "fund_history"; // fund_history is reseller-only
+    }
     return ["dashboard", "billing", "purchases", "tickets", "support", "settings", "system"].includes(g.key);
   }
+
+  // bw_setup is exclusively for BW customers
+  if (g.key === "bw_setup") return false;
 
   if (!isSub) return true;
 
