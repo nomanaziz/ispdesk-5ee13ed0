@@ -12,6 +12,8 @@ import {
   Package, Truck, Building2, Wallet, CircleDollarSign, HandCoins, Landmark,
   ClipboardList, TicketCheck, ListTodo, Award, Globe, Share2, Network
 } from "lucide-react";
+import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
+import { resolveIcons8 } from "@/lib/iconResolver";
 
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -327,16 +329,22 @@ function useStats() {
 }
 
 // ─── Stat Card ────────────────────────────────────
-function StatCard({ title, value, icon: Icon, colorIndex }: {
-  title: string; value: string | number; icon: React.ElementType; colorIndex: number;
+function StatCard({ title, value, icon: Icon, colorIndex, icons8 }: {
+  title: string; value: string | number; icon: React.ElementType; colorIndex: number; icons8?: string;
 }) {
   const style = CARD_STYLES[colorIndex % CARD_STYLES.length];
+  const resolved = icons8 || resolveIcons8({ title });
+  const useIcons8 = hasIcons8Icon(resolved);
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="hover:shadow-md transition-shadow group">
       <CardContent className="p-3">
         <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-lg ${style.bg} ${style.text} shrink-0`}>
-            <Icon className="h-5 w-5" />
+          <div className={`p-2 rounded-lg ${style.bg} ${style.text} shrink-0 flex items-center justify-center`}>
+            {useIcons8 ? (
+              <Icons8Icon name={resolved!} size={28} />
+            ) : (
+              <Icon className="h-5 w-5" />
+            )}
           </div>
           <div className="min-w-0">
             <p className="text-xl font-bold tracking-tight leading-tight">{value}</p>
