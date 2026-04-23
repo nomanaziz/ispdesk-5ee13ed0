@@ -63,13 +63,14 @@ export default function BranchScopedSelect({ table, branchId, value, onChange, p
   return (
     <>
       <div className="flex gap-1.5">
-        <Select value={value || ""} onValueChange={onChange}>
-          <SelectTrigger><SelectValue placeholder={placeholder || "Select"} /></SelectTrigger>
-          <SelectContent>
-            {items.length === 0 && <div className="px-3 py-2 text-xs text-muted-foreground">No items — Add one below</div>}
-            {items.map((it) => <SelectItem key={it.id} value={it.id}>{it.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={value || ""}
+          onValueChange={onChange}
+          options={items.map((it) => ({ value: it.id, label: it.name }))}
+          placeholder={placeholder || "Select"}
+          emptyText="No items — Add one below"
+          className="flex-1"
+        />
         <Button type="button" variant="outline" size="icon" onClick={() => setOpen(true)} title="Add new">
           <Plus className="h-4 w-4" />
         </Button>
