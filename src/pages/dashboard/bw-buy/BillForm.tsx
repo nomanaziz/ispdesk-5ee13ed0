@@ -146,6 +146,8 @@ export default function BillForm() {
             days: Number(li.days),
             total_days_in_month: Number(li.total_days_in_month),
             amount: Number(li.amount),
+            vat_pct: Number(li.vat_pct ?? 0),
+            vat_amount: Number(li.vat_amount ?? 0),
           })),
         );
       }
@@ -205,6 +207,8 @@ export default function BillForm() {
           days: s.days,
           total_days_in_month: s.total_days_in_month,
           amount: s.amount,
+          vat_pct: s.vat_pct,
+          vat_amount: s.vat_amount,
         })),
       );
       toast.success(`${segments.length}টি লাইন আইটেম তৈরি হয়েছে`);
