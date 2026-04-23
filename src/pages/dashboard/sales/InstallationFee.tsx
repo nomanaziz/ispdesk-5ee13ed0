@@ -73,7 +73,7 @@ export default function InstallationFee() {
         client_id: formData.client_id || null,
         amount: formData.amount,
         paid: formData.paid,
-        status: formData.status,
+        status: deriveStatus(formData.amount, formData.paid),
         fee_date: formData.fee_date,
         notes: formData.notes || null,
       };
