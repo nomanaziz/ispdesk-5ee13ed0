@@ -112,7 +112,6 @@ export default function InstallationFee() {
       client_id: fee.client_id || "",
       amount: fee.amount,
       paid: fee.paid,
-      status: fee.status,
       fee_date: fee.fee_date,
       notes: fee.notes || "",
     });
