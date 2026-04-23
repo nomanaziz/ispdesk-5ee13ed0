@@ -21,7 +21,7 @@ export default function Items() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: "", category_id: "", provider_id: "", bandwidth: "", price: "", description: "" });
+  const [formData, setFormData] = useState({ name: "", category_id: "", provider_id: "", bandwidth: "", price: "", description: "", default_vat_pct: "5" });
   const queryClient = useQueryClient();
 
   const { data: items, isLoading } = useQuery({
