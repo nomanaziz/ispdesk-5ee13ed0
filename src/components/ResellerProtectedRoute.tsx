@@ -20,9 +20,13 @@ const ResellerProtectedRoute = ({ children, require }: Props) => {
   if (!allowed.includes(customer.type as string)) {
     return <Navigate to="/portal/dashboard" replace />;
   }
-  // Hide users page for BW customers (no sub-user feature yet)
-  if (require === "users" && customer.type === "bw_customer") {
-    return <Navigate to="/reseller/dashboard" replace />;
+  // BW customers may only access POP Admin if they have an active panel subscription
+  if (customer.type === "bw_customer") {
+    const active = !!customer.panel_access_enabled
+      && customer.panel_subscription_expires_at
+      && customer.panel_subscription_expires_at > Date.now();
+    if (!active) return <Navigate to="/bw/dashboard" replace />;
+    if (require === "users") return <Navigate to="/bw/dashboard" replace />;
   }
   // Sub-user permission gate
   if (require && customer.type === "reseller_sub" && customer.permissions) {
