@@ -91,7 +91,7 @@ export default function BillForm() {
         provider_id: bill.provider_id || "",
         bill_no: bill.bill_no || "",
         invoice_no: bill.invoice_no || "",
-        billing_month: bill.billing_month || bill.month || new Date().toISOString().slice(0, 7),
+        billing_month: (bill.billing_month || bill.month || new Date().toISOString().slice(0, 10)).slice(0, 7),
         payment_due: bill.payment_due || "",
         paid: String(bill.paid || 0),
         discount: String(bill.discount || 0),
