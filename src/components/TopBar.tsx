@@ -12,6 +12,7 @@ import { GlobalClientSearch } from "@/components/GlobalClientSearch";
 import { NotesButton } from "@/components/notes/NotesButton";
 import { QuickCreateClientDialog } from "@/components/QuickCreateClientDialog";
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { HeaderClock } from "@/components/HeaderClock";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
@@ -60,6 +61,8 @@ export function TopBar() {
           </Button>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          <HeaderClock />
+          <HeaderClock compact className="md:hidden" />
           <Button
             size="sm"
             className="h-9 gap-1.5"
