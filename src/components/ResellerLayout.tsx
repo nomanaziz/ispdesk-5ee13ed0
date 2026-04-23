@@ -297,12 +297,15 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
         </div>
 
         <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-          {visibleGroups.map((g) => {
+          {visibleGroups.map((g, gi) => {
             const Icon = g.icon;
             const isOpen = openGroup === g.key || !!search;
             const isSingle = g.items.length === 1 && g.items[0].label === g.label;
             const groupActive = g.items.some((i) => location.pathname.startsWith(i.to));
             const groupIcons8 = resolveIcons8({ label: g.label });
+            const isBwExtra = g.key === "bw_setup";
+            const prevIsBwExtra = gi > 0 && visibleGroups[gi - 1].key === "bw_setup";
+            const showDivider = isBwExtra && !prevIsBwExtra;
 
             if (isSingle) {
               const item = g.items[0];
