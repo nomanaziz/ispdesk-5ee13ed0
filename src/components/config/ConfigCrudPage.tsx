@@ -351,12 +351,12 @@ export default function ConfigCrudPage({
               <div key={f.key} className="space-y-1.5">
                 <label className="text-sm font-medium">{f.label} {f.required && <span className="text-destructive">*</span>}</label>
                 {f.type === "select" && f.options ? (
-                  <Select value={formData[f.key] || ""} onValueChange={(v) => setFormData({ ...formData, [f.key]: v })}>
-                    <SelectTrigger><SelectValue placeholder={f.placeholder || "নির্বাচন করুন"} /></SelectTrigger>
-                    <SelectContent>
-                      {f.options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={formData[f.key] || ""}
+                    onValueChange={(v) => setFormData({ ...formData, [f.key]: v })}
+                    options={f.options.map((o) => ({ value: o.value, label: o.label }))}
+                    placeholder={f.placeholder || "নির্বাচন করুন"}
+                  />
                 ) : f.type === "color" ? (
                   <div className="flex gap-2">
                     <input
