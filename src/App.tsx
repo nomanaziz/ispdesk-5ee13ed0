@@ -49,6 +49,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import CompanyOverview from "./pages/dashboard/CompanyOverview";
 import OltOverview from "./pages/dashboard/OltOverview";
+import IconPreview from "./pages/dashboard/dev/IconPreview";
 import NotFound from "./pages/NotFound";
 
 // Config
@@ -444,6 +445,7 @@ const App = () => (
               <Route path="/dashboard/links" element={<P><DashboardLinks /></P>} />
               <Route path="/dashboard/billing-overview" element={<P><CompanyOverview /></P>} />
               <Route path="/dashboard/olt-overview" element={<P><OltOverview /></P>} />
+              <Route path="/dashboard/_icons" element={<P><IconPreview /></P>} />
 
               {/* Config */}
               <Route path="/dashboard/config/zones" element={<P><ConfigZones /></P>} />
