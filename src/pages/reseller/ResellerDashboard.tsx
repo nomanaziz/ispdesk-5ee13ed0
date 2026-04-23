@@ -11,6 +11,7 @@ import {
   Bell, MessageSquare, Mail, TrendingDown, AlertTriangle, Gift,
   Users, UserPlus, BarChart3, Wifi, Banknote,
 } from "lucide-react";
+import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
 import AssignedAreasWidget from "@/components/reseller/AssignedAreasWidget";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
