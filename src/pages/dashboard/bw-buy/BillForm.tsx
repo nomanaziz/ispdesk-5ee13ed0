@@ -83,9 +83,21 @@ export default function BillForm() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bw_providers")
-        .select("id, name")
+        .select("id, name, default_vat_pct")
         .eq("status", "active")
         .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Items for the manual line dropdown — filtered by provider when set
+  const { data: bwItems } = useQuery({
+    queryKey: ["bw_items_for_bill", form.provider_id],
+    queryFn: async () => {
+      let q = supabase.from("bw_items").select("id, name, bandwidth, price, default_vat_pct, provider_id").eq("status", "active").order("name");
+      if (form.provider_id) q = q.or(`provider_id.eq.${form.provider_id},provider_id.is.null`);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
