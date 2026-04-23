@@ -638,7 +638,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
               : isLight ? "text-muted-foreground hover:text-foreground hover:bg-muted/50" : "text-slate-400 hover:text-white hover:bg-white/5"
           )}
         >
-          <group.icon className={cn("h-4 w-4 shrink-0", !isActive && groupColor)} />
+          <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} />
           <span className="flex-1 truncate">{groupLabel}</span>
           {groupBadgeCount > 0 && (
             <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
