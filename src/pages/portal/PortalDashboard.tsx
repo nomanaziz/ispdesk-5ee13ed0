@@ -3,14 +3,14 @@ import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { callPortal } from "@/lib/portalApi";
 import {
-  MobileShell, GradientHeader, IconCard, IconGrid, StatCardPair, ListRow, BottomNav,
+  GradientHeader, IconCard, IconGrid, StatCardPair, ListRow,
 } from "@/components/mobile";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Bell, Settings, Receipt, CreditCard, HeadphonesIcon, Activity, Package,
   UserCog, MessageSquare, Megaphone, Wallet, Rocket, ShoppingBag, BookOpen,
-  Home, FileText, Plus, Wifi, TrendingUp, TrendingDown,
+  FileText, Wifi, TrendingUp, TrendingDown,
 } from "lucide-react";
 
 const PortalDashboardMobile = () => {

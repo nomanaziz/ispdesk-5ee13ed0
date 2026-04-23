@@ -4,14 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import {
-  MobileShell, GradientHeader, PillTabs, ListRow, BottomNav,
+  GradientHeader, PillTabs, ListRow,
 } from "@/components/mobile";
 import { Badge } from "@/components/ui/badge";
 import { CreateTicketDialog } from "@/components/portal/CreateTicketDialog";
 import { TicketConversation } from "@/components/portal/TicketConversation";
 import {
-  HeadphonesIcon, Plus, MessageSquare, ChevronLeft,
-  Home, Receipt, UserCog, AlertCircle, CheckCircle2, Clock,
+  Plus, MessageSquare, ChevronLeft,
+  AlertCircle, CheckCircle2, Clock,
 } from "lucide-react";
 import type { IconTint } from "@/components/mobile";
 

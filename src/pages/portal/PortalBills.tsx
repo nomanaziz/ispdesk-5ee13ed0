@@ -4,12 +4,11 @@ import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { callPortal } from "@/lib/portalApi";
 import {
-  MobileShell, GradientHeader, PillTabs, ListRow, BottomNav, StatCardPair,
+  GradientHeader, PillTabs, ListRow, StatCardPair,
 } from "@/components/mobile";
 import { Badge } from "@/components/ui/badge";
 import {
   Receipt, Wallet, ChevronLeft, FileText, CreditCard, TrendingUp, TrendingDown,
-  Home, HeadphonesIcon, UserCog, Plus,
 } from "lucide-react";
 
 const PortalBills = () => {
