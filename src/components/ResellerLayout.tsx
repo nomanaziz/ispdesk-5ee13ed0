@@ -27,7 +27,7 @@ import { resolveIcons8 } from "@/lib/iconResolver";
 
 
 type PermKey =
-  | "dashboard" | "configuration" | "mikrotik" | "employee" | "client"
+  | "dashboard" | "configuration" | "employee" | "client"
   | "billing" | "monitoring" | "sms" | "reports"
   | "tickets" | "support" | "system" | "fund_history" | "settings" | "users" | "invoices" | "accounting";
 
