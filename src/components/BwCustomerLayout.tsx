@@ -268,18 +268,17 @@ export default function BwCustomerLayout({ children }: { children: ReactNode }) 
           const active = location.pathname === item.to ||
             (item.to !== "/bw/dashboard" && location.pathname.startsWith(item.to));
           const Icon = item.icon;
-          const itemIcons8 = resolveIcons8({ url: item.to, title: item.en });
           return (
             <Link
               key={item.to}
               to={item.to}
               className={cn(
-                "flex flex-col items-center justify-center gap-0.5 text-[10px] transition-colors",
+                "flex flex-col items-center justify-center gap-0.5 text-[10px] transition-colors group",
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {hasIcons8Icon(itemIcons8) ? (
-                <Icons8Icon name={itemIcons8!} size={22} />
+              {hasIcons8Icon(item.icons8) ? (
+                <Icons8Icon name={item.icons8} size={22} />
               ) : (
                 <Icon className="h-5 w-5" />
               )}
