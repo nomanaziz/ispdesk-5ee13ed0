@@ -27,14 +27,17 @@ interface NavItem {
   label: string;
   en: string;
   icon: any;
+  icons8: string;
 }
 
+// Icons8 names are explicitly bound here so the BW portal sidebar/bottom-bar
+// always gets the same colorful PNG set used elsewhere.
 const navItems: NavItem[] = [
-  { to: "/bw/dashboard", label: "ড্যাশবোর্ড", en: "Dashboard", icon: LayoutDashboard },
-  { to: "/bw/invoices", label: "বিলিং ইনভয়েস", en: "Billing & Invoices", icon: Receipt },
-  { to: "/bw/purchase-orders", label: "পার্চেজ অর্ডার", en: "Purchase Orders", icon: ShoppingCart },
-  { to: "/bw/tickets", label: "সাপোর্ট টিকেট", en: "Support Tickets", icon: LifeBuoy },
-  { to: "/bw/settings", label: "কোম্পানি সেটিংস", en: "Company Settings", icon: Settings },
+  { to: "/bw/dashboard",        label: "ড্যাশবোর্ড",       en: "Dashboard",        icon: LayoutDashboard, icons8: "business" },
+  { to: "/bw/invoices",         label: "বিলিং ইনভয়েস",     en: "Billing & Invoices", icon: Receipt,       icons8: "folder-invoices" },
+  { to: "/bw/purchase-orders",  label: "সার্ভিস অর্ডার",   en: "Service Orders",   icon: ShoppingCart,    icons8: "purchase-order" },
+  { to: "/bw/tickets",          label: "সাপোর্ট টিকেট",    en: "Support Tickets",  icon: LifeBuoy,        icons8: "online-support" },
+  { to: "/bw/settings",         label: "কোম্পানি সেটিংস",  en: "Company Settings", icon: Settings,        icons8: "settings" },
 ];
 
 export default function BwCustomerLayout({ children }: { children: ReactNode }) {
