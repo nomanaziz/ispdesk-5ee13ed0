@@ -752,6 +752,8 @@ const App = () => (
               <Route path="/bw" element={<Navigate to="/bw/dashboard" replace />} />
               <Route path="/bw/dashboard" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwDashboard /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/invoices" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwInvoices /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/invoices/:id" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><ResellerInvoiceDetail /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/invoices/:id/print" element={<PortalAuthProvider><BwProtectedRoute><ResellerInvoicePrint /></BwProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/purchase-orders" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwPurchaseOrders /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/tickets" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwTickets /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/settings" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwSettings /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />

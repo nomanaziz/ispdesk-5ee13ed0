@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { getBillingCustomerId } from "@/lib/portalIdentity";
@@ -15,6 +15,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 const ResellerInvoices = () => {
   const { customer } = usePortalAuth();
   const { t } = useLanguage();
+  const location = useLocation();
+  // Detect whether we're inside the BW customer portal so links stay in /bw/*
+  const base = location.pathname.startsWith("/bw") ? "/bw/invoices" : "/reseller/invoices";
   const resellerId = getBillingCustomerId(customer);
   const [payOpen, setPayOpen] = useState(false);
   const [activeInv, setActiveInv] = useState<any>(null);
@@ -73,7 +76,7 @@ const ResellerInvoices = () => {
                     <TableRow key={inv.id}>
                       <TableCell>{i + 1}</TableCell>
                       <TableCell>
-                        <Link to={`/reseller/invoices/${inv.id}`} className="text-primary font-mono hover:underline">
+                        <Link to={`${base}/${inv.id}`} className="text-primary font-mono hover:underline">
                           {inv.invoice_no}
                         </Link>
                       </TableCell>
@@ -90,12 +93,12 @@ const ResellerInvoices = () => {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button asChild size="icon" variant="ghost" className="h-8 w-8">
-                            <Link to={`/reseller/invoices/${inv.id}`} title="View">
+                            <Link to={`${base}/${inv.id}`} title="View">
                               <FileText className="h-4 w-4" />
                             </Link>
                           </Button>
                           <Button asChild size="icon" variant="ghost" className="h-8 w-8">
-                            <Link to={`/reseller/invoices/${inv.id}/print`} title="PDF">
+                            <Link to={`${base}/${inv.id}/print`} title="PDF">
                               <Printer className="h-4 w-4" />
                             </Link>
                           </Button>

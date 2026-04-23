@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,7 +10,8 @@ import { format } from "date-fns";
 
 const ResellerInvoiceDetail = () => {
   const { id = "" } = useParams();
-
+  const location = useLocation();
+  const base = location.pathname.startsWith("/bw") ? "/bw/invoices" : "/reseller/invoices";
   const { data } = useQuery({
     queryKey: ["reseller-invoice-detail", id],
     enabled: !!id,
@@ -39,13 +40,13 @@ const ResellerInvoiceDetail = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Button asChild variant="ghost" size="sm">
-          <Link to="/reseller/invoices">
+          <Link to={base}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back to Invoices
           </Link>
         </Button>
         {inv && (
           <Button asChild>
-            <Link to={`/reseller/invoices/${inv.id}/print`}>
+            <Link to={`${base}/${inv.id}/print`}>
               <Printer className="h-4 w-4 mr-1" /> Print / PDF
             </Link>
           </Button>
