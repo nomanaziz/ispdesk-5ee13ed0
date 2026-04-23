@@ -294,7 +294,7 @@ export default function Items() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>প্রোভাইডার</Label>
+                <label className="text-sm font-medium">প্রোভাইডার</label>
                 <SearchableSelect
                   value={formData.provider_id || "none"}
                   onValueChange={(v) => setFormData({ ...formData, provider_id: v === "none" ? "" : v })}
