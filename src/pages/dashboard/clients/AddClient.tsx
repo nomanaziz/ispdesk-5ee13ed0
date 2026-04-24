@@ -224,6 +224,15 @@ export default function AddClient() {
   const employees = (isPopMode ? popMeta?.employees : employeesAdmin) || [];
   const billingStatuses = (isPopMode ? popMeta?.billingStatuses : billingStatusesAdmin) || [];
 
+  // Safety: clear default "Optical Fiber" if not present in active list
+  useEffect(() => {
+    if (!connectionTypes.length) return;
+    if (form.connection_type && !connectionTypes.some((ct: any) => ct.name === form.connection_type)) {
+      setField("connection_type", "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectionTypes]);
+
 
   // POP mode: auto-fill default server, lock protocol to PPPoE, auto-suggest client_id + default credentials
   useEffect(() => {
