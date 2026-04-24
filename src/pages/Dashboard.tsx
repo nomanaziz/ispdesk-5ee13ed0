@@ -86,6 +86,7 @@ function useStats() {
         smsBalance,
         billingActiveClients, freeClients, personalClients, vipClients,
         popManagersAll, popClientsAll, bwResellerUsers, bwResellerParents,
+        mikrotikDisabledClients, activeBillingDateClients, currentMonthBilling,
       ] = await Promise.all([
         supabase.from("clients").select("id", { count: "exact", head: true }),
         supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "active"),
@@ -150,6 +151,12 @@ function useStats() {
         supabase.from("bw_reseller_users").select("id, status, reseller_id"),
         // Distinct parent reseller_ids that have sub-users (BW resellers acting as their own resellers)
         supabase.from("bw_reseller_users").select("reseller_id"),
+        // MikroTik-disabled clients (router-side state)
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("mikrotik_status", "disabled"),
+        // Active clients whose billing date has already passed (in current month)
+        supabase.from("clients").select("id, billing_date, expire_date, is_vip, status").ilike("status", "active").eq("is_vip", false),
+        // Current-month billing rows for overdue calculation
+        supabase.from("billing").select("client_id, status, due, amount, paid").eq("month", currentMonth),
       ]);
 
       // Fetch client names for latest billing
@@ -261,6 +268,49 @@ function useStats() {
       const bwInactiveUsers = bwTotalUsers - bwActiveUsers;
       const bwParentResellers = new Set((bwResellerParents.data ?? []).map((r: any) => r.reseller_id).filter(Boolean)).size;
 
+      // ── Merged-card metrics ─────────────────────────────────────────
+      // Today day-of-month for billing_date comparison
+      const todayDay = now.getDate();
+      const todayDateStr = today; // YYYY-MM-DD
+
+      // Build map of current-month billing rows by client_id
+      const billingByClient = new Map<string, { paid: number; due: number; amount: number; status: string }>();
+      for (const b of currentMonthBilling.data ?? []) {
+        const paid = Number((b as any).paid || 0);
+        const amount = Number((b as any).amount || 0);
+        const due = (b as any).due != null ? Number((b as any).due) : Math.max(0, amount - paid);
+        billingByClient.set((b as any).client_id, { paid, amount, due, status: (b as any).status });
+      }
+
+      // Overdue billing: active, billing_date passed, not VIP, current-month due > 0 (or no bill row)
+      let overdueBillingCount = 0;
+      for (const c of activeBillingDateClients.data ?? []) {
+        if ((c as any).is_vip) continue;
+        const bd = Number((c as any).billing_date || 0);
+        if (!bd || bd > todayDay) continue;
+        // Skip if expire_date is in the future (still has time)
+        if ((c as any).expire_date && (c as any).expire_date > todayDateStr) continue;
+        const b = billingByClient.get((c as any).id);
+        if (b) {
+          if (b.paid > 0 && b.due <= 0) continue; // paid in full
+          overdueBillingCount++;
+        } else {
+          // No bill row this month yet — count as overdue
+          overdueBillingCount++;
+        }
+      }
+
+      // Blocked line: MikroTik disabled OR status=suspended
+      const mikrotikDisabledCount = mikrotikDisabledClients.count ?? 0;
+      const blockedLineCount = mikrotikDisabledCount + (clientsSuspended.count ?? 0);
+
+      // Inactive/Left: union of clients.status in (inactive, left)
+      const inactiveLeftCount = (clientsInactive.count ?? 0) + (clientsLeft.count ?? 0);
+
+      // Extension/Grace
+      const extensionGraceCount = (clientsExtended.count ?? 0) + (clientsGrace.count ?? 0);
+
+
       return {
         totalClients: clientsAll.count ?? 0,
         thisMonthJoin: thisMonthJoin.count ?? 0,
@@ -326,6 +376,12 @@ function useStats() {
         totalPopMgrs, bwPopMgrs, regularPopMgrs,
         popTotalClients, popActiveClients, popInactiveClients,
         bwTotalUsers, bwActiveUsers, bwInactiveUsers, bwParentResellers,
+        // ── Merged status metrics ──
+        overdueBillingCount,
+        blockedLineCount,
+        mikrotikDisabledCount,
+        inactiveLeftCount,
+        extensionGraceCount,
       };
     },
     refetchInterval: 120000,
@@ -446,17 +502,15 @@ const Dashboard = () => {
         ])}
       </SectionCard>
 
-      {/* Row 2: Status Breakdown */}
-      <SectionCard title="ক্লায়েন্ট স্ট্যাটাস" icon={Activity} tint="emerald" icons8="combo-chart">
+      {/* Row 2: Action-required Status (merged) */}
+      <SectionCard title="অ্যাকশন প্রয়োজন" icon={AlertTriangle} tint="emerald" icons8="combo-chart">
         {renderCards([
-          { title: "মোট এক্সপায়ার্ড", value: d?.totalExpired ?? 0, icon: CalendarX, colorIndex: 0, icons8: "high-priority" },
-          { title: "হোম এক্সপায়ার্ড", value: d?.homeExpired ?? 0, icon: CalendarX, colorIndex: 3, icons8: "high-priority" },
+          { title: "ওভারডিউ বিলিং", value: d?.overdueBillingCount ?? 0, icon: AlertTriangle, colorIndex: 0, icons8: "high-priority" },
+          { title: "বন্ধ লাইন", value: d?.blockedLineCount ?? 0, icon: Ban, colorIndex: 7, icons8: "cancel" },
+          { title: "মেয়াদোত্তীর্ণ", value: d?.totalExpired ?? 0, icon: CalendarX, colorIndex: 3, icons8: "high-priority" },
+          { title: "নিষ্ক্রিয়/বাতিল", value: d?.inactiveLeftCount ?? 0, icon: UserX, colorIndex: 6, icons8: "cancel" },
+          { title: "গ্রেস/এক্সটেনশন", value: d?.extensionGraceCount ?? 0, icon: Timer, colorIndex: 4, icons8: "alarm-clock" },
           { title: "পেন্ডিং ক্লায়েন্ট", value: d?.pendingClients ?? 0, icon: Clock, colorIndex: 1, icons8: "alarm-clock" },
-          { title: "বাতিল ক্লায়েন্ট", value: d?.leftClients ?? 0, icon: UserX, colorIndex: 0, icons8: "cancel" },
-          { title: "এক্সটেন্ডেড", value: d?.extendedClients ?? 0, icon: Timer, colorIndex: 4, icons8: "alarm-clock" },
-          { title: "গ্রেস ক্লায়েন্ট", value: d?.graceClients ?? 0, icon: Pause, colorIndex: 5, icons8: "alarm-clock" },
-          { title: "সাসপেন্ড", value: d?.suspendClients ?? 0, icon: Ban, colorIndex: 0, icons8: "cancel" },
-          { title: "নিষ্ক্রিয়", value: d?.inactiveClients ?? 0, icon: XCircle, colorIndex: 6, icons8: "cancel" },
         ])}
       </SectionCard>
 
