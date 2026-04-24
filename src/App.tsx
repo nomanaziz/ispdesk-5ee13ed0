@@ -502,7 +502,7 @@ const App = () => (
               {/* Client */}
               <Route path="/dashboard/clients/new-request" element={<P><ClientNewRequest /></P>} />
               <Route path="/dashboard/clients/add" element={<P><ClientAdd /></P>} />
-              <Route path="/dashboard/clients" element={<P><ClientList /></P>} />
+              <Route path="/dashboard/clients" element={<Navigate to="/dashboard/clients/home" replace />} />
               <Route path="/dashboard/clients/home" element={<P><HomeClients /></P>} />
               <Route path="/dashboard/clients/corporate" element={<P><CorporateClients /></P>} />
               <Route path="/dashboard/clients/left" element={<P><ClientLeft /></P>} />

@@ -1,68 +1,47 @@
+## Client Menu Cleanup
 
-## TopBar পরিষ্কার + "অ্যাপ ইনস্টল" option ঠিক করা
+### কী change হবে
+1. Sidebar-এর main group label **`হোম ক্লায়েন্ট` → `All Clients`** করা হবে.
+2. ওই group-এর ভেতর থেকে **`সকল ক্লায়েন্ট`** submenu remove করা হবে.
+3. Group-এর নিচে শুধু relevant submenu থাকবে:
+   - `হোম ক্লায়েন্ট`
+   - `কর্পোরেট ক্লায়েন্ট`
+   - বাকি client-related tools (new request, billing, left clients, scheduler ইত্যাদি) আগের মতো থাকবে
+4. Generic **`ক্লায়েন্ট তালিকা / সকল ক্লায়েন্ট দেখুন ও পরিচালনা করুন`** page আর main list হিসেবে ব্যবহার হবে না.
 
-### সমস্যা যা বুঝলাম
-**১. "Quick Add" button** — উপরের bar-এ "+ দ্রুত যোগ" নামের যে নীল button আছে (client দ্রুত যোগ করার dialog খোলে), সেটা remove করতে চান।
+### Routing behavior
+- Existing route `/dashboard/clients` remove না করে **redirect** করা হবে, যাতে পুরনো link বা internal navigation ভাঙে না.
+- Redirect target হবে **`/dashboard/clients/home`**.
+- ফলে কেউ old all-clients URL এ গেলেও সরাসরি Home Clients page-এ যাবে.
 
-**২. "App Install" option কোথায় বুঝতে পারছেন না** — কারণ এটা এখন ৩টা সমস্যায় পড়ছে:
-
-| কোথায় | কী হচ্ছে |
-|---|---|
-| User dropdown menu-তে "অ্যাপ ইনস্টল" item | `InstallAppButton` ভেতরে আছে যা **`canShow=false` হলে নিজেকে hide করে দেয়**। ফলে label "অ্যাপ ইনস্টল" থাকলেও পাশের button **invisible** — দেখে মনে হয় অপশনই নেই। |
-| Browser-এ install না হলে | Chrome `beforeinstallprompt` event fire না করা পর্যন্ত button দেখাবে না |
-| iOS-এ | শুধু Safari-তে দেখা যায়, অন্য browser-এ নয় |
-
-মূলত: button আছে কিন্তু conditional, তাই **আপনি দেখতেই পাচ্ছেন না**।
-
-### Plan
-
-**A) Quick Add সম্পূর্ণ remove (`src/components/TopBar.tsx`)**
-- `Plus` icon import সরাবো
-- "Quick Add" `<Button>` block (line ৮৩–৯২) মুছে দেবো
-- `quickAddOpen` state এবং `<QuickCreateClientDialog>` render সরিয়ে দেবো
-- `QuickCreateClientDialog` import সরিয়ে দেবো (component file রেখে দেবো — অন্য জায়গায় import হলে ভাঙবে না, পরে cleanup করা যাবে)
-
-**B) "অ্যাপ ইনস্টল" option-কে সবসময় কাজ করার মতো করে redesign**
-
-User dropdown-এ এখন যে complicated row আছে সেটা সরল করবো — একটা **স্পষ্ট menu item** বসাবো যেটা **সবসময় দেখা যাবে**:
-
-```
-👤 প্রোফাইল
-📝 আমার নোট                          [icon]
-─────────
-🌐 ভাষা                              বাং >
-🎨 থিম মোড                          [light/dark toggle]
-🎨 থিম কাস্টমাইজার
-⚙️  কুইক সেটিংস
-─────────
-🌍 ওয়েবসাইটে যান
-📱 অ্যাপ ইনস্টল করুন           ← সবসময় visible (smart click)
-─────────
-🚪 সাইন আউট
-```
-
-**আচরণ — `Install App` menu item click করলে:**
-- যদি browser native prompt support করে (Chrome/Edge desktop+Android) → সরাসরি native install dialog
-- যদি iOS Safari হয় → "Share → Add to Home Screen" instruction dialog
-- যদি already installed (standalone mode) → একটা friendly toast: "✅ অ্যাপ আগে থেকেই ইনস্টল করা আছে"
-- যদি browser support না করে → instruction toast: "এই browser-এ install support করে না — Chrome/Edge ব্যবহার করুন"
-
-এতে user-এর কাছে মনে হবে option **always available**, behind-the-scene logic browser বুঝে নেবে।
-
-**Implementation:**
-- `useInstallPrompt` hook-এ `installed` state already export হয় — সেটা ব্যবহার করবো
-- TopBar-এ `InstallAppButton` import-এর পরিবর্তে সরাসরি hook + একটা simple `DropdownMenuItem` ব্যবহার করবো যাতে hide না হয়
-- iOS instruction dialog আগের `InstallAppButton`-এ যা ছিল সেটা একটা ছোট self-contained piece হিসেবে TopBar-এ inline করবো (অথবা `InstallAppButton` কে refactor করে "always render"-এর support যোগ করবো)
-
-### Files যা change হবে
+### যে file-গুলো change হবে
 | File | কাজ |
 |---|---|
-| `src/components/TopBar.tsx` | Quick Add button + state + dialog + import remove। User menu-তে "অ্যাপ ইনস্টল করুন" সবসময় visible করা, smart handler সহ |
-| `src/components/InstallAppButton.tsx` | নতুন optional prop `alwaysRender` যোগ — `canShow=false`-এ null না দিয়ে disabled-state বা friendly fallback toast দেবে |
+| `src/components/AppSidebar.tsx` | Main menu label `All Clients` করা, `সকল ক্লায়েন্ট` submenu remove করা, English translation update করা |
+| `src/App.tsx` | `/dashboard/clients` route-কে `Navigate` redirect করা `/dashboard/clients/home` এ |
 
-কোনো DB/dependency change নেই।
+### Technical details
+- `HomeClients.tsx` already uses the Home-only filtered page, so এটাকে নতুন generic page বানানোর দরকার নেই.
+- `CorporateClients.tsx` untouched থাকবে.
+- `AddClient.tsx` বা অন্য কোনো place থেকে `/dashboard/clients` এ navigate হলে redirect-এর কারণে safe থাকবে.
+- User-facing generic header text `ক্লায়েন্ট তালিকা` / `সকল ক্লায়েন্ট দেখুন ও পরিচালনা করুন` effectively disappear করবে, কারণ ওই standalone all-clients page আর open হবে না.
 
-### Outcome
-- ✅ TopBar থেকে নীল "+ দ্রুত যোগ" button সম্পূর্ণ চলে যাবে
-- ✅ User menu (ডান দিকের avatar) → **"📱 অ্যাপ ইনস্টল করুন"** — সবসময় দেখা যাবে, click করলে appropriate behavior (native prompt / iOS instructions / friendly message)
-- ✅ Mobile portal/reseller shell-এর icon variants যেগুলো এখন আছে সেগুলোও কাজ করবে (যদি প্রয়োজন হয়, ওগুলোকেও `alwaysRender` দিয়ে visible রাখা যায় — কিন্তু আপাতত শুধু TopBar-ই scope)
+### Result
+Menu structure হবে এভাবে:
+
+```text
+All Clients
+  - নতুন রিকোয়েস্ট
+  - হোম ক্লায়েন্ট
+  - কর্পোরেট ক্লায়েন্ট
+  - বিলিং তালিকা
+  - দৈনিক বিল কালেকশন
+  - ইনস্টলেশন ফি
+  - চলে যাওয়া ক্লায়েন্ট
+  - শিডিউলার
+  - পরিবর্তন রিকোয়েস্ট
+  - পোর্টাল ম্যানেজ
+  - আপডেট রিকোয়েস্ট
+```
+
+`সকল ক্লায়েন্ট` submenu থাকবে না, আর generic all-client list page আর দেখাবে না.
