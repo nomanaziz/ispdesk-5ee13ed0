@@ -393,6 +393,20 @@ import BwPurchaseOrders from "@/pages/bw-customer/BwPurchaseOrders";
 import BwTickets from "@/pages/bw-customer/BwTickets";
 import BwSettings from "@/pages/bw-customer/BwSettings";
 
+// BW Independent Panel (Layer 2 — only when panel subscription is active)
+import BwPanelProtectedRoute from "@/components/BwPanelProtectedRoute";
+import BwPanelLayout from "@/components/BwPanelLayout";
+import BwPanelDashboard from "@/pages/bw-panel/BwPanelDashboard";
+import {
+  BwPanelMikrotik, BwPanelClients, BwPanelClientAdd, BwPanelBulkImport,
+  BwPanelBilling, BwPanelDailyCollection, BwPanelTickets, BwPanelOnlineMonitoring,
+  BwPanelSmsTemplates, BwPanelSmsSend, BwPanelSmsGateway,
+  BwPanelEmployees, BwPanelAddEmployee,
+  BwPanelIncome, BwPanelExpense, BwPanelCashBook,
+  BwPanelBillCollection, BwPanelReportCustomer, BwPanelReportFinancial,
+  BwPanelSettings,
+} from "@/pages/bw-panel/wrappers";
+
 // Redirect helper: any /reseller/<rest> → /pop-admin/<rest>
 const LegacyResellerRedirect = () => {
   const path = window.location.pathname.replace(/^\/reseller/, "/pop-admin");
@@ -757,6 +771,30 @@ const App = () => (
               <Route path="/bw/purchase-orders" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwPurchaseOrders /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/tickets" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwTickets /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/settings" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwSettings /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
+
+              {/* BW Independent Panel (Layer 2) — only with active panel subscription */}
+              <Route path="/bw-panel" element={<Navigate to="/bw-panel/dashboard" replace />} />
+              <Route path="/bw-panel/dashboard" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelDashboard /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/mikrotik" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelMikrotik /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/clients" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelClients /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/clients/add" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelClientAdd /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/clients/bulk" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelBulkImport /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/billing" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelBilling /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/billing/daily" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelDailyCollection /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/monitoring/online" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelOnlineMonitoring /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/tickets" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelTickets /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/sms/templates" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelSmsTemplates /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/sms/send" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelSmsSend /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/sms/gateway" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelSmsGateway /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/employees" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelEmployees /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/employees/add" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelAddEmployee /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/accounting/income" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelIncome /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/accounting/expense" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelExpense /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/accounting/cashbook" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelCashBook /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/reports/bill-collection" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelBillCollection /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/reports/customer" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelReportCustomer /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/reports/financial" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelReportFinancial /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw-panel/settings" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelSettings /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
 
               {/* POP Admin Portal */}
               <Route path="/pop-admin" element={<Navigate to="/pop-admin/dashboard" replace />} />

@@ -106,9 +106,9 @@ export default function BwCustomerLayout({ children }: { children: ReactNode }) 
             <Button
               size="sm"
               className="w-full gap-1.5 bg-emerald-600 hover:bg-emerald-700"
-              onClick={() => navigate("/pop-admin/dashboard")}
+              onClick={() => navigate("/bw-panel/dashboard")}
             >
-              <Rocket className="h-3.5 w-3.5" /> {t("POP Admin খুলুন", "Open POP Admin")}
+              <Rocket className="h-3.5 w-3.5" /> {t("আমার প্যানেল খুলুন", "Open My Panel")}
             </Button>
           </div>
         ) : (
