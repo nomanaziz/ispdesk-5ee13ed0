@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import {
   Users, Banknote, AlertTriangle, ChevronLeft, ChevronRight,
-  UserCheck, Clock, TrendingUp, Receipt
+  UserCheck, Clock, TrendingUp, Receipt, Crown
 } from "lucide-react";
 import ClientActionButtons from "@/components/client-actions/ClientActionButtons";
 import BillingFilterPanel, { BillingFilters, defaultFilters } from "@/components/billing/BillingFilterPanel";
@@ -432,7 +432,17 @@ export default function BillingList() {
                         </span>
                       </TableCell>
                       <TableCell className="text-xs">{c.username || c.remote_address || "-"}</TableCell>
-                      <TableCell className="font-medium">{c.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-1">
+                          {c.is_vip && <Crown className="h-3 w-3 text-purple-500" />}
+                          <span>{c.name}</span>
+                          {c.is_vip && (
+                            <Badge variant="outline" className="ml-1 h-4 px-1 text-[9px] bg-purple-500/10 text-purple-600 border-purple-500/30">
+                              VIP
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>{c.contact || "-"}</TableCell>
                       <TableCell>{c.zone?.name || "-"}</TableCell>
                       <TableCell>{c.package?.name || "-"}</TableCell>
