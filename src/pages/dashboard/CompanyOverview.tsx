@@ -53,6 +53,7 @@ export default function CompanyOverview() {
         billPaid, billPending,
         todayCol, monthCol,
         onlineClients,
+        bwSalePops,
       ] = await Promise.all([
         supabase.from("clients").select("id", { count: "exact", head: true }),
         supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "active"),
@@ -65,6 +66,7 @@ export default function CompanyOverview() {
         supabase.from("bill_collections").select("amount").gte("created_at", todayStart.toISOString()),
         supabase.from("bill_collections").select("amount").gte("created_at", monthStart.toISOString()),
         supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "active"),
+        supabase.from("bw_sale_customers").select("id", { count: "exact", head: true }),
       ]);
 
       const sumAmt = (rows: any) => (rows.data || []).reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
@@ -99,6 +101,7 @@ export default function CompanyOverview() {
         todayCollection: sumAmt(todayCol),
         monthCollection: sumAmt(monthCol),
         onlineClients: (onlineClients as any).count || 0,
+        bwSalePops: bwSalePops.count || 0,
         topBw,
       };
     },
@@ -152,7 +155,7 @@ export default function CompanyOverview() {
           <StatCard label="POP ম্যানেজার" value={stats?.popManagers ?? 0} icon={Radio} to="/dashboard/branches/managers" />
           <StatCard label="BW রিসেলার সাব-ইউজার" value={stats?.bwResellerUsers ?? 0} icon={Network} />
           <StatCard label="এই মাসে পরিশোধিত" value={stats?.billPaid ?? 0} icon={Receipt} accent="primary" />
-          <StatCard label="BW POP" value={stats?.topBw.length ?? 0} icon={Wifi} to="/dashboard/bw-sale/pop" />
+          <StatCard label="BW POP" value={stats?.bwSalePops ?? 0} icon={Wifi} to="/dashboard/bw-sale/pop" />
         </div>
       </div>
 
