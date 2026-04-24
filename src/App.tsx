@@ -545,6 +545,10 @@ const App = () => (
               <Route path="/dashboard/hr/attendance-rules" element={<P><HrAttendanceRules /></P>} />
               <Route path="/dashboard/hr/settings" element={<P><HrSettings /></P>} />
 
+              {/* Access Management */}
+              <Route path="/dashboard/access/app-users" element={<P><AppUsers /></P>} />
+              <Route path="/dashboard/access/roles" element={<P><AppRoles /></P>} />
+
               {/* OLT */}
               <Route path="/dashboard/olt" element={<P><OltDevices /></P>} />
               <Route path="/dashboard/olt/power-dashboard" element={<P><PowerDashboard /></P>} />
