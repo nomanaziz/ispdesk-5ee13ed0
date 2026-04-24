@@ -634,6 +634,51 @@ export type Database = {
           },
         ]
       }
+      billing_enforcement_runs: {
+        Row: {
+          created_at: string
+          details: Json
+          id: string
+          message: string | null
+          run_at: string
+          total_checked: number
+          total_disabled: number
+          total_failed: number
+          total_overdue: number
+          total_skipped_no_bill: number
+          total_skipped_paid: number
+          triggered_by: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          id?: string
+          message?: string | null
+          run_at?: string
+          total_checked?: number
+          total_disabled?: number
+          total_failed?: number
+          total_overdue?: number
+          total_skipped_no_bill?: number
+          total_skipped_paid?: number
+          triggered_by?: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          id?: string
+          message?: string | null
+          run_at?: string
+          total_checked?: number
+          total_disabled?: number
+          total_failed?: number
+          total_overdue?: number
+          total_skipped_no_bill?: number
+          total_skipped_paid?: number
+          triggered_by?: string
+        }
+        Relationships: []
+      }
       billing_history: {
         Row: {
           action: string
