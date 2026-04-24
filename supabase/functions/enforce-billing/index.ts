@@ -120,12 +120,42 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
 
+  // Counters for audit log
+  let totalChecked = 0;
+  let totalOverdue = 0;
+  let totalDisabled = 0;
+  let totalSkippedPaid = 0;
+  let totalSkippedNoBill = 0;
+  let totalFailed = 0;
+  const details: any[] = [];
+  let triggeredBy = "cron";
+  try {
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    if (body?.triggered_by) triggeredBy = String(body.triggered_by);
+  } catch { /* ignore */ }
+
+  const writeAudit = async (message: string) => {
+    try {
+      await supabase.from("billing_enforcement_runs").insert({
+        triggered_by: triggeredBy,
+        total_checked: totalChecked,
+        total_overdue: totalOverdue,
+        total_disabled: totalDisabled,
+        total_skipped_paid: totalSkippedPaid,
+        total_skipped_no_bill: totalSkippedNoBill,
+        total_failed: totalFailed,
+        message,
+        details,
+      });
+    } catch (_e) { /* best-effort */ }
+  };
+
+  try {
     // 1. Read billing enforcement settings
     const { data: settingsRow } = await supabase
       .from("system_settings")
@@ -138,17 +168,21 @@ Deno.serve(async (req) => {
       cutoff_time?: string;
       grace_days?: number;
       enforcement_day?: "same" | "next";
+      disable_when_no_bill?: boolean;
     } | null;
 
     if (!settings?.enabled) {
-      return new Response(
-        JSON.stringify({ message: "Billing enforcement disabled", processed: 0 }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const msg = "Billing enforcement disabled";
+      await writeAudit(msg);
+      return new Response(JSON.stringify({ message: msg }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const cutoffTime = settings.cutoff_time ?? "00:00";
     const enforcementDay = settings.enforcement_day ?? "same";
+    const graceDays = Math.max(0, Number(settings.grace_days ?? 0));
+    const disableWhenNoBill = settings.disable_when_no_bill !== false; // default true (preserve old behavior)
 
     // 2. Calculate current time in Dhaka (UTC+6)
     const now = new Date();
@@ -160,95 +194,133 @@ Deno.serve(async (req) => {
     const dhakaHour = dhakaTime.getUTCHours();
     const dhakaMin = dhakaTime.getUTCMinutes();
 
-    // Check cutoff time
     const [cutoffHour, cutoffMin] = cutoffTime.split(":").map(Number);
     const currentMinutes = dhakaHour * 60 + dhakaMin;
     const cutoffMinutes = cutoffHour * 60 + cutoffMin;
 
     if (currentMinutes < cutoffMinutes) {
-      return new Response(
-        JSON.stringify({ message: "Cutoff time not reached yet", processed: 0 }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const msg = `Cutoff time not reached yet (now ${dhakaHour}:${String(dhakaMin).padStart(2,"0")}, cutoff ${cutoffTime})`;
+      await writeAudit(msg);
+      return new Response(JSON.stringify({ message: msg }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // 3. Find clients whose billing_date has passed and have due
-    // If enforcement_day = "same", check billing_date <= today
-    // If enforcement_day = "next", check billing_date < today (i.e. billing_date was yesterday or earlier)
-    const checkDate = enforcementDay === "next" ? dhakaDate - 1 : dhakaDate;
+    // billing_date threshold: account for "next-day" enforcement and grace days
+    const baseOffset = enforcementDay === "next" ? 1 : 0;
+    const checkDate = dhakaDate - baseOffset - graceDays;
 
-    // Current month string for billing check
+    const todayStr = `${dhakaYear}-${String(dhakaMonth).padStart(2, "0")}-${String(dhakaDate).padStart(2, "0")}`;
     const currentMonthStr = `${dhakaYear}-${String(dhakaMonth).padStart(2, "0")}`;
 
-    // Get active, non-VIP clients whose billing_date has passed
-    const { data: expiredClients, error: clientsErr } = await supabase
+    // 3. Fetch active candidates (case-insensitive on status)
+    const { data: candidates, error: clientsErr } = await supabase
       .from("clients")
-      .select("id, username, mikrotik_id, mikrotik_status, billing_date, name, client_id, is_vip, expire_date, branch_id")
-      .eq("status", "active")
+      .select("id, username, mikrotik_id, mikrotik_status, billing_date, name, client_id, is_vip, expire_date, branch_id, status")
       .eq("is_vip", false)
       .lte("billing_date", checkDate)
       .neq("mikrotik_status", "disabled");
 
     if (clientsErr) throw new Error(`Failed to query clients: ${clientsErr.message}`);
 
-    if (!expiredClients || expiredClients.length === 0) {
-      return new Response(
-        JSON.stringify({ message: "No expired clients to enforce", processed: 0 }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // case-insensitive status filter
+    const expiredClients = (candidates || []).filter(c => String(c.status || "").toLowerCase() === "active");
+    totalChecked = expiredClients.length;
+
+    if (expiredClients.length === 0) {
+      const msg = "No active clients past billing cutoff";
+      await writeAudit(msg);
+      return new Response(JSON.stringify({ message: msg, total_checked: 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // 4. Check billing status for current month — only disable if not paid
+    // 4. Check billing rows for current month
     const clientIds = expiredClients.map(c => c.id);
     const { data: billingData } = await supabase
       .from("billing")
-      .select("client_id, status, due")
+      .select("client_id, status, due, amount, paid")
       .eq("month", currentMonthStr)
       .in("client_id", clientIds);
 
-    const paidClients = new Set<string>();
+    const billingByClient = new Map<string, any>();
     if (billingData) {
-      for (const b of billingData) {
-        if (b.status === "paid" || Number(b.due || 0) <= 0) {
-          paidClients.add(b.client_id);
-        }
-      }
+      for (const b of billingData) billingByClient.set(b.client_id, b);
     }
 
-    // Load POP info per branch to apply postpaid auto_disable_day rule
+    // POP info for postpaid rules
     const branchIds = Array.from(new Set(expiredClients.map(c => c.branch_id).filter(Boolean)));
-    const { data: pops } = await supabase
-      .from("branch_managers")
-      .select("id, branch_id, pop_type, auto_disable_day, balance, allow_negative_balance")
-      .in("branch_id", branchIds);
+    const { data: pops } = branchIds.length
+      ? await supabase
+          .from("branch_managers")
+          .select("id, branch_id, pop_type, auto_disable_day, balance, allow_negative_balance")
+          .in("branch_id", branchIds)
+      : { data: [] as any[] };
     const popByBranch = new Map((pops || []).map((p: any) => [p.branch_id, p]));
 
-    // Also check expire_date — if expire_date is in the future, skip
-    const clientsToDisable = expiredClients.filter(c => {
-      if (paidClients.has(c.id)) return false;
-      if (c.expire_date) {
-        const todayStr = `${dhakaYear}-${String(dhakaMonth).padStart(2, "0")}-${String(dhakaDate).padStart(2, "0")}`;
-        if (c.expire_date > todayStr) return false;
+    const clientsToDisable: typeof expiredClients = [];
+    for (const c of expiredClients) {
+      const b = billingByClient.get(c.id);
+      const paid = Number(b?.paid || 0);
+      const amount = Number(b?.amount || 0);
+      const due = b?.due != null ? Number(b.due) : Math.max(0, amount - paid);
+
+      // Skip if paid (due <= 0 with payment)
+      if (b && paid > 0 && due <= 0) {
+        totalSkippedPaid++;
+        details.push({ client_id: c.client_id, name: c.name, action: "skipped_paid" });
+        continue;
       }
-      // Postpaid POP: only disable when today >= auto_disable_day AND POP balance < 0 (overdue)
+
+      // No billing row for this month
+      if (!b) {
+        if (!disableWhenNoBill) {
+          totalSkippedNoBill++;
+          details.push({ client_id: c.client_id, name: c.name, action: "skipped_no_bill" });
+          continue;
+        }
+        // fall through — treat as overdue
+      }
+
+      // Skip if expire_date is in the future
+      if (c.expire_date && c.expire_date > todayStr) {
+        totalSkippedPaid++;
+        details.push({ client_id: c.client_id, name: c.name, action: "skipped_future_expire" });
+        continue;
+      }
+
+      // Postpaid POP rule
       const pop: any = c.branch_id ? popByBranch.get(c.branch_id) : null;
       if (pop && pop.pop_type === "postpaid") {
         const disableDay = Number(pop.auto_disable_day || 10);
-        if (dhakaDate < disableDay) return false;
-        // If POP balance is non-negative, payments are still being made — skip
-        if (Number(pop.balance || 0) >= 0) return false;
+        if (dhakaDate < disableDay) {
+          totalSkippedPaid++;
+          details.push({ client_id: c.client_id, name: c.name, action: "skipped_postpaid_window" });
+          continue;
+        }
+        if (Number(pop.balance || 0) >= 0) {
+          totalSkippedPaid++;
+          details.push({ client_id: c.client_id, name: c.name, action: "skipped_postpaid_balance_ok" });
+          continue;
+        }
       }
-      return true;
-    });
 
-    if (clientsToDisable.length === 0) {
-      return new Response(
-        JSON.stringify({ message: "All clients are paid or not yet expired", processed: 0, checked: expiredClients.length }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      totalOverdue++;
+      clientsToDisable.push(c);
     }
 
-    // 5. Get MikroTik servers
+    if (clientsToDisable.length === 0) {
+      const msg = `Checked ${totalChecked}, none required disabling`;
+      await writeAudit(msg);
+      return new Response(JSON.stringify({
+        message: msg,
+        total_checked: totalChecked,
+        total_skipped_paid: totalSkippedPaid,
+        total_skipped_no_bill: totalSkippedNoBill,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 5. MikroTik servers
     const { data: servers } = await supabase
       .from("mikrotik_devices")
       .select("id, name, ip_address, api_port, username, password_encrypted, enabled")
@@ -256,30 +328,35 @@ Deno.serve(async (req) => {
 
     const serverMap = new Map((servers || []).map((s: any) => [s.id, s]));
 
-    // Group clients by mikrotik_id
+    // Group by mikrotik_id
     const clientsByServer = new Map<string, typeof clientsToDisable>();
+    const orphanClients: typeof clientsToDisable = [];
     for (const client of clientsToDisable) {
-      if (!client.mikrotik_id) continue;
+      if (!client.mikrotik_id || !serverMap.has(client.mikrotik_id)) {
+        orphanClients.push(client);
+        continue;
+      }
       const list = clientsByServer.get(client.mikrotik_id) || [];
       list.push(client);
       clientsByServer.set(client.mikrotik_id, list);
     }
 
-    let processed = 0;
-    const results: any[] = [];
+    // Orphan: no MikroTik device — mark in DB only
+    for (const c of orphanClients) {
+      await supabase.from("clients").update({ mikrotik_status: "disabled" }).eq("id", c.id);
+      totalDisabled++;
+      details.push({ client_id: c.client_id, name: c.name, action: "disabled_db_only", reason: "no mikrotik device" });
+    }
 
     // Process each server
     for (const [serverId, clients] of clientsByServer) {
-      const server = serverMap.get(serverId);
-      if (!server) continue;
-
+      const server: any = serverMap.get(serverId);
       let conn: Deno.TcpConn | null = null;
       try {
         conn = await Deno.connect({
           hostname: server.ip_address,
           port: server.api_port || 8728,
         });
-
         await mikrotikLogin(conn, server.username || "admin", server.password_encrypted || "");
 
         for (const client of clients) {
@@ -300,58 +377,67 @@ Deno.serve(async (req) => {
                   "?name": client.username || "",
                 });
                 for (const session of activeSessions) {
-                  await mikrotikCommand(conn, "/ppp/active/remove", {
-                    ".id": session[".id"],
-                  });
+                  await mikrotikCommand(conn, "/ppp/active/remove", { ".id": session[".id"] });
                 }
               } catch { /* best-effort */ }
+
+              await supabase.from("clients").update({ mikrotik_status: "disabled" }).eq("id", client.id);
+              totalDisabled++;
+              details.push({ client_id: client.client_id, name: client.name, action: "disabled", server: server.name });
+            } else {
+              // PPP secret not found — DO NOT mark disabled blindly
+              totalFailed++;
+              details.push({
+                client_id: client.client_id,
+                name: client.name,
+                action: "failed",
+                error: "PPP secret not found on MikroTik",
+                server: server.name,
+              });
             }
           } catch (err: any) {
-            results.push({
+            totalFailed++;
+            details.push({
               client_id: client.client_id,
               name: client.name,
-              error: `MikroTik API error: ${err.message}`,
+              action: "failed",
+              error: `MikroTik API: ${err.message}`,
+              server: server.name,
             });
           }
-
-          await supabase
-            .from("clients")
-            .update({ mikrotik_status: "disabled" })
-            .eq("id", client.id);
-
-          processed++;
-          results.push({
-            client_id: client.client_id,
-            name: client.name,
-            status: "disabled",
-          });
         }
       } catch (err: any) {
+        // Whole-server failure — mark all as failed; do NOT blindly set disabled
         for (const client of clients) {
-          results.push({
+          totalFailed++;
+          details.push({
             client_id: client.client_id,
             name: client.name,
+            action: "failed",
             error: `Server connection error: ${err.message}`,
+            server: server?.name,
           });
-          await supabase.from("clients").update({ mikrotik_status: "disabled" }).eq("id", client.id);
-          processed++;
         }
       } finally {
         try { conn?.close(); } catch { /* ignore */ }
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        message: "Billing enforcement complete",
-        processed,
-        total_checked: expiredClients.length,
-        total_to_disable: clientsToDisable.length,
-        results,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const msg = `Run complete — disabled ${totalDisabled}, failed ${totalFailed}, skipped ${totalSkippedPaid + totalSkippedNoBill}`;
+    await writeAudit(msg);
+
+    return new Response(JSON.stringify({
+      message: msg,
+      total_checked: totalChecked,
+      total_overdue: totalOverdue,
+      total_disabled: totalDisabled,
+      total_skipped_paid: totalSkippedPaid,
+      total_skipped_no_bill: totalSkippedNoBill,
+      total_failed: totalFailed,
+      details,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err: any) {
+    await writeAudit(`Error: ${err.message}`);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
