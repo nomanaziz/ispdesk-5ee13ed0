@@ -1,121 +1,85 @@
+# Accounting Upgrade Plan
 
-# Assets Module — Full Implementation Plan
-
-`AssetList` ও `Destroyed Items` দুটো page এখন placeholder। আমি industry-standard Asset Management বানাবো, এবং প্রতিটি action automatic-ভাবে accounting (Cash Book / Expense) hit করবে।
-
----
-
-## ১. Asset List Page (`/dashboard/assets`)
-
-ISP/Office-এর সব physical asset এখানে register হবে — Router, Switch, OLT, Generator, AC, Computer, Furniture, Vehicle, Tools ইত্যাদি।
-
-### Features
-- **Stat cards**: মোট Asset সংখ্যা, মোট Asset মূল্য (৳), Active, Assigned, Destroyed
-- **Add Asset dialog** এ থাকবে:
-  - Name, Code (auto/manual), Category (dropdown: Network Equipment, IT Equipment, Furniture, Vehicle, Tools, Generator, AC, Other)
-  - Purchase Date, Purchase Price (৳)
-  - Location, Assigned To (employee dropdown — optional)
-  - Status: Active / In Repair / Idle
-  - **Payment Method** (Cash / Bank / bKash / Nagad / Card) — accounting এর জন্য
-  - Notes
-- **Filter / Search**: name, code, category, status
-- **Edit / Delete** action
-- **Assign / Unassign** quick action (আগে থেকেই `asset_assignments` table আছে, ভবিষ্যতে এটা integrate করা যাবে — এখন basic assigned_to দিয়েই কাজ চালাবো)
-
-### Auto Accounting Hit (নতুন asset add করলে)
-Purchase Price > 0 হলে automatically `expense_entries` table-এ একটি row insert হবে:
-- `category`: "Equipment"
-- `description`: "Asset Purchase: <name>"
-- `amount`: purchase_price
-- `payment_method`: form থেকে
-- `reference`: `asset:<asset_id>`
-- `expense_date`: purchase_date
-
-→ এর ফলে **Cash Book** automatically hit হবে (কারণ `CashBook.tsx` আগে থেকেই `expense_entries` থেকে data টানে), এবং Cash balance কমে যাবে। যদি Cash না থাকে, balance minus-এ যাবে — যেটা আপনি চেয়েছেন।
-
-Asset delete করলে corresponding expense entry-ও delete হবে (reference দিয়ে match করে)।
+তিনটা আলাদা কাজ একসাথে করব — সব ই accounting module-কে production-ready করার জন্য।
 
 ---
 
-## ২. Destroyed Items Page (`/dashboard/assets/destroyed`)
+## ১. Accounting Dashboard আরও Informative ও Interactive
 
-কোনো ONU, Router, Generator, Cable নষ্ট হলে এখানে log হবে — full write-off হিসেবে।
+বর্তমান `AccountingDashboard.tsx`-এ ৮টা stat card + ২টা chart আছে। Galaxy Net-এর reference image-এর মতো full-feature করব।
 
-### Features
-- **Stat cards**: মোট Destroyed item, মোট ক্ষতি মূল্য (৳), এই মাসে destroyed
-- **Add Destroyed Item dialog**:
-  - **Source toggle**:
-    - **From existing Asset** → existing Asset dropdown (filtered: status ≠ destroyed) → পরিচয় auto-fill হবে
-    - **Custom item** (যেমন ONU/cable যেটা assets table-এ নেই) → manual: item_name, estimated value
-  - Destroy Date, Reason (text), Loss Amount (৳)
-- **Table**: তারিখ, item, কারণ, ক্ষতি মূল্য, কে destroy করেছে, action
-- Edit / Delete
+### নতুন Features
+- **Date range filter** — preset (আজ / এই সপ্তাহ / এই মাস / গত মাস / কাস্টম range picker)। সব stats এই range অনুযায়ী filter হবে।
+- **Top KPI strip (৩টা বড় card)** — মোট আয়, মোট ব্যয়, **মোট লাভ** (income − expense), color-coded।
+- **Receivables/Payables row** — Expected Payments from Customers (unpaid invoice total), Expected Payments to Vendors (unpaid PO total), Total Upcoming।
+- **Cash position row** — Cash on Hand, Cash, bKash, Bank, Nagad ইত্যাদি প্রত্যেক payment_method ভিত্তিক balance (income − expense per method)।
+- **Income by Category** — horizontal bar chart (Recharts), category-wise total with labels।
+- **Expense by Category** — horizontal bar chart, একই pattern।
+- **Latest Incomes table** — date / category / amount, last ১০টা।
+- **Latest Expenses table** — date / category / amount, last ১০টা।
+- **Existing pie + monthly bar chart** — রাখব নিচে।
 
-### Auto Accounting Hit (item destroy করলে)
-1. যদি existing asset হয় → `assets.status = 'destroyed'` set হবে
-2. Loss Amount > 0 হলে `expense_entries`-এ row insert:
-   - `category`: "Loss / Write-off"
-   - `description`: "Destroyed: <item_name> — <reason>"
-   - `amount`: loss_amount
-   - `payment_method`: "Adjustment" (cash flow নেই, just book loss)
-   - `reference`: `destroyed:<destroyed_id>`
-
-→ এতে P&L-এ loss reflect হবে কিন্তু cash book-এ "Adjustment" হিসেবে show করবে (কারণ physical টাকা যায়নি, শুধু book value কমেছে)।
-
-Destroyed entry delete করলে: expense reverse হবে এবং (যদি asset হয়) status আবার `active` হবে।
+### Technical
+- File: `src/pages/dashboard/accounting/AccountingDashboard.tsx` rewrite।
+- Data source: `income_entries`, `expense_entries`, `client_invoices` (unpaid), `purchase_orders` (unpaid)। সব React Query।
+- Receivables = `client_invoices` থেকে `total - paid_amount` যেগুলো `status != 'paid'`।
+- Payables = `purchase_orders` যেগুলো `payment_status != 'paid'`।
+- Cash by method = `income_entries.payment_method` group sum minus `expense_entries.payment_method` group sum।
+- Bangla labels রাখব সব জায়গায়।
 
 ---
 
-## ৩. Technical Details
+## ২. TopBar-এ Admin-only "Accounting Quick" Shortcut
 
-### Files to create/edit
-- ✏️ `src/pages/dashboard/assets/AssetList.tsx` — full rewrite (placeholder → full page)
-- ✏️ `src/pages/dashboard/assets/Destroyed.tsx` — full rewrite
+`src/components/TopBar.tsx`-এ Online Monitoring icon-এর পাশে একটা **Wallet** icon button যোগ করব।
 
-### Database
-**কোনো schema migration লাগবে না** — সব table আগে থেকেই আছে:
-- `assets` (id, name, code, category, purchase_date, purchase_price, location, assigned_to, status)
-- `destroyed_items` (id, asset_id, item_name, destroy_date, reason, destroyed_by)
-- `expense_entries` (অলরেডি accounting এর জন্য use হচ্ছে)
+- শুধু `isAdmin` হলে render হবে (existing `useAuth().isAdmin` pattern follow)।
+- Click → `/dashboard/accounting`।
+- Tooltip: "অ্যাকাউন্টিং ড্যাশবোর্ড / Accounting Dashboard"।
+- Employee/Operator role-এ visible হবে না, কিন্তু যদি কারও কাছে accounting permission আছে তবুও `isAdmin` check হবে — কারণ user বলেছেন "শুধু admin"।
 
-RLS policies already enabled — admin/super_admin manage করতে পারবে, authenticated users view করতে পারবে।
+---
 
-**একটি ছোট addition দরকার** `destroyed_items` table-এ: `loss_amount numeric DEFAULT 0` column — যাতে ক্ষতি মূল্য store করা যায়। এটার জন্য একটা migration লাগবে।
+## ৩. Chart of Accounts — Galaxy Net Style Seed + Grouped UI
 
-### Pattern
-`Expense.tsx`-এর exact same pattern follow করব — React Query, shadcn Dialog, Table, Toast, Bangla labels।
+বর্তমানে `chart_of_accounts` table empty। ৬টা reference image বিশ্লেষণ করে standard ISP chart seed করব।
 
-### Accounting flow (summary)
+### Database Migration
+1. `chart_of_accounts`-এ একটা `subtype` column add করব (text, nullable) — যেমন "Cash and Bank", "Operating Expense", "Discount", "Payroll Expense" ইত্যাদি grouping-এর জন্য।
+2. Seed insert করব ~৮৬টা account, image অনুযায়ী:
+   - **Asset (24)**: Cash and Bank (১৭) — aamarPay, Bank, bKash, Cash, Cash on Hand, Foster Payments, MCash, Nagad, Other, PhonePe, Razorpay, Rocket, SSL Commerz, Stripe, SureCash, UCash, Walletmix; Expected Payments from Customers (৬); Inventory (১) — Stock।
+   - **Expense (40)**: Cost of Goods Sold (১), Discount (২), Operating Expense (১৫), Payment Processing Fee (৪), Payroll Expense (৬), Uncategorized Expense (১২)।
+   - **Income (14)**: Discount (৭), Income (৬), Uncategorized Income (১)।
+   - **Liabilities (6)**: Customer Prepayments (২), Due For Payroll (১), Expected Payments to Vendors (৩)।
+   - **Owner's Equity (2)**: Owner Investment, Owner's Equity।
+3. প্রত্যেক account-এর code reference image-এর মতো (1000-series for Cash/Bank, 1200 Receivables, 1300 Inventory, 2200 Payables, 2400 Payroll Liab, 2600 Customer Prepay, 3000 Equity, 4000 Income, 5000 Expense)।
+
+### UI Rewrite — `ChartOfAccounts.tsx`
+Reference image-এর মতো সাজাব:
+- **৫টা Tab** উপরে: Asset / Expense / Income / Liabilities / Owner's Equity, প্রত্যেকটার পাশে count badge।
+- **Status filter** dropdown (Active / Inactive) উপরে বাঁদিকে।
+- **+ Create New Account** button উপরে ডানে।
+- প্রত্যেক tab-এ **subtype অনুযায়ী collapsible/grouped sections** (যেমন "Cash and Bank", "Inventory"), প্রতিটা section header dark blue band style, ভিতরে rows: code | name | description | edit icon।
+- Empty subtype-এ "No Data Found" message।
+- Section header-এ section-specific "+ Create New Account" button (subtype prefilled হবে)।
+- Add/Edit dialog-এ subtype dropdown যোগ হবে (type অনুযায়ী filter)।
+
+### Technical Notes
+- Existing search/balance column drop করব (image-এ নেই) — শুধু code, name, description, action।
+- `description` column already nullable text হিসেবে আছে কিনা check করতে হবে — যদি না থাকে migration-এ add করব।
+- Bengali UI text বজায় থাকবে।
+
+---
+
+## Files to Edit / Create
 
 ```text
-Asset Add (purchase price > 0)
-    └─> insert expense_entries (category=Equipment, ref=asset:<id>)
-            └─> CashBook auto-detects → Cash balance ↓
-
-Asset Delete
-    └─> delete expense_entries WHERE reference='asset:<id>'
-
-Item Destroyed (loss > 0)
-    ├─> assets.status = 'destroyed' (if linked)
-    └─> insert expense_entries (category=Loss, ref=destroyed:<id>)
-            └─> P&L shows loss
-
-Destroyed Delete
-    ├─> assets.status = 'active' (revert)
-    └─> delete expense_entries WHERE reference='destroyed:<id>'
+supabase/migrations/<new>.sql        — subtype/description columns + seed inserts
+src/pages/dashboard/accounting/AccountingDashboard.tsx   — full rewrite
+src/pages/dashboard/accounting/ChartOfAccounts.tsx       — full rewrite (tabs + grouped)
+src/components/TopBar.tsx            — admin-only Wallet shortcut
 ```
 
----
+কোনো existing data হারাবে না — seed `ON CONFLICT (code) DO NOTHING` দিয়ে safe insert হবে।
 
-## ৪. মূল প্রতিশ্রুতি (User Requirements Mapping)
-
-| আপনার চাওয়া | কীভাবে হবে |
-|---|---|
-| Asset add | Asset List page-এ full form |
-| Destroyed item add | Destroyed page-এ form (existing asset বা custom) |
-| Account hit হবে | Auto `expense_entries` insert |
-| টাকা cash থেকে আসবে | payment_method = Cash → Cash Book auto deduct |
-| Cash minus/plus যেতে পারে | কোনো restriction নেই — যেকোনো amount allow |
-| Industry standard | Code/Category/Location/Assignment/Status সব included |
-
-Approve করলে আমি দুটি page বানিয়ে, ছোট migration (`loss_amount` column) দিয়ে শেষ করব।
+Approve করলে implementation শুরু করব।
