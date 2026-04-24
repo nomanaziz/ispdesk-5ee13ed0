@@ -150,6 +150,12 @@ function useStats() {
         supabase.from("bw_reseller_users").select("id, status, reseller_id"),
         // Distinct parent reseller_ids that have sub-users (BW resellers acting as their own resellers)
         supabase.from("bw_reseller_users").select("reseller_id"),
+        // MikroTik-disabled clients (router-side state)
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("mikrotik_status", "disabled"),
+        // Active clients whose billing date has already passed (in current month)
+        supabase.from("clients").select("id, billing_date, expire_date, is_vip, status").ilike("status", "active").eq("is_vip", false),
+        // Current-month billing rows for overdue calculation
+        supabase.from("billing").select("client_id, status, due, amount, paid").eq("month", currentMonth),
       ]);
 
       // Fetch client names for latest billing
