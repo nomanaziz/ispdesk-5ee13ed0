@@ -266,6 +266,14 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    label: "অ্যাক্সেস ম্যানেজমেন্ট",
+    icon: ShieldCheck,
+    items: [
+      { title: "অ্যাপ ইউজার", url: "/dashboard/access/app-users", icon: Users },
+      { title: "রোল ও পারমিশন", url: "/dashboard/access/roles", icon: Shield },
+    ],
+  },
+  {
     label: "OLT ম্যানেজমেন্ট",
     icon: Cpu,
     items: [
