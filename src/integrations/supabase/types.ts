@@ -5584,41 +5584,56 @@ export type Database = {
       }
       network_edges: {
         Row: {
+          cable_type: string | null
           color_code: string | null
           connection_type: string
+          core_color: string | null
+          core_no: number | null
           created_at: string
           created_by: string | null
           edge_code: string | null
+          end_point: string | null
           id: string
           length_m: number | null
           remarks: string | null
           source_node_id: string
+          start_point: string | null
           status: string
           target_node_id: string
         }
         Insert: {
+          cable_type?: string | null
           color_code?: string | null
           connection_type?: string
+          core_color?: string | null
+          core_no?: number | null
           created_at?: string
           created_by?: string | null
           edge_code?: string | null
+          end_point?: string | null
           id?: string
           length_m?: number | null
           remarks?: string | null
           source_node_id: string
+          start_point?: string | null
           status?: string
           target_node_id: string
         }
         Update: {
+          cable_type?: string | null
           color_code?: string | null
           connection_type?: string
+          core_color?: string | null
+          core_no?: number | null
           created_at?: string
           created_by?: string | null
           edge_code?: string | null
+          end_point?: string | null
           id?: string
           length_m?: number | null
           remarks?: string | null
           source_node_id?: string
+          start_point?: string | null
           status?: string
           target_node_id?: string
         }
@@ -5713,8 +5728,10 @@ export type Database = {
         Row: {
           address: string | null
           branch_id: string | null
+          color: string | null
           created_at: string
           created_by: string | null
+          icon: string | null
           id: string
           inventory_item_id: string | null
           latitude: number | null
@@ -5735,8 +5752,10 @@ export type Database = {
         Insert: {
           address?: string | null
           branch_id?: string | null
+          color?: string | null
           created_at?: string
           created_by?: string | null
+          icon?: string | null
           id?: string
           inventory_item_id?: string | null
           latitude?: number | null
@@ -5757,8 +5776,10 @@ export type Database = {
         Update: {
           address?: string | null
           branch_id?: string | null
+          color?: string | null
           created_at?: string
           created_by?: string | null
+          icon?: string | null
           id?: string
           inventory_item_id?: string | null
           latitude?: number | null
