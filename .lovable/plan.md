@@ -1,74 +1,115 @@
 
 
-## App User (এমপ্লয়ি লগইন এরিয়া) — Page + Menu ফিরিয়ে আনা
+## Home vs Corporate Client — আলাদা View + Corporate-specific Fields
 
-### বর্তমান অবস্থা
+### বর্তমান অবস্থা (যা ইতোমধ্যে আছে)
 
-- **Database-এ সব ready**: `app_users`, `app_roles`, `app_role_modules` table আছে। ৩টা role এবং ২৮০টা module permission ইতোমধ্যে configured।
-- **Translation dictionary-তে nameও আছে**: "অ্যাপ ইউজার", "রোল"।
-- **কিন্তু**: কোনো sidebar entry নাই, কোনো route নাই, কোনো page file নাই — তাই menu খুঁজে পাচ্ছেন না।
+- `clients.client_type` column **already আছে** — value: `"Home"` / `"Corporate"` (`client_types` table-এ ২টা entry configured)
+- `clients.connection_type` column আছে (Optical Fiber / Wireless / NTTN / UTP)
+- `clients.protocol_type` column আছে (PPPoE, etc.) — কিন্তু **Static / BGP-এর কোনো structured field নেই**
+- Add Client form-এ "Client Type" dropdown আছে, default `"Home"`
+- Client List-এ filter আছে কিন্তু **separate page নেই** — সব mixed
+- Current data: ১৪ জন client, সবাই কার্যত Home/PPPoE
 
-(আলাদা concept মনে রাখবেন: HR > "কর্মচারী তালিকা" = employee master record। **App User** = সেই employee-কে ERP panel-এ login করার access দেওয়া + কোন menu access পাবে সেটা control করা। দুটো আলাদা।)
+**সমস্যা:** Admin এক নজরে দেখতে পারে না "কতজন Home, কতজন Corporate"। আর Corporate client-এর জন্য Static IP / BGP AS Number / Peer IP-এর মতো dedicated field-ও নেই।
+
+---
+
+### আলাদা করার দরকার আছে কি?
+
+**হ্যাঁ — তবে আলাদা table নয়, আলাদা view + কয়েকটা extra field।**
+
+কারণ:
+- Billing, invoice, package, MikroTik integration — সব **same logic**। আলাদা table করলে সব duplicate হবে, maintenance nightmare।
+- শুধু **presentation** আর কিছু **corporate-only fields** আলাদা হলেই কাজ চলে।
+- Client নিজের invoice তো same portal-এই দেখবে — আলাদা portal লাগবে না।
+
+**সমাধান:** একই `clients` table, কিন্তু sidebar-এ আলাদা menu + Corporate-specific extra columns + dedicated dashboard widget।
 
 ---
 
 ### কী বানাব
 
-#### ১. নতুন sidebar group: **"অ্যাক্সেস ম্যানেজমেন্ট"** (HR group-এর ঠিক নিচে)
+#### ১. Sidebar-এ আলাদা ২টা sub-menu (existing "ক্লায়েন্ট" group-এর নিচে)
 
-| Menu | Route | কাজ |
-|------|-------|-----|
-| অ্যাপ ইউজার | `/dashboard/access/app-users` | Employee-দের login credential তৈরি/manage |
-| রোল ও পারমিশন | `/dashboard/access/roles` | Role create করা + কোন menu access পাবে check করা |
+```
+ক্লায়েন্ট
+├── সকল ক্লায়েন্ট (existing — all)
+├── 🏠 হোম ক্লায়েন্ট    ← NEW (filtered: client_type='Home')
+├── 🏢 কর্পোরেট ক্লায়েন্ট ← NEW (filtered: client_type='Corporate')
+├── নতুন রিকোয়েস্ট
+└── ...
+```
 
-Icon: `ShieldCheck` (group), `Users` ও `Shield` (items)। Super Admin + Admin শুধু দেখবে।
+#### ২. Database migration — Corporate-specific fields যোগ
 
-#### ২. Page: `/dashboard/access/app-users` — `src/pages/dashboard/access/AppUsers.tsx`
+`clients` table-এ optional columns যোগ:
+| Column | Type | Use |
+|--------|------|-----|
+| `static_ip` | text | Corporate-এর assigned static IP/subnet (e.g. `103.x.x.0/29`) |
+| `routing_protocol` | text | "Static" / "BGP" / "OSPF" / "None" dropdown |
+| `bgp_as_number` | text | BGP AS number (যদি BGP হয়) |
+| `peer_ip` | text | ISP-এর peer IP |
+| `bandwidth_committed_mbps` | numeric | CIR (Committed Information Rate) |
+| `bandwidth_burst_mbps` | numeric | Burst limit |
+| `sla_uptime_percent` | numeric | SLA % (e.g. 99.5) |
+| `company_name` | text | Corporate-এর registered company name |
+| `trade_license_no` | text | Trade license/BIN |
+| `contact_person` | text | Primary contact person (different from `name`) |
 
-- Table: Username | Employee (নাম + ID) | Role | Status | Last Login | Actions
-- Top: Search + "নতুন App User" button + Status filter
-- **Add/Edit dialog**:
-  - Employee dropdown (dropdown থেকে existing employee select — `employees` table থেকে)
-  - Username (auto-suggest employee_id, editable)
-  - Password / Confirm Password (edit mode-এ blank = unchanged)
-  - Role dropdown (`app_roles` থেকে)
-  - Status: Active / Inactive
-- **Actions**: Edit, Reset Password, Toggle Active/Inactive, Delete
-- Password DB-তে hash হয়ে save হবে (bcrypt via edge function বা trigger — যেটা existing pattern-এ আছে সেটা reuse)।
+সব **nullable** — Home client-এ effect পড়বে না।
 
-#### ৩. Page: `/dashboard/access/roles` — `src/pages/dashboard/access/AppRoles.tsx`
+#### ৩. New Pages
 
-- বাঁ পাশে: Role list (Super Admin, Admin, ইত্যাদি — `is_protected` দেখানো হবে badge দিয়ে), নিচে "নতুন রোল" button
-- ডান পাশে: Selected role-এর জন্য **module permission tree** (`app_role_modules` থেকে load) — group → module → checkbox (View/Edit/Delete level)
-- "সংরক্ষণ" button — `app_role_modules`-এ upsert
-- Protected role (Super Admin) edit করা যাবে না — শুধু view
-- **নতুন role create** dialog: Name + Default redirect URL + Status
+**A. `src/pages/dashboard/clients/HomeClients.tsx`**
+- `ClientList.tsx`-এর pattern reuse — কিন্তু default filter `client_type='Home'` (locked, dropdown hide)
+- Columns: Code | Name | Mobile | Zone | Package | Username | Expire | Due | Status | Actions
+- "নতুন হোম ক্লায়েন্ট" button → AddClient page-এ `?client_type=Home` prefill
 
-#### ৪. Login flow integration (already partially done)
+**B. `src/pages/dashboard/clients/CorporateClients.tsx`**
+- Same pattern, locked filter `client_type='Corporate'`
+- **Different columns (Corporate-specific):** Code | Company | Contact Person | Mobile | Static IP | Bandwidth (CIR/Burst) | Routing | SLA | Monthly Bill | Due | Status | Actions
+- "নতুন কর্পোরেট ক্লায়েন্ট" button → AddClient page-এ `?client_type=Corporate` prefill (corporate-only fields visible)
 
-`src/pages/Login.tsx` ইতোমধ্যে username + password handle করে — `PortalAuthContext` দিয়ে। নিশ্চিত করব app_user login হলে:
-- `/dashboard`-এ redirect হবে (role এর `redirect_url` থাকলে সেটা, না থাকলে default `/dashboard`)
-- Role-এর permission অনুযায়ী sidebar items filter হবে (এটা পরের phase — এখন শুধু all access for valid app_user)
+#### ৪. AddClient page — Conditional sections
+
+`AddClient.tsx`-এ:
+- `client_type` যদি `"Corporate"` হয় → একটা নতুন **"কর্পোরেট তথ্য"** card show হবে যাতে: Company Name, Trade License, Contact Person, Static IP, Routing Protocol dropdown, BGP AS, Peer IP, Committed/Burst bandwidth, SLA %
+- `client_type='Home'` হলে এই section hide
+
+#### ৫. Dashboard widget update (`src/pages/Dashboard.tsx`)
+
+Existing "Home Client" stat-এর পাশে **"Corporate Client"** stat যোগ:
+```
+🏠 হোম ক্লায়েন্ট: 245    🏢 কর্পোরেট ক্লায়েন্ট: 18
+```
+ইতোমধ্যে `client_type='Home'` দিয়ে count হচ্ছে (line 100-102) — শুধু Corporate-এর জন্য parallel query যোগ।
+
+#### ৬. Invoice/Portal — কোনো change নেই ✅
+
+Client login portal (`/portal`) already invoice show করে `client_id` দিয়ে — Home/Corporate উভয়েই same view পাবে। আলাদা করার দরকার নেই (আপনি নিজেই বললেন)।
 
 ---
 
-### Files to create / modify
+### Files
 
 | File | Action |
 |------|--------|
-| `src/pages/dashboard/access/AppUsers.tsx` | NEW — App user CRUD page |
-| `src/pages/dashboard/access/AppRoles.tsx` | NEW — Role + permission management page |
-| `src/components/AppSidebar.tsx` | "অ্যাক্সেস ম্যানেজমেন্ট" group যোগ |
-| `src/App.tsx` | দুটো নতুন route যোগ |
-| `src/contexts/PortalAuthContext.tsx` | Verify — app_user login already supports কিনা; না হলে handler যোগ |
-| Supabase migration | (যদি দরকার) password hashing trigger / RLS policies for `app_users`, `app_roles`, `app_role_modules` admin-only access |
+| Supabase migration | `clients`-এ ১০টা nullable column যোগ |
+| `src/pages/dashboard/clients/HomeClients.tsx` | NEW |
+| `src/pages/dashboard/clients/CorporateClients.tsx` | NEW (different columns) |
+| `src/pages/dashboard/clients/AddClient.tsx` | Conditional "Corporate Info" section |
+| `src/components/AppSidebar.tsx` | "হোম ক্লায়েন্ট" + "কর্পোরেট ক্লায়েন্ট" menu items |
+| `src/App.tsx` | ২টা নতুন route |
+| `src/pages/Dashboard.tsx` | Corporate count widget যোগ |
 
 ---
 
 ### Outcome
 
-- Sidebar-এ **অ্যাক্সেস ম্যানেজমেন্ট → অ্যাপ ইউজার / রোল ও পারমিশন** এই menu আবার দেখা যাবে।
-- Admin সেখান থেকে কোনো employee-কে username + password + role দিয়ে ERP panel-এ login access দিতে পারবে।
-- Role-ভিত্তিক menu permission setup করা যাবে (database backend already ready)।
-- যেই employee-এর App User account আছে, সে `/login`-এ গিয়ে username + password দিয়ে dashboard access করবে।
+- Sidebar থেকে এক click-এ **শুধু Home** বা **শুধু Corporate** client দেখা যাবে
+- Corporate client-এর Static IP, BGP info, SLA — সব structured ভাবে save + table-এ visible
+- Dashboard-এ এক নজরে count: কতজন Home, কতজন Corporate
+- Invoice/billing/portal — কোনো change নেই, সব আগের মতোই কাজ করবে
+- Database একটাই, duplicate logic নেই — শুধু view + extra optional fields
 
