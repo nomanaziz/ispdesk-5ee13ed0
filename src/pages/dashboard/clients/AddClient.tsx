@@ -40,7 +40,7 @@ export default function AddClient() {
     latitude: "", longitude: "", contact: "", phone_number: "", email: "",
     address: "", permanent_address: "", road_number: "", house_number: "",
     mikrotik_id: "", protocol_type: "PPPoE", zone_id: "", sub_zone_id: "", box_id: "",
-    connection_type: "", cable_length: "", fiber_code: "", core_count: "",
+    connection_type: "Optical Fiber", cable_length: "", fiber_code: "", core_count: "",
     core_color: "", device_type: "", device_serial: "", vendor: "", purchase_date: "",
     client_id: "", package_id: "", profile: "", client_type: urlClientType || "Home", billing_status: "Active",
     username: "", remote_address: "", password: "", joining_date: format(new Date(), "yyyy-MM-dd"),
