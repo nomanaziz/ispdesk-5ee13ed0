@@ -393,6 +393,20 @@ import BwPurchaseOrders from "@/pages/bw-customer/BwPurchaseOrders";
 import BwTickets from "@/pages/bw-customer/BwTickets";
 import BwSettings from "@/pages/bw-customer/BwSettings";
 
+// BW Independent Panel (Layer 2 — only when panel subscription is active)
+import BwPanelProtectedRoute from "@/components/BwPanelProtectedRoute";
+import BwPanelLayout from "@/components/BwPanelLayout";
+import BwPanelDashboard from "@/pages/bw-panel/BwPanelDashboard";
+import {
+  BwPanelMikrotik, BwPanelClients, BwPanelClientAdd, BwPanelBulkImport,
+  BwPanelBilling, BwPanelDailyCollection, BwPanelTickets, BwPanelOnlineMonitoring,
+  BwPanelSmsTemplates, BwPanelSmsSend, BwPanelSmsGateway,
+  BwPanelEmployees, BwPanelAddEmployee,
+  BwPanelIncome, BwPanelExpense, BwPanelCashBook,
+  BwPanelBillCollection, BwPanelReportCustomer, BwPanelReportFinancial,
+  BwPanelSettings,
+} from "@/pages/bw-panel/wrappers";
+
 // Redirect helper: any /reseller/<rest> → /pop-admin/<rest>
 const LegacyResellerRedirect = () => {
   const path = window.location.pathname.replace(/^\/reseller/, "/pop-admin");
