@@ -287,6 +287,8 @@ export type Database = {
           id: string
           location: string | null
           name: string
+          notes: string | null
+          payment_method: string | null
           purchase_date: string | null
           purchase_price: number | null
           status: string
@@ -299,6 +301,8 @@ export type Database = {
           id?: string
           location?: string | null
           name: string
+          notes?: string | null
+          payment_method?: string | null
           purchase_date?: string | null
           purchase_price?: number | null
           status?: string
@@ -311,6 +315,8 @@ export type Database = {
           id?: string
           location?: string | null
           name?: string
+          notes?: string | null
+          payment_method?: string | null
           purchase_date?: string | null
           purchase_price?: number | null
           status?: string
@@ -3753,6 +3759,7 @@ export type Database = {
           destroyed_by: string | null
           id: string
           item_name: string
+          loss_amount: number
           reason: string | null
         }
         Insert: {
@@ -3762,6 +3769,7 @@ export type Database = {
           destroyed_by?: string | null
           id?: string
           item_name: string
+          loss_amount?: number
           reason?: string | null
         }
         Update: {
@@ -3771,6 +3779,7 @@ export type Database = {
           destroyed_by?: string | null
           id?: string
           item_name?: string
+          loss_amount?: number
           reason?: string | null
         }
         Relationships: [
