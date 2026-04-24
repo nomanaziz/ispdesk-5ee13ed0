@@ -280,9 +280,9 @@ export const ResellerLayout = ({ children }: { children: ReactNode }) => {
             const isSingle = g.items.length === 1 && g.items[0].label === g.label;
             const groupActive = g.items.some((i) => location.pathname.startsWith(i.to));
             const groupIcons8 = resolveIcons8({ label: g.label });
-            const isBwExtra = g.key === "bw_setup";
-            const prevIsBwExtra = gi > 0 && visibleGroups[gi - 1].key === "bw_setup";
-            const showDivider = isBwExtra && !prevIsBwExtra;
+            const isBwExtra = false;
+            const prevIsBwExtra = false;
+            const showDivider = false;
 
             const groupBody = isSingle ? (() => {
               const item = g.items[0];
