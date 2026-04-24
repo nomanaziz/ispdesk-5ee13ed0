@@ -29,7 +29,7 @@ export default function ProfitLoss() {
 
   const isLoading = li || le;
 
-  const sourceLabels: Record<string, string> = { client_billing: "ক্লায়েন্ট বিলিং", mac_reseller: "ম্যাক রিসেলার", bandwidth_sale: "ব্যান্ডউইথ সেল" };
+  const sourceLabels: Record<string, string> = { client_billing: "ক্লায়েন্ট বিলিং", mac_reseller: "ম্যাক রিসেলার", bandwidth_sale: "ব্যান্ডউইথ সেল", panel_subscription: "প্যানেল সাবস্ক্রিপশন", bill_collection: "বিল কালেকশন" };
 
   const incomeBySource = (incomes ?? []).reduce((acc, e) => {
     const key = e.source || "other";
