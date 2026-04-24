@@ -12,16 +12,25 @@ import { cn } from "@/lib/utils";
 interface Props {
   variant?: "icon" | "default" | "compact" | "chip";
   className?: string;
+  /** When true, render even if browser can't natively prompt — clicking shows a friendly fallback. */
+  alwaysRender?: boolean;
 }
 
-export function InstallAppButton({ variant = "default", className }: Props) {
-  const { canShow, canPromptNative, isIOS, promptInstall } = useInstallPrompt();
+export function InstallAppButton({ variant = "default", className, alwaysRender = false }: Props) {
+  const { canShow, canPromptNative, isIOS, installed, promptInstall } = useInstallPrompt();
   const { t } = useLanguage();
   const [iosOpen, setIosOpen] = useState(false);
 
-  if (!canShow) return null;
+  if (!canShow && !alwaysRender) return null;
 
   const handleClick = async () => {
+    if (installed) {
+      toast({
+        title: t("✅ ইতিমধ্যে ইনস্টল করা", "✅ Already installed"),
+        description: t("অ্যাপ আগে থেকেই হোম স্ক্রিনে যোগ করা আছে", "The app is already on your home screen"),
+      });
+      return;
+    }
     if (canPromptNative) {
       const outcome = await promptInstall();
       if (outcome === "accepted") {
@@ -30,9 +39,19 @@ export function InstallAppButton({ variant = "default", className }: Props) {
           description: t("হোম স্ক্রিনে অ্যাপ যোগ হয়েছে", "App added to your home screen"),
         });
       }
-    } else if (isIOS) {
-      setIosOpen(true);
+      return;
     }
+    if (isIOS) {
+      setIosOpen(true);
+      return;
+    }
+    toast({
+      title: t("ইনস্টল উপলব্ধ নয়", "Install not available"),
+      description: t(
+        "এই ব্রাউজারে install support করে না। Chrome বা Edge ব্যবহার করুন, অথবা ব্রাউজার মেনু থেকে 'Install app' নির্বাচন করুন।",
+        "This browser doesn't support install. Use Chrome or Edge, or pick 'Install app' from the browser menu.",
+      ),
+    });
   };
 
   const label = t("ইনস্টল করুন", "Install App");
