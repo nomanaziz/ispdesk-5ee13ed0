@@ -328,6 +328,28 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
             </table>
           </div>
 
+          {isOverpayment && (
+            <div className="border rounded-lg p-3 bg-amber-500/10 border-amber-500/30 space-y-2">
+              <div className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                ⚠ অতিরিক্ত পরিমাণ গ্রহণ করছেন (৳{Math.abs(balanceDue)} বেশি)। কীভাবে রাখবেন?
+              </div>
+              <RadioGroup value={overpayMode} onValueChange={(v) => setOverpayMode(v as any)} className="gap-1">
+                <label className="flex items-start gap-2 text-xs cursor-pointer">
+                  <RadioGroupItem value="increase" id="op-inc" className="mt-0.5" />
+                  <span>
+                    <span className="font-medium">এই মাসের বিল বাড়িয়ে দিন</span> — এই মাসের বিল হবে ৳{(alreadyPaid + totalReceived).toLocaleString()}, পরের মাস আগের মতো ৳{(client?.monthly_bill || monthlyBill).toLocaleString()}
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-xs cursor-pointer">
+                  <RadioGroupItem value="advance" id="op-adv" className="mt-0.5" />
+                  <span>
+                    <span className="font-medium">অগ্রিম হিসেবে রাখুন</span> — অতিরিক্ত ৳{Math.abs(balanceDue)} advance balance-এ যোগ হবে
+                  </span>
+                </label>
+              </RadioGroup>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">রসিদ/ট্রানজেকশন নম্বর</Label>
