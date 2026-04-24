@@ -773,16 +773,6 @@ const App = () => (
               <Route path="/bw/settings" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwSettings /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
 
               {/* BW Independent Panel (Layer 2) — only with active panel subscription */}
-              {(() => {
-                const BP = ({ children }: { children: React.ReactNode }) => (
-                  <PortalAuthProvider>
-                    <BwPanelProtectedRoute>
-                      <BwPanelLayout>{children}</BwPanelLayout>
-                    </BwPanelProtectedRoute>
-                  </PortalAuthProvider>
-                );
-                return null;
-              })()}
               <Route path="/bw-panel" element={<Navigate to="/bw-panel/dashboard" replace />} />
               <Route path="/bw-panel/dashboard" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelDashboard /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw-panel/mikrotik" element={<PortalAuthProvider><BwPanelProtectedRoute><BwPanelLayout><BwPanelMikrotik /></BwPanelLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
