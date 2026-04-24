@@ -96,7 +96,7 @@ export default function AddClient() {
         connection_type: prefill.connection_type || prev.connection_type,
         package_id: prefill.package_id || prev.package_id,
         monthly_bill: prefill.monthly_bill || prev.monthly_bill,
-        client_type: prefill.customer_type || prev.client_type,
+        client_type: prefill.client_type || prefill.customer_type || prev.client_type,
         username: prefill.username || prev.username,
         password: prefill.password || prev.password,
         profile: prefill.profile || prev.profile,
@@ -108,6 +108,17 @@ export default function AddClient() {
         expire_day: prefill.expire_date ? String(new Date(prefill.expire_date).getDate()) : (prev.expire_day || "10"),
         installed_by_ids: prefill.installed_by_ids || prev.installed_by_ids,
         billing_start_month: prefill.billing_start_month || prev.billing_start_month,
+        // Corporate-specific (when editing existing corporate client)
+        company_name: prefill.company_name ?? prev.company_name,
+        trade_license_no: prefill.trade_license_no ?? prev.trade_license_no,
+        contact_person: prefill.contact_person ?? prev.contact_person,
+        static_ip: prefill.static_ip ?? prev.static_ip,
+        routing_protocol: prefill.routing_protocol ?? prev.routing_protocol,
+        bgp_as_number: prefill.bgp_as_number ?? prev.bgp_as_number,
+        peer_ip: prefill.peer_ip ?? prev.peer_ip,
+        bandwidth_committed_mbps: prefill.bandwidth_committed_mbps ?? prev.bandwidth_committed_mbps,
+        bandwidth_burst_mbps: prefill.bandwidth_burst_mbps ?? prev.bandwidth_burst_mbps,
+        sla_uptime_percent: prefill.sla_uptime_percent ?? prev.sla_uptime_percent,
       }));
 
       if (prefill.mikrotik_id) {
