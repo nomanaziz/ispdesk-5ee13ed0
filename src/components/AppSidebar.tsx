@@ -114,6 +114,7 @@ const GROUP_COLORS: Record<string, string> = {
   "ব্যান্ডউইথ ক্লায়েন্ট": "text-cyan-600 dark:text-cyan-400",
   "ডিভাইস": "text-emerald-600 dark:text-emerald-400",
   "HR ও পেরোল": "text-pink-600 dark:text-pink-400",
+  "অ্যাক্সেস ম্যানেজমেন্ট": "text-indigo-700 dark:text-indigo-300",
   "OLT ম্যানেজমেন্ট": "text-purple-600 dark:text-purple-400",
   "নেটওয়ার্ক মনিটরিং": "text-green-600 dark:text-green-400",
   "নেটওয়ার্ক ডায়াগ্রাম": "text-lime-600 dark:text-lime-400",
