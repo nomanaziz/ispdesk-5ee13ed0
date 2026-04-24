@@ -194,11 +194,10 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "হোম ক্লায়েন্ট",
+    label: "All Clients",
     icon: Users,
     items: [
       { title: "নতুন রিকোয়েস্ট", url: "/dashboard/clients/new-request", icon: MessageSquare },
-      { title: "সকল ক্লায়েন্ট", url: "/dashboard/clients", icon: List },
       { title: "হোম ক্লায়েন্ট", url: "/dashboard/clients/home", icon: UserPlus },
       { title: "কর্পোরেট ক্লায়েন্ট", url: "/dashboard/clients/corporate", icon: Building2 },
       { title: "বিলিং তালিকা", url: "/dashboard/billing", icon: CreditCard },
@@ -481,6 +480,7 @@ const SIDEBAR_EN: Record<string, string> = {
   "ওয়েবসাইট প্যানেল": "Website Panel",
   "কনফিগারেশন": "Configuration",
   "VAS": "VAS",
+  "All Clients": "All Clients",
   "হোম ক্লায়েন্ট": "Home Clients",
   "POP / MAC ক্লায়েন্ট": "POP / MAC Clients",
   "ব্যান্ডউইথ ক্লায়েন্ট": "Bandwidth Clients",
