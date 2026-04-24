@@ -321,7 +321,7 @@ export default function Pop() {
                   <TableRow className="bg-muted/40">
                     <TableCell colSpan={5} className="text-right font-semibold">Total Due</TableCell>
                     <TableCell className="text-right font-bold text-destructive">৳{Math.round(totalDue).toLocaleString()}</TableCell>
-                    <TableCell colSpan={2}></TableCell>
+                    <TableCell colSpan={3}></TableCell>
                   </TableRow>
                 </TableFooter>
               )}
