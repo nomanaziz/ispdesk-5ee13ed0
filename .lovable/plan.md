@@ -1,123 +1,96 @@
 
 
-## BW Customer — Two-Layer Architecture (Always-On Billing + Optional Independent Panel)
+## Manage Your Clients — Tiered Pricing + Auto Usage-Based Billing
 
-### মূল ধারণা (User-এর কথা থেকে)
+### আপনার নতুন pricing model (simplified)
 
-BW Customer-এর **দুটো আলাদা layer** থাকবে:
+| Tier | User Range | Per-Month Charge |
+|------|-----------|------------------|
+| **P#1 — Starter** | 0 – 500 users | Flat ৳500/মাস |
+| **P#2 — Growth** | 501 – 3,000 users | ৳1 × actual user count |
+| **P#3 — Pro (Free Slab)** | 3,001+ users | **Free** (কোনো charge না) |
 
-**Layer 1 — Always-On (`/bw/*`):** Admin-এর সাথে billing relationship। এই 5 menu **কখনো hide হবে না**, panel active হোক বা না হোক:
-- Dashboard, Billing & Invoices, Service Orders, Support Tickets, Company Settings
-
-**Layer 2 — Independent Panel (trial/paid activate করলে):** এটা POP Admin-এর মতো *দেখতে* হলেও **independent** — admin-এর উপর dependent না। নিজের company চালানোর জন্য সব ছোটখাটো module।
-
----
-
-### সমস্যা (বর্তমান অবস্থা)
-
-1. Panel activate হলে BW customer redirect হয় `/pop-admin/dashboard`-এ → তখন তার **own billing 5 menu হারিয়ে যায়**। সে আর admin-এর invoice দেখতে পায় না।
-2. Currently `/pop-admin/*` shell reuse করায় BW customer POP Admin-এর dependent role-এ ঢুকে যাচ্ছে।
-3. "My Own Setup" group-এর item-গুলো POP Admin-এর routes share করছে (`/pop-admin/clients`, `/pop-admin/billing/list`) — যা wrong (independence violate করে)।
+POP Admin-এর complex 3-step formula বাদ। শুধু **৩টা slab**, যেটার মধ্যে user-এর active client count পড়ে — সেই অনুযায়ী next month-এর bill auto generate।
 
 ---
 
 ### পরিবর্তন
 
-#### 1. **`/bw/*` 5 menu always-on** (BwCustomerLayout.tsx)
-কোনো change নেই — already always-on। শুধু confirm: panel active হলেও sidebar-এ এই 5 item থাকবে।
-
-#### 2. **Panel activate হলে নতুন route prefix `/bw-panel/*`** (POP Admin-এর clone নয়)
-`/pop-admin/*`-এ redirect বন্ধ করব। নতুন independent shell:
+#### 1. **Database — `bw_panel_pricing_slabs` table কে redesign**
+বর্তমান table-এ `user_limit` (single number) + `monthly_price` (flat) আছে। নতুন structure:
 
 ```
-/bw-panel/dashboard          → Independent dashboard
-/bw-panel/mikrotik           → MikroTik servers (add/edit/bulk)
-/bw-panel/clients            → Own client list
-/bw-panel/clients/add        → Add client
-/bw-panel/clients/bulk       → Bulk import/export
-/bw-panel/billing            → Own billing list
-/bw-panel/billing/daily      → Daily collection
-/bw-panel/tickets            → Own ticket system (separate from /bw/tickets)
-/bw-panel/sms                → SMS templates + send
-/bw-panel/employees          → Employee add/list + access control
-/bw-panel/employees/add
-/bw-panel/accounting         → Mini accounting (Income/Expense/Cashbook)
-/bw-panel/reports            → Bill collection / customer / financial
-/bw-panel/settings           → Company branding + invoice setup
+id, tier_name, min_users, max_users (nullable=∞),
+billing_mode ('flat' | 'per_user' | 'free'),
+flat_price (nullable), per_user_rate (nullable),
+display_order, is_active
 ```
 
-#### 3. **নতুন `BwPanelLayout.tsx`** (independent shell)
-- BwCustomerLayout-এর design language follow করবে (Activity icon, emerald accent, same header)।
-- Sidebar-এর **শীর্ষে** small "Back to Billing" link → `/bw/dashboard` (যাতে user নিজের admin invoice-এ ফিরতে পারে)।
-- Group structure POP Admin-এর মতো কিন্তু **scoped to BW customer's own data** (panel_branch_id দ্বারা)।
-- কোনো "fund_history" বা admin-dependent menu থাকবে না।
+Seed data:
+- P#1: min=0, max=500, mode=flat, flat_price=500
+- P#2: min=501, max=3000, mode=per_user, per_user_rate=1
+- P#3: min=3001, max=NULL, mode=free
 
-#### 4. **`BwCustomerLayout` upgrade card update**
-- "POP Admin খুলুন" button → "**আমার প্যানেল খুলুন / Open My Panel**" → navigate `/bw-panel/dashboard`।
+#### 2. **`bw_sale_customers` table — current usage tracking**
+নতুন columns:
+- `active_client_count` (int, auto-updated trigger) — কতজন real client তার panel-এ আছে
+- `current_tier_id` (FK) — এই মাসে সে কোন tier-এ আছে
+- `next_month_estimated_bill` (numeric) — preview
 
-#### 5. **`ResellerLayout.tsx` cleanup**
-- `bw_setup` group **remove** করব। `ResellerLayout` শুধু POP Admin (reseller)-এর জন্য থাকবে।
-- BW customer আর কখনো `/pop-admin/*`-এ ঢুকবে না।
+**Trigger**: `clients` table-এ insert/delete হলে → owner BW customer-এর `active_client_count` recalculate এবং সঠিক tier auto-assign।
 
-#### 6. **Pages — reuse strategy**
-নতুন pages thin wrappers হবে যা existing POP-admin components reuse করে কিন্তু BW shell-এ render করে:
+#### 3. **Admin page — `PanelPricing.tsx` simplified UI**
+
+পুরোনো 4-column table (User Limit / Monthly / Per-User / Status) replace হবে নতুন **3-row tier card** দিয়ে:
 
 ```
-src/pages/bw-panel/
-  ├─ BwPanelDashboard.tsx       (new — own KPIs)
-  ├─ BwPanelMikrotik.tsx        (reuse PopDevicesConfig)
-  ├─ BwPanelClients.tsx         (reuse PopClients with bw scope)
-  ├─ BwPanelClientAdd.tsx       (reuse PopClientAdd)
-  ├─ BwPanelBulkImport.tsx      (reuse MikrotikBulkImport)
-  ├─ BwPanelBilling.tsx         (reuse PopBillingList)
-  ├─ BwPanelDailyCollection.tsx
-  ├─ BwPanelTickets.tsx         (reuse PopTickets)
-  ├─ BwPanelSms.tsx             (reuse PopSmsSend)
-  ├─ BwPanelEmployees.tsx       (reuse PopEmployees)
-  ├─ BwPanelAccounting*.tsx     (3 sub-pages)
-  ├─ BwPanelReports.tsx
-  └─ BwPanelSettings.tsx
+┌─────────────────────────────────────────────────┐
+│ P#1  Starter         0–500 users    ৳500/মাস   │ [Edit]
+├─────────────────────────────────────────────────┤
+│ P#2  Growth        501–3,000 users  ৳1/user/মাস│ [Edit]
+├─────────────────────────────────────────────────┤
+│ P#3  Pro          3,001+ users      FREE 🎉    │ [Edit]
+└─────────────────────────────────────────────────┘
 ```
 
-#### 7. **`BwPanelProtectedRoute.tsx`** (new guard)
-- `customer.type === "bw_customer"` চেক
-- `panel_access_enabled === true` এবং `panel_subscription_expires_at > now()` চেক
-- Fail হলে → redirect `/bw/dashboard` (5-menu portal-এ)
+নতুন **"Active Customer Usage" column** যোগ হবে নিচের একটা table-এ:
 
-#### 8. **App.tsx routing**
-- নতুন `/bw-panel/*` route group যোগ করব, সব `BwPanelProtectedRoute` + `BwPanelLayout`-এ wrapped।
-- `/pop-admin/*`-এ BW customer-এর access বন্ধ।
+```
+Customer Name | Active Clients | Current Tier | Next Month Bill
+```
 
-#### 9. **Edge function (`portal-data`)**
-- `resolvePopContext` helper এ `bw_customer` already allowed (গত round-এ fix হয়েছে) — সেটা অপরিবর্তিত।
-- `bw_customer`-এর জন্য `panel_branch_id` দ্বারা data scope হবে — যা already implemented।
+এতে admin দেখতে পাবে কে কোন tier-এ আছে এবং পরের মাসে কত bill generate হবে।
+
+#### 4. **BW customer-এর `Manage Your Clients` modal update**
+`ManageClientsUpgradeModal.tsx`-এ ৩টা slab এভাবে দেখাবে (clean cards):
+
+```
+┌──────────┐ ┌──────────┐ ┌──────────────┐
+│  P#1     │ │  P#2     │ │  P#3 ⭐ FREE │
+│  ৳500    │ │  ৳1/user │ │  3,000+ users│
+│  /month  │ │  per month│ │   no charge │
+│  ≤500 users│ │501-3000 │ │   forever   │
+└──────────┘ └──────────┘ └──────────────┘
+```
+
+প্লাস **"আপনার বর্তমান usage"** banner: *"আপনার এখন ১২৫ জন active client — Tier P#1-এ আছেন (৳500/মাস)"*
+
+#### 5. **Auto monthly bill generation**
+- Cron edge function `bw-panel-monthly-billing` (১ম তারিখে চলবে)
+- Logic: প্রতিটি active BW customer-এর `active_client_count` দেখে → matching tier খুঁজে → bill calculate → `bw_billing` table-এ insert করবে।
+
+#### 6. **Components affected**
+- `src/pages/dashboard/bw-sale/PanelPricing.tsx` — simplified 3-tier UI
+- `src/components/ManageClientsUpgradeModal.tsx` — new tier cards + usage banner
+- `supabase/functions/bw-panel-monthly-billing/index.ts` — new cron function
+- DB: schema migration + trigger + seed
 
 ---
 
 ### Outcome
 
-```
-BW Customer Login করলে
-  │
-  ├─ /bw/dashboard (always)
-  │   ├─ Dashboard
-  │   ├─ Billing & Invoices       ← admin → BW billing
-  │   ├─ Service Orders
-  │   ├─ Support Tickets          ← admin-এর সাথে
-  │   ├─ Company Settings
-  │   └─ "My Panel" upgrade card
-  │
-  └─ Panel active হলে অতিরিক্ত access:
-      /bw-panel/dashboard (independent shell)
-      ├─ Dashboard, MikroTik, Clients (add/list/bulk)
-      ├─ Billing list, Daily collection
-      ├─ Tickets (own clients এর)
-      ├─ SMS, Employees, Accounting, Reports, Settings
-      └─ "← Back to Billing" link → /bw/dashboard
-```
-
-- Admin-এর সাথে billing **কখনো হারাবে না**।
-- Trial নিলে user পাবে নিজের independent company panel।
-- POP Admin shell আর reuse হবে না — confusion শেষ।
-- Design consistency বজায় থাকবে (same icons, header pattern, mobile bottom-bar)।
+- Admin শুধু ৩টা simple tier manage করবে — কোনো complex formula না।
+- BW customer তার active client count দেখে বুঝবে সে কোন tier-এ আছে।
+- Client বাড়লে auto next-month bill higher হবে; ৩,০০০ পার করলে বিনামূল্যে।
+- Admin dashboard-এ প্রতিটি customer-এর usage + projected bill visible।
 
