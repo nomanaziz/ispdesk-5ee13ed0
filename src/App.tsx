@@ -900,6 +900,7 @@ const App = () => (
     </QueryClientProvider>
     </LanguageProvider>
   </ThemeProvider>
+  </BootGate>
 );
 
 export default App;
