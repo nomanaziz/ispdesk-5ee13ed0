@@ -121,6 +121,10 @@ import HrAttendanceRules from "@/pages/dashboard/hr/AttendanceRules";
 import HrSettings from "@/pages/dashboard/hr/HrSettings";
 import DashboardLinks from "@/pages/dashboard/Links";
 
+// Access Management
+import AppUsers from "@/pages/dashboard/access/AppUsers";
+import AppRoles from "@/pages/dashboard/access/AppRoles";
+
 // OLT
 import OltDevices from "@/pages/dashboard/olt/OltDevices";
 import OltUsers from "@/pages/dashboard/olt/OltUsers";
