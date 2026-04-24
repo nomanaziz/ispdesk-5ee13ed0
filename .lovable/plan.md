@@ -1,64 +1,77 @@
 
 
-## BW Sale Customers — Client Count Column + Panel Income Source
+## MikroTik Server — দুটো বিষয় পরিষ্কার করা ও fix করা
 
-### দুটো জিনিস যোগ করব
+### ১. "Assigned POP" column-এর ব্যাখ্যা (কেন আছে)
 
-**1. POP Customers list-এ "Number of Clients" column**
+আপনার admin-এর `মাইক্রোটিক সার্ভার` page (`/dashboard/mikrotik/servers`) — এটা আপনার **central pool** যেখানে আপনার ISP-এর সব physical MikroTik routers থাকে।
 
-`src/pages/dashboard/bw-sale/BwSaleCustomers.tsx`-এ existing table-এর শেষে নতুন column:
+Column-টার কাজ:
+- প্রতিটি MikroTik router সাধারণত একটা নির্দিষ্ট **POP/branch**-এর নিচে install করা থাকে (যেমন AFTABNAGAR POP-এ একটা router)।
+- "Assigned POP" দিয়ে আপনি সেই router-কে সেই POP-এর সাথে link করেন।
+- Link হওয়ার পর সেই **POP Admin** তার নিজের panel-এ login করে শুধু তার assigned router(s) দেখতে পায়, তার client গুলো ওই router-এ create হয়, billing match হয়।
+- "Unassigned" মানে router-টা এখনো কোনো POP-এর সাথে যুক্ত না — central admin শুধু দেখবে, কোনো POP দেখবে না।
 
-```
-Customer | Status | ... | Number of Clients
-─────────────────────────────────────────────
-Demo BW  | active | ... | 125 clients
-ABC ISP  | active | ... | Not applicable
-```
-
-Logic:
-- `panel_access_enabled = true` → দেখাবে `active_client_count` value (already maintained by trigger from previous round) সাথে current tier badge (P#1/P#2/P#3)।
-- `panel_access_enabled = false` → দেখাবে muted "Not applicable" text।
-
-কোনো নতুন query দরকার নেই — `bw_sale_customers` row-এই `active_client_count` এবং `current_tier_id` আছে।
+এটা একটা **routing/ownership marker** — কে কোন router manage করবে সেটা ঠিক করে। দরকারি জিনিস, hide করার দরকার নেই।
 
 ---
 
-**2. Cash Book-এ নতুন Income Source: "Income from Panel/Portal"**
+### ২. BW Customer Panel-এ MikroTik add option যোগ করা
 
-বর্তমান income sources (codebase-এ check করেছি):
-- `client_billing` — ক্লায়েন্ট বিলিং
-- `mac_reseller` — ম্যাক রিসেলার
-- `bandwidth_sale` — ব্যান্ডউইথ সেল
+**বর্তমান সমস্যা:** `/bw-panel/mikrotik` page (`PopScopedListPage` reuse করছে) — শুধু read-only list, কোনো Add/Edit/Delete button নেই। BW customer self-service করতে পারে না।
 
-নতুন যোগ হবে:
-- `panel_subscription` — **প্যানেল সাবস্ক্রিপশন (BW Customer Portal)**
+**সমাধান:** Admin-এর full-featured `Servers.tsx`-এর মতো একটা **scoped version** তৈরি করব BW Panel-এর জন্য — customer নিজেই তার MikroTik add/edit/delete + status check করতে পারবে। POP assignment automatic হবে (নিজের POP-এ)।
 
-পরিবর্তন:
-- `src/pages/dashboard/reports/Financial.tsx` ও অন্যান্য income display জায়গায় SOURCES map-এ নতুন entry।
-- Income entry form / dropdown-এ নতুন option।
-- `bw-panel-monthly-billing` edge function update — bill generate হলে সাথে সাথে `income_entries` table-এ একটা entry insert করবে `source = 'panel_subscription'` দিয়ে। Customer-এর paid status update হলে এটা trigger হবে (অথবা cron যখন bill generate করে তখনই pending-এর জন্য আলাদা ভাবে confirm-on-payment)।
+#### পরিবর্তন
 
-**Recommended flow:** bill generate হবে → customer pay করলে → তখন `income_entries`-এ row যাবে। এতে cash book-এ শুধু actual collected amount দেখাবে।
+**A. নতুন file: `src/pages/bw-panel/BwPanelMikrotikServers.tsx`**
 
-এর জন্য নতুন একটা small handler/trigger:
-- `bw_panel_subscriptions` table-এ `status` column `pending` থেকে `paid` হলে → auto-insert into `income_entries` with source `panel_subscription`, amount = `paid_amount`, branch_id = admin/HQ branch।
+- `Servers.tsx`-এর pattern follow করবে (একই UI: যোগ করুন button + table + Status check + Toggle + Edit + Delete)।
+- **Differences:**
+  - `usePopScope()` থেকে `branchId` নেবে → query শুধু `.eq("branch_id", branchId)` ও `.eq("assigned_to_pop_id", popId)` দিয়ে scoped।
+  - Insert করার সময় auto-fill: `branch_id = customer.branch_id`, `assigned_to_pop_id = customer.id` — customer manually কিছু select করবে না।
+  - Header: "মাইক্রোটিক সার্ভার" + "যোগ করুন" button + Status check।
+  - Admin-only "Assigned POP" column বাদ — customer-এর জন্য irrelevant।
+  - Bulk Import / Import Users link বাদ (Phase 2-এ আনা যাবে)।
+- Add dialog-এ fields: Name, IP, Username, Password, API Port (default 8728), Version, Timeout, Order — হুবহু admin-এর মতো।
+
+**B. `src/pages/bw-panel/wrappers.ts` update**
+
+```ts
+// before
+export { default as BwPanelMikrotik } from "@/pages/reseller/config/PopDevices";
+// after
+export { default as BwPanelMikrotik } from "@/pages/bw-panel/BwPanelMikrotikServers";
+```
+
+**C. RLS পরীক্ষা (`mikrotik_devices` table)**
+
+- যেহেতু BW customer portal session থেকে operate করছে (admin auth না), RLS policy verify করতে হবে যে portal session-এর JWT দিয়ে BW customer তার নিজের `branch_id`-এ insert/update/delete করতে পারে।
+- প্রয়োজন হলে নতুন RLS policy যোগ করতে হবে — যেমন:
+  - `SELECT/INSERT/UPDATE/DELETE` allowed where `branch_id = (jwt portal_branch_id)` এবং `assigned_to_pop_id = (jwt sub)` BW customer type-এর জন্য।
+- Admin's existing access untouched।
+
+**D. Edge function check**
+
+- `check-mikrotik-status` already device-id দিয়ে কাজ করে — কোনো change লাগবে না।
+- Client create / billing flow — already `mikrotik_id` দিয়ে scoped, BW customer add করা router সাথে সাথে dropdown-এ আসবে।
 
 ---
 
-### Files to change
+### Files to change/create
 
 | File | Change |
 |------|--------|
-| `src/pages/dashboard/bw-sale/BwSaleCustomers.tsx` | Add "Number of Clients" column with tier badge / "Not applicable" |
-| `src/pages/dashboard/reports/Financial.tsx` | Add `panel_subscription` to SOURCES map |
-| Income entry form (wherever source dropdown exists) | Add new option |
-| DB migration | New trigger on `bw_panel_subscriptions` for status→paid auto income entry |
+| `src/pages/bw-panel/BwPanelMikrotikServers.tsx` | **NEW** — full CRUD scoped to BW customer |
+| `src/pages/bw-panel/wrappers.ts` | Re-export from new file |
+| Supabase migration | Add/verify RLS policies on `mikrotik_devices` for BW portal sessions |
 
 ---
 
 ### Outcome
 
-- Admin POP Customers list-এ এক নজরে দেখবে কে panel নিয়েছে এবং তার কতজন client আছে।
-- প্রতিটি paid panel subscription auto cash book-এর income হিসেবে track হবে — admin-এর portal-এর আয় visible হবে।
-- Existing financial reports ("Income from Panel" filter দিয়ে) এই revenue stream আলাদা করে দেখা যাবে।
+- **Admin-এর Assigned POP column = clear:** আপনি admin হিসেবে কোন router কোন POP-এর হবে assign করেন, যাতে সেই POP customer তার panel-এ সেটা দেখে।
+- **BW customer self-service:** "যোগ করুন" button পাবে, নিজের router add করে username/password/IP দেবে, সাথে সাথে list-এ আসবে, status check + toggle + edit + delete সব করতে পারবে।
+- **Auto-link:** customer-এর add করা router automatic তার নিজের POP-এ assigned হবে — manual select-এর confusion নেই।
+- বাকি সব flow (client create, billing, online monitoring) যেহেতু `mikrotik_id` দিয়ে কাজ করে, সব কিছু auto-চলবে — কোনো নতুন logic লাগবে না।
 
