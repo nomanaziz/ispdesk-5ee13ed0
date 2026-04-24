@@ -111,9 +111,15 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
           received_by: receivedBy || customer?.sub || null,
           set_next_billing: setNextBilling,
           send_sms: sendSms,
+          overpay_mode: isOverpayment ? overpayMode : undefined,
         });
       } else {
         const newPaid = alreadyPaid + totalReceived;
+        const increaseAmount = isOverpayment && overpayMode === "increase";
+        const effectiveBillAmount = increaseAmount ? newPaid : monthlyBill;
+        const newDue = Math.max(0, effectiveBillAmount - newPaid);
+        const newAdvance = !increaseAmount && newPaid > monthlyBill ? newPaid - monthlyBill : 0;
+        const newStatus = newDue <= 0 ? "paid" : "partial";
         const newDue = Math.max(0, monthlyBill - newPaid);
         const newAdvance = newPaid > monthlyBill ? newPaid - monthlyBill : 0;
         const newStatus = newDue <= 0 ? "paid" : "partial";
