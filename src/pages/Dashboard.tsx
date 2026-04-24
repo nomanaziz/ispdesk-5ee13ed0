@@ -268,6 +268,49 @@ function useStats() {
       const bwInactiveUsers = bwTotalUsers - bwActiveUsers;
       const bwParentResellers = new Set((bwResellerParents.data ?? []).map((r: any) => r.reseller_id).filter(Boolean)).size;
 
+      // ── Merged-card metrics ─────────────────────────────────────────
+      // Today day-of-month for billing_date comparison
+      const todayDay = now.getDate();
+      const todayDateStr = today; // YYYY-MM-DD
+
+      // Build map of current-month billing rows by client_id
+      const billingByClient = new Map<string, { paid: number; due: number; amount: number; status: string }>();
+      for (const b of currentMonthBilling.data ?? []) {
+        const paid = Number((b as any).paid || 0);
+        const amount = Number((b as any).amount || 0);
+        const due = (b as any).due != null ? Number((b as any).due) : Math.max(0, amount - paid);
+        billingByClient.set((b as any).client_id, { paid, amount, due, status: (b as any).status });
+      }
+
+      // Overdue billing: active, billing_date passed, not VIP, current-month due > 0 (or no bill row)
+      let overdueBillingCount = 0;
+      for (const c of activeBillingDateClients.data ?? []) {
+        if ((c as any).is_vip) continue;
+        const bd = Number((c as any).billing_date || 0);
+        if (!bd || bd > todayDay) continue;
+        // Skip if expire_date is in the future (still has time)
+        if ((c as any).expire_date && (c as any).expire_date > todayDateStr) continue;
+        const b = billingByClient.get((c as any).id);
+        if (b) {
+          if (b.paid > 0 && b.due <= 0) continue; // paid in full
+          overdueBillingCount++;
+        } else {
+          // No bill row this month yet — count as overdue
+          overdueBillingCount++;
+        }
+      }
+
+      // Blocked line: MikroTik disabled OR status=suspended
+      const mikrotikDisabledCount = mikrotikDisabledClients.count ?? 0;
+      const blockedLineCount = mikrotikDisabledCount + (clientsSuspended.count ?? 0);
+
+      // Inactive/Left: union of clients.status in (inactive, left)
+      const inactiveLeftCount = (clientsInactive.count ?? 0) + (clientsLeft.count ?? 0);
+
+      // Extension/Grace
+      const extensionGraceCount = (clientsExtended.count ?? 0) + (clientsGrace.count ?? 0);
+
+
       return {
         totalClients: clientsAll.count ?? 0,
         thisMonthJoin: thisMonthJoin.count ?? 0,
