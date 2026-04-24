@@ -68,6 +68,7 @@ function useStats() {
         clientsPending, clientsSuspended, clientsExpired, clientsExtended, clientsGrace,
         thisMonthJoin, lastMonthJoin,
         homeClients, homeActive, homeExpired,
+        corporateClients, corporateActive,
         billingThisMonth, billingLastMonth,
         billingToday, billingYesterday,
         incomeThisMonth, expenseThisMonth,
@@ -97,9 +98,12 @@ function useStats() {
         supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "grace"),
         supabase.from("clients").select("id", { count: "exact", head: true }).gte("created_at", monthStart),
         supabase.from("clients").select("id", { count: "exact", head: true }).gte("created_at", lastMonthStart).lte("created_at", lastMonthEnd),
-        supabase.from("clients").select("id", { count: "exact", head: true }).eq("connection_type", "Home"),
-        supabase.from("clients").select("id", { count: "exact", head: true }).eq("connection_type", "Home").eq("status", "active"),
-        supabase.from("clients").select("id", { count: "exact", head: true }).eq("connection_type", "Home").eq("status", "expired"),
+        // Home/Corporate counts based on client_type (Home / Corporate)
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("client_type", "Home"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("client_type", "Home").eq("status", "active"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("client_type", "Home").eq("status", "expired"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("client_type", "Corporate"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("client_type", "Corporate").eq("status", "active"),
         supabase.from("billing").select("amount, paid, status").gte("month", monthStart),
         supabase.from("billing").select("amount, paid, status").gte("month", lastMonthStart).lte("month", lastMonthEnd),
         // Today/yesterday sales: read from bill_collections (source of truth — works regardless of billing.status flip)
