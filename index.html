@@ -7,35 +7,71 @@
     <meta name="description" content="ISP Desk is a complete ISP management ERP with OLT monitoring, billing automation, CRM, HRM, inventory, accounting &amp; more. Built for ISPs in Bangladesh.">
     <meta name="author" content="ISP Desk" />
 
-    
-    
     <meta property="og:type" content="website" />
-    
-
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@ISPDesk" />
-    
     <meta property="og:title" content="ISP Desk – Complete ISP Management &amp; Billing ERP">
-  <meta name="twitter:title" content="ISP Desk – Complete ISP Management &amp; Billing ERP">
+    <meta name="twitter:title" content="ISP Desk – Complete ISP Management &amp; Billing ERP">
     <meta property="og:description" content="ISP Desk is a complete ISP management ERP with OLT monitoring, billing automation, CRM, HRM, inventory, accounting &amp; more. Built for ISPs in Bangladesh.">
-  <meta name="twitter:description" content="ISP Desk is a complete ISP management ERP with OLT monitoring, billing automation, CRM, HRM, inventory, accounting &amp; more. Built for ISPs in Bangladesh.">
+    <meta name="twitter:description" content="ISP Desk is a complete ISP management ERP with OLT monitoring, billing automation, CRM, HRM, inventory, accounting &amp; more. Built for ISPs in Bangladesh.">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- PWA -->
-  <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#0d9488" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="ISP Desk" />
-</head>
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0d9488" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ISP Desk" />
+
+    <style>
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        color: #f1f5f9;
+        font-family: "Inter", "Hind Siliguri", system-ui, sans-serif;
+        transition: opacity 250ms ease;
+      }
+      #boot-splash .bs-logo {
+        width: 64px; height: 64px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #0d9488, #14b8a6);
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 10px 30px -10px rgba(13, 148, 136, 0.6);
+        font-weight: 800; font-size: 28px; color: #fff;
+      }
+      #boot-splash .bs-title { font-size: 18px; font-weight: 600; letter-spacing: 0.3px; }
+      #boot-splash .bs-sub { font-size: 12px; opacity: 0.7; }
+      #boot-splash .bs-spinner {
+        width: 28px; height: 28px;
+        border: 3px solid rgba(255,255,255,0.15);
+        border-top-color: #14b8a6;
+        border-radius: 50%;
+        animation: bs-spin 0.8s linear infinite;
+      }
+      @keyframes bs-spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
 
   <body>
+    <div id="boot-splash">
+      <div class="bs-logo">ID</div>
+      <div class="bs-title">ISP Desk</div>
+      <div class="bs-spinner"></div>
+      <div class="bs-sub">Loading…</div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

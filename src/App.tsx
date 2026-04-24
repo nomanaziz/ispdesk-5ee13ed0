@@ -1,5 +1,6 @@
 import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GlobalLoadingOverlay } from "@/components/GlobalLoadingOverlay";
+import { BootGate } from "@/components/BootGate";
 import { useGlobalLoading } from "@/stores/useGlobalLoading";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -442,6 +443,7 @@ const Pub = ({ children }: { children: React.ReactNode }) => (
 );
 
 const App = () => (
+  <BootGate>
   <ThemeProvider>
     <LanguageProvider>
     <QueryClientProvider client={queryClient}>
@@ -898,6 +900,7 @@ const App = () => (
     </QueryClientProvider>
     </LanguageProvider>
   </ThemeProvider>
+  </BootGate>
 );
 
 export default App;
