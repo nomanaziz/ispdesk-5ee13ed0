@@ -21,6 +21,7 @@ export default function BulkDateExtendDialog({ open, onOpenChange, selectedClien
   const [mode, setMode] = useState<"days" | "date">("days");
   const [days, setDays] = useState(30);
   const [newDate, setNewDate] = useState("");
+  const [markBillPaid, setMarkBillPaid] = useState(false);
 
   const mut = useMutation({
     mutationFn: async () => {
@@ -38,6 +39,27 @@ export default function BulkDateExtendDialog({ open, onOpenChange, selectedClien
         updates.push(Promise.resolve(supabase.from("clients").update({ expire_date: target }).eq("id", c.id)));
       }
       await Promise.all(updates);
+
+      if (markBillPaid) {
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const billUpdates = selectedClients.map(async (c) => {
+          const { data: bill } = await supabase
+            .from("billing")
+            .select("id, amount")
+            .eq("client_id", c.id)
+            .eq("month", currentMonth)
+            .maybeSingle();
+          if (bill?.id) {
+            await supabase.from("billing").update({
+              paid: Number(bill.amount || 0),
+              due: 0,
+              status: "paid",
+              pay_date: new Date().toISOString().slice(0, 10),
+            }).eq("id", bill.id);
+          }
+        });
+        await Promise.all(billUpdates);
+      }
     },
     onSuccess: () => {
       toast.success(`${selectedClients.length} জন ক্লায়েন্টের তারিখ আপডেট হয়েছে`);
