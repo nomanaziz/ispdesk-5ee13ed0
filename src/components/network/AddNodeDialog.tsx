@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,28 +7,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-export type NodeTypeOption =
-  | "pop" | "olt" | "splitter_main" | "splitter_sub" | "switch" | "router" | "onu" | "client" | "custom";
-
-const NODE_TYPE_LABELS: Record<NodeTypeOption, string> = {
-  pop: "POP", olt: "OLT", splitter_main: "Main Splitter", splitter_sub: "Sub Splitter",
-  switch: "Switch", router: "Router", onu: "ONU", client: "Client", custom: "Custom",
-};
+import { NODE_KIND_LIST, NODE_STYLES, type NodeKind } from "./nodeStyles";
 
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   parentId: string | null;
+  defaultKind?: NodeKind;
   onCreated: () => void;
 }
 
-export function AddNodeDialog({ open, onOpenChange, parentId, onCreated }: Props) {
+export function AddNodeDialog({ open, onOpenChange, parentId, defaultKind = "custom", onCreated }: Props) {
   const [name, setName] = useState("");
-  const [nodeType, setNodeType] = useState<NodeTypeOption>("custom");
+  const [nodeType, setNodeType] = useState<NodeKind>(defaultKind);
   const [splitterPreset, setSplitterPreset] = useState<string>("none");
   const [remarks, setRemarks] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => { if (open) setNodeType(defaultKind); }, [open, defaultKind]);
 
   const reset = () => {
     setName(""); setNodeType("custom"); setSplitterPreset("none"); setRemarks("");
@@ -38,27 +34,37 @@ export function AddNodeDialog({ open, onOpenChange, parentId, onCreated }: Props
     if (!name.trim()) { toast.error("Name দিন"); return; }
     setSaving(true);
     try {
+      const s = NODE_STYLES[nodeType];
       const { data: parent, error } = await supabase
         .from("network_nodes")
-        .insert({ name: name.trim(), node_type: nodeType, parent_id: parentId, remarks: remarks || null })
+        .insert({
+          name: name.trim(),
+          node_type: nodeType,
+          parent_id: parentId,
+          remarks: remarks || null,
+          color: s.color,
+          icon: nodeType,
+        })
         .select()
         .single();
       if (error) throw error;
 
-      // EPON/GPON splitter presets — auto-create children
       if (nodeType === "splitter_main" && splitterPreset !== "none" && parent) {
-        const presets: Record<string, { count: number; childType: NodeTypeOption; childName: string }> = {
-          "epon-1-8": { count: 8, childType: "splitter_sub", childName: "Sub Splitter" },
-          "gpon-1-2": { count: 2, childType: "splitter_sub", childName: "Sub Splitter" },
-          "gpon-1-64": { count: 64, childType: "onu", childName: "ONU" },
-          "gpon-1-128": { count: 128, childType: "onu", childName: "ONU" },
+        const presets: Record<string, { count: number; childKind: NodeKind; childName: string }> = {
+          "epon-1-8":   { count: 8,   childKind: "splitter_sub", childName: "Sub Splitter" },
+          "gpon-1-2":   { count: 2,   childKind: "splitter_sub", childName: "Sub Splitter" },
+          "gpon-1-64":  { count: 64,  childKind: "onu",          childName: "ONU" },
+          "gpon-1-128": { count: 128, childKind: "onu",          childName: "ONU" },
         };
         const p = presets[splitterPreset];
         if (p) {
+          const cs = NODE_STYLES[p.childKind];
           const rows = Array.from({ length: p.count }).map((_, i) => ({
             name: `${p.childName} ${i + 1}`,
-            node_type: p.childType,
+            node_type: p.childKind,
             parent_id: parent.id,
+            color: cs.color,
+            icon: p.childKind,
           }));
           await supabase.from("network_nodes").insert(rows);
         }
@@ -87,12 +93,17 @@ export function AddNodeDialog({ open, onOpenChange, parentId, onCreated }: Props
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. CORE-RTR-01" />
           </div>
           <div>
-            <Label>Node Type</Label>
-            <Select value={nodeType} onValueChange={(v) => setNodeType(v as NodeTypeOption)}>
+            <Label>Entity Type</Label>
+            <Select value={nodeType} onValueChange={(v) => setNodeType(v as NodeKind)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {Object.entries(NODE_TYPE_LABELS).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                {NODE_KIND_LIST.map((k) => (
+                  <SelectItem key={k} value={k}>
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-3 w-3 rounded-sm" style={{ background: NODE_STYLES[k].color }} />
+                      {NODE_STYLES[k].label}
+                    </span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -125,3 +136,6 @@ export function AddNodeDialog({ open, onOpenChange, parentId, onCreated }: Props
     </Dialog>
   );
 }
+
+// Backward-compat re-exports for old imports
+export type NodeTypeOption = NodeKind;
