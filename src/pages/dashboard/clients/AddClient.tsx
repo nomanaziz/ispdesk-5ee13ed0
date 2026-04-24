@@ -28,6 +28,12 @@ export default function AddClient() {
   const requestId = location.state?.request_id;
   const editMode = location.state?.editMode === true;
   const editClientId = prefill?.id;
+  // ?client_type=Corporate / Home (from sidebar quick-add)
+  const urlClientType = (() => {
+    const sp = new URLSearchParams(location.search);
+    const v = sp.get("client_type");
+    return v === "Corporate" || v === "Home" ? v : null;
+  })();
   const [form, setForm] = useState<Record<string, any>>({
     name: "", gender: "", father_name: "", mother_name: "", nid_number: "",
     date_of_birth: "", occupation: "", remarks: "",
@@ -36,11 +42,15 @@ export default function AddClient() {
     mikrotik_id: "", protocol_type: "PPPoE", zone_id: "", sub_zone_id: "", box_id: "",
     connection_type: "", cable_length: "", fiber_code: "", core_count: "",
     core_color: "", device_type: "", device_serial: "", vendor: "", purchase_date: "",
-    client_id: "", package_id: "", profile: "", client_type: "Home", billing_status: "Active",
+    client_id: "", package_id: "", profile: "", client_type: urlClientType || "Home", billing_status: "Active",
     username: "", remote_address: "", password: "", joining_date: format(new Date(), "yyyy-MM-dd"),
     monthly_bill: 0, billing_start_month: format(new Date(), "yyyy-MM"), expire_day: "10",
     reference_by: "", is_vip: false, connected_by: "", installed_by_ids: [] as string[],
     same_address: false,
+    // Corporate-only fields
+    company_name: "", trade_license_no: "", contact_person: "",
+    static_ip: "", routing_protocol: "", bgp_as_number: "", peer_ip: "",
+    bandwidth_committed_mbps: "", bandwidth_burst_mbps: "", sla_uptime_percent: "",
   });
 
   const [mikrotikProfiles, setMikrotikProfiles] = useState<{ name: string; rateLimit?: string }[]>([]);
@@ -293,6 +303,17 @@ export default function AddClient() {
         branch_id: isPopMode ? branchId : (form.branch_id || null),
         district_id: isPopMode ? (districtId || null) : (form.district_id || null),
         upazila_id: isPopMode ? (upazilaId || null) : (form.upazila_id || null),
+        // Corporate-specific (only persisted when client_type='Corporate')
+        company_name: form.client_type === "Corporate" ? (form.company_name || null) : null,
+        trade_license_no: form.client_type === "Corporate" ? (form.trade_license_no || null) : null,
+        contact_person: form.client_type === "Corporate" ? (form.contact_person || null) : null,
+        static_ip: form.client_type === "Corporate" ? (form.static_ip || null) : null,
+        routing_protocol: form.client_type === "Corporate" ? (form.routing_protocol || null) : null,
+        bgp_as_number: form.client_type === "Corporate" ? (form.bgp_as_number || null) : null,
+        peer_ip: form.client_type === "Corporate" ? (form.peer_ip || null) : null,
+        bandwidth_committed_mbps: form.client_type === "Corporate" && form.bandwidth_committed_mbps ? Number(form.bandwidth_committed_mbps) : null,
+        bandwidth_burst_mbps: form.client_type === "Corporate" && form.bandwidth_burst_mbps ? Number(form.bandwidth_burst_mbps) : null,
+        sla_uptime_percent: form.client_type === "Corporate" && form.sla_uptime_percent ? Number(form.sla_uptime_percent) : null,
       };
       if (editMode && editClientId) {
         if (shouldSyncMikrotik) {
