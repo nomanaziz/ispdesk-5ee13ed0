@@ -267,14 +267,7 @@ const menuGroups: MenuGroup[] = [
       { title: "HR সেটিংস", url: "/dashboard/hr/settings", icon: Settings },
     ],
   },
-  {
-    label: "অ্যাক্সেস ম্যানেজমেন্ট",
-    icon: ShieldCheck,
-    items: [
-      { title: "অ্যাপ ইউজার", url: "/dashboard/access/app-users", icon: Users },
-      { title: "রোল ও পারমিশন", url: "/dashboard/access/roles", icon: Shield },
-    ],
-  },
+  // "অ্যাক্সেস ম্যানেজমেন্ট" group items এখন "সিস্টেম" group-এর under আছে।
   {
     label: "OLT ম্যানেজমেন্ট",
     icon: Cpu,
@@ -458,6 +451,8 @@ const menuGroups: MenuGroup[] = [
     icon: Cog,
     items: [
       { title: "সিস্টেম সেটআপ", url: "/dashboard/system/setup", icon: Settings },
+      { title: "অ্যাপ ইউজার", url: "/dashboard/access/app-users", icon: Users },
+      { title: "রোল ও পারমিশন", url: "/dashboard/access/roles", icon: Shield },
       { title: "বিল পিরিয়ড", url: "/dashboard/system/bill-period-years", icon: CalendarDays },
       { title: "পিরিয়ড সেটআপ", url: "/dashboard/system/periods", icon: Calendar },
       { title: "কোম্পানি সেটআপ", url: "/dashboard/system/company", icon: Building },
