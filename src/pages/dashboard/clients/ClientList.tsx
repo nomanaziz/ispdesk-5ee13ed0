@@ -32,7 +32,15 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
 
-export default function ClientList() {
+interface ClientListProps {
+  /** When set, locks the client_type filter to this value and hides the dropdown.
+   *  Also customizes the page title and "Add" button destination. */
+  lockedClientType?: "Home" | "Corporate";
+  pageTitle?: string;
+  pageDescription?: string;
+}
+
+export default function ClientList({ lockedClientType, pageTitle, pageDescription }: ClientListProps = {}) {
   const { isPopMode, branchId } = usePopScope();
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
