@@ -1,96 +1,64 @@
 
 
-## Manage Your Clients — Tiered Pricing + Auto Usage-Based Billing
+## BW Sale Customers — Client Count Column + Panel Income Source
 
-### আপনার নতুন pricing model (simplified)
+### দুটো জিনিস যোগ করব
 
-| Tier | User Range | Per-Month Charge |
-|------|-----------|------------------|
-| **P#1 — Starter** | 0 – 500 users | Flat ৳500/মাস |
-| **P#2 — Growth** | 501 – 3,000 users | ৳1 × actual user count |
-| **P#3 — Pro (Free Slab)** | 3,001+ users | **Free** (কোনো charge না) |
+**1. POP Customers list-এ "Number of Clients" column**
 
-POP Admin-এর complex 3-step formula বাদ। শুধু **৩টা slab**, যেটার মধ্যে user-এর active client count পড়ে — সেই অনুযায়ী next month-এর bill auto generate।
+`src/pages/dashboard/bw-sale/BwSaleCustomers.tsx`-এ existing table-এর শেষে নতুন column:
+
+```
+Customer | Status | ... | Number of Clients
+─────────────────────────────────────────────
+Demo BW  | active | ... | 125 clients
+ABC ISP  | active | ... | Not applicable
+```
+
+Logic:
+- `panel_access_enabled = true` → দেখাবে `active_client_count` value (already maintained by trigger from previous round) সাথে current tier badge (P#1/P#2/P#3)।
+- `panel_access_enabled = false` → দেখাবে muted "Not applicable" text।
+
+কোনো নতুন query দরকার নেই — `bw_sale_customers` row-এই `active_client_count` এবং `current_tier_id` আছে।
 
 ---
 
-### পরিবর্তন
+**2. Cash Book-এ নতুন Income Source: "Income from Panel/Portal"**
 
-#### 1. **Database — `bw_panel_pricing_slabs` table কে redesign**
-বর্তমান table-এ `user_limit` (single number) + `monthly_price` (flat) আছে। নতুন structure:
+বর্তমান income sources (codebase-এ check করেছি):
+- `client_billing` — ক্লায়েন্ট বিলিং
+- `mac_reseller` — ম্যাক রিসেলার
+- `bandwidth_sale` — ব্যান্ডউইথ সেল
 
-```
-id, tier_name, min_users, max_users (nullable=∞),
-billing_mode ('flat' | 'per_user' | 'free'),
-flat_price (nullable), per_user_rate (nullable),
-display_order, is_active
-```
+নতুন যোগ হবে:
+- `panel_subscription` — **প্যানেল সাবস্ক্রিপশন (BW Customer Portal)**
 
-Seed data:
-- P#1: min=0, max=500, mode=flat, flat_price=500
-- P#2: min=501, max=3000, mode=per_user, per_user_rate=1
-- P#3: min=3001, max=NULL, mode=free
+পরিবর্তন:
+- `src/pages/dashboard/reports/Financial.tsx` ও অন্যান্য income display জায়গায় SOURCES map-এ নতুন entry।
+- Income entry form / dropdown-এ নতুন option।
+- `bw-panel-monthly-billing` edge function update — bill generate হলে সাথে সাথে `income_entries` table-এ একটা entry insert করবে `source = 'panel_subscription'` দিয়ে। Customer-এর paid status update হলে এটা trigger হবে (অথবা cron যখন bill generate করে তখনই pending-এর জন্য আলাদা ভাবে confirm-on-payment)।
 
-#### 2. **`bw_sale_customers` table — current usage tracking**
-নতুন columns:
-- `active_client_count` (int, auto-updated trigger) — কতজন real client তার panel-এ আছে
-- `current_tier_id` (FK) — এই মাসে সে কোন tier-এ আছে
-- `next_month_estimated_bill` (numeric) — preview
+**Recommended flow:** bill generate হবে → customer pay করলে → তখন `income_entries`-এ row যাবে। এতে cash book-এ শুধু actual collected amount দেখাবে।
 
-**Trigger**: `clients` table-এ insert/delete হলে → owner BW customer-এর `active_client_count` recalculate এবং সঠিক tier auto-assign।
+এর জন্য নতুন একটা small handler/trigger:
+- `bw_panel_subscriptions` table-এ `status` column `pending` থেকে `paid` হলে → auto-insert into `income_entries` with source `panel_subscription`, amount = `paid_amount`, branch_id = admin/HQ branch।
 
-#### 3. **Admin page — `PanelPricing.tsx` simplified UI**
+---
 
-পুরোনো 4-column table (User Limit / Monthly / Per-User / Status) replace হবে নতুন **3-row tier card** দিয়ে:
+### Files to change
 
-```
-┌─────────────────────────────────────────────────┐
-│ P#1  Starter         0–500 users    ৳500/মাস   │ [Edit]
-├─────────────────────────────────────────────────┤
-│ P#2  Growth        501–3,000 users  ৳1/user/মাস│ [Edit]
-├─────────────────────────────────────────────────┤
-│ P#3  Pro          3,001+ users      FREE 🎉    │ [Edit]
-└─────────────────────────────────────────────────┘
-```
-
-নতুন **"Active Customer Usage" column** যোগ হবে নিচের একটা table-এ:
-
-```
-Customer Name | Active Clients | Current Tier | Next Month Bill
-```
-
-এতে admin দেখতে পাবে কে কোন tier-এ আছে এবং পরের মাসে কত bill generate হবে।
-
-#### 4. **BW customer-এর `Manage Your Clients` modal update**
-`ManageClientsUpgradeModal.tsx`-এ ৩টা slab এভাবে দেখাবে (clean cards):
-
-```
-┌──────────┐ ┌──────────┐ ┌──────────────┐
-│  P#1     │ │  P#2     │ │  P#3 ⭐ FREE │
-│  ৳500    │ │  ৳1/user │ │  3,000+ users│
-│  /month  │ │  per month│ │   no charge │
-│  ≤500 users│ │501-3000 │ │   forever   │
-└──────────┘ └──────────┘ └──────────────┘
-```
-
-প্লাস **"আপনার বর্তমান usage"** banner: *"আপনার এখন ১২৫ জন active client — Tier P#1-এ আছেন (৳500/মাস)"*
-
-#### 5. **Auto monthly bill generation**
-- Cron edge function `bw-panel-monthly-billing` (১ম তারিখে চলবে)
-- Logic: প্রতিটি active BW customer-এর `active_client_count` দেখে → matching tier খুঁজে → bill calculate → `bw_billing` table-এ insert করবে।
-
-#### 6. **Components affected**
-- `src/pages/dashboard/bw-sale/PanelPricing.tsx` — simplified 3-tier UI
-- `src/components/ManageClientsUpgradeModal.tsx` — new tier cards + usage banner
-- `supabase/functions/bw-panel-monthly-billing/index.ts` — new cron function
-- DB: schema migration + trigger + seed
+| File | Change |
+|------|--------|
+| `src/pages/dashboard/bw-sale/BwSaleCustomers.tsx` | Add "Number of Clients" column with tier badge / "Not applicable" |
+| `src/pages/dashboard/reports/Financial.tsx` | Add `panel_subscription` to SOURCES map |
+| Income entry form (wherever source dropdown exists) | Add new option |
+| DB migration | New trigger on `bw_panel_subscriptions` for status→paid auto income entry |
 
 ---
 
 ### Outcome
 
-- Admin শুধু ৩টা simple tier manage করবে — কোনো complex formula না।
-- BW customer তার active client count দেখে বুঝবে সে কোন tier-এ আছে।
-- Client বাড়লে auto next-month bill higher হবে; ৩,০০০ পার করলে বিনামূল্যে।
-- Admin dashboard-এ প্রতিটি customer-এর usage + projected bill visible।
+- Admin POP Customers list-এ এক নজরে দেখবে কে panel নিয়েছে এবং তার কতজন client আছে।
+- প্রতিটি paid panel subscription auto cash book-এর income হিসেবে track হবে — admin-এর portal-এর আয় visible হবে।
+- Existing financial reports ("Income from Panel" filter দিয়ে) এই revenue stream আলাদা করে দেখা যাবে।
 
