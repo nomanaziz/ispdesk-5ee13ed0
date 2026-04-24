@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Globe, Search, Bell, Palette, Settings, Plus, MoreVertical } from "lucide-react";
+import {
+  LogOut, User, Globe, Search, Bell, Palette, Settings, Plus, MoreVertical,
+  Activity, Languages, StickyNote,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,7 +19,8 @@ import { HeaderClock } from "@/components/HeaderClock";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-  DropdownMenuSeparator, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuSub, DropdownMenuSubTrigger,
+  DropdownMenuSubContent, DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 
 export function TopBar() {
@@ -39,37 +43,6 @@ export function TopBar() {
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
   }, []);
-
-  const LangToggle = (
-    <div
-      className="inline-flex items-center rounded-full border border-border/60 bg-muted/30 p-0.5 h-8"
-      role="group"
-      aria-label="Language"
-    >
-      <button
-        type="button"
-        onClick={() => setLang("bn")}
-        className={cn(
-          "px-2.5 h-7 rounded-full text-[11px] font-semibold transition-colors",
-          lang === "bn" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-        )}
-        title="বাংলা"
-      >
-        বাং
-      </button>
-      <button
-        type="button"
-        onClick={() => setLang("en")}
-        className={cn(
-          "px-2.5 h-7 rounded-full text-[11px] font-semibold transition-colors",
-          lang === "en" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-        )}
-        title="English"
-      >
-        EN
-      </button>
-    </div>
-  );
 
   return (
     <>
@@ -100,9 +73,9 @@ export function TopBar() {
           </Button>
         </div>
 
-        {/* Right */}
+        {/* Right — minimal: Clock, Quick Add, Online Monitoring, Notifications, User */}
         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-          {/* Clock: desktop only — hidden on mobile/tablet per user request */}
+          {/* Clock: desktop only */}
           <div className="hidden lg:block">
             <HeaderClock />
           </div>
@@ -118,119 +91,30 @@ export function TopBar() {
             <span className="hidden md:inline text-xs">{t("দ্রুত যোগ", "Quick Add")}</span>
           </Button>
 
-          {/* Language toggle: hidden on mobile (inside More menu) */}
-          <div className="hidden sm:block">{LangToggle}</div>
+          {/* Online Client Monitoring — quick link, always visible */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
+            onClick={() => navigate("/dashboard/monitoring/online")}
+            title={t("অনলাইন ক্লায়েন্ট মনিটরিং", "Online Client Monitoring")}
+            aria-label="Online Client Monitoring"
+          >
+            <Activity className="h-4 w-4" />
+          </Button>
 
-          {/* Notes + Bell: visible from sm+ */}
-          <div className="hidden sm:block">
-            <NotesButton ownerType="admin" />
-          </div>
+          {/* Notifications */}
           <Button
             variant="ghost"
             size="icon"
             className="h-9 w-9 text-muted-foreground hover:text-foreground relative hidden sm:inline-flex"
+            title={t("নোটিফিকেশন", "Notifications")}
           >
             <Bell className="h-4 w-4" />
             <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
           </Button>
 
-          {/* Desktop-only utility cluster */}
-          <div className="hidden xl:flex items-center gap-1">
-            <Link to="/" target="_blank" title={t("ওয়েবসাইটে যান", "Open website")}>
-              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
-                <Globe className="h-4 w-4" />
-              </Button>
-            </Link>
-            <ThemeSwitcher />
-            <InstallAppButton variant="icon" />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-muted-foreground hover:text-foreground"
-              title={t("থিম কাস্টমাইজার", "Theme customizer")}
-              onClick={() => setThemeOpen(true)}
-            >
-              <Palette className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-muted-foreground hover:text-foreground"
-              title={t("কুইক সেটিংস", "Quick settings")}
-              onClick={() => setQuickOpen(true)}
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Compact "More" menu — visible below xl (mobile + tablet) */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 text-muted-foreground hover:text-foreground xl:hidden"
-                title={t("আরও", "More")}
-                aria-label="More options"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60">
-              {/* Mobile-only: language toggle */}
-              <div className="sm:hidden">
-                <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-muted-foreground">
-                  {t("ভাষা", "Language")}
-                </DropdownMenuLabel>
-                <div className="px-2 pb-2">{LangToggle}</div>
-                <DropdownMenuSeparator />
-
-                <DropdownMenuItem className="gap-2">
-                  <Bell className="h-4 w-4" />
-                  <span>{t("নোটিফিকেশন", "Notifications")}</span>
-                  <span className="ml-auto h-2 w-2 rounded-full bg-destructive" />
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </div>
-
-              <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-muted-foreground">
-                {t("টুলস", "Tools")}
-              </DropdownMenuLabel>
-
-              <DropdownMenuItem asChild>
-                <Link to="/" target="_blank" className="cursor-pointer">
-                  <Globe className="h-4 w-4 mr-2" />
-                  {t("ওয়েবসাইটে যান", "Open website")}
-                </Link>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-default focus:bg-accent/50 p-0">
-                <div className="w-full px-2 py-1.5 flex items-center justify-between gap-2">
-                  <span className="text-sm">{t("থিম মোড", "Theme mode")}</span>
-                  <ThemeSwitcher />
-                </div>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-default focus:bg-accent/50 p-0">
-                <div className="w-full px-2 py-1.5 flex items-center justify-between gap-2">
-                  <span className="text-sm">{t("ইনস্টল করুন", "Install app")}</span>
-                  <InstallAppButton variant="icon" />
-                </div>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem onClick={() => setThemeOpen(true)}>
-                <Palette className="h-4 w-4 mr-2" />
-                {t("থিম কাস্টমাইজার", "Theme customizer")}
-              </DropdownMenuItem>
-
-              <DropdownMenuItem onClick={() => setQuickOpen(true)}>
-                <Settings className="h-4 w-4 mr-2" />
-                {t("কুইক সেটিংস", "Quick settings")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* User menu */}
+          {/* User menu — contains profile, notes, language, theme, settings, website, install, sign out */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-2 h-9 px-1.5 sm:px-2">
@@ -245,19 +129,79 @@ export function TopBar() {
                 </div>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="lg:hidden">
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>
                 <div className="text-sm font-semibold truncate">{displayName}</div>
                 {roles.length > 0 && (
                   <div className="text-[11px] text-muted-foreground capitalize">{roles[0]?.replace("_", " ")}</div>
                 )}
               </DropdownMenuLabel>
-              <div className="lg:hidden"><DropdownMenuSeparator /></div>
+              <DropdownMenuSeparator />
+
               <DropdownMenuItem onClick={() => navigate("/dashboard/system/company")}>
                 <User className="mr-2 h-4 w-4" /> {t("প্রোফাইল", "Profile")}
               </DropdownMenuItem>
+
+              {/* Own Notes */}
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-default focus:bg-accent/50 p-0">
+                <div className="w-full px-2 py-1.5 flex items-center justify-between gap-2">
+                  <span className="flex items-center text-sm"><StickyNote className="mr-2 h-4 w-4" />{t("আমার নোট", "My notes")}</span>
+                  <NotesButton ownerType="admin" />
+                </div>
+              </DropdownMenuItem>
+
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => { signOut(); navigate("/login"); }} className="text-destructive">
+
+              {/* Language */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Languages className="mr-2 h-4 w-4" /> {t("ভাষা", "Language")}
+                  <span className="ml-auto text-[10px] text-muted-foreground">{lang === "bn" ? "বাং" : "EN"}</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => setLang("bn")} className={cn(lang === "bn" && "bg-accent")}>বাংলা</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setLang("en")} className={cn(lang === "en" && "bg-accent")}>English</DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+
+              {/* Theme mode */}
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-default focus:bg-accent/50 p-0">
+                <div className="w-full px-2 py-1.5 flex items-center justify-between gap-2">
+                  <span className="text-sm">{t("থিম মোড", "Theme mode")}</span>
+                  <ThemeSwitcher />
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={() => setThemeOpen(true)}>
+                <Palette className="mr-2 h-4 w-4" />
+                {t("থিম কাস্টমাইজার", "Theme customizer")}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={() => setQuickOpen(true)}>
+                <Settings className="mr-2 h-4 w-4" />
+                {t("কুইক সেটিংস", "Quick settings")}
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem asChild>
+                <Link to="/" target="_blank" className="cursor-pointer">
+                  <Globe className="mr-2 h-4 w-4" />
+                  {t("ওয়েবসাইটে যান", "Open website")}
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-default focus:bg-accent/50 p-0">
+                <div className="w-full px-2 py-1.5 flex items-center justify-between gap-2">
+                  <span className="text-sm">{t("অ্যাপ ইনস্টল", "Install app")}</span>
+                  <InstallAppButton variant="icon" />
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => { signOut(); navigate("/login"); }} className="text-destructive focus:text-destructive">
                 <LogOut className="mr-2 h-4 w-4" /> {t("সাইন আউট", "Sign out")}
               </DropdownMenuItem>
             </DropdownMenuContent>
