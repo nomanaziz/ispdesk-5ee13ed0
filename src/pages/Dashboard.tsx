@@ -376,6 +376,12 @@ function useStats() {
         totalPopMgrs, bwPopMgrs, regularPopMgrs,
         popTotalClients, popActiveClients, popInactiveClients,
         bwTotalUsers, bwActiveUsers, bwInactiveUsers, bwParentResellers,
+        // ── Merged status metrics ──
+        overdueBillingCount,
+        blockedLineCount,
+        mikrotikDisabledCount,
+        inactiveLeftCount,
+        extensionGraceCount,
       };
     },
     refetchInterval: 120000,
