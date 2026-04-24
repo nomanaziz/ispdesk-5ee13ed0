@@ -264,6 +264,7 @@ const menuGroups: MenuGroup[] = [
       { title: "শিফট ম্যানেজমেন্ট", url: "/dashboard/hr/shifts", icon: Clock },
       { title: "ZKTeco ডিভাইস", url: "/dashboard/hr/zkteco-devices", icon: Server },
       { title: "উপস্থিতি নিয়ম", url: "/dashboard/hr/attendance-rules", icon: Shield },
+      { title: "ছুটি ম্যানেজমেন্ট", url: "/dashboard/hr/leave", icon: CalendarDays },
       { title: "HR সেটিংস", url: "/dashboard/hr/settings", icon: Settings },
     ],
   },
@@ -309,15 +310,7 @@ const menuGroups: MenuGroup[] = [
       { title: "ম্যাপে নেটওয়ার্ক", url: "/dashboard/network/map", icon: Map },
     ],
   },
-  {
-    label: "ছুটি ম্যানেজমেন্ট",
-    icon: CalendarDays,
-    items: [
-      { title: "ক্যাটাগরি", url: "/dashboard/leave/categories", icon: FolderOpen },
-      { title: "সেটআপ", url: "/dashboard/leave/setup", icon: Settings },
-      { title: "অনুমোদন", url: "/dashboard/leave/approval", icon: CheckSquare },
-    ],
-  },
+  // ছুটি ম্যানেজমেন্ট merged into HR group above as a single item.
   {
     label: "ইভেন্ট ও ছুটি",
     icon: Calendar,
