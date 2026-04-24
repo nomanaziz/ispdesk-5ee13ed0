@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -44,6 +45,7 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
   const [remarks, setRemarks] = useState("");
   const [setNextBilling, setSetNextBilling] = useState(true);
   const [sendSms, setSendSms] = useState(false);
+  const [overpayMode, setOverpayMode] = useState<"increase" | "advance">("increase");
   const [receivedBy, setReceivedBy] = useState(user?.id || customer?.sub || "");
 
   const { data: profiles = [] } = useQuery({
@@ -78,13 +80,15 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
       setSetNextBilling(true);
       setSendSms(false);
       setApplyVat(false);
+      setOverpayMode("increase");
       setReceivedBy(user?.id || customer?.sub || "");
     }
   }, [open, billing, dueAmount, monthlyBill, user?.id, customer?.sub]);
 
   const totalReceived = receivedAmount - discount + (applyVat ? vatAmount : 0);
   const balanceDue = monthlyBill - alreadyPaid - totalReceived;
-  const isAdvance = balanceDue < 0;
+  const isOverpayment = totalReceived > (monthlyBill - alreadyPaid);
+  const isAdvance = balanceDue < 0 && overpayMode === "advance";
 
   const handleSubmit = async () => {
     if (receivedAmount <= 0) {
@@ -107,16 +111,19 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
           received_by: receivedBy || customer?.sub || null,
           set_next_billing: setNextBilling,
           send_sms: sendSms,
+          overpay_mode: isOverpayment ? overpayMode : undefined,
         });
       } else {
         const newPaid = alreadyPaid + totalReceived;
-        const newDue = Math.max(0, monthlyBill - newPaid);
-        const newAdvance = newPaid > monthlyBill ? newPaid - monthlyBill : 0;
+        const increaseAmount = isOverpayment && overpayMode === "increase";
+        const effectiveBillAmount = increaseAmount ? newPaid : monthlyBill;
+        const newDue = Math.max(0, effectiveBillAmount - newPaid);
+        const newAdvance = !increaseAmount && newPaid > monthlyBill ? newPaid - monthlyBill : 0;
         const newStatus = newDue <= 0 ? "paid" : "partial";
         const finalRemarks = isAdvance ? `Advance Pay. ${remarks}`.trim() : remarks;
 
         if (billing?.id) {
-          const { error } = await supabase.from("billing").update({
+          const updatePayload: any = {
             paid: newPaid,
             due: newDue,
             advance: newAdvance,
@@ -126,7 +133,9 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
             collected_by: receivedBy || null,
             discount: discount,
             vat: applyVat ? vatAmount : 0,
-          }).eq("id", billing.id);
+          };
+          if (increaseAmount) updatePayload.amount = effectiveBillAmount;
+          const { error } = await supabase.from("billing").update(updatePayload).eq("id", billing.id);
           if (error) throw error;
         }
 
@@ -318,6 +327,28 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
               </tbody>
             </table>
           </div>
+
+          {isOverpayment && (
+            <div className="border rounded-lg p-3 bg-amber-500/10 border-amber-500/30 space-y-2">
+              <div className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                ⚠ অতিরিক্ত পরিমাণ গ্রহণ করছেন (৳{Math.abs(balanceDue)} বেশি)। কীভাবে রাখবেন?
+              </div>
+              <RadioGroup value={overpayMode} onValueChange={(v) => setOverpayMode(v as any)} className="gap-1">
+                <label className="flex items-start gap-2 text-xs cursor-pointer">
+                  <RadioGroupItem value="increase" id="op-inc" className="mt-0.5" />
+                  <span>
+                    <span className="font-medium">এই মাসের বিল বাড়িয়ে দিন</span> — এই মাসের বিল হবে ৳{(alreadyPaid + totalReceived).toLocaleString()}, পরের মাস আগের মতো ৳{(client?.monthly_bill || monthlyBill).toLocaleString()}
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-xs cursor-pointer">
+                  <RadioGroupItem value="advance" id="op-adv" className="mt-0.5" />
+                  <span>
+                    <span className="font-medium">অগ্রিম হিসেবে রাখুন</span> — অতিরিক্ত ৳{Math.abs(balanceDue)} advance balance-এ যোগ হবে
+                  </span>
+                </label>
+              </RadioGroup>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
