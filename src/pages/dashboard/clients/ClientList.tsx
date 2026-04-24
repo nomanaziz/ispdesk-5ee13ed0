@@ -220,7 +220,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
   const requireSel = () => { if (selectedClients.length === 0) { toast.error("কোনো ক্লায়েন্ট সিলেক্ট করা হয়নি"); return false; } return true; };
   const handleExcel = () => { if (!requireSel()) return; exportClientsExcel(clientsToRows(selectedClients), "clients"); toast.success("Excel ডাউনলোড হয়েছে"); };
   const handlePdf = () => { if (!requireSel()) return; exportClientsPdf(clientsToRows(selectedClients), "clients", "Client List"); toast.success("PDF ডাউনলোড হয়েছে"); };
-  const handleInvoiceDownload = () => { if (!requireSel()) return; exportInvoicesPdf(selectedClients, "invoices"); toast.success("ইনভয়েস ডাউনলোড হয়েছে"); };
+  const handleInvoiceDownload = async () => { if (!requireSel()) return; await exportInvoicesPdf(selectedClients, "invoices"); toast.success("ইনভয়েস ডাউনলোড হয়েছে"); };
 
   const getExpireBadge = (expireDate: string | null, isVip: boolean) => {
     if (isVip) return { color: "bg-purple-500/10 text-purple-600 border-purple-500/30", label: "VIP" };

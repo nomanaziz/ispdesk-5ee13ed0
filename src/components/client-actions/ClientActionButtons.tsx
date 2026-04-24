@@ -109,13 +109,13 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
     onError: (e: any) => toast.error(e.message),
   });
 
-  const handleInvoiceDownload = () => {
+  const handleInvoiceDownload = async () => {
     const bill = currentBill;
     if (!bill) {
       toast.error("ইনভয়েস ডাউনলোডের আগে বিল তৈরি করুন");
       return;
     }
-    exportInvoicesPdf([{ ...client, currentBill: bill }], `invoice-${client.client_id || client.id}`);
+    await exportInvoicesPdf([{ ...client, currentBill: bill }], `invoice-${client.client_id || client.id}`);
     toast.success("ইনভয়েস ডাউনলোড হয়েছে");
   };
 
