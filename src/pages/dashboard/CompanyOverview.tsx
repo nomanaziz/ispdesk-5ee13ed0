@@ -101,6 +101,7 @@ export default function CompanyOverview() {
         todayCollection: sumAmt(todayCol),
         monthCollection: sumAmt(monthCol),
         onlineClients: (onlineClients as any).count || 0,
+        bwSalePops: bwSalePops.count || 0,
         topBw,
       };
     },
