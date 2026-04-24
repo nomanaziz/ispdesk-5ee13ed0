@@ -100,7 +100,11 @@ async function mikrotikLogin(conn: Deno.TcpConn, username: string, password: str
 
 async function mikrotikCommand(conn: Deno.TcpConn, command: string, params?: Record<string, string>): Promise<Record<string, string>[]> {
   const words = [command];
-  if (params) for (const [k, v] of Object.entries(params)) words.push(`=${k}=${v}`);
+  if (params) for (const [k, v] of Object.entries(params)) {
+    // RouterOS query words start with "?" and must NOT be re-prefixed with "="
+    if (k.startsWith("?")) words.push(`${k}=${v}`);
+    else words.push(`=${k}=${v}`);
+  }
   await writeSentence(conn, words);
   const results: Record<string, string>[] = [];
   while (true) {
