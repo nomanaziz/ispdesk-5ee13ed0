@@ -41,6 +41,15 @@ interface Customer {
   password: string | null;
   activity_status: string;
   created_at: string;
+  panel_access_enabled?: boolean;
+  active_client_count?: number;
+  current_tier_id?: string | null;
+}
+
+interface Tier {
+  id: string;
+  tier_name: string | null;
+  display_order: number;
 }
 
 const emptyForm = {
@@ -73,6 +82,7 @@ export default function Pop() {
   const { isAdmin } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [tiers, setTiers] = useState<Tier[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [perPage, setPerPage] = useState(10);
@@ -87,14 +97,23 @@ export default function Pop() {
 
   async function fetchData() {
     setLoading(true);
-    const [cRes, iRes] = await Promise.all([
+    const [cRes, iRes, tRes] = await Promise.all([
       supabase.from("bw_sale_customers").select("*").order("created_at", { ascending: false }),
       supabase.from("bw_sales_invoices").select("customer_id, total_amount, amount, paid_amount, discount"),
+      supabase.from("bw_panel_pricing_slabs").select("id, tier_name, display_order").eq("is_active", true).order("display_order"),
     ]);
-    if (cRes.data) setCustomers(cRes.data);
+    if (cRes.data) setCustomers(cRes.data as any);
     if (iRes.data) setInvoices(iRes.data);
+    if (tRes.data) setTiers(tRes.data as any);
     setLoading(false);
   }
+
+  const tierLabel = (id?: string | null) => {
+    if (!id) return null;
+    const t = tiers.find(x => x.id === id);
+    if (!t) return null;
+    return `P#${t.display_order} ${t.tier_name || ""}`.trim();
+  };
 
   const dueByCustomer = useMemo(() => {
     const map = new Map<string, number>();
@@ -224,16 +243,18 @@ export default function Pop() {
                   <TableHead>Mobile</TableHead>
                   <TableHead className="text-right">Balance Due</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Number of Clients</TableHead>
                   <TableHead className="w-28 text-center">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
                 ) : paginated.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No customers found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No customers found</TableCell></TableRow>
                 ) : paginated.map((c, i) => {
                   const due = dueByCustomer.get(c.id) || 0;
+                  const tier = tierLabel(c.current_tier_id);
                   return (
                     <TableRow key={c.id}>
                       <TableCell className="text-muted-foreground">{(page - 1) * perPage + i + 1}</TableCell>
@@ -246,6 +267,17 @@ export default function Pop() {
                         <Badge variant={(c.activity_status || "").toLowerCase() === "active" ? "default" : "secondary"}>
                           {c.activity_status}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {c.panel_access_enabled ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold">{c.active_client_count ?? 0}</span>
+                            <span className="text-xs text-muted-foreground">clients</span>
+                            {tier && <Badge variant="outline" className="text-[10px] py-0 px-1.5">{tier}</Badge>}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">Not applicable</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-center gap-1">
@@ -289,7 +321,7 @@ export default function Pop() {
                   <TableRow className="bg-muted/40">
                     <TableCell colSpan={5} className="text-right font-semibold">Total Due</TableCell>
                     <TableCell className="text-right font-bold text-destructive">৳{Math.round(totalDue).toLocaleString()}</TableCell>
-                    <TableCell colSpan={2}></TableCell>
+                    <TableCell colSpan={3}></TableCell>
                   </TableRow>
                 </TableFooter>
               )}

@@ -16,6 +16,7 @@ const SOURCES = [
   { value: "client_billing", label: "ক্লায়েন্ট বিলিং" },
   { value: "mac_reseller", label: "ম্যাক রিসেলার" },
   { value: "bandwidth_sale", label: "ব্যান্ডউইথ সেল" },
+  { value: "panel_subscription", label: "প্যানেল সাবস্ক্রিপশন (BW Portal)" },
 ];
 
 const PAYMENT_METHODS = ["Cash", "Bank Transfer", "bKash", "Nagad", "Rocket", "Card", "Online"];

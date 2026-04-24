@@ -34,7 +34,7 @@ export default function AccountingDashboard() {
       const totalLiabilities = allAccounts.filter(a => a.type === "liability").reduce((s, a) => s + Number(a.balance), 0);
 
       // Income by source pie
-      const sourceLabels: Record<string, string> = { client_billing: "ক্লায়েন্ট বিলিং", mac_reseller: "ম্যাক রিসেলার", bandwidth_sale: "ব্যান্ডউইথ সেল" };
+      const sourceLabels: Record<string, string> = { client_billing: "ক্লায়েন্ট বিলিং", mac_reseller: "ম্যাক রিসেলার", bandwidth_sale: "ব্যান্ডউইথ সেল", panel_subscription: "প্যানেল সাবস্ক্রিপশন", bill_collection: "বিল কালেকশন" };
       const incomeBySource = allIncome.reduce((acc, e) => {
         const key = e.source || "other";
         acc[key] = (acc[key] || 0) + Number(e.amount);

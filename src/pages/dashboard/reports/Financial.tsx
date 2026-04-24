@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { Search } from "lucide-react";
 
-const SOURCES = { client_billing: "ক্লায়েন্ট বিলিং", mac_reseller: "ম্যাক রিসেলার", bandwidth_sale: "ব্যান্ডউইথ সেল" };
+const SOURCES = { client_billing: "ক্লায়েন্ট বিলিং", mac_reseller: "ম্যাক রিসেলার", bandwidth_sale: "ব্যান্ডউইথ সেল", panel_subscription: "প্যানেল সাবস্ক্রিপশন", bill_collection: "বিল কালেকশন" };
 
 export default function Financial() {
   const [search, setSearch] = useState("");
