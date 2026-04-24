@@ -15,28 +15,37 @@ for (const [path, url] of Object.entries(modules)) {
 }
 
 export const ICONS8_NAMES = Object.keys(ICONS).sort();
+export const ICONS8_URLS = Object.values(ICONS);
 
-// Warm the browser HTTP cache for every icon URL once at module load,
-// so the first <img> render hits cache instantly. Total payload ~456KB
-// across 152 tiny PNGs — fetched in parallel during idle time.
+// Synchronously fire `new Image()` requests at module-load so the browser
+// kicks off parallel HTTP/2 fetches immediately — no idle wait.
 let warmed = false;
 function warmCache() {
   if (warmed || typeof window === "undefined") return;
   warmed = true;
-  const run = () => {
-    for (const url of Object.values(ICONS)) {
-      const img = new Image();
-      img.decoding = "async";
-      img.src = url;
-    }
-  };
-  if ("requestIdleCallback" in window) {
-    (window as any).requestIdleCallback(run, { timeout: 2000 });
-  } else {
-    setTimeout(run, 200);
+  for (const url of ICONS8_URLS) {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = url;
   }
 }
 warmCache();
+
+/** Awaitable preload — resolves when every icon has been decoded (or failed). */
+export function preloadAllIcons8(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  return Promise.all(
+    ICONS8_URLS.map(
+      (url) =>
+        new Promise<void>((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+          img.src = url;
+        }),
+    ),
+  ).then(() => undefined);
+}
 
 interface Props {
   name: string;
@@ -47,16 +56,6 @@ interface Props {
   interactive?: boolean;
 }
 
-/**
- * Renders an Icons8 colored icon as <img>.
- * Returns null if the name is unknown so callers can fall back.
- *
- * Performance:
- *  - All URLs resolved at build time (no dynamic import on render)
- *  - HTTP cache warmed at module load → near-instant first paint
- *  - `loading="eager"` + `fetchpriority="high"` so sidebar/menu icons
- *    do not vanish/redraw on collapse-expand
- */
 export function Icons8Icon({
   name,
   size = 24,

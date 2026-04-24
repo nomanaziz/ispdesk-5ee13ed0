@@ -15,30 +15,38 @@ for (const [path, url] of Object.entries(modules)) {
 }
 
 export const HISHABEE_ICON_NAMES = Object.keys(ICONS).sort();
+export const HISHABEE_URLS = Object.values(ICONS);
 
 export type HishabeeIconName = string;
 
-// Warm the browser HTTP cache for every icon at idle time so the first
-// <img> render hits cache instantly — prevents the "text first, icon later"
-// flash in sidebars and menus.
+// Synchronous warm — kicks off parallel fetches at module-load.
 let warmed = false;
 function warmCache() {
   if (warmed || typeof window === "undefined") return;
   warmed = true;
-  const run = () => {
-    for (const url of Object.values(ICONS)) {
-      const img = new Image();
-      img.decoding = "async";
-      img.src = url;
-    }
-  };
-  if ("requestIdleCallback" in window) {
-    (window as any).requestIdleCallback(run, { timeout: 2000 });
-  } else {
-    setTimeout(run, 200);
+  for (const url of HISHABEE_URLS) {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = url;
   }
 }
 warmCache();
+
+/** Awaitable preload — resolves when every icon has loaded (or failed). */
+export function preloadAllHishabee(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  return Promise.all(
+    HISHABEE_URLS.map(
+      (url) =>
+        new Promise<void>((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+          img.src = url;
+        }),
+    ),
+  ).then(() => undefined);
+}
 
 interface Props {
   name: HishabeeIconName;
@@ -47,12 +55,6 @@ interface Props {
   alt?: string;
 }
 
-/**
- * Renders a Hishabee colored illustration icon.
- * Returns null if the name is unknown so callers can fall back to lucide.
- *
- * Performance: eager loading + cache warm = no flash of text-without-icon.
- */
 export function HishabeeIcon({ name, size = 24, className, alt = "" }: Props) {
   const url = ICONS[name];
   if (!url) return null;
