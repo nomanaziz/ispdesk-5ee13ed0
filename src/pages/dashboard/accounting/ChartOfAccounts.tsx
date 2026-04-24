@@ -1,47 +1,189 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Plus, Search, Pencil, Trash2, BookOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, Info, BookOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const TYPES = [
-  { value: "asset", label: "সম্পদ (Asset)" },
-  { value: "liability", label: "দায় (Liability)" },
-  { value: "equity", label: "মূলধন (Equity)" },
-  { value: "income", label: "আয় (Income)" },
-  { value: "expense", label: "ব্যয় (Expense)" },
-];
+  { value: "asset",     label: "Asset"          },
+  { value: "expense",   label: "Expense"        },
+  { value: "income",    label: "Income"         },
+  { value: "liability", label: "Liabilities"    },
+  { value: "equity",    label: "Owner's Equity" },
+] as const;
 
-const defaultForm = { code: "", name: "", type: "asset", parent_id: null as string | null, balance: 0, status: "active" };
+type AcctType = typeof TYPES[number]["value"];
+
+// Subtypes shown for each type (same order as Galaxy Net reference)
+const SUBTYPES: Record<AcctType, string[]> = {
+  asset: [
+    "Cash and Bank",
+    "Depreciation and Amortization",
+    "Expected Payments from Customers",
+    "Inventory",
+    "Money in Transit",
+    "Other Long-Term Asset",
+    "Other Short-Term Asset",
+    "Property, Plant, Equipment",
+    "Vendor Prepayments and Vendor Credits",
+  ],
+  expense: [
+    "Cost of Goods Sold",
+    "Discount",
+    "Loss On Foreign Exchange",
+    "Operating Expense",
+    "Payment Processing Fee",
+    "Payroll Expense",
+    "Uncategorized Expense",
+  ],
+  income: [
+    "Discount",
+    "Gain On Foreign Exchange",
+    "Income",
+    "Other Income",
+    "Uncategorized Income",
+  ],
+  liability: [
+    "Credit Card",
+    "Customer Prepayments and Customer Credits",
+    "Due For Payroll",
+    "Due to You and Other Business Owners",
+    "Expected Payments to Vendors",
+    "Loan and Line of Credit",
+    "Other Long-Term Liability",
+    "Other Short-Term Liability",
+    "Sales Taxes",
+  ],
+  equity: [
+    "Business Owner Contribution and Drawing",
+    "Retained Earnings",
+  ],
+};
+
+interface Account {
+  id: string;
+  code: string;
+  name: string;
+  type: AcctType;
+  subtype: string | null;
+  description: string | null;
+  status: string;
+  balance: number | null;
+  parent_id: string | null;
+}
+
+const emptyForm = {
+  code: "",
+  name: "",
+  type: "asset" as AcctType,
+  subtype: "",
+  description: "",
+  status: "active",
+  balance: 0,
+};
 
 export default function ChartOfAccounts() {
   const qc = useQueryClient();
+  const [activeTab, setActiveTab] = useState<AcctType>("asset");
+  const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState(defaultForm);
-  const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState("all");
+  const [form, setForm] = useState(emptyForm);
 
   const { data: accounts, isLoading } = useQuery({
     queryKey: ["chart-of-accounts"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("chart_of_accounts").select("*").order("code");
+      const { data, error } = await supabase
+        .from("chart_of_accounts")
+        .select("*")
+        .order("code");
       if (error) throw error;
-      return data;
+      return (data || []) as unknown as Account[];
     },
   });
 
+  const counts = useMemo(() => {
+    const list = accounts ?? [];
+    const filt = (t: AcctType) =>
+      list.filter(
+        (a) =>
+          a.type === t &&
+          (statusFilter === "all" || a.status === statusFilter),
+      ).length;
+    return {
+      asset: filt("asset"),
+      expense: filt("expense"),
+      income: filt("income"),
+      liability: filt("liability"),
+      equity: filt("equity"),
+    };
+  }, [accounts, statusFilter]);
+
+  // Group accounts of active tab by subtype, in defined order
+  const grouped = useMemo(() => {
+    const list = (accounts ?? []).filter(
+      (a) => a.type === activeTab && (statusFilter === "all" || a.status === statusFilter),
+    );
+    const order = SUBTYPES[activeTab];
+    const map: Record<string, Account[]> = {};
+    order.forEach((s) => (map[s] = []));
+    for (const a of list) {
+      const key = a.subtype && order.includes(a.subtype) ? a.subtype : (a.subtype || "Other");
+      if (!map[key]) map[key] = [];
+      map[key].push(a);
+    }
+    // Order respecting SUBTYPES list, then any unknown subtypes appended
+    const known = order.map((s) => [s, map[s] || []] as const);
+    const extras = Object.entries(map)
+      .filter(([k]) => !order.includes(k))
+      .map(([k, v]) => [k, v] as const);
+    return [...known, ...extras];
+  }, [accounts, activeTab, statusFilter]);
+
+  const openCreate = (subtype?: string) => {
+    setEditId(null);
+    setForm({ ...emptyForm, type: activeTab, subtype: subtype || "" });
+    setOpen(true);
+  };
+
+  const openEdit = (a: Account) => {
+    setEditId(a.id);
+    setForm({
+      code: a.code,
+      name: a.name,
+      type: a.type,
+      subtype: a.subtype || "",
+      description: a.description || "",
+      status: a.status,
+      balance: Number(a.balance) || 0,
+    });
+    setOpen(true);
+  };
+
   const save = useMutation({
     mutationFn: async () => {
-      const payload = { ...form, balance: Number(form.balance) };
+      const payload = {
+        code: form.code.trim(),
+        name: form.name.trim(),
+        type: form.type,
+        subtype: form.subtype || null,
+        description: form.description.trim() || null,
+        status: form.status,
+        balance: Number(form.balance) || 0,
+      };
+      if (!payload.code || !payload.name) throw new Error("কোড ও নাম দরকার");
       if (editId) {
         const { error } = await supabase.from("chart_of_accounts").update(payload).eq("id", editId);
         if (error) throw error;
@@ -52,8 +194,9 @@ export default function ChartOfAccounts() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["chart-of-accounts"] });
-      toast.success(editId ? "আপডেট হয়েছে" : "সংরক্ষিত হয়েছে");
-      setOpen(false); setEditId(null); setForm(defaultForm);
+      qc.invalidateQueries({ queryKey: ["accounting-dashboard"] });
+      toast.success(editId ? "আপডেট হয়েছে" : "নতুন অ্যাকাউন্ট তৈরি হয়েছে");
+      setOpen(false);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -63,164 +206,226 @@ export default function ChartOfAccounts() {
       const { error } = await supabase.from("chart_of_accounts").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["chart-of-accounts"] }); toast.success("মুছে ফেলা হয়েছে"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["chart-of-accounts"] });
+      qc.invalidateQueries({ queryKey: ["accounting-dashboard"] });
+      toast.success("মুছে ফেলা হয়েছে");
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
-  const filtered = (accounts ?? []).filter(a => {
-    if (filterType !== "all" && a.type !== filterType) return false;
-    if (search && !a.name.toLowerCase().includes(search.toLowerCase()) && !a.code.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
-
-  const typeLabel = (t: string) => TYPES.find(x => x.value === t)?.label || t;
-  const typeColor = (t: string) => {
-    const colors: Record<string, string> = { asset: "bg-blue-500/20 text-blue-600", liability: "bg-red-500/20 text-red-600", equity: "bg-purple-500/20 text-purple-600", income: "bg-green-500/20 text-green-600", expense: "bg-amber-500/20 text-amber-600" };
-    return colors[t] || "";
-  };
-
-  const parentName = (pid: string | null) => {
-    if (!pid) return "-";
-    const p = (accounts ?? []).find(a => a.id === pid);
-    return p ? `${p.code} - ${p.name}` : "-";
-  };
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">চার্ট অফ অ্যাকাউন্টস</h1>
-          <p className="text-muted-foreground text-sm">অ্যাকাউন্ট কাঠামো ও শ্রেণীবিভাগ</p>
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-6 w-6 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold">Chart of Accounts</h1>
+            <p className="text-xs text-muted-foreground">সকল অ্যাকাউন্টের তালিকা ও শ্রেণীবিভাগ</p>
+          </div>
         </div>
-        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditId(null); setForm(defaultForm); } }}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="h-4 w-4 mr-1" /> অ্যাকাউন্ট যোগ করুন</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>{editId ? "অ্যাকাউন্ট সম্পাদনা" : "নতুন অ্যাকাউন্ট"}</DialogTitle></DialogHeader>
-            <div className="grid gap-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium">কোড *</label>
-                  <Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="1001" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium">ধরন *</label>
-                  <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-medium">নাম *</label>
-                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium">প্যারেন্ট অ্যাকাউন্ট</label>
-                  <Select value={form.parent_id || "none"} onValueChange={v => setForm(f => ({ ...f, parent_id: v === "none" ? null : v }))}>
-                    <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">কোনটি নয়</SelectItem>
-                      {(accounts ?? []).filter(a => a.id !== editId).map(a => <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium">ব্যালেন্স</label>
-                  <Input type="number" value={form.balance} onChange={e => setForm(f => ({ ...f, balance: Number(e.target.value) }))} />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-medium">স্ট্যাটাস</label>
-                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">সক্রিয়</SelectItem>
-                    <SelectItem value="inactive">নিষ্ক্রিয়</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={() => save.mutate()} disabled={save.isPending || !form.code || !form.name}>
-                {save.isPending ? "সংরক্ষণ হচ্ছে..." : editId ? "আপডেট" : "সংরক্ষণ"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => openCreate()} className="gap-1">
+          <Plus className="h-4 w-4" /> Create New Account
+        </Button>
       </div>
 
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">
-        {TYPES.map(t => {
-          const count = (accounts ?? []).filter(a => a.type === t.value).length;
-          return (
-            <Card key={t.value}><CardContent className="p-4 flex items-center justify-between">
-              <div><p className="text-xs text-muted-foreground">{t.label}</p><p className="text-xl font-bold">{count}</p></div>
-              <div className={`p-2.5 rounded-xl ${typeColor(t.value)}`}><BookOpen className="h-5 w-5" /></div>
-            </CardContent></Card>
-          );
-        })}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-8" placeholder="কোড / নাম খুঁজুন..." value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <Select value={filterType} onValueChange={setFilterType}>
+      {/* Status filter */}
+      <div className="flex items-center gap-3">
+        <span className="text-xs uppercase text-muted-foreground tracking-wider">Filter by status</span>
+        <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
           <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">সব ধরন</SelectItem>
-            {TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="all">All</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs w-10">#</TableHead>
-                  <TableHead className="text-xs">কোড</TableHead>
-                  <TableHead className="text-xs">নাম</TableHead>
-                  <TableHead className="text-xs">ধরন</TableHead>
-                  <TableHead className="text-xs">প্যারেন্ট</TableHead>
-                  <TableHead className="text-xs text-right">ব্যালেন্স</TableHead>
-                  <TableHead className="text-xs">স্ট্যাটাস</TableHead>
-                  <TableHead className="text-xs text-right">অ্যাকশন</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
-                )) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">কোনো অ্যাকাউন্ট নেই</TableCell></TableRow>
-                ) : filtered.map((a, i) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="text-xs py-2">{i + 1}</TableCell>
-                    <TableCell className="text-xs py-2 font-mono">{a.code}</TableCell>
-                    <TableCell className="text-xs py-2 font-medium">{a.name}</TableCell>
-                    <TableCell className="text-xs py-2"><Badge variant="outline" className={typeColor(a.type)}>{typeLabel(a.type)}</Badge></TableCell>
-                    <TableCell className="text-xs py-2">{parentName(a.parent_id)}</TableCell>
-                    <TableCell className="text-xs py-2 text-right">৳{Number(a.balance).toLocaleString()}</TableCell>
-                    <TableCell className="text-xs py-2"><Badge variant={a.status === "active" ? "default" : "secondary"}>{a.status === "active" ? "সক্রিয়" : "নিষ্ক্রিয়"}</Badge></TableCell>
-                    <TableCell className="text-xs py-2 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditId(a.id); setForm({ code: a.code, name: a.name, type: a.type, parent_id: a.parent_id, balance: Number(a.balance), status: a.status }); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => del.mutate(a.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+      {/* Type Tabs (pill style like reference) */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        {TYPES.map((t) => {
+          const isActive = activeTab === t.value;
+          const count = counts[t.value];
+          return (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => setActiveTab(t.value)}
+              className={cn(
+                "rounded-full border h-11 px-4 text-sm font-medium transition-all",
+                isActive
+                  ? "bg-slate-800 text-white border-slate-800 shadow"
+                  : "bg-background text-foreground hover:bg-muted border-border",
+              )}
+            >
+              {t.label} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Grouped accounts */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {grouped.map(([subtype, items]) => (
+            <Card key={subtype} className="overflow-hidden border-border">
+              {/* Section header (dark band) */}
+              <div className="flex items-center justify-between bg-slate-800 text-white px-4 py-2.5">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <span>{subtype}</span>
+                  <Info className="h-3.5 w-3.5 opacity-60" />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-white hover:bg-white/10 gap-1"
+                  onClick={() => openCreate(subtype)}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Create New Account
+                </Button>
+              </div>
+              {/* Rows */}
+              {items.length === 0 ? (
+                <div className="text-center py-6 text-sm text-muted-foreground">No Data Found</div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {items.map((a, idx) => (
+                    <div
+                      key={a.id}
+                      className={cn(
+                        "grid grid-cols-[80px_1fr_auto_auto] items-center gap-3 px-4 py-2.5",
+                        idx % 2 === 0 ? "bg-background" : "bg-muted/30",
+                      )}
+                    >
+                      <div className="font-mono text-sm">{a.code}</div>
+                      <div className="text-sm font-medium text-amber-700 dark:text-amber-400 truncate">
+                        {a.name}
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      <div className="text-xs text-muted-foreground max-w-md truncate hidden md:block">
+                        {a.description || ""}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(a)}>
+                          <Pencil className="h-3.5 w-3.5 text-primary" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive"
+                          onClick={() => {
+                            if (confirm(`"${a.name}" delete করবেন?`)) del.mutate(a.id);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Create / Edit Dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editId ? "Edit Account" : "Create New Account"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium">Code *</label>
+                <Input
+                  value={form.code}
+                  onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+                  placeholder="e.g. 1001"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium">Type *</label>
+                <Select
+                  value={form.type}
+                  onValueChange={(v: AcctType) => setForm((f) => ({ ...f, type: v, subtype: "" }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium">Name *</label>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Cash"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium">Subtype (group)</label>
+              <Select
+                value={form.subtype || "__none"}
+                onValueChange={(v) => setForm((f) => ({ ...f, subtype: v === "__none" ? "" : v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— None —</SelectItem>
+                  {SUBTYPES[form.type].map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium">Description</label>
+              <Textarea
+                rows={2}
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="Optional explanation shown next to the account name"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium">Status</label>
+                <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium">Opening Balance</label>
+                <Input
+                  type="number"
+                  value={form.balance}
+                  onChange={(e) => setForm((f) => ({ ...f, balance: Number(e.target.value) }))}
+                />
+              </div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={() => save.mutate()} disabled={save.isPending}>
+              {save.isPending ? "Saving..." : editId ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
