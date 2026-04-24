@@ -161,11 +161,8 @@ const NetworkConnections = lazy(() => import("@/pages/dashboard/network/Connecti
 const NetworkDistributedItems = lazy(() => import("@/pages/dashboard/network/DistributedItems"));
 const NetworkMap = lazy(() => import("@/pages/dashboard/network/Map"));
 
-// Leave
-const LeaveCategories = lazy(() => import("@/pages/dashboard/leave/Categories"));
-const LeaveSetup = lazy(() => import("@/pages/dashboard/leave/Setup"));
-const LeaveApply = lazy(() => import("@/pages/dashboard/leave/Apply"));
-const LeaveApproval = lazy(() => import("@/pages/dashboard/leave/Approval"));
+// Leave (unified under HR)
+const LeaveManagement = lazy(() => import("@/pages/dashboard/hr/LeaveManagement"));
 
 // Branch
 const BranchTariff = lazy(() => import("@/pages/dashboard/branches/Tariff"));
