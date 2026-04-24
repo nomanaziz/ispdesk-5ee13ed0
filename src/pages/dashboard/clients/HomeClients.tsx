@@ -7,7 +7,7 @@ export default function HomeClients() {
   return (
     <ClientList
       lockedClientType="Home"
-      pageTitle="হোম ক্লায়েন্ট"
+      pageTitle="All Clients"
       pageDescription="শুধু হোম (Home) ক্লায়েন্টদের তালিকা — সাধারণত PPPoE প্রটোকলে কানেক্টেড"
     />
   );
