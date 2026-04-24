@@ -10166,6 +10166,51 @@ export type Database = {
           },
         ]
       }
+      website_dedicated_packages: {
+        Row: {
+          badges: string[]
+          bandwidth_label: string | null
+          contact_url: string | null
+          created_at: string
+          features: Json
+          id: string
+          is_popular: boolean
+          name: string
+          price_label: string
+          sort_order: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          badges?: string[]
+          bandwidth_label?: string | null
+          contact_url?: string | null
+          created_at?: string
+          features?: Json
+          id?: string
+          is_popular?: boolean
+          name: string
+          price_label?: string
+          sort_order?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          badges?: string[]
+          bandwidth_label?: string | null
+          contact_url?: string | null
+          created_at?: string
+          features?: Json
+          id?: string
+          is_popular?: boolean
+          name?: string
+          price_label?: string
+          sort_order?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       website_features: {
         Row: {
           created_at: string
@@ -10453,6 +10498,39 @@ export type Database = {
           sort_order?: number | null
           status?: string
           title?: string
+        }
+        Relationships: []
+      }
+      website_templates: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          page_key: string
+          template_key: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          page_key: string
+          template_key: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          page_key?: string
+          template_key?: string
+          updated_at?: string
         }
         Relationships: []
       }
