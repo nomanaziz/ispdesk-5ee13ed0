@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   LogOut, User, Globe, Search, Bell, Palette, Settings, MoreVertical,
-  Activity, Languages, StickyNote, Smartphone, Share, Plus,
+  Activity, Languages, StickyNote, Smartphone, Share, Plus, Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function TopBar() {
-  const { user, roles, signOut } = useAuth();
+  const { user, roles, signOut, isAdmin } = useAuth();
   const { lang, setLang, t } = useLanguage();
   const navigate = useNavigate();
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
@@ -126,6 +126,20 @@ export function TopBar() {
           >
             <Activity className="h-4 w-4" />
           </Button>
+
+          {/* Accounting Dashboard — admin only */}
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
+              onClick={() => navigate("/dashboard/accounting")}
+              title={t("অ্যাকাউন্টিং ড্যাশবোর্ড", "Accounting Dashboard")}
+              aria-label="Accounting Dashboard"
+            >
+              <Wallet className="h-4 w-4" />
+            </Button>
+          )}
 
           {/* Notifications */}
           <Button

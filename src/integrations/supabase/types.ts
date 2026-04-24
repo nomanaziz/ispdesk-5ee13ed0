@@ -2590,30 +2590,36 @@ export type Database = {
           balance: number | null
           code: string
           created_at: string
+          description: string | null
           id: string
           name: string
           parent_id: string | null
           status: string
+          subtype: string | null
           type: string
         }
         Insert: {
           balance?: number | null
           code: string
           created_at?: string
+          description?: string | null
           id?: string
           name: string
           parent_id?: string | null
           status?: string
+          subtype?: string | null
           type?: string
         }
         Update: {
           balance?: number | null
           code?: string
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
           parent_id?: string | null
           status?: string
+          subtype?: string | null
           type?: string
         }
         Relationships: [
