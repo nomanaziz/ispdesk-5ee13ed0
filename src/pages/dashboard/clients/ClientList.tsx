@@ -32,7 +32,15 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
 
-export default function ClientList() {
+interface ClientListProps {
+  /** When set, locks the client_type filter to this value and hides the dropdown.
+   *  Also customizes the page title and "Add" button destination. */
+  lockedClientType?: "Home" | "Corporate";
+  pageTitle?: string;
+  pageDescription?: string;
+}
+
+export default function ClientList({ lockedClientType, pageTitle, pageDescription }: ClientListProps = {}) {
   const { isPopMode, branchId } = usePopScope();
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -133,6 +141,10 @@ export default function ClientList() {
 
   const filtered = useMemo(() => {
     let list = clients || [];
+    // Hard lock by lockedClientType if provided
+    if (lockedClientType) {
+      list = list.filter((c: any) => (c.client_type || "") === lockedClientType);
+    }
     const f = filters;
     if (f.search) {
       const s = f.search.toLowerCase();
@@ -147,7 +159,7 @@ export default function ClientList() {
     if (f.subZone !== "all") list = list.filter((c: any) => c.sub_zone_id === f.subZone);
     if (f.box !== "all") list = list.filter((c: any) => c.box_id === f.box);
     if (f.packageFilter !== "all") list = list.filter((c: any) => c.isp_packages?.name === f.packageFilter);
-    if (f.clientType !== "all") list = list.filter((c: any) => c.client_type === f.clientType);
+    if (!lockedClientType && f.clientType !== "all") list = list.filter((c: any) => c.client_type === f.clientType);
     if (f.connectionType !== "all") list = list.filter((c: any) => c.connection_type === f.connectionType);
     if (f.billingStatus !== "all") list = list.filter((c: any) => c.billing_status === f.billingStatus);
     if (f.mikrotikStatus !== "all") list = list.filter((c: any) => c.mikrotik_status === f.mikrotikStatus);
@@ -157,7 +169,7 @@ export default function ClientList() {
     if (f.fromDate) list = list.filter((c: any) => c.created_at >= f.fromDate);
     if (f.toDate) list = list.filter((c: any) => c.created_at <= f.toDate + "T23:59:59");
     return list;
-  }, [clients, filters]);
+  }, [clients, filters, lockedClientType]);
 
   const paginated = useMemo(() => {
     return filtered.slice(currentPage * perPage, (currentPage + 1) * perPage);
@@ -246,9 +258,20 @@ export default function ClientList() {
   return (
     <div className="space-y-3 p-4">
       <PageHeader
-        title="ক্লায়েন্ট তালিকা"
-        description="সকল ক্লায়েন্ট দেখুন ও পরিচালনা করুন"
-        action={<Button asChild size="sm"><Link to={isPopMode ? "/pop-admin/clients/add" : "/dashboard/clients/add"}><Plus className="h-4 w-4 mr-1" /> নতুন ক্লায়েন্ট</Link></Button>}
+        title={pageTitle || "ক্লায়েন্ট তালিকা"}
+        description={pageDescription || "সকল ক্লায়েন্ট দেখুন ও পরিচালনা করুন"}
+        action={
+          <Button asChild size="sm">
+            <Link
+              to={
+                (isPopMode ? "/pop-admin/clients/add" : "/dashboard/clients/add") +
+                (lockedClientType ? `?client_type=${lockedClientType}` : "")
+              }
+            >
+              <Plus className="h-4 w-4 mr-1" /> নতুন {lockedClientType === "Corporate" ? "কর্পোরেট" : lockedClientType === "Home" ? "হোম" : ""} ক্লায়েন্ট
+            </Link>
+          </Button>
+        }
       />
 
       {/* Summary Cards */}

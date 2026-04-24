@@ -75,6 +75,8 @@ import VasSubscriptions from "@/pages/dashboard/vas/VasSubscriptions";
 import ClientNewRequest from "@/pages/dashboard/clients/NewRequest";
 import ClientAdd from "@/pages/dashboard/clients/AddClient";
 import ClientList from "@/pages/dashboard/clients/ClientList";
+import HomeClients from "@/pages/dashboard/clients/HomeClients";
+import CorporateClients from "@/pages/dashboard/clients/CorporateClients";
 import ClientLeft from "@/pages/dashboard/clients/LeftClients";
 import ClientScheduler from "@/pages/dashboard/clients/Scheduler";
 import ClientChangeRequest from "@/pages/dashboard/clients/ChangeRequest";
@@ -499,6 +501,8 @@ const App = () => (
               <Route path="/dashboard/clients/new-request" element={<P><ClientNewRequest /></P>} />
               <Route path="/dashboard/clients/add" element={<P><ClientAdd /></P>} />
               <Route path="/dashboard/clients" element={<P><ClientList /></P>} />
+              <Route path="/dashboard/clients/home" element={<P><HomeClients /></P>} />
+              <Route path="/dashboard/clients/corporate" element={<P><CorporateClients /></P>} />
               <Route path="/dashboard/clients/left" element={<P><ClientLeft /></P>} />
               <Route path="/dashboard/clients/scheduler" element={<P><ClientScheduler /></P>} />
               <Route path="/dashboard/clients/change-request" element={<P><ClientChangeRequest /></P>} />

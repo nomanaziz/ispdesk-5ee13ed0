@@ -198,7 +198,9 @@ const menuGroups: MenuGroup[] = [
     icon: Users,
     items: [
       { title: "নতুন রিকোয়েস্ট", url: "/dashboard/clients/new-request", icon: MessageSquare },
-      { title: "ক্লায়েন্ট তালিকা", url: "/dashboard/clients", icon: List },
+      { title: "সকল ক্লায়েন্ট", url: "/dashboard/clients", icon: List },
+      { title: "🏠 হোম ক্লায়েন্ট", url: "/dashboard/clients/home", icon: UserPlus },
+      { title: "🏢 কর্পোরেট ক্লায়েন্ট", url: "/dashboard/clients/corporate", icon: Building2 },
       { title: "বিলিং তালিকা", url: "/dashboard/billing", icon: CreditCard },
       { title: "দৈনিক বিল কালেকশন", url: "/dashboard/billing/daily-collection", icon: Wallet },
       { title: "ইনস্টলেশন ফি", url: "/dashboard/sales/installation-fee", icon: DollarSign },
