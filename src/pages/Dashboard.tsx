@@ -502,17 +502,15 @@ const Dashboard = () => {
         ])}
       </SectionCard>
 
-      {/* Row 2: Status Breakdown */}
-      <SectionCard title="ক্লায়েন্ট স্ট্যাটাস" icon={Activity} tint="emerald" icons8="combo-chart">
+      {/* Row 2: Action-required Status (merged) */}
+      <SectionCard title="অ্যাকশন প্রয়োজন" icon={AlertTriangle} tint="emerald" icons8="combo-chart">
         {renderCards([
-          { title: "মোট এক্সপায়ার্ড", value: d?.totalExpired ?? 0, icon: CalendarX, colorIndex: 0, icons8: "high-priority" },
-          { title: "হোম এক্সপায়ার্ড", value: d?.homeExpired ?? 0, icon: CalendarX, colorIndex: 3, icons8: "high-priority" },
+          { title: "ওভারডিউ বিলিং", value: d?.overdueBillingCount ?? 0, icon: AlertTriangle, colorIndex: 0, icons8: "high-priority" },
+          { title: "বন্ধ লাইন", value: d?.blockedLineCount ?? 0, icon: Ban, colorIndex: 7, icons8: "cancel" },
+          { title: "মেয়াদোত্তীর্ণ", value: d?.totalExpired ?? 0, icon: CalendarX, colorIndex: 3, icons8: "high-priority" },
+          { title: "নিষ্ক্রিয়/বাতিল", value: d?.inactiveLeftCount ?? 0, icon: UserX, colorIndex: 6, icons8: "cancel" },
+          { title: "গ্রেস/এক্সটেনশন", value: d?.extensionGraceCount ?? 0, icon: Timer, colorIndex: 4, icons8: "alarm-clock" },
           { title: "পেন্ডিং ক্লায়েন্ট", value: d?.pendingClients ?? 0, icon: Clock, colorIndex: 1, icons8: "alarm-clock" },
-          { title: "বাতিল ক্লায়েন্ট", value: d?.leftClients ?? 0, icon: UserX, colorIndex: 0, icons8: "cancel" },
-          { title: "এক্সটেন্ডেড", value: d?.extendedClients ?? 0, icon: Timer, colorIndex: 4, icons8: "alarm-clock" },
-          { title: "গ্রেস ক্লায়েন্ট", value: d?.graceClients ?? 0, icon: Pause, colorIndex: 5, icons8: "alarm-clock" },
-          { title: "সাসপেন্ড", value: d?.suspendClients ?? 0, icon: Ban, colorIndex: 0, icons8: "cancel" },
-          { title: "নিষ্ক্রিয়", value: d?.inactiveClients ?? 0, icon: XCircle, colorIndex: 6, icons8: "cancel" },
         ])}
       </SectionCard>
 
