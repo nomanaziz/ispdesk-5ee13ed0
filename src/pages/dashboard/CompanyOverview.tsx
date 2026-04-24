@@ -155,7 +155,7 @@ export default function CompanyOverview() {
           <StatCard label="POP ম্যানেজার" value={stats?.popManagers ?? 0} icon={Radio} to="/dashboard/branches/managers" />
           <StatCard label="BW রিসেলার সাব-ইউজার" value={stats?.bwResellerUsers ?? 0} icon={Network} />
           <StatCard label="এই মাসে পরিশোধিত" value={stats?.billPaid ?? 0} icon={Receipt} accent="primary" />
-          <StatCard label="BW POP" value={stats?.topBw.length ?? 0} icon={Wifi} to="/dashboard/bw-sale/pop" />
+          <StatCard label="BW POP" value={stats?.bwSalePops ?? 0} icon={Wifi} to="/dashboard/bw-sale/pop" />
         </div>
       </div>
 
