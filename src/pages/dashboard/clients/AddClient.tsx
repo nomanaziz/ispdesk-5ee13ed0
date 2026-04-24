@@ -936,6 +936,110 @@ export default function AddClient() {
         </div>
       </div>
 
+      {/* Corporate Info — only when client_type === 'Corporate' */}
+      {form.client_type === "Corporate" && (
+        <div className="border rounded-lg border-violet-500/40">
+          <SectionHeader icon="🏢" title="কর্পোরেট তথ্য (Corporate Info)" />
+          <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label>কোম্পানির নাম</Label>
+              <Input
+                value={form.company_name}
+                onChange={e => setField("company_name", e.target.value)}
+                placeholder="যেমন: Acme Ltd."
+              />
+            </div>
+            <div>
+              <Label>ট্রেড লাইসেন্স / BIN</Label>
+              <Input
+                value={form.trade_license_no}
+                onChange={e => setField("trade_license_no", e.target.value)}
+                placeholder="যেমন: TL-12345"
+              />
+            </div>
+            <div>
+              <Label>যোগাযোগের ব্যক্তি</Label>
+              <Input
+                value={form.contact_person}
+                onChange={e => setField("contact_person", e.target.value)}
+                placeholder="Primary contact name"
+              />
+            </div>
+
+            <div>
+              <Label>Static IP / Subnet</Label>
+              <Input
+                value={form.static_ip}
+                onChange={e => setField("static_ip", e.target.value)}
+                placeholder="যেমন: 103.10.10.0/29"
+                className="font-mono"
+              />
+            </div>
+            <div>
+              <Label>রাউটিং প্রোটোকল</Label>
+              <Select value={form.routing_protocol} onValueChange={v => setField("routing_protocol", v)}>
+                <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Static">Static</SelectItem>
+                  <SelectItem value="BGP">BGP</SelectItem>
+                  <SelectItem value="OSPF">OSPF</SelectItem>
+                  <SelectItem value="None">None</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Peer IP (ISP side)</Label>
+              <Input
+                value={form.peer_ip}
+                onChange={e => setField("peer_ip", e.target.value)}
+                placeholder="যেমন: 103.10.10.1"
+                className="font-mono"
+              />
+            </div>
+
+            {form.routing_protocol === "BGP" && (
+              <div>
+                <Label>BGP AS Number</Label>
+                <Input
+                  value={form.bgp_as_number}
+                  onChange={e => setField("bgp_as_number", e.target.value)}
+                  placeholder="যেমন: 65001"
+                />
+              </div>
+            )}
+
+            <div>
+              <Label>Committed (CIR) Mbps</Label>
+              <Input
+                type="number"
+                value={form.bandwidth_committed_mbps}
+                onChange={e => setField("bandwidth_committed_mbps", e.target.value)}
+                placeholder="যেমন: 100"
+              />
+            </div>
+            <div>
+              <Label>Burst Mbps</Label>
+              <Input
+                type="number"
+                value={form.bandwidth_burst_mbps}
+                onChange={e => setField("bandwidth_burst_mbps", e.target.value)}
+                placeholder="যেমন: 200"
+              />
+            </div>
+            <div>
+              <Label>SLA Uptime %</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={form.sla_uptime_percent}
+                onChange={e => setField("sla_uptime_percent", e.target.value)}
+                placeholder="যেমন: 99.5"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <div className="flex justify-between items-center py-4">
         <Button variant="outline" onClick={() => navigate(isPopMode ? "/pop-admin/clients" : "/dashboard/clients")}><ArrowLeft className="h-4 w-4 mr-1" /> তালিকায় ফিরুন</Button>
