@@ -586,11 +586,12 @@ const App = () => (
               <Route path="/dashboard/network/distributed-items" element={<P><NetworkDistributedItems /></P>} />
               <Route path="/dashboard/network/map" element={<P><NetworkMap /></P>} />
 
-              {/* Leave */}
-              <Route path="/dashboard/leave/categories" element={<P><LeaveCategories /></P>} />
-              <Route path="/dashboard/leave/setup" element={<P><LeaveSetup /></P>} />
-              <Route path="/dashboard/leave/apply" element={<P><LeaveApply /></P>} />
-              <Route path="/dashboard/leave/approval" element={<P><LeaveApproval /></P>} />
+              {/* Leave Management — unified under HR (legacy routes redirect to same page with tab) */}
+              <Route path="/dashboard/hr/leave" element={<P><LeaveManagement /></P>} />
+              <Route path="/dashboard/leave/apply" element={<P><LeaveManagement /></P>} />
+              <Route path="/dashboard/leave/approval" element={<P><LeaveManagement /></P>} />
+              <Route path="/dashboard/leave/categories" element={<P><LeaveManagement /></P>} />
+              <Route path="/dashboard/leave/setup" element={<P><LeaveManagement /></P>} />
 
               {/* Branch */}
               <Route path="/dashboard/branches/tariff" element={<P><BranchTariff /></P>} />
