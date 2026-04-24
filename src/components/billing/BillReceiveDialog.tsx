@@ -120,13 +120,10 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
         const newDue = Math.max(0, effectiveBillAmount - newPaid);
         const newAdvance = !increaseAmount && newPaid > monthlyBill ? newPaid - monthlyBill : 0;
         const newStatus = newDue <= 0 ? "paid" : "partial";
-        const newDue = Math.max(0, monthlyBill - newPaid);
-        const newAdvance = newPaid > monthlyBill ? newPaid - monthlyBill : 0;
-        const newStatus = newDue <= 0 ? "paid" : "partial";
         const finalRemarks = isAdvance ? `Advance Pay. ${remarks}`.trim() : remarks;
 
         if (billing?.id) {
-          const { error } = await supabase.from("billing").update({
+          const updatePayload: any = {
             paid: newPaid,
             due: newDue,
             advance: newAdvance,
@@ -136,7 +133,9 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
             collected_by: receivedBy || null,
             discount: discount,
             vat: applyVat ? vatAmount : 0,
-          }).eq("id", billing.id);
+          };
+          if (increaseAmount) updatePayload.amount = effectiveBillAmount;
+          const { error } = await supabase.from("billing").update(updatePayload).eq("id", billing.id);
           if (error) throw error;
         }
 
