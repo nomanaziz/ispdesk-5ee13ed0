@@ -246,9 +246,9 @@ export default function BillingList() {
     exportClientsPdf(clientsToRows(selectedClients), "billing", "Billing List");
     toast.success("PDF ডাউনলোড হয়েছে");
   };
-  const handleInvoiceDownload = () => {
+  const handleInvoiceDownload = async () => {
     if (!requireSelection()) return;
-    exportInvoicesPdf(selectedClients, "invoices");
+    await exportInvoicesPdf(selectedClients, "invoices");
     toast.success("ইনভয়েস ডাউনলোড হয়েছে");
   };
 
