@@ -30,8 +30,7 @@ import { resolveIcons8 } from "@/lib/iconResolver";
 type PermKey =
   | "dashboard" | "configuration" | "employee" | "client"
   | "billing" | "monitoring" | "sms" | "reports"
-  | "tickets" | "support" | "system" | "fund_history" | "settings" | "users" | "invoices" | "accounting"
-  | "bw_setup";
+  | "tickets" | "support" | "system" | "fund_history" | "settings" | "users" | "invoices" | "accounting";
 
 interface NavLink { to: string; label: string; en: string; icon: any }
 interface NavGroup {
@@ -151,36 +150,14 @@ const groups: NavGroup[] = [
       { to: "/pop-admin/fund-history/debit", label: "ডেবিট হিস্ট্রি", en: "Debit History", icon: History },
     ],
   },
-  {
-    key: "bw_setup", label: "আমার নিজস্ব সেটআপ", en: "My Own Setup", icon: Sparkles,
-    items: [
-      { to: "/pop-admin/config/devices", label: "MikroTik সার্ভার যোগ", en: "Add MikroTik Server", icon: Server },
-      { to: "/pop-admin/clients/add", label: "ক্লায়েন্ট যোগ", en: "Add Client", icon: UserPlus },
-      { to: "/pop-admin/clients", label: "আমার ক্লায়েন্ট তালিকা", en: "My Client List", icon: Users },
-      { to: "/pop-admin/billing/list", label: "আমার বিলিং তালিকা", en: "My Billing List", icon: Receipt },
-    ],
-  },
 ];
 
 function isGroupAllowed(g: NavGroup, customer: any): boolean {
   if (!customer) return false;
-  const isBw = customer.type === "bw_customer";
   const isSub = customer.type === "reseller_sub";
 
-  if (isBw) {
-    const panelActive = !!customer.panel_access_enabled
-      && customer.panel_subscription_expires_at
-      && customer.panel_subscription_expires_at > Date.now();
-    // Standard BW menus + (when panel is active) full POP-admin clone + extras
-    if (panelActive) {
-      // bw_setup is BW-only; all others standard groups visible
-      return g.key !== "fund_history"; // fund_history is reseller-only
-    }
-    return ["dashboard", "billing", "purchases", "tickets", "support", "settings", "system"].includes(g.key);
-  }
-
-  // bw_setup is exclusively for BW customers
-  if (g.key === "bw_setup") return false;
+  // BW customers should never reach the POP Admin shell — they have /bw-panel/*.
+  if (customer.type === "bw_customer") return false;
 
   if (!isSub) return true;
 
