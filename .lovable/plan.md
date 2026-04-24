@@ -1,115 +1,236 @@
 
+## বিলিং অটো-ডিসেবল + Dashboard card simplification — fix plan
 
-## Home vs Corporate Client — আলাদা View + Corporate-specific Fields
+### এখন পর্যন্ত যা পরিষ্কার
 
-### বর্তমান অবস্থা (যা ইতোমধ্যে আছে)
+#### ১) লাইন বন্ধ না হওয়ার মূল কারণ
+Code + database check করে দেখা গেছে:
 
-- `clients.client_type` column **already আছে** — value: `"Home"` / `"Corporate"` (`client_types` table-এ ২টা entry configured)
-- `clients.connection_type` column আছে (Optical Fiber / Wireless / NTTN / UTP)
-- `clients.protocol_type` column আছে (PPPoE, etc.) — কিন্তু **Static / BGP-এর কোনো structured field নেই**
-- Add Client form-এ "Client Type" dropdown আছে, default `"Home"`
-- Client List-এ filter আছে কিন্তু **separate page নেই** — সব mixed
-- Current data: ১৪ জন client, সবাই কার্যত Home/PPPoE
+- `billing_enforcement` setting **enabled = true**
+- cutoff time **00:00**
+- কিন্তু `pg_cron`-এ **`enforce-billing` function-এর কোনো scheduled job নাই**
+- `enforce-billing` edge function-এর **recent log-ও নেই**
+- তাই গতরাতে function **চলাই নাই**, এই কারণেই MikroTik-এ disable হয়নি
 
-**সমস্যা:** Admin এক নজরে দেখতে পারে না "কতজন Home, কতজন Corporate"। আর Corporate client-এর জন্য Static IP / BGP AS Number / Peer IP-এর মতো dedicated field-ও নেই।
+#### ২) data অনুযায়ী বর্তমান অবস্থা
+বর্তমান database-এ:
 
----
+- **12 জন** active client আছে যাদের billing date already reach করেছে
+- এদের মধ্যে **3 জন** নিশ্চিতভাবে unpaid/partial due অবস্থায় আছে, যাদের line disable candidate
+- **5 জনের** `expire_date` already পার হয়ে গেছে
+- কিন্তু **প্রায় সব client-এর `mikrotik_status = enabled`**
+- `clients.status` field-এ casing mismatch আছে: `active` এবং `Active` দুইটাই আছে
+- `billing_status`-এ `Active`, `Inactive`, `Left`, `Personal` আছে
+- `status = suspended / expired / grace / extended` প্রায় ব্যবহারই হচ্ছে না
 
-### আলাদা করার দরকার আছে কি?
-
-**হ্যাঁ — তবে আলাদা table নয়, আলাদা view + কয়েকটা extra field।**
-
-কারণ:
-- Billing, invoice, package, MikroTik integration — সব **same logic**। আলাদা table করলে সব duplicate হবে, maintenance nightmare।
-- শুধু **presentation** আর কিছু **corporate-only fields** আলাদা হলেই কাজ চলে।
-- Client নিজের invoice তো same portal-এই দেখবে — আলাদা portal লাগবে না।
-
-**সমাধান:** একই `clients` table, কিন্তু sidebar-এ আলাদা menu + Corporate-specific extra columns + dedicated dashboard widget।
-
----
-
-### কী বানাব
-
-#### ১. Sidebar-এ আলাদা ২টা sub-menu (existing "ক্লায়েন্ট" group-এর নিচে)
-
-```
-ক্লায়েন্ট
-├── সকল ক্লায়েন্ট (existing — all)
-├── 🏠 হোম ক্লায়েন্ট    ← NEW (filtered: client_type='Home')
-├── 🏢 কর্পোরেট ক্লায়েন্ট ← NEW (filtered: client_type='Corporate')
-├── নতুন রিকোয়েস্ট
-└── ...
-```
-
-#### ২. Database migration — Corporate-specific fields যোগ
-
-`clients` table-এ optional columns যোগ:
-| Column | Type | Use |
-|--------|------|-----|
-| `static_ip` | text | Corporate-এর assigned static IP/subnet (e.g. `103.x.x.0/29`) |
-| `routing_protocol` | text | "Static" / "BGP" / "OSPF" / "None" dropdown |
-| `bgp_as_number` | text | BGP AS number (যদি BGP হয়) |
-| `peer_ip` | text | ISP-এর peer IP |
-| `bandwidth_committed_mbps` | numeric | CIR (Committed Information Rate) |
-| `bandwidth_burst_mbps` | numeric | Burst limit |
-| `sla_uptime_percent` | numeric | SLA % (e.g. 99.5) |
-| `company_name` | text | Corporate-এর registered company name |
-| `trade_license_no` | text | Trade license/BIN |
-| `contact_person` | text | Primary contact person (different from `name`) |
-
-সব **nullable** — Home client-এ effect পড়বে না।
-
-#### ৩. New Pages
-
-**A. `src/pages/dashboard/clients/HomeClients.tsx`**
-- `ClientList.tsx`-এর pattern reuse — কিন্তু default filter `client_type='Home'` (locked, dropdown hide)
-- Columns: Code | Name | Mobile | Zone | Package | Username | Expire | Due | Status | Actions
-- "নতুন হোম ক্লায়েন্ট" button → AddClient page-এ `?client_type=Home` prefill
-
-**B. `src/pages/dashboard/clients/CorporateClients.tsx`**
-- Same pattern, locked filter `client_type='Corporate'`
-- **Different columns (Corporate-specific):** Code | Company | Contact Person | Mobile | Static IP | Bandwidth (CIR/Burst) | Routing | SLA | Monthly Bill | Due | Status | Actions
-- "নতুন কর্পোরেট ক্লায়েন্ট" button → AddClient page-এ `?client_type=Corporate` prefill (corporate-only fields visible)
-
-#### ৪. AddClient page — Conditional sections
-
-`AddClient.tsx`-এ:
-- `client_type` যদি `"Corporate"` হয় → একটা নতুন **"কর্পোরেট তথ্য"** card show হবে যাতে: Company Name, Trade License, Contact Person, Static IP, Routing Protocol dropdown, BGP AS, Peer IP, Committed/Burst bandwidth, SLA %
-- `client_type='Home'` হলে এই section hide
-
-#### ৫. Dashboard widget update (`src/pages/Dashboard.tsx`)
-
-Existing "Home Client" stat-এর পাশে **"Corporate Client"** stat যোগ:
-```
-🏠 হোম ক্লায়েন্ট: 245    🏢 কর্পোরেট ক্লায়েন্ট: 18
-```
-ইতোমধ্যে `client_type='Home'` দিয়ে count হচ্ছে (line 100-102) — শুধু Corporate-এর জন্য parallel query যোগ।
-
-#### ৬. Invoice/Portal — কোনো change নেই ✅
-
-Client login portal (`/portal`) already invoice show করে `client_id` দিয়ে — Home/Corporate উভয়েই same view পাবে। আলাদা করার দরকার নেই (আপনি নিজেই বললেন)।
+এজন্য dashboard-এর কিছু card technically possible হলেও raw data এখন fragmented।
 
 ---
 
-### Files
+## কোন card করা যাবে, কোনটা merge করা ভালো
 
-| File | Action |
-|------|--------|
-| Supabase migration | `clients`-এ ১০টা nullable column যোগ |
-| `src/pages/dashboard/clients/HomeClients.tsx` | NEW |
-| `src/pages/dashboard/clients/CorporateClients.tsx` | NEW (different columns) |
-| `src/pages/dashboard/clients/AddClient.tsx` | Conditional "Corporate Info" section |
-| `src/components/AppSidebar.tsx` | "হোম ক্লায়েন্ট" + "কর্পোরেট ক্লায়েন্ট" menu items |
-| `src/App.tsx` | ২টা নতুন route |
-| `src/pages/Dashboard.tsx` | Corporate count widget যোগ |
+### সরাসরি করা যাবে
+1. **Billing Date Expired / Overdue**
+   - করা যাবে
+   - source: `billing_date`, current month billing row, `due > 0`, client active
+
+2. **Blocked / Disabled Client**
+   - করা যাবে
+   - source: `mikrotik_status = disabled` এবং/অথবা `clients.status = suspended`
+
+3. **Inactive / Left Client**
+   - করা যাবে
+   - source: `billing_status in ('Inactive','Left')` + `clients.status in ('inactive','left')`
+
+4. **Expired Client**
+   - করা যাবে
+   - source: `expire_date < today`
+
+### exactভাবে এখন করা যাবে না
+5. **Unpaid Extension যাদের দেওয়া হয় নাই**
+   - exactভাবে এখন reliable করা যাবে না
+   - কারণ dedicated `extension request / approval / granted_until / extension_status` model নাই
+   - বর্তমানে শুধু `extended` / `grace` status আছে, কিন্তু data use হচ্ছে না
+
+### merge করার recommendation
+অনেক ছোট ছোট card না রেখে ৪টা useful card-এ নামিয়ে আনা ভালো:
+
+#### Recommended merged cards
+1. **বিলিং ওভারডিউ**
+   - billing date পার হয়েছে + unpaid/partial due আছে
+
+2. **বন্ধ লাইন**
+   - MikroTik disabled + suspended clients
+
+3. **মেয়াদোত্তীর্ণ**
+   - `expire_date` পার হয়ে গেছে
+
+4. **নিষ্ক্রিয় / বাতিল**
+   - inactive + left merge
+
+#### Optional 5th card
+5. **এক্সটেনশন / গ্রেস**
+   - `status in ('extended','grace')`
+   - exact unpaid extension না, but closest useful fallback
+
+এভাবে dashboard cleaner হবে, আর duplicate/confusing card কমবে।
 
 ---
 
-### Outcome
+## কী implement করা হবে
 
-- Sidebar থেকে এক click-এ **শুধু Home** বা **শুধু Corporate** client দেখা যাবে
-- Corporate client-এর Static IP, BGP info, SLA — সব structured ভাবে save + table-এ visible
-- Dashboard-এ এক নজরে count: কতজন Home, কতজন Corporate
-- Invoice/billing/portal — কোনো change নেই, সব আগের মতোই কাজ করবে
-- Database একটাই, duplicate logic নেই — শুধু view + extra optional fields
+### Step 1: `enforce-billing` automation সত্যি চালু করা
+Supabase migration দিয়ে নতুন scheduled job add করা হবে:
 
+- `enforce-billing` কে cron-এ schedule করা
+- recommended: প্রতি **60 মিনিটে** run
+- পরে চাইলে `recheck_interval` setting-এর সাথে align করা যাবে
+
+এতে রাত ১২টার পর function automatically চলবে।
+
+---
+
+### Step 2: `enforce-billing` logic harden করা
+`supabase/functions/enforce-billing/index.ts` update করা হবে যাতে:
+
+- `status` check case-insensitive হয় (`active` + `Active`)
+- `billing_enforcement.grace_days` আসলেই apply হয়
+- `recheck_interval` setting future-compatible রাখা হয়
+- current month billing row না থাকলে client auto disable না করে safer logic use করা হয়
+- MikroTik API fail হলে client row-তে blind `mikrotik_status: disabled` set না করে proper result log রাখা হয়
+- result payload-এ counts clearly আসে:
+  - checked
+  - overdue
+  - disabled
+  - skipped_paid
+  - skipped_no_bill
+  - failed
+
+---
+
+### Step 3: audit/logging add করা
+নতুন table বা existing log table pattern follow করে enforcement run log রাখা হবে:
+
+- run time
+- checked client count
+- disabled count
+- skipped count
+- per-client error message
+
+এতে পরে আপনি দেখতে পারবেন:
+- কখন job run হয়েছে
+- কাদের disable করেছে
+- কাদের করেনি
+- MikroTik auth / device / username issue আছে কিনা
+
+---
+
+### Step 4: Dashboard cards simplify করা
+`src/pages/Dashboard.tsx`-এ card set refactor করা হবে।
+
+#### remove / merge
+এই fragmented cardগুলো merge করা হবে:
+- Block client
+- Disabled client
+- Billing date expired
+- Left client
+- Inactive client
+- Unpaid extension (exact data না থাকলে separate card হবে না)
+
+#### new simplified cards
+নতুন concise cards:
+
+- **ওভারডিউ বিলিং**  
+  billing date পার + due outstanding
+
+- **বন্ধ লাইন**  
+  MikroTik disabled + suspended
+
+- **মেয়াদোত্তীর্ণ**  
+  `expire_date < today`
+
+- **নিষ্ক্রিয়/বাতিল**  
+  inactive + left
+
+- **গ্রেস/এক্সটেনশন**  
+  optional, only if data meaningful
+
+---
+
+### Step 5: card calculation rules normalize করা
+Dashboard query-তে mixed field rules unify করা হবে:
+
+- `clients.status` → operational/system state
+- `billing_status` → commercial category/state
+- `mikrotik_status` → router sync state
+
+এগুলোর উপর clear derived metrics বানানো হবে, যেমন:
+
+```text
+Overdue Billing
+= active client
++ billing date passed
++ current month due > 0
++ not VIP
+
+Blocked Line
+= mikrotik_status = disabled
+OR status = suspended
+
+Expired
+= active client
++ expire_date < today
+
+Inactive/Left
+= billing_status in (Inactive, Left)
+OR status in (inactive, left)
+```
+
+---
+
+## Files likely to change
+
+| File | Work |
+|------|------|
+| `supabase/functions/enforce-billing/index.ts` | disable logic fix + safer rules + detailed result |
+| Supabase migration | cron schedule for `enforce-billing` |
+| optional migration/table | enforcement audit log |
+| `src/pages/Dashboard.tsx` | cards merge, count rules cleanup |
+| `src/pages/dashboard/system/Setup.tsx` | wording cleanup so enforcement settings বাস্তব behavior-এর সাথে match করে |
+| optional `src/pages/dashboard/system/ClientBillingSettings.tsx` | extension/grace wording align |
+
+---
+
+## Expected result
+
+### backend side
+- billing cutoff পার হলে job সত্যি run করবে
+- unpaid active PPP client auto disable হবে
+- disable না হলে reason track করা যাবে
+
+### dashboard side
+আপনি আলাদা আলাদা বিরক্তিকর card না দেখে compact useful view পাবেন:
+
+```text
+ওভারডিউ বিলিং | বন্ধ লাইন | মেয়াদোত্তীর্ণ | নিষ্ক্রিয়/বাতিল | (optional) গ্রেস/এক্সটেনশন
+```
+
+### data truth
+- “কতজন expired”
+- “কতজন line বন্ধ”
+- “কতজন due হয়ে গেছে”
+- “কতজন inactive/left”
+
+এক নজরে দেখা যাবে।
+
+---
+
+## Important implementation note
+বর্তমান data model-এ **“Unpaid Extension যাদের দেওয়া হয়নি”** exactভাবে trustworthy card হিসেবে দেখাতে চাইলে পরে আলাদা extension tracking লাগবে, যেমন:
+
+- `extension_requested_at`
+- `extension_granted_until`
+- `extension_status`
+- `approved_by`
+
+এটা এই phase-এ optional; এখন merge-based dashboard দিয়েই পরিষ্কার view দেওয়া যাবে।
