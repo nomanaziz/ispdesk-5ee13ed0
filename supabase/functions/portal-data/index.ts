@@ -37,6 +37,43 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+function isPopScopedToken(tok: PortalToken | null): boolean {
+  if (!tok) return false;
+  if (tok.type === "reseller" || tok.type === "reseller_sub") return true;
+  return tok.type === "bw_customer";
+}
+
+async function resolvePopContext(sb: ReturnType<typeof createClient>, tok: PortalToken) {
+  if (tok.type === "bw_customer") {
+    const { data: customer } = await sb
+      .from("bw_sale_customers")
+      .select("id, customer_name, panel_access_enabled, panel_subscription_expires_at, panel_branch_id")
+      .eq("id", tok.sub)
+      .maybeSingle();
+
+    const isActive = !!customer?.panel_access_enabled
+      && !!customer?.panel_subscription_expires_at
+      && new Date(customer.panel_subscription_expires_at).getTime() > Date.now();
+
+    return {
+      popId: tok.sub,
+      branchId: customer?.panel_branch_id || null,
+      isBwPanel: true,
+      panelActive: isActive,
+      customer,
+    };
+  }
+
+  const popId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+  return {
+    popId,
+    branchId: null,
+    isBwPanel: false,
+    panelActive: true,
+    customer: null,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -1372,20 +1409,23 @@ Deno.serve(async (req) => {
       case "get_pop_mikrotik_servers":
       case "get_pop_mikrotik_users":
       case "get_pop_mikrotik_bulk_candidates": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+        if (!isPopScopedToken(tok)) {
           return json({ error: "Forbidden" }, 403);
         }
-        const t: any = tok;
-        const popId: string = t.type === "reseller_sub" ? t.parent_reseller_id : t.sub;
+        const popCtx = await resolvePopContext(sb, tok);
+        const popId = popCtx.popId;
         if (!popId) return json({ error: "POP not resolved" }, 400);
+        if (popCtx.isBwPanel && !popCtx.panelActive) return json({ error: "Forbidden" }, 403);
 
         // Resolve POP record (branch_id, tariff_id, etc.)
-        const { data: pop } = await sb
-          .from("branch_managers")
-          .select("id, name, pop_code, branch_id, tariff_id")
-          .eq("id", popId)
-          .maybeSingle();
-        const branchId: string | null = pop?.branch_id || null;
+        const { data: pop } = popCtx.isBwPanel
+          ? { data: { id: popId, name: popCtx.customer?.customer_name || tok.name || "BW Panel", pop_code: null, branch_id: popCtx.branchId, tariff_id: null } }
+          : await sb
+              .from("branch_managers")
+              .select("id, name, pop_code, branch_id, tariff_id")
+              .eq("id", popId)
+              .maybeSingle();
+        const branchId: string | null = pop?.branch_id || popCtx.branchId || null;
         const tariffId: string | null = pop?.tariff_id || null;
 
         // Resolve visible MikroTik device ids:
@@ -1518,24 +1558,29 @@ Deno.serve(async (req) => {
       }
 
       case "get_pop_allotted_areas": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+        if (!isPopScopedToken(tok)) {
           return json({ error: "Forbidden" }, 403);
         }
-        const popId = tok.type === "reseller_sub"
-          ? (tok as any).parent_reseller_id
-          : tok.sub;
+        const popCtx = await resolvePopContext(sb, tok);
+        const popId = popCtx.popId;
+        if (!popId) return json({ error: "POP not resolved" }, 400);
+        if (popCtx.isBwPanel && !popCtx.panelActive) return json({ error: "Forbidden" }, 403);
         const mode = String(payload.mode || "district");
 
-        const { data: pop } = await sb
-          .from("branch_managers")
-          .select("district_id, upazila_id")
-          .eq("id", popId)
-          .maybeSingle();
+        const { data: pop } = popCtx.isBwPanel
+          ? { data: { district_id: null, upazila_id: null } }
+          : await sb
+              .from("branch_managers")
+              .select("district_id, upazila_id")
+              .eq("id", popId)
+              .maybeSingle();
 
-        const { data: assignments } = await sb
-          .from("pop_district_assignments")
-          .select("district_id, upazila_ids")
-          .eq("branch_manager_id", popId);
+        const { data: assignments } = popCtx.isBwPanel
+          ? { data: [] }
+          : await sb
+              .from("pop_district_assignments")
+              .select("district_id, upazila_ids")
+              .eq("branch_manager_id", popId);
 
         const districtIds = Array.from(
           new Set([
@@ -1625,19 +1670,22 @@ Deno.serve(async (req) => {
       case "pop_ping_client":
       case "pop_manage_mikrotik_ppp":
       case "pop_send_sms": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+        if (!isPopScopedToken(tok)) {
           return json({ error: "Forbidden" }, 403);
         }
-        const t: any = tok;
-        const popId: string = t.type === "reseller_sub" ? t.parent_reseller_id : t.sub;
+        const popCtx = await resolvePopContext(sb, tok);
+        const popId = popCtx.popId;
         if (!popId) return json({ error: "POP not resolved" }, 400);
+        if (popCtx.isBwPanel && !popCtx.panelActive) return json({ error: "Forbidden" }, 403);
 
-        const { data: pop } = await sb
-          .from("branch_managers")
-          .select("id, name, pop_code, branch_id, tariff_id")
-          .eq("id", popId)
-          .maybeSingle();
-        const branchId: string | null = pop?.branch_id || null;
+        const { data: pop } = popCtx.isBwPanel
+          ? { data: { id: popId, name: popCtx.customer?.customer_name || tok.name || "BW Panel", pop_code: null, branch_id: popCtx.branchId, tariff_id: null } }
+          : await sb
+              .from("branch_managers")
+              .select("id, name, pop_code, branch_id, tariff_id")
+              .eq("id", popId)
+              .maybeSingle();
+        const branchId: string | null = pop?.branch_id || popCtx.branchId || null;
         if (!branchId) return json({ error: "POP-এর জন্য branch assign করা নেই" }, 400);
 
         // Visible MikroTik devices for this POP
