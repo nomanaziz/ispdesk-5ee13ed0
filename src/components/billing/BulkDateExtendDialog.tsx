@@ -98,6 +98,15 @@ export default function BulkDateExtendDialog({ open, onOpenChange, selectedClien
               <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
             </div>
           )}
+          <div className="flex items-start gap-2 rounded border p-3 bg-muted/30">
+            <Checkbox id="mark-paid" checked={markBillPaid} onCheckedChange={(v) => setMarkBillPaid(!!v)} className="mt-0.5" />
+            <Label htmlFor="mark-paid" className="text-sm cursor-pointer leading-tight">
+              এই মাসের বিল paid হিসেবে mark করুন
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                (বকেয়ার red color চলে যাবে — কোনো income entry তৈরি হবে না, এটা শুধু waiver/extension)
+              </span>
+            </Label>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>বাতিল</Button>
