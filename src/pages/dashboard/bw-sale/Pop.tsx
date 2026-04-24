@@ -82,6 +82,7 @@ export default function Pop() {
   const { isAdmin } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [tiers, setTiers] = useState<Tier[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [perPage, setPerPage] = useState(10);
@@ -96,14 +97,23 @@ export default function Pop() {
 
   async function fetchData() {
     setLoading(true);
-    const [cRes, iRes] = await Promise.all([
+    const [cRes, iRes, tRes] = await Promise.all([
       supabase.from("bw_sale_customers").select("*").order("created_at", { ascending: false }),
       supabase.from("bw_sales_invoices").select("customer_id, total_amount, amount, paid_amount, discount"),
+      supabase.from("bw_panel_pricing_slabs").select("id, tier_name, display_order").eq("is_active", true).order("display_order"),
     ]);
-    if (cRes.data) setCustomers(cRes.data);
+    if (cRes.data) setCustomers(cRes.data as any);
     if (iRes.data) setInvoices(iRes.data);
+    if (tRes.data) setTiers(tRes.data as any);
     setLoading(false);
   }
+
+  const tierLabel = (id?: string | null) => {
+    if (!id) return null;
+    const t = tiers.find(x => x.id === id);
+    if (!t) return null;
+    return `P#${t.display_order} ${t.tier_name || ""}`.trim();
+  };
 
   const dueByCustomer = useMemo(() => {
     const map = new Map<string, number>();
