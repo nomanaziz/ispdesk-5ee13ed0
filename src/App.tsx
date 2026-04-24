@@ -15,395 +15,395 @@ import { PublicLayout } from "@/components/PublicLayout";
 import { lazy, Suspense } from "react";
 
 // Public pages
-import Home from "@/pages/public/Home";
-import Packages from "@/pages/public/Packages";
-import Coverage from "@/pages/public/Coverage";
-import NewConnection from "@/pages/public/NewConnection";
-import QuickPay from "@/pages/public/QuickPay";
-import Services from "@/pages/public/Services";
-import About from "@/pages/public/About";
-import Contact from "@/pages/public/Contact";
-import Offers from "@/pages/public/Offers";
-import Shop from "@/pages/public/Shop";
-import ShopProduct from "@/pages/public/ShopProduct";
-import Cart from "@/pages/public/Cart";
-import Checkout from "@/pages/public/Checkout";
-import OrderTrack from "@/pages/public/OrderTrack";
+const Home = lazy(() => import("@/pages/public/Home"));
+const Packages = lazy(() => import("@/pages/public/Packages"));
+const Coverage = lazy(() => import("@/pages/public/Coverage"));
+const NewConnection = lazy(() => import("@/pages/public/NewConnection"));
+const QuickPay = lazy(() => import("@/pages/public/QuickPay"));
+const Services = lazy(() => import("@/pages/public/Services"));
+const About = lazy(() => import("@/pages/public/About"));
+const Contact = lazy(() => import("@/pages/public/Contact"));
+const Offers = lazy(() => import("@/pages/public/Offers"));
+const Shop = lazy(() => import("@/pages/public/Shop"));
+const ShopProduct = lazy(() => import("@/pages/public/ShopProduct"));
+const Cart = lazy(() => import("@/pages/public/Cart"));
+const Checkout = lazy(() => import("@/pages/public/Checkout"));
+const OrderTrack = lazy(() => import("@/pages/public/OrderTrack"));
 
 // Shop Admin
-import ShopCategories from "@/pages/dashboard/shop/Categories";
-import ShopProducts from "@/pages/dashboard/shop/Products";
-import ShopProductForm from "@/pages/dashboard/shop/ProductForm";
-import ShopOrders from "@/pages/dashboard/shop/Orders";
-import ShopOrderDetail from "@/pages/dashboard/shop/OrderDetail";
-import ShopShippingZones from "@/pages/dashboard/shop/ShippingZones";
-import ShopCoupons from "@/pages/dashboard/shop/Coupons";
-import WarrantyClaims from "@/pages/dashboard/shop/WarrantyClaims";
-import ShopSalesReport from "@/pages/dashboard/shop/SalesReport";
-import AdminCreateOrder from "@/pages/dashboard/shop/AdminCreateOrder";
+const ShopCategories = lazy(() => import("@/pages/dashboard/shop/Categories"));
+const ShopProducts = lazy(() => import("@/pages/dashboard/shop/Products"));
+const ShopProductForm = lazy(() => import("@/pages/dashboard/shop/ProductForm"));
+const ShopOrders = lazy(() => import("@/pages/dashboard/shop/Orders"));
+const ShopOrderDetail = lazy(() => import("@/pages/dashboard/shop/OrderDetail"));
+const ShopShippingZones = lazy(() => import("@/pages/dashboard/shop/ShippingZones"));
+const ShopCoupons = lazy(() => import("@/pages/dashboard/shop/Coupons"));
+const WarrantyClaims = lazy(() => import("@/pages/dashboard/shop/WarrantyClaims"));
+const ShopSalesReport = lazy(() => import("@/pages/dashboard/shop/SalesReport"));
+const AdminCreateOrder = lazy(() => import("@/pages/dashboard/shop/AdminCreateOrder"));
 
 // Auth pages
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 
 // Dashboard pages
-import Dashboard from "./pages/Dashboard";
-import CompanyOverview from "./pages/dashboard/CompanyOverview";
-import OltOverview from "./pages/dashboard/OltOverview";
-import IconPreview from "./pages/dashboard/dev/IconPreview";
-import NotFound from "./pages/NotFound";
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const CompanyOverview = lazy(() => import("./pages/dashboard/CompanyOverview"));
+const OltOverview = lazy(() => import("./pages/dashboard/OltOverview"));
+const IconPreview = lazy(() => import("./pages/dashboard/dev/IconPreview"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Config
-import ConfigZones from "@/pages/dashboard/config/Zones";
-import ConfigSubZones from "@/pages/dashboard/config/SubZones";
-import ConfigBoxes from "@/pages/dashboard/config/Boxes";
-import ConfigConnectionTypes from "@/pages/dashboard/config/ConnectionTypes";
-import ConfigClientTypes from "@/pages/dashboard/config/ClientTypes";
-import ConfigProtocolTypes from "@/pages/dashboard/config/ProtocolTypes";
-import ConfigBillingStatuses from "@/pages/dashboard/config/BillingStatuses";
-import ConfigPackages from "@/pages/dashboard/config/Packages";
-import ConfigDivisions from "@/pages/dashboard/config/Divisions";
-import ConfigDistricts from "@/pages/dashboard/config/Districts";
-import ConfigUpazilas from "@/pages/dashboard/config/Upazilas";
-import ConfigLocations from "@/pages/dashboard/config/Locations";
+const ConfigZones = lazy(() => import("@/pages/dashboard/config/Zones"));
+const ConfigSubZones = lazy(() => import("@/pages/dashboard/config/SubZones"));
+const ConfigBoxes = lazy(() => import("@/pages/dashboard/config/Boxes"));
+const ConfigConnectionTypes = lazy(() => import("@/pages/dashboard/config/ConnectionTypes"));
+const ConfigClientTypes = lazy(() => import("@/pages/dashboard/config/ClientTypes"));
+const ConfigProtocolTypes = lazy(() => import("@/pages/dashboard/config/ProtocolTypes"));
+const ConfigBillingStatuses = lazy(() => import("@/pages/dashboard/config/BillingStatuses"));
+const ConfigPackages = lazy(() => import("@/pages/dashboard/config/Packages"));
+const ConfigDivisions = lazy(() => import("@/pages/dashboard/config/Divisions"));
+const ConfigDistricts = lazy(() => import("@/pages/dashboard/config/Districts"));
+const ConfigUpazilas = lazy(() => import("@/pages/dashboard/config/Upazilas"));
+const ConfigLocations = lazy(() => import("@/pages/dashboard/config/Locations"));
 
 // VAS
-import VasConfig from "@/pages/dashboard/vas/VasConfig";
-import VasTransactions from "@/pages/dashboard/vas/VasTransactions";
-import VasSubscriptions from "@/pages/dashboard/vas/VasSubscriptions";
+const VasConfig = lazy(() => import("@/pages/dashboard/vas/VasConfig"));
+const VasTransactions = lazy(() => import("@/pages/dashboard/vas/VasTransactions"));
+const VasSubscriptions = lazy(() => import("@/pages/dashboard/vas/VasSubscriptions"));
 
 // Client
-import ClientNewRequest from "@/pages/dashboard/clients/NewRequest";
-import ClientAdd from "@/pages/dashboard/clients/AddClient";
-import ClientList from "@/pages/dashboard/clients/ClientList";
-import HomeClients from "@/pages/dashboard/clients/HomeClients";
-import CorporateClients from "@/pages/dashboard/clients/CorporateClients";
-import ClientLeft from "@/pages/dashboard/clients/LeftClients";
-import ClientScheduler from "@/pages/dashboard/clients/Scheduler";
-import ClientChangeRequest from "@/pages/dashboard/clients/ChangeRequest";
-import ClientPortalManage from "@/pages/dashboard/clients/PortalManage";
+const ClientNewRequest = lazy(() => import("@/pages/dashboard/clients/NewRequest"));
+const ClientAdd = lazy(() => import("@/pages/dashboard/clients/AddClient"));
+const ClientList = lazy(() => import("@/pages/dashboard/clients/ClientList"));
+const HomeClients = lazy(() => import("@/pages/dashboard/clients/HomeClients"));
+const CorporateClients = lazy(() => import("@/pages/dashboard/clients/CorporateClients"));
+const ClientLeft = lazy(() => import("@/pages/dashboard/clients/LeftClients"));
+const ClientScheduler = lazy(() => import("@/pages/dashboard/clients/Scheduler"));
+const ClientChangeRequest = lazy(() => import("@/pages/dashboard/clients/ChangeRequest"));
+const ClientPortalManage = lazy(() => import("@/pages/dashboard/clients/PortalManage"));
 
 // Billing
-import BillingList from "@/pages/dashboard/billing/BillingList";
-import BillingDailyCollection from "@/pages/dashboard/billing/DailyCollection";
-import ClientProfile from "@/pages/dashboard/billing/ClientProfile";
-import BillingCycleSettings from "@/pages/dashboard/billing/BillingCycleSettings";
+const BillingList = lazy(() => import("@/pages/dashboard/billing/BillingList"));
+const BillingDailyCollection = lazy(() => import("@/pages/dashboard/billing/DailyCollection"));
+const ClientProfile = lazy(() => import("@/pages/dashboard/billing/ClientProfile"));
+const BillingCycleSettings = lazy(() => import("@/pages/dashboard/billing/BillingCycleSettings"));
 
 // Mikrotik
-import MikrotikServers from "@/pages/dashboard/mikrotik/Servers";
-import MikrotikBackup from "@/pages/dashboard/mikrotik/Backup";
-import MikrotikImport from "@/pages/dashboard/mikrotik/Import";
-import MikrotikBulkImport from "@/pages/dashboard/mikrotik/BulkImport";
+const MikrotikServers = lazy(() => import("@/pages/dashboard/mikrotik/Servers"));
+const MikrotikBackup = lazy(() => import("@/pages/dashboard/mikrotik/Backup"));
+const MikrotikImport = lazy(() => import("@/pages/dashboard/mikrotik/Import"));
+const MikrotikBulkImport = lazy(() => import("@/pages/dashboard/mikrotik/BulkImport"));
 
 // Device Administration
-import DeviceAdminDashboard from "@/pages/dashboard/device-admin/Dashboard";
-import DeviceAdminDevices from "@/pages/dashboard/device-admin/Devices";
-import DeviceAdminAllUsers from "@/pages/dashboard/device-admin/AllDeviceUsers";
-import DeviceAdminGroups from "@/pages/dashboard/device-admin/Groups";
-import DeviceAdminBackups from "@/pages/dashboard/device-admin/Backups";
-import DeviceAdminSchedules from "@/pages/dashboard/device-admin/Schedules";
-import DeviceAdminAuditLog from "@/pages/dashboard/device-admin/AuditLog";
-import DeviceAdminJobs from "@/pages/dashboard/device-admin/Jobs";
+const DeviceAdminDashboard = lazy(() => import("@/pages/dashboard/device-admin/Dashboard"));
+const DeviceAdminDevices = lazy(() => import("@/pages/dashboard/device-admin/Devices"));
+const DeviceAdminAllUsers = lazy(() => import("@/pages/dashboard/device-admin/AllDeviceUsers"));
+const DeviceAdminGroups = lazy(() => import("@/pages/dashboard/device-admin/Groups"));
+const DeviceAdminBackups = lazy(() => import("@/pages/dashboard/device-admin/Backups"));
+const DeviceAdminSchedules = lazy(() => import("@/pages/dashboard/device-admin/Schedules"));
+const DeviceAdminAuditLog = lazy(() => import("@/pages/dashboard/device-admin/AuditLog"));
+const DeviceAdminJobs = lazy(() => import("@/pages/dashboard/device-admin/Jobs"));
 
 // HR
-import HrDepartments from "@/pages/dashboard/hr/Departments";
-import HrPayheads from "@/pages/dashboard/hr/Payheads";
-import HrPayroll from "@/pages/dashboard/hr/Payroll";
-import HrPositions from "@/pages/dashboard/hr/Positions";
-import HrPayslip from "@/pages/dashboard/hr/Payslip";
-import HrAddEmployee from "@/pages/dashboard/hr/AddEmployee";
-import HrEmployees from "@/pages/dashboard/hr/Employees";
-import HrSalarySheet from "@/pages/dashboard/hr/SalarySheet";
-import HrResignRules from "@/pages/dashboard/hr/ResignRules";
-import HrResignations from "@/pages/dashboard/hr/Resignations";
-import HrRejoin from "@/pages/dashboard/hr/Rejoin";
-import HrAttendance from "@/pages/dashboard/hr/Attendance";
-import HrShiftManagement from "@/pages/dashboard/hr/ShiftManagement";
-import HrZktecoDevices from "@/pages/dashboard/hr/ZktecoDevices";
-import HrAttendanceRules from "@/pages/dashboard/hr/AttendanceRules";
-import HrSettings from "@/pages/dashboard/hr/HrSettings";
-import DashboardLinks from "@/pages/dashboard/Links";
+const HrDepartments = lazy(() => import("@/pages/dashboard/hr/Departments"));
+const HrPayheads = lazy(() => import("@/pages/dashboard/hr/Payheads"));
+const HrPayroll = lazy(() => import("@/pages/dashboard/hr/Payroll"));
+const HrPositions = lazy(() => import("@/pages/dashboard/hr/Positions"));
+const HrPayslip = lazy(() => import("@/pages/dashboard/hr/Payslip"));
+const HrAddEmployee = lazy(() => import("@/pages/dashboard/hr/AddEmployee"));
+const HrEmployees = lazy(() => import("@/pages/dashboard/hr/Employees"));
+const HrSalarySheet = lazy(() => import("@/pages/dashboard/hr/SalarySheet"));
+const HrResignRules = lazy(() => import("@/pages/dashboard/hr/ResignRules"));
+const HrResignations = lazy(() => import("@/pages/dashboard/hr/Resignations"));
+const HrRejoin = lazy(() => import("@/pages/dashboard/hr/Rejoin"));
+const HrAttendance = lazy(() => import("@/pages/dashboard/hr/Attendance"));
+const HrShiftManagement = lazy(() => import("@/pages/dashboard/hr/ShiftManagement"));
+const HrZktecoDevices = lazy(() => import("@/pages/dashboard/hr/ZktecoDevices"));
+const HrAttendanceRules = lazy(() => import("@/pages/dashboard/hr/AttendanceRules"));
+const HrSettings = lazy(() => import("@/pages/dashboard/hr/HrSettings"));
+const DashboardLinks = lazy(() => import("@/pages/dashboard/Links"));
 
 // Access Management
-import AppUsers from "@/pages/dashboard/access/AppUsers";
-import AppRoles from "@/pages/dashboard/access/AppRoles";
+const AppUsers = lazy(() => import("@/pages/dashboard/access/AppUsers"));
+const AppRoles = lazy(() => import("@/pages/dashboard/access/AppRoles"));
 
 // OLT
-import OltDevices from "@/pages/dashboard/olt/OltDevices";
-import OltUsers from "@/pages/dashboard/olt/OltUsers";
-import OltPorts from "@/pages/dashboard/olt/OltPorts";
-import OnuList from "@/pages/dashboard/olt/OnuList";
-import OnuDetail from "@/pages/dashboard/olt/OnuDetail";
-import PowerDashboard from "@/pages/dashboard/olt/PowerDashboard";
-import UserDownCount from "@/pages/dashboard/olt/UserDownCount";
-import FiberDownFinder from "@/pages/dashboard/olt/FiberDownFinder";
-import OltSharing from "@/pages/dashboard/olt/OltSharing";
+const OltDevices = lazy(() => import("@/pages/dashboard/olt/OltDevices"));
+const OltUsers = lazy(() => import("@/pages/dashboard/olt/OltUsers"));
+const OltPorts = lazy(() => import("@/pages/dashboard/olt/OltPorts"));
+const OnuList = lazy(() => import("@/pages/dashboard/olt/OnuList"));
+const OnuDetail = lazy(() => import("@/pages/dashboard/olt/OnuDetail"));
+const PowerDashboard = lazy(() => import("@/pages/dashboard/olt/PowerDashboard"));
+const UserDownCount = lazy(() => import("@/pages/dashboard/olt/UserDownCount"));
+const FiberDownFinder = lazy(() => import("@/pages/dashboard/olt/FiberDownFinder"));
+const OltSharing = lazy(() => import("@/pages/dashboard/olt/OltSharing"));
 
-import NetworkSwitchList from "@/pages/dashboard/network/SwitchList";
-import NetworkSwitchDetail from "@/pages/dashboard/network/SwitchDetail";
+const NetworkSwitchList = lazy(() => import("@/pages/dashboard/network/SwitchList"));
+const NetworkSwitchDetail = lazy(() => import("@/pages/dashboard/network/SwitchDetail"));
 
 // Network Monitoring
-import SwitchList from "@/pages/dashboard/monitoring/SwitchList";
-import AddSwitch from "@/pages/dashboard/monitoring/AddSwitch";
-import PopDass from "@/pages/dashboard/monitoring/PopDass";
-import PopIp from "@/pages/dashboard/monitoring/PopIp";
-import PopLog from "@/pages/dashboard/monitoring/PopLog";
-import PingTools from "@/pages/dashboard/monitoring/PingTools";
-import PopDevices from "@/pages/dashboard/monitoring/PopDevices";
-import OnlineClientMonitoring from "@/pages/dashboard/monitoring/OnlineClientMonitoring";
-import LiveTraffic from "@/pages/dashboard/monitoring/LiveTraffic";
+const SwitchList = lazy(() => import("@/pages/dashboard/monitoring/SwitchList"));
+const AddSwitch = lazy(() => import("@/pages/dashboard/monitoring/AddSwitch"));
+const PopDass = lazy(() => import("@/pages/dashboard/monitoring/PopDass"));
+const PopIp = lazy(() => import("@/pages/dashboard/monitoring/PopIp"));
+const PopLog = lazy(() => import("@/pages/dashboard/monitoring/PopLog"));
+const PingTools = lazy(() => import("@/pages/dashboard/monitoring/PingTools"));
+const PopDevices = lazy(() => import("@/pages/dashboard/monitoring/PopDevices"));
+const OnlineClientMonitoring = lazy(() => import("@/pages/dashboard/monitoring/OnlineClientMonitoring"));
+const LiveTraffic = lazy(() => import("@/pages/dashboard/monitoring/LiveTraffic"));
 
 // Network
-import NetworkDiagram from "@/pages/dashboard/network/Diagram";
-import NetworkPop from "@/pages/dashboard/network/Pop";
-import NetworkClients from "@/pages/dashboard/network/NetworkClients";
-import NetworkConnections from "@/pages/dashboard/network/Connections";
-import NetworkDistributedItems from "@/pages/dashboard/network/DistributedItems";
-import NetworkMap from "@/pages/dashboard/network/Map";
+const NetworkDiagram = lazy(() => import("@/pages/dashboard/network/Diagram"));
+const NetworkPop = lazy(() => import("@/pages/dashboard/network/Pop"));
+const NetworkClients = lazy(() => import("@/pages/dashboard/network/NetworkClients"));
+const NetworkConnections = lazy(() => import("@/pages/dashboard/network/Connections"));
+const NetworkDistributedItems = lazy(() => import("@/pages/dashboard/network/DistributedItems"));
+const NetworkMap = lazy(() => import("@/pages/dashboard/network/Map"));
 
 // Leave
-import LeaveCategories from "@/pages/dashboard/leave/Categories";
-import LeaveSetup from "@/pages/dashboard/leave/Setup";
-import LeaveApply from "@/pages/dashboard/leave/Apply";
-import LeaveApproval from "@/pages/dashboard/leave/Approval";
+const LeaveCategories = lazy(() => import("@/pages/dashboard/leave/Categories"));
+const LeaveSetup = lazy(() => import("@/pages/dashboard/leave/Setup"));
+const LeaveApply = lazy(() => import("@/pages/dashboard/leave/Apply"));
+const LeaveApproval = lazy(() => import("@/pages/dashboard/leave/Approval"));
 
 // Branch
-import BranchTariff from "@/pages/dashboard/branches/Tariff";
-import BranchAddManager from "@/pages/dashboard/branches/AddManager";
-import BranchEditManager from "@/pages/dashboard/branches/EditManager";
-import BranchManagers from "@/pages/dashboard/branches/Managers";
-import PopProfile from "@/pages/dashboard/branches/PopProfile";
-import BranchFunding from "@/pages/dashboard/branches/Funding";
-import BranchFundingHistory from "@/pages/dashboard/branches/FundingHistory";
-import BranchPgwTransactions from "@/pages/dashboard/branches/PgwTransactions";
+const BranchTariff = lazy(() => import("@/pages/dashboard/branches/Tariff"));
+const BranchAddManager = lazy(() => import("@/pages/dashboard/branches/AddManager"));
+const BranchEditManager = lazy(() => import("@/pages/dashboard/branches/EditManager"));
+const BranchManagers = lazy(() => import("@/pages/dashboard/branches/Managers"));
+const PopProfile = lazy(() => import("@/pages/dashboard/branches/PopProfile"));
+const BranchFunding = lazy(() => import("@/pages/dashboard/branches/Funding"));
+const BranchFundingHistory = lazy(() => import("@/pages/dashboard/branches/FundingHistory"));
+const BranchPgwTransactions = lazy(() => import("@/pages/dashboard/branches/PgwTransactions"));
 
 
 // Events
-import Events from "@/pages/dashboard/events/Events";
+const Events = lazy(() => import("@/pages/dashboard/events/Events"));
 
 // Support
-import SupportCategories from "@/pages/dashboard/support/SupportCategories";
-import SupportTickets from "@/pages/dashboard/support/Tickets";
-import SupportHistory from "@/pages/dashboard/support/History";
-import SupportNotices from "@/pages/dashboard/support/Notices";
+const SupportCategories = lazy(() => import("@/pages/dashboard/support/SupportCategories"));
+const SupportTickets = lazy(() => import("@/pages/dashboard/support/Tickets"));
+const SupportHistory = lazy(() => import("@/pages/dashboard/support/History"));
+const SupportNotices = lazy(() => import("@/pages/dashboard/support/Notices"));
 
 // Tasks
-import TaskCategories from "@/pages/dashboard/tasks/TaskCategories";
-import Tasks from "@/pages/dashboard/tasks/Tasks";
-import TaskHistory from "@/pages/dashboard/tasks/TaskHistory";
+const TaskCategories = lazy(() => import("@/pages/dashboard/tasks/TaskCategories"));
+const Tasks = lazy(() => import("@/pages/dashboard/tasks/Tasks"));
+const TaskHistory = lazy(() => import("@/pages/dashboard/tasks/TaskHistory"));
 
 // BW Buy
-import BwBuyItems from "@/pages/dashboard/bw-buy/Items";
-import BwBuyCategories from "@/pages/dashboard/bw-buy/Categories";
-import BwBuyProviders from "@/pages/dashboard/bw-buy/Providers";
-import BwBuyBills from "@/pages/dashboard/bw-buy/Bills";
-import BwBuyBillForm from "@/pages/dashboard/bw-buy/BillForm";
-import BwBuyBillView from "@/pages/dashboard/bw-buy/BillView";
-import BwBuySubscriptions from "@/pages/dashboard/bw-buy/Subscriptions";
+const BwBuyItems = lazy(() => import("@/pages/dashboard/bw-buy/Items"));
+const BwBuyCategories = lazy(() => import("@/pages/dashboard/bw-buy/Categories"));
+const BwBuyProviders = lazy(() => import("@/pages/dashboard/bw-buy/Providers"));
+const BwBuyBills = lazy(() => import("@/pages/dashboard/bw-buy/Bills"));
+const BwBuyBillForm = lazy(() => import("@/pages/dashboard/bw-buy/BillForm"));
+const BwBuyBillView = lazy(() => import("@/pages/dashboard/bw-buy/BillView"));
+const BwBuySubscriptions = lazy(() => import("@/pages/dashboard/bw-buy/Subscriptions"));
 
 // BW Sale
-import BwSalePop from "@/pages/dashboard/bw-sale/Pop";
-import BwSaleInvoices from "@/pages/dashboard/bw-sale/Invoices";
-import BwSaleInvoiceForm from "@/pages/dashboard/bw-sale/InvoiceForm";
-import BwSaleInvoiceDetail from "@/pages/dashboard/bw-sale/InvoiceDetail";
-import BwSaleCollection from "@/pages/dashboard/bw-sale/Collection";
-import BwSaleRecurring from "@/pages/dashboard/bw-sale/Recurring";
-import BwSaleCustomerView from "@/pages/dashboard/bw-sale/CustomerView";
-import BwSaleServices from "@/pages/dashboard/bw-sale/Services";
-import BwSaleRecurringForm from "@/pages/dashboard/bw-sale/RecurringForm";
-import BwSalePanelPricing from "@/pages/dashboard/bw-sale/PanelPricing";
+const BwSalePop = lazy(() => import("@/pages/dashboard/bw-sale/Pop"));
+const BwSaleInvoices = lazy(() => import("@/pages/dashboard/bw-sale/Invoices"));
+const BwSaleInvoiceForm = lazy(() => import("@/pages/dashboard/bw-sale/InvoiceForm"));
+const BwSaleInvoiceDetail = lazy(() => import("@/pages/dashboard/bw-sale/InvoiceDetail"));
+const BwSaleCollection = lazy(() => import("@/pages/dashboard/bw-sale/Collection"));
+const BwSaleRecurring = lazy(() => import("@/pages/dashboard/bw-sale/Recurring"));
+const BwSaleCustomerView = lazy(() => import("@/pages/dashboard/bw-sale/CustomerView"));
+const BwSaleServices = lazy(() => import("@/pages/dashboard/bw-sale/Services"));
+const BwSaleRecurringForm = lazy(() => import("@/pages/dashboard/bw-sale/RecurringForm"));
+const BwSalePanelPricing = lazy(() => import("@/pages/dashboard/bw-sale/PanelPricing"));
 
 // Purchase
-import PurchaseVendors from "@/pages/dashboard/purchases/Vendors";
-import PurchaseRequisitions from "@/pages/dashboard/purchases/Requisitions";
-import PurchaseList from "@/pages/dashboard/purchases/Purchases";
-import PurchaseBills from "@/pages/dashboard/purchases/PurchaseBills";
+const PurchaseVendors = lazy(() => import("@/pages/dashboard/purchases/Vendors"));
+const PurchaseRequisitions = lazy(() => import("@/pages/dashboard/purchases/Requisitions"));
+const PurchaseList = lazy(() => import("@/pages/dashboard/purchases/Purchases"));
+const PurchaseBills = lazy(() => import("@/pages/dashboard/purchases/PurchaseBills"));
 
 // Sales & Service
-import SalesProductInvoice from "@/pages/dashboard/sales/ProductInvoice";
-import SalesServiceInvoice from "@/pages/dashboard/sales/ServiceInvoice";
-import SalesInstallationFee from "@/pages/dashboard/sales/InstallationFee";
+const SalesProductInvoice = lazy(() => import("@/pages/dashboard/sales/ProductInvoice"));
+const SalesServiceInvoice = lazy(() => import("@/pages/dashboard/sales/ServiceInvoice"));
+const SalesInstallationFee = lazy(() => import("@/pages/dashboard/sales/InstallationFee"));
 
 // Inventory
-import InventoryUnits from "@/pages/dashboard/inventory/Units";
-import InventoryLocations from "@/pages/dashboard/inventory/Locations";
-import InventoryCategories from "@/pages/dashboard/inventory/InventoryCategories";
-import InventoryItems from "@/pages/dashboard/inventory/InventoryItems";
-import InventoryStock from "@/pages/dashboard/inventory/Stock";
+const InventoryUnits = lazy(() => import("@/pages/dashboard/inventory/Units"));
+const InventoryLocations = lazy(() => import("@/pages/dashboard/inventory/Locations"));
+const InventoryCategories = lazy(() => import("@/pages/dashboard/inventory/InventoryCategories"));
+const InventoryItems = lazy(() => import("@/pages/dashboard/inventory/InventoryItems"));
+const InventoryStock = lazy(() => import("@/pages/dashboard/inventory/Stock"));
 
 // Assets
-import AssetList from "@/pages/dashboard/assets/AssetList";
-import AssetDestroyed from "@/pages/dashboard/assets/Destroyed";
+const AssetList = lazy(() => import("@/pages/dashboard/assets/AssetList"));
+const AssetDestroyed = lazy(() => import("@/pages/dashboard/assets/Destroyed"));
 
 // Accounting
-import AccountingDashboard from "@/pages/dashboard/accounting/AccountingDashboard";
-import AccountingChart from "@/pages/dashboard/accounting/ChartOfAccounts";
-import AccountingIncome from "@/pages/dashboard/accounting/Income";
-import AccountingExpense from "@/pages/dashboard/accounting/Expense";
-import AccountingJournal from "@/pages/dashboard/accounting/Journal";
-import AccountingTransactions from "@/pages/dashboard/accounting/Transactions";
-import AccountingBalances from "@/pages/dashboard/accounting/Balances";
-import AccountingBalanceSheet from "@/pages/dashboard/accounting/BalanceSheet";
-import AccountingProfitLoss from "@/pages/dashboard/accounting/ProfitLoss";
-import AccountingComparePL from "@/pages/dashboard/accounting/ComparePL";
-import AccountingTrialBalance from "@/pages/dashboard/accounting/TrialBalance";
-import AccountingCashBook from "@/pages/dashboard/accounting/CashBook";
+const AccountingDashboard = lazy(() => import("@/pages/dashboard/accounting/AccountingDashboard"));
+const AccountingChart = lazy(() => import("@/pages/dashboard/accounting/ChartOfAccounts"));
+const AccountingIncome = lazy(() => import("@/pages/dashboard/accounting/Income"));
+const AccountingExpense = lazy(() => import("@/pages/dashboard/accounting/Expense"));
+const AccountingJournal = lazy(() => import("@/pages/dashboard/accounting/Journal"));
+const AccountingTransactions = lazy(() => import("@/pages/dashboard/accounting/Transactions"));
+const AccountingBalances = lazy(() => import("@/pages/dashboard/accounting/Balances"));
+const AccountingBalanceSheet = lazy(() => import("@/pages/dashboard/accounting/BalanceSheet"));
+const AccountingProfitLoss = lazy(() => import("@/pages/dashboard/accounting/ProfitLoss"));
+const AccountingComparePL = lazy(() => import("@/pages/dashboard/accounting/ComparePL"));
+const AccountingTrialBalance = lazy(() => import("@/pages/dashboard/accounting/TrialBalance"));
+const AccountingCashBook = lazy(() => import("@/pages/dashboard/accounting/CashBook"));
 
 // Reports
-import ReportBillCollection from "@/pages/dashboard/reports/BillCollection";
-import ReportDiscount from "@/pages/dashboard/reports/Discount";
-import ReportCustomer from "@/pages/dashboard/reports/Customer";
-import ReportMessages from "@/pages/dashboard/reports/Messages";
-import ReportDueSms from "@/pages/dashboard/reports/DueSms";
-import ReportProcessingFee from "@/pages/dashboard/reports/ProcessingFee";
-import ReportBtrc from "@/pages/dashboard/reports/Btrc";
-import ReportFinancial from "@/pages/dashboard/reports/Financial";
+const ReportBillCollection = lazy(() => import("@/pages/dashboard/reports/BillCollection"));
+const ReportDiscount = lazy(() => import("@/pages/dashboard/reports/Discount"));
+const ReportCustomer = lazy(() => import("@/pages/dashboard/reports/Customer"));
+const ReportMessages = lazy(() => import("@/pages/dashboard/reports/Messages"));
+const ReportDueSms = lazy(() => import("@/pages/dashboard/reports/DueSms"));
+const ReportProcessingFee = lazy(() => import("@/pages/dashboard/reports/ProcessingFee"));
+const ReportBtrc = lazy(() => import("@/pages/dashboard/reports/Btrc"));
+const ReportFinancial = lazy(() => import("@/pages/dashboard/reports/Financial"));
 
 // SMS
-import SmsIndividual from "@/pages/dashboard/sms/Individual";
-import PopSmsTemplates from "@/pages/reseller/PopSmsTemplates";
-import PopSmsIndividual from "@/pages/reseller/sms/PopSmsIndividual";
-import PopSmsSend from "@/pages/reseller/sms/PopSmsSend";
-import PopSmsGateway from "@/pages/reseller/sms/PopSmsGateway";
-import PopTelegramSetup from "@/pages/reseller/sms/PopTelegramSetup";
-import TelegramSetup from "@/pages/dashboard/sms/TelegramSetup";
-import SmsTemplates from "@/pages/dashboard/sms/Templates";
-import SmsGroups from "@/pages/dashboard/sms/Groups";
-import SmsSend from "@/pages/dashboard/sms/Send";
-import SmsGateway from "@/pages/dashboard/sms/Gateway";
+const SmsIndividual = lazy(() => import("@/pages/dashboard/sms/Individual"));
+const PopSmsTemplates = lazy(() => import("@/pages/reseller/PopSmsTemplates"));
+const PopSmsIndividual = lazy(() => import("@/pages/reseller/sms/PopSmsIndividual"));
+const PopSmsSend = lazy(() => import("@/pages/reseller/sms/PopSmsSend"));
+const PopSmsGateway = lazy(() => import("@/pages/reseller/sms/PopSmsGateway"));
+const PopTelegramSetup = lazy(() => import("@/pages/reseller/sms/PopTelegramSetup"));
+const TelegramSetup = lazy(() => import("@/pages/dashboard/sms/TelegramSetup"));
+const SmsTemplates = lazy(() => import("@/pages/dashboard/sms/Templates"));
+const SmsGroups = lazy(() => import("@/pages/dashboard/sms/Groups"));
+const SmsSend = lazy(() => import("@/pages/dashboard/sms/Send"));
+const SmsGateway = lazy(() => import("@/pages/dashboard/sms/Gateway"));
 
 // System
-import SystemCompany from "@/pages/dashboard/system/Company";
-import SystemInvoice from "@/pages/dashboard/system/Invoice";
-import SystemPeriods from "@/pages/dashboard/system/Periods";
-import SystemPaymentGateways from "@/pages/dashboard/system/PaymentGateways";
-import SystemEmail from "@/pages/dashboard/system/Email";
-import SystemSetup from "@/pages/dashboard/system/Setup";
-import SystemProcessingFee from "@/pages/dashboard/system/SysProcessingFee";
-import SystemLog from "@/pages/dashboard/system/SystemLog";
-import SystemBillPeriodYears from "@/pages/dashboard/system/BillPeriodYears";
-import SystemAutomaticProcess from "@/pages/dashboard/system/AutomaticProcess";
+const SystemCompany = lazy(() => import("@/pages/dashboard/system/Company"));
+const SystemInvoice = lazy(() => import("@/pages/dashboard/system/Invoice"));
+const SystemPeriods = lazy(() => import("@/pages/dashboard/system/Periods"));
+const SystemPaymentGateways = lazy(() => import("@/pages/dashboard/system/PaymentGateways"));
+const SystemEmail = lazy(() => import("@/pages/dashboard/system/Email"));
+const SystemSetup = lazy(() => import("@/pages/dashboard/system/Setup"));
+const SystemProcessingFee = lazy(() => import("@/pages/dashboard/system/SysProcessingFee"));
+const SystemLog = lazy(() => import("@/pages/dashboard/system/SystemLog"));
+const SystemBillPeriodYears = lazy(() => import("@/pages/dashboard/system/BillPeriodYears"));
+const SystemAutomaticProcess = lazy(() => import("@/pages/dashboard/system/AutomaticProcess"));
 
 // Config (additional)
-import ConfigServiceTypes from "@/pages/dashboard/config/ServiceTypes";
+const ConfigServiceTypes = lazy(() => import("@/pages/dashboard/config/ServiceTypes"));
 
 // Website Panel
-import WebsiteDashboard from "@/pages/dashboard/website/WebsiteDashboard";
-import HomepageEditor from "@/pages/dashboard/website/HomepageEditor";
-import WebsitePages from "@/pages/dashboard/website/WebsitePages";
-import WebsiteNotices from "@/pages/dashboard/website/WebsiteNotices";
-import WebsiteOffers from "@/pages/dashboard/website/WebsiteOffers";
-import WebsiteTestimonials from "@/pages/dashboard/website/WebsiteTestimonials";
-import WebsitePartners from "@/pages/dashboard/website/WebsitePartners";
-import WebsiteFeatures from "@/pages/dashboard/website/WebsiteFeatures";
-import WebsiteServices from "@/pages/dashboard/website/WebsiteServices";
-import WebsiteFestivals from "@/pages/dashboard/website/WebsiteFestivals";
-import WebsiteMenu from "@/pages/dashboard/website/WebsiteMenu";
+const WebsiteDashboard = lazy(() => import("@/pages/dashboard/website/WebsiteDashboard"));
+const HomepageEditor = lazy(() => import("@/pages/dashboard/website/HomepageEditor"));
+const WebsitePages = lazy(() => import("@/pages/dashboard/website/WebsitePages"));
+const WebsiteNotices = lazy(() => import("@/pages/dashboard/website/WebsiteNotices"));
+const WebsiteOffers = lazy(() => import("@/pages/dashboard/website/WebsiteOffers"));
+const WebsiteTestimonials = lazy(() => import("@/pages/dashboard/website/WebsiteTestimonials"));
+const WebsitePartners = lazy(() => import("@/pages/dashboard/website/WebsitePartners"));
+const WebsiteFeatures = lazy(() => import("@/pages/dashboard/website/WebsiteFeatures"));
+const WebsiteServices = lazy(() => import("@/pages/dashboard/website/WebsiteServices"));
+const WebsiteFestivals = lazy(() => import("@/pages/dashboard/website/WebsiteFestivals"));
+const WebsiteMenu = lazy(() => import("@/pages/dashboard/website/WebsiteMenu"));
 
-import WebsiteMedia from "@/pages/dashboard/website/WebsiteMedia";
-import WebsiteAbout from "@/pages/dashboard/website/WebsiteAbout";
-import WebsiteSettings from "@/pages/dashboard/website/WebsiteSettings";
+const WebsiteMedia = lazy(() => import("@/pages/dashboard/website/WebsiteMedia"));
+const WebsiteAbout = lazy(() => import("@/pages/dashboard/website/WebsiteAbout"));
+const WebsiteSettings = lazy(() => import("@/pages/dashboard/website/WebsiteSettings"));
 
 // Notes
-import AdminNotes from "@/pages/notes/AdminNotes";
-import PopNotes from "@/pages/notes/PopNotes";
-import ClientNotes from "@/pages/notes/ClientNotes";
+const AdminNotes = lazy(() => import("@/pages/notes/AdminNotes"));
+const PopNotes = lazy(() => import("@/pages/notes/PopNotes"));
+const ClientNotes = lazy(() => import("@/pages/notes/ClientNotes"));
 
 // Portal
 import { PortalAuthProvider } from "@/contexts/PortalAuthContext";
 import { PortalLayout } from "@/components/PortalLayout";
 import PortalProtectedRoute from "@/components/PortalProtectedRoute";
-import PortalLogin from "@/pages/portal/PortalLogin";
-import PortalDashboard from "@/pages/portal/PortalDashboard";
-import PortalInvoices from "@/pages/portal/PortalInvoices";
+const PortalLogin = lazy(() => import("@/pages/portal/PortalLogin"));
+const PortalDashboard = lazy(() => import("@/pages/portal/PortalDashboard"));
+const PortalInvoices = lazy(() => import("@/pages/portal/PortalInvoices"));
 
-import PortalSupport from "@/pages/portal/PortalSupport";
-import PortalNotices from "@/pages/portal/PortalNotices";
-import PortalCompanyInfo from "@/pages/portal/PortalCompanyInfo";
-import PortalMediaServers from "@/pages/portal/PortalMediaServers";
-import PortalLedger from "@/pages/portal/PortalLedger";
-import PortalLiveUsage from "@/pages/portal/PortalLiveUsage";
-import PortalSpeedTest from "@/pages/portal/PortalSpeedTest";
-import PortalShop from "@/pages/portal/PortalShop";
-import PortalShopCheckout from "@/pages/portal/PortalShopCheckout";
-import PortalMyOrders from "@/pages/portal/PortalMyOrders";
-import PortalBills from "@/pages/portal/PortalBills";
-import PortalBillInvoice from "@/pages/portal/PortalBillInvoice";
-import PortalProfile from "@/pages/portal/PortalProfile";
-import PortalMessages from "@/pages/portal/PortalMessages";
-import PortalChangeRequest from "@/pages/portal/PortalChangeRequest";
-import UserUpdateRequests from "@/pages/dashboard/clients/UserUpdateRequests";
+const PortalSupport = lazy(() => import("@/pages/portal/PortalSupport"));
+const PortalNotices = lazy(() => import("@/pages/portal/PortalNotices"));
+const PortalCompanyInfo = lazy(() => import("@/pages/portal/PortalCompanyInfo"));
+const PortalMediaServers = lazy(() => import("@/pages/portal/PortalMediaServers"));
+const PortalLedger = lazy(() => import("@/pages/portal/PortalLedger"));
+const PortalLiveUsage = lazy(() => import("@/pages/portal/PortalLiveUsage"));
+const PortalSpeedTest = lazy(() => import("@/pages/portal/PortalSpeedTest"));
+const PortalShop = lazy(() => import("@/pages/portal/PortalShop"));
+const PortalShopCheckout = lazy(() => import("@/pages/portal/PortalShopCheckout"));
+const PortalMyOrders = lazy(() => import("@/pages/portal/PortalMyOrders"));
+const PortalBills = lazy(() => import("@/pages/portal/PortalBills"));
+const PortalBillInvoice = lazy(() => import("@/pages/portal/PortalBillInvoice"));
+const PortalProfile = lazy(() => import("@/pages/portal/PortalProfile"));
+const PortalMessages = lazy(() => import("@/pages/portal/PortalMessages"));
+const PortalChangeRequest = lazy(() => import("@/pages/portal/PortalChangeRequest"));
+const UserUpdateRequests = lazy(() => import("@/pages/dashboard/clients/UserUpdateRequests"));
 
 // Reseller (POP Admin) Portal
 import ResellerProtectedRoute from "@/components/ResellerProtectedRoute";
 import { ResellerLayout } from "@/components/ResellerLayout";
-import ResellerDashboard from "@/pages/reseller/ResellerDashboard";
-import ResellerInvoices from "@/pages/reseller/ResellerInvoices";
-import ResellerInvoiceDetail from "@/pages/reseller/ResellerInvoiceDetail";
-import ResellerInvoicePrint from "@/pages/reseller/ResellerInvoicePrint";
-import ResellerTickets from "@/pages/reseller/ResellerTickets";
-import ResellerUsers from "@/pages/reseller/ResellerUsers";
-import ResellerSettings from "@/pages/reseller/ResellerSettings";
-import ResellerMikrotikUsers from "@/pages/reseller/ResellerMikrotikUsers";
-import ResellerMikrotikBulkCreate from "@/pages/reseller/ResellerMikrotikBulkCreate";
+const ResellerDashboard = lazy(() => import("@/pages/reseller/ResellerDashboard"));
+const ResellerInvoices = lazy(() => import("@/pages/reseller/ResellerInvoices"));
+const ResellerInvoiceDetail = lazy(() => import("@/pages/reseller/ResellerInvoiceDetail"));
+const ResellerInvoicePrint = lazy(() => import("@/pages/reseller/ResellerInvoicePrint"));
+const ResellerTickets = lazy(() => import("@/pages/reseller/ResellerTickets"));
+const ResellerUsers = lazy(() => import("@/pages/reseller/ResellerUsers"));
+const ResellerSettings = lazy(() => import("@/pages/reseller/ResellerSettings"));
+const ResellerMikrotikUsers = lazy(() => import("@/pages/reseller/ResellerMikrotikUsers"));
+const ResellerMikrotikBulkCreate = lazy(() => import("@/pages/reseller/ResellerMikrotikBulkCreate"));
 // POP-scoped Configuration (admin pages reused; only Packages & AllotedAreas remain POP-specific)
-import PopPackages from "@/pages/reseller/config/PopPackages";
-import PopAllotedAreas from "@/pages/reseller/config/PopAllotedAreas";
-import PopDevicesConfig from "@/pages/reseller/config/PopDevices";
+const PopPackages = lazy(() => import("@/pages/reseller/config/PopPackages"));
+const PopAllotedAreas = lazy(() => import("@/pages/reseller/config/PopAllotedAreas"));
+const PopDevicesConfig = lazy(() => import("@/pages/reseller/config/PopDevices"));
 // POP-scoped Employee
-import PopEmployees from "@/pages/reseller/employee/PopEmployees";
-import PopAddEmployee from "@/pages/reseller/employee/PopAddEmployee";
+const PopEmployees = lazy(() => import("@/pages/reseller/employee/PopEmployees"));
+const PopAddEmployee = lazy(() => import("@/pages/reseller/employee/PopAddEmployee"));
 // POP-scoped Client
 // PopClientList removed — /pop-admin/clients now reuses dashboard ClientList (POP-scoped via usePopScope)
-import PopAddClient from "@/pages/reseller/clients/PopAddClient";
-import PopBillingClient from "@/pages/reseller/clients/PopBillingClient";
-import PopLeftClients from "@/pages/reseller/clients/PopLeftClients";
-import PopScheduler from "@/pages/reseller/clients/PopScheduler";
-import PopPlaceholder from "@/pages/reseller/PopPlaceholder";
-import PopOnlineMonitoring from "@/pages/reseller/PopOnlineMonitoring";
-import PopFundDebitHistory from "@/pages/reseller/PopFundDebitHistory";
+const PopAddClient = lazy(() => import("@/pages/reseller/clients/PopAddClient"));
+const PopBillingClient = lazy(() => import("@/pages/reseller/clients/PopBillingClient"));
+const PopLeftClients = lazy(() => import("@/pages/reseller/clients/PopLeftClients"));
+const PopScheduler = lazy(() => import("@/pages/reseller/clients/PopScheduler"));
+const PopPlaceholder = lazy(() => import("@/pages/reseller/PopPlaceholder"));
+const PopOnlineMonitoring = lazy(() => import("@/pages/reseller/PopOnlineMonitoring"));
+const PopFundDebitHistory = lazy(() => import("@/pages/reseller/PopFundDebitHistory"));
 // POP Reports
-import PopBillCollection from "@/pages/reseller/reports/PopBillCollection";
-import PopReportCustomer from "@/pages/reseller/reports/PopCustomer";
-import PopReportMessages from "@/pages/reseller/reports/PopMessages";
-import PopReportDueSms from "@/pages/reseller/reports/PopDueSms";
-import PopReportProcessingFee from "@/pages/reseller/reports/PopProcessingFee";
-import PopReportDiscount from "@/pages/reseller/reports/PopDiscount";
-import PopReportBtrc from "@/pages/reseller/reports/PopBtrc";
-import PopReportFinancial from "@/pages/reseller/reports/PopFinancial";
-import PopReportEnableDisable from "@/pages/reseller/reports/PopEnableDisable";
-import PopFundCreditHistory from "@/pages/reseller/PopFundCreditHistory";
-import PopSetup from "@/pages/reseller/system/PopSetup";
-import PopBillPeriod from "@/pages/reseller/system/PopBillPeriod";
-import PopPeriodSetup from "@/pages/reseller/system/PopPeriodSetup";
-import PopInvoice from "@/pages/reseller/system/PopInvoice";
-import PopEmail from "@/pages/reseller/system/PopEmail";
-import PopPaymentGateways from "@/pages/reseller/system/PopPaymentGateways";
-import PopProcessingFee from "@/pages/reseller/system/PopProcessingFee";
-import PopAutomaticProcess from "@/pages/reseller/system/PopAutomaticProcess";
-import PopActivityLog from "@/pages/reseller/system/PopActivityLog";
-import PopIncome from "@/pages/reseller/accounting/PopIncome";
-import PopExpense from "@/pages/reseller/accounting/PopExpense";
-import PopCashBook from "@/pages/reseller/accounting/PopCashBook";
-import PopEditEmployee from "@/pages/reseller/employee/PopEditEmployee";
-import PopSalarySheet from "@/pages/reseller/employee/PopSalarySheet";
-import PopDesignations from "@/pages/reseller/config/PopDesignations";
-import PopBulkClientImport from "@/pages/reseller/clients/PopBulkClientImport";
-import BulkClientImportHub from "@/pages/reseller/clients/BulkClientImportHub";
+const PopBillCollection = lazy(() => import("@/pages/reseller/reports/PopBillCollection"));
+const PopReportCustomer = lazy(() => import("@/pages/reseller/reports/PopCustomer"));
+const PopReportMessages = lazy(() => import("@/pages/reseller/reports/PopMessages"));
+const PopReportDueSms = lazy(() => import("@/pages/reseller/reports/PopDueSms"));
+const PopReportProcessingFee = lazy(() => import("@/pages/reseller/reports/PopProcessingFee"));
+const PopReportDiscount = lazy(() => import("@/pages/reseller/reports/PopDiscount"));
+const PopReportBtrc = lazy(() => import("@/pages/reseller/reports/PopBtrc"));
+const PopReportFinancial = lazy(() => import("@/pages/reseller/reports/PopFinancial"));
+const PopReportEnableDisable = lazy(() => import("@/pages/reseller/reports/PopEnableDisable"));
+const PopFundCreditHistory = lazy(() => import("@/pages/reseller/PopFundCreditHistory"));
+const PopSetup = lazy(() => import("@/pages/reseller/system/PopSetup"));
+const PopBillPeriod = lazy(() => import("@/pages/reseller/system/PopBillPeriod"));
+const PopPeriodSetup = lazy(() => import("@/pages/reseller/system/PopPeriodSetup"));
+const PopInvoice = lazy(() => import("@/pages/reseller/system/PopInvoice"));
+const PopEmail = lazy(() => import("@/pages/reseller/system/PopEmail"));
+const PopPaymentGateways = lazy(() => import("@/pages/reseller/system/PopPaymentGateways"));
+const PopProcessingFee = lazy(() => import("@/pages/reseller/system/PopProcessingFee"));
+const PopAutomaticProcess = lazy(() => import("@/pages/reseller/system/PopAutomaticProcess"));
+const PopActivityLog = lazy(() => import("@/pages/reseller/system/PopActivityLog"));
+const PopIncome = lazy(() => import("@/pages/reseller/accounting/PopIncome"));
+const PopExpense = lazy(() => import("@/pages/reseller/accounting/PopExpense"));
+const PopCashBook = lazy(() => import("@/pages/reseller/accounting/PopCashBook"));
+const PopEditEmployee = lazy(() => import("@/pages/reseller/employee/PopEditEmployee"));
+const PopSalarySheet = lazy(() => import("@/pages/reseller/employee/PopSalarySheet"));
+const PopDesignations = lazy(() => import("@/pages/reseller/config/PopDesignations"));
+const PopBulkClientImport = lazy(() => import("@/pages/reseller/clients/PopBulkClientImport"));
+const BulkClientImportHub = lazy(() => import("@/pages/reseller/clients/BulkClientImportHub"));
 
 // Bandwidth Customer Portal
 import BwProtectedRoute from "@/components/BwProtectedRoute";
 import BwCustomerLayout from "@/components/BwCustomerLayout";
-import BwDashboard from "@/pages/bw-customer/BwDashboard";
-import BwInvoices from "@/pages/bw-customer/BwInvoices";
-import BwPurchaseOrders from "@/pages/bw-customer/BwPurchaseOrders";
-import BwTickets from "@/pages/bw-customer/BwTickets";
-import BwSettings from "@/pages/bw-customer/BwSettings";
+const BwDashboard = lazy(() => import("@/pages/bw-customer/BwDashboard"));
+const BwInvoices = lazy(() => import("@/pages/bw-customer/BwInvoices"));
+const BwPurchaseOrders = lazy(() => import("@/pages/bw-customer/BwPurchaseOrders"));
+const BwTickets = lazy(() => import("@/pages/bw-customer/BwTickets"));
+const BwSettings = lazy(() => import("@/pages/bw-customer/BwSettings"));
 
 // BW Independent Panel (Layer 2 — only when panel subscription is active)
 import BwPanelProtectedRoute from "@/components/BwPanelProtectedRoute";
 import BwPanelLayout from "@/components/BwPanelLayout";
-import BwPanelDashboard from "@/pages/bw-panel/BwPanelDashboard";
+const BwPanelDashboard = lazy(() => import("@/pages/bw-panel/BwPanelDashboard"));
 import {
   BwPanelMikrotik, BwPanelClients, BwPanelClientAdd, BwPanelBulkImport,
   BwPanelBilling, BwPanelDailyCollection, BwPanelTickets, BwPanelOnlineMonitoring,
@@ -453,7 +453,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
+            <Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}><Routes>
               {/* Public Website */}
               <Route path="/" element={<Pub><Home /></Pub>} />
               <Route path="/packages" element={<Pub><Packages /></Pub>} />
@@ -893,7 +893,7 @@ const App = () => (
               <Route path="/reseller/login" element={<Navigate to="/login" replace />} />
               <Route path="/reseller/*" element={<LegacyResellerRedirect />} />
               <Route path="*" element={<NotFound />} />
-            </Routes>
+            </Routes></Suspense>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
