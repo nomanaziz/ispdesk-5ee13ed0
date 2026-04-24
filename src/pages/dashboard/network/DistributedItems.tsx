@@ -18,11 +18,11 @@ export default function DistributedItems() {
       const { data, error } = await supabase
         .from("network_node_items")
         .select(`
-          id, quantity, created_at, node_id, item_id,
+          id, quantity, distributed_at, node_id, inventory_item_id,
           network_nodes(name, node_type),
-          inventory_items(name, sku, category)
+          inventory_items(name, code)
         `)
-        .order("created_at", { ascending: false });
+        .order("distributed_at", { ascending: false });
       if (error) { setLoading(false); return; }
       setRows(data || []);
       setLoading(false);
@@ -35,7 +35,7 @@ export default function DistributedItems() {
     return rows.filter((r) =>
       (r.network_nodes?.name || "").toLowerCase().includes(s) ||
       (r.inventory_items?.name || "").toLowerCase().includes(s) ||
-      (r.inventory_items?.category || "").toLowerCase().includes(s)
+      (r.inventory_items?.code || "").toLowerCase().includes(s)
     );
   }, [rows, q]);
 
@@ -53,8 +53,7 @@ export default function DistributedItems() {
             <TableHeader>
               <TableRow>
                 <TableHead>Item</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Category</TableHead>
+                <TableHead>Code</TableHead>
                 <TableHead>Assigned to Node</TableHead>
                 <TableHead>Node Type</TableHead>
                 <TableHead>Qty</TableHead>
@@ -63,20 +62,19 @@ export default function DistributedItems() {
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No distributed items</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground">No distributed items</TableCell></TableRow>
               ) : filtered.map((r) => {
                 const s = styleOf(r.network_nodes?.node_type);
                 return (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{r.inventory_items?.name || "—"}</TableCell>
-                    <TableCell className="text-xs font-mono">{r.inventory_items?.sku || "—"}</TableCell>
-                    <TableCell><Badge variant="outline">{r.inventory_items?.category || "—"}</Badge></TableCell>
+                    <TableCell className="text-xs font-mono">{r.inventory_items?.code || "—"}</TableCell>
                     <TableCell>{r.network_nodes?.name || "—"}</TableCell>
                     <TableCell>
                       <Badge style={{ background: s.color, color: "white" }}>{s.label}</Badge>
                     </TableCell>
                     <TableCell>{r.quantity ?? 1}</TableCell>
-                    <TableCell className="text-xs">{new Date(r.created_at).toLocaleDateString("bn-BD")}</TableCell>
+                    <TableCell className="text-xs">{r.distributed_at ? new Date(r.distributed_at).toLocaleDateString("bn-BD") : "—"}</TableCell>
                   </TableRow>
                 );
               })}
