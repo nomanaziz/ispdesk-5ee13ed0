@@ -3081,6 +3081,9 @@ export type Database = {
         Row: {
           address: string | null
           affiliator_id: string | null
+          bandwidth_burst_mbps: number | null
+          bandwidth_committed_mbps: number | null
+          bgp_as_number: string | null
           billing_date: number | null
           billing_start_month: string | null
           billing_status: string | null
@@ -3090,9 +3093,11 @@ export type Database = {
           cable_recovered: boolean
           client_id: string
           client_type: string | null
+          company_name: string | null
           connected_by: string | null
           connection_type: string | null
           contact: string | null
+          contact_person: string | null
           core_color: string | null
           core_count: number | null
           created_at: string
@@ -3134,6 +3139,7 @@ export type Database = {
           owner_scope: string
           package_id: string | null
           password: string | null
+          peer_ip: string | null
           permanent_address: string | null
           phone_number: string | null
           photo_url: string | null
@@ -3149,12 +3155,16 @@ export type Database = {
           remarks: string | null
           remote_address: string | null
           road_number: string | null
+          routing_protocol: string | null
           server_name: string | null
+          sla_uptime_percent: number | null
           speed: string | null
+          static_ip: string | null
           status: string
           sub_zone_id: string | null
           total_download: number
           total_upload: number
+          trade_license_no: string | null
           upazila_id: string | null
           updated_at: string
           user_id: string | null
@@ -3165,6 +3175,9 @@ export type Database = {
         Insert: {
           address?: string | null
           affiliator_id?: string | null
+          bandwidth_burst_mbps?: number | null
+          bandwidth_committed_mbps?: number | null
+          bgp_as_number?: string | null
           billing_date?: number | null
           billing_start_month?: string | null
           billing_status?: string | null
@@ -3174,9 +3187,11 @@ export type Database = {
           cable_recovered?: boolean
           client_id: string
           client_type?: string | null
+          company_name?: string | null
           connected_by?: string | null
           connection_type?: string | null
           contact?: string | null
+          contact_person?: string | null
           core_color?: string | null
           core_count?: number | null
           created_at?: string
@@ -3218,6 +3233,7 @@ export type Database = {
           owner_scope?: string
           package_id?: string | null
           password?: string | null
+          peer_ip?: string | null
           permanent_address?: string | null
           phone_number?: string | null
           photo_url?: string | null
@@ -3233,12 +3249,16 @@ export type Database = {
           remarks?: string | null
           remote_address?: string | null
           road_number?: string | null
+          routing_protocol?: string | null
           server_name?: string | null
+          sla_uptime_percent?: number | null
           speed?: string | null
+          static_ip?: string | null
           status?: string
           sub_zone_id?: string | null
           total_download?: number
           total_upload?: number
+          trade_license_no?: string | null
           upazila_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -3249,6 +3269,9 @@ export type Database = {
         Update: {
           address?: string | null
           affiliator_id?: string | null
+          bandwidth_burst_mbps?: number | null
+          bandwidth_committed_mbps?: number | null
+          bgp_as_number?: string | null
           billing_date?: number | null
           billing_start_month?: string | null
           billing_status?: string | null
@@ -3258,9 +3281,11 @@ export type Database = {
           cable_recovered?: boolean
           client_id?: string
           client_type?: string | null
+          company_name?: string | null
           connected_by?: string | null
           connection_type?: string | null
           contact?: string | null
+          contact_person?: string | null
           core_color?: string | null
           core_count?: number | null
           created_at?: string
@@ -3302,6 +3327,7 @@ export type Database = {
           owner_scope?: string
           package_id?: string | null
           password?: string | null
+          peer_ip?: string | null
           permanent_address?: string | null
           phone_number?: string | null
           photo_url?: string | null
@@ -3317,12 +3343,16 @@ export type Database = {
           remarks?: string | null
           remote_address?: string | null
           road_number?: string | null
+          routing_protocol?: string | null
           server_name?: string | null
+          sla_uptime_percent?: number | null
           speed?: string | null
+          static_ip?: string | null
           status?: string
           sub_zone_id?: string | null
           total_download?: number
           total_upload?: number
+          trade_license_no?: string | null
           upazila_id?: string | null
           updated_at?: string
           user_id?: string | null
