@@ -16,20 +16,20 @@ export function ImportantLinkCard({ title, url, iconUrl, canEdit, onEdit, onDele
   return (
     <div
       className={cn(
-        "group relative flex flex-col items-center justify-center gap-2 p-3 rounded-lg border bg-card",
+        "group relative flex flex-col items-center justify-center gap-1.5 p-2 rounded-lg border bg-card",
         "hover:border-primary hover:shadow-md transition-all cursor-pointer aspect-square",
       )}
       onClick={open}
       title={url}
     >
-      <div className="h-12 w-12 flex items-center justify-center rounded-md bg-muted overflow-hidden">
+      <div className="flex-1 w-full min-h-0 flex items-center justify-center rounded-md bg-muted overflow-hidden p-1">
         {iconUrl ? (
-          <img src={iconUrl} alt={title} className="h-full w-full object-contain" />
+          <img src={iconUrl} alt={title} className="max-h-full max-w-full object-contain" />
         ) : (
-          <LinkIcon className="h-6 w-6 text-muted-foreground" />
+          <LinkIcon className="h-7 w-7 text-muted-foreground" />
         )}
       </div>
-      <p className="text-xs font-medium text-center line-clamp-2 leading-tight">{title}</p>
+      <p className="text-[11px] font-medium text-center line-clamp-1 leading-tight w-full">{title}</p>
       {canEdit && (
         <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
           <Button
