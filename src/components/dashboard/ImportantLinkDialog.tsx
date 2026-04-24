@@ -126,7 +126,7 @@ export function ImportantLinkDialog({ open, onOpenChange, categories, initial, d
           <div>
             <Label>আইকন/লোগো</Label>
             <div className="flex items-center gap-3 mt-1">
-              <div className="h-14 w-14 rounded-md border bg-muted flex items-center justify-center overflow-hidden">
+              <div className="h-14 w-14 shrink-0 rounded-md border bg-muted flex items-center justify-center overflow-hidden">
                 {iconUrl ? <img src={iconUrl} alt="" className="h-full w-full object-contain" /> : <Upload className="h-5 w-5 text-muted-foreground" />}
               </div>
               <input
@@ -143,6 +143,13 @@ export function ImportantLinkDialog({ open, onOpenChange, categories, initial, d
                 <Button type="button" variant="ghost" size="sm" onClick={() => setIconUrl(null)}>সরান</Button>
               )}
             </div>
+            <Input
+              className="mt-2"
+              placeholder="অথবা ইমেজ লিংক পেস্ট করুন (https://...)"
+              value={iconUrl || ""}
+              onChange={(e) => setIconUrl(e.target.value || null)}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">আপলোড করতে পারেন অথবা সরাসরি ইমেজ URL দিতে পারেন</p>
           </div>
           <div>
             <Label>বিবরণ (ঐচ্ছিক)</Label>
