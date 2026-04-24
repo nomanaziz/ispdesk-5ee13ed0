@@ -45,6 +45,7 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
   const [remarks, setRemarks] = useState("");
   const [setNextBilling, setSetNextBilling] = useState(true);
   const [sendSms, setSendSms] = useState(false);
+  const [overpayMode, setOverpayMode] = useState<"increase" | "advance">("increase");
   const [receivedBy, setReceivedBy] = useState(user?.id || customer?.sub || "");
 
   const { data: profiles = [] } = useQuery({
