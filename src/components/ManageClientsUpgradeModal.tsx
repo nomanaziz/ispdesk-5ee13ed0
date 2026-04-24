@@ -6,17 +6,35 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Sparkles, Users, Zap, ShieldCheck, Loader2 } from "lucide-react";
+import { Check, Sparkles, Users, TrendingUp, Gift, ShieldCheck, Loader2, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-interface Slab {
+interface Tier {
   id: string;
-  user_limit: number;
-  monthly_price: number;
+  tier_name: string | null;
+  min_users: number;
+  max_users: number | null;
+  billing_mode: "flat" | "per_user" | "free";
+  flat_price: number | null;
+  per_user_rate: number | null;
   display_order: number;
   is_active: boolean;
 }
+
+const tierIcon = (mode: string) =>
+  mode === "flat" ? Users : mode === "per_user" ? TrendingUp : Gift;
+
+const tierAccent: Record<string, string> = {
+  flat: "border-primary/40 hover:border-primary",
+  per_user: "border-amber-500/40 hover:border-amber-500",
+  free: "border-emerald-500/40 hover:border-emerald-500 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5",
+};
+
+const formatRange = (t: Tier) =>
+  t.max_users == null
+    ? `${t.min_users.toLocaleString()}+ users`
+    : `${t.min_users.toLocaleString()}–${t.max_users.toLocaleString()} users`;
 
 export default function ManageClientsUpgradeModal({
   open,
@@ -30,7 +48,7 @@ export default function ManageClientsUpgradeModal({
   const [paying, setPaying] = useState(false);
   const [trialing, setTrialing] = useState(false);
 
-  const { data: slabs = [] } = useQuery({
+  const { data: tiers = [] } = useQuery({
     queryKey: ["bw-panel-pricing-slabs"],
     queryFn: async () => {
       const { data } = await supabase
@@ -38,17 +56,19 @@ export default function ManageClientsUpgradeModal({
         .select("*")
         .eq("is_active", true)
         .order("display_order");
-      return (data || []) as Slab[];
+      return (data || []) as unknown as Tier[];
     },
   });
 
   const { data: customerRow } = useQuery({
-    queryKey: ["bw-customer-demo-status", customer?.sub],
+    queryKey: ["bw-customer-usage", customer?.sub],
     enabled: !!customer?.sub && open,
     queryFn: async () => {
       const { data } = await supabase
         .from("bw_sale_customers")
-        .select("panel_demo_used, panel_subscription_expires_at")
+        .select(
+          "panel_demo_used, panel_subscription_expires_at, active_client_count, current_tier_id, next_month_estimated_bill",
+        )
         .eq("id", customer!.sub)
         .maybeSingle();
       return data;
@@ -56,8 +76,12 @@ export default function ManageClientsUpgradeModal({
   });
 
   const demoUsed = !!(customerRow as any)?.panel_demo_used;
+  const activeCount = Number((customerRow as any)?.active_client_count || 0);
+  const currentTierId = (customerRow as any)?.current_tier_id as string | null;
+  const nextBill = Number((customerRow as any)?.next_month_estimated_bill || 0);
+  const currentTier = tiers.find((t) => t.id === currentTierId);
 
-  const selected = slabs.find((s) => s.id === selectedId);
+  const selected = tiers.find((t) => t.id === selectedId);
 
   const callActivate = async (body: Record<string, unknown>) => {
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -78,13 +102,19 @@ export default function ManageClientsUpgradeModal({
     if (!selected || !customer?.sub) return;
     setPaying(true);
     try {
+      const amount =
+        selected.billing_mode === "flat"
+          ? Number(selected.flat_price || 0)
+          : selected.billing_mode === "per_user"
+            ? Number(selected.per_user_rate || 0) * activeCount
+            : 0;
       await callActivate({
         customer_id: customer.sub,
         slab_id: selected.id,
         payment_method: "online",
-        paid_amount: selected.monthly_price,
+        paid_amount: amount,
       });
-      toast.success(`প্যানেল অ্যাক্সেস সক্রিয় হয়েছে — ${selected.user_limit} ইউজার পর্যন্ত`);
+      toast.success(`প্যানেল অ্যাক্সেস সক্রিয় হয়েছে — ${selected.tier_name || ""}`);
       await refresh();
       onOpenChange(false);
       setTimeout(() => window.location.reload(), 600);
@@ -104,7 +134,7 @@ export default function ManageClientsUpgradeModal({
     setTrialing(true);
     try {
       await callActivate({ customer_id: customer.sub, trial: true });
-      toast.success("ফ্রি ট্রায়াল শুরু হয়েছে — ৫০ ইউজার, ৩০ দিন");
+      toast.success("ফ্রি ট্রায়াল শুরু হয়েছে — ৩০ দিন");
       await refresh();
       onOpenChange(false);
       setTimeout(() => window.location.reload(), 600);
@@ -121,23 +151,54 @@ export default function ManageClientsUpgradeModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl">
             <Sparkles className="h-6 w-6 text-primary" />
-            Manage Your Clients — Panel Subscription
+            Manage Your Clients — Subscription Plans
           </DialogTitle>
           <DialogDescription>
-            আপনার নিজস্ব ক্লায়েন্ট ম্যানেজ করতে চান? নিচের যেকোনো প্ল্যান বেছে নিয়ে সম্পূর্ণ POP Admin প্যানেল আনলক করুন।
-            MikroTik ইন্টিগ্রেশন, ক্লায়েন্ট ম্যানেজমেন্ট, বিলিং, রিপোর্ট — সব কিছু।
+            আপনার active client count অনুযায়ী auto-tier billing। যত client বাড়বে, plan তত বড়।
+            ৩,০০০ ছাড়ালে সম্পূর্ণ ফ্রি।
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
-          {slabs.map((s) => {
-            const active = s.id === selectedId;
+        {/* Current usage banner */}
+        <div className="rounded-lg border bg-gradient-to-r from-primary/10 to-primary/5 border-primary/30 p-4 flex items-center gap-3">
+          <div className="rounded-lg bg-background p-2 shadow-sm">
+            <Activity className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <div className="font-semibold">
+              আপনার এখন <span className="text-primary">{activeCount.toLocaleString()}</span> জন
+              active client আছেন
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {currentTier ? (
+                <>
+                  বর্তমান Tier: <strong>{currentTier.tier_name}</strong> —{" "}
+                  {nextBill === 0 ? (
+                    <span className="text-emerald-600 font-semibold">পরের মাস FREE 🎉</span>
+                  ) : (
+                    <>পরের মাসে আনুমানিক bill: <strong>৳{nextBill.toLocaleString()}</strong></>
+                  )}
+                </>
+              ) : (
+                "Plan select করে আপনার প্যানেল active করুন"
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Tier cards */}
+        <div className="grid sm:grid-cols-3 gap-3">
+          {tiers.map((t) => {
+            const active = t.id === selectedId;
+            const isCurrent = t.id === currentTierId;
+            const Icon = tierIcon(t.billing_mode);
             return (
               <Card
-                key={s.id}
-                onClick={() => setSelectedId(s.id)}
+                key={t.id}
+                onClick={() => setSelectedId(t.id)}
                 className={cn(
-                  "cursor-pointer transition-all hover:shadow-lg relative",
+                  "cursor-pointer transition-all hover:shadow-lg relative border-2",
+                  tierAccent[t.billing_mode],
                   active && "ring-2 ring-primary shadow-lg",
                 )}
               >
@@ -146,16 +207,49 @@ export default function ManageClientsUpgradeModal({
                     <Check className="h-3 w-3" />
                   </Badge>
                 )}
-                <CardContent className="p-4 space-y-2">
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                    <Users className="h-4 w-4" /> {s.user_limit.toLocaleString()} ইউজার
+                {isCurrent && (
+                  <Badge className="absolute -top-2 left-3 bg-emerald-600 hover:bg-emerald-600">
+                    আপনি এখানে
+                  </Badge>
+                )}
+                <CardContent className="p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-5 w-5 text-primary" />
+                    <span className="font-bold text-lg">
+                      P#{t.display_order} {t.tier_name}
+                    </span>
+                    {t.billing_mode === "free" && <span className="text-lg">⭐</span>}
                   </div>
-                  <div className="text-2xl font-bold">
-                    ৳{Number(s.monthly_price).toLocaleString()}
-                    <span className="text-sm font-normal text-muted-foreground">/মাস</span>
+                  <div className="text-xs text-muted-foreground font-medium">
+                    {formatRange(t)}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    ৳{(Number(s.monthly_price) / s.user_limit).toFixed(2)} প্রতি ইউজার
+                  <div className="pt-1">
+                    {t.billing_mode === "flat" && (
+                      <>
+                        <div className="text-3xl font-bold">
+                          ৳{Number(t.flat_price).toLocaleString()}
+                        </div>
+                        <div className="text-xs text-muted-foreground">প্রতি মাসে flat</div>
+                      </>
+                    )}
+                    {t.billing_mode === "per_user" && (
+                      <>
+                        <div className="text-3xl font-bold">
+                          ৳{Number(t.per_user_rate)}
+                          <span className="text-sm font-normal text-muted-foreground">
+                            {" "}
+                            × user
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">প্রতি মাসে</div>
+                      </>
+                    )}
+                    {t.billing_mode === "free" && (
+                      <>
+                        <div className="text-3xl font-bold text-emerald-600">FREE</div>
+                        <div className="text-xs text-muted-foreground">কোনো charge নেই</div>
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -163,7 +257,7 @@ export default function ManageClientsUpgradeModal({
           })}
         </div>
 
-        <div className="rounded-lg border bg-muted/30 p-4 mt-4 space-y-2 text-sm">
+        <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm">
           <div className="flex items-center gap-2 font-medium">
             <ShieldCheck className="h-4 w-4 text-primary" /> এই প্ল্যানে যা পাবেন:
           </div>
@@ -177,13 +271,13 @@ export default function ManageClientsUpgradeModal({
           </ul>
         </div>
 
-        <div className="rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 p-3 mt-3 flex items-center justify-between gap-3 flex-wrap">
+        <div className="rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 p-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="text-sm">
             <div className="font-semibold flex items-center gap-1.5">
               <Sparkles className="h-4 w-4 text-primary" /> Try Free for 1 Month
             </div>
             <div className="text-muted-foreground text-xs">
-              ৫০ ইউজার পর্যন্ত — কোনো পেমেন্ট ছাড়াই ৩০ দিন ব্যবহার করুন। প্রতি কাস্টমার একবারই।
+              ৩০ দিন পুরো প্যানেল ফ্রি ব্যবহার করুন। প্রতি কাস্টমার একবারই।
             </div>
           </div>
           <Button
@@ -197,20 +291,24 @@ export default function ManageClientsUpgradeModal({
           </Button>
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t mt-2">
+        <div className="flex items-center justify-between pt-4 border-t">
           <div className="text-sm text-muted-foreground">
             {selected ? (
               <>
-                সিলেক্ট করেছেন: <strong>{selected.user_limit} ইউজার</strong> — ৳
-                {Number(selected.monthly_price).toLocaleString()}/মাস
+                সিলেক্ট: <strong>{selected.tier_name}</strong> —{" "}
+                {selected.billing_mode === "free"
+                  ? "FREE"
+                  : selected.billing_mode === "flat"
+                    ? `৳${Number(selected.flat_price).toLocaleString()}/মাস`
+                    : `৳${(Number(selected.per_user_rate) * activeCount).toLocaleString()}/মাস (${activeCount} users)`}
               </>
             ) : (
               "একটি প্ল্যান সিলেক্ট করুন"
             )}
           </div>
           <Button onClick={handlePay} disabled={!selected || paying} size="lg" className="gap-2">
-            {paying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-            {paying ? "প্রসেস হচ্ছে..." : selected ? `Pay Now ৳${Number(selected.monthly_price).toLocaleString()}` : "Pay Now"}
+            {paying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {paying ? "প্রসেস হচ্ছে..." : "Activate Plan"}
           </Button>
         </div>
       </DialogContent>

@@ -1483,31 +1483,49 @@ export type Database = {
       }
       bw_panel_pricing_slabs: {
         Row: {
+          billing_mode: string
           created_at: string
           display_order: number
+          flat_price: number | null
           id: string
           is_active: boolean
-          monthly_price: number
+          max_users: number | null
+          min_users: number
+          monthly_price: number | null
+          per_user_rate: number | null
+          tier_name: string | null
           updated_at: string
-          user_limit: number
+          user_limit: number | null
         }
         Insert: {
+          billing_mode?: string
           created_at?: string
           display_order?: number
+          flat_price?: number | null
           id?: string
           is_active?: boolean
-          monthly_price: number
+          max_users?: number | null
+          min_users?: number
+          monthly_price?: number | null
+          per_user_rate?: number | null
+          tier_name?: string | null
           updated_at?: string
-          user_limit: number
+          user_limit?: number | null
         }
         Update: {
+          billing_mode?: string
           created_at?: string
           display_order?: number
+          flat_price?: number | null
           id?: string
           is_active?: boolean
-          monthly_price?: number
+          max_users?: number | null
+          min_users?: number
+          monthly_price?: number | null
+          per_user_rate?: number | null
+          tier_name?: string | null
           updated_at?: string
-          user_limit?: number
+          user_limit?: number | null
         }
         Relationships: []
       }
@@ -1951,10 +1969,12 @@ export type Database = {
       bw_sale_customers: {
         Row: {
           activation_date: string | null
+          active_client_count: number
           activity_status: string
           address: string | null
           contact_person: string | null
           created_at: string
+          current_tier_id: string | null
           customer_code: string | null
           customer_name: string
           email: string | null
@@ -1962,6 +1982,7 @@ export type Database = {
           id: string
           ip_addresses: Json | null
           mobile: string | null
+          next_month_estimated_bill: number
           nttn_info: string | null
           own_bkash_number: string | null
           panel_access_enabled: boolean
@@ -1986,10 +2007,12 @@ export type Database = {
         }
         Insert: {
           activation_date?: string | null
+          active_client_count?: number
           activity_status?: string
           address?: string | null
           contact_person?: string | null
           created_at?: string
+          current_tier_id?: string | null
           customer_code?: string | null
           customer_name: string
           email?: string | null
@@ -1997,6 +2020,7 @@ export type Database = {
           id?: string
           ip_addresses?: Json | null
           mobile?: string | null
+          next_month_estimated_bill?: number
           nttn_info?: string | null
           own_bkash_number?: string | null
           panel_access_enabled?: boolean
@@ -2021,10 +2045,12 @@ export type Database = {
         }
         Update: {
           activation_date?: string | null
+          active_client_count?: number
           activity_status?: string
           address?: string | null
           contact_person?: string | null
           created_at?: string
+          current_tier_id?: string | null
           customer_code?: string | null
           customer_name?: string
           email?: string | null
@@ -2032,6 +2058,7 @@ export type Database = {
           id?: string
           ip_addresses?: Json | null
           mobile?: string | null
+          next_month_estimated_bill?: number
           nttn_info?: string | null
           own_bkash_number?: string | null
           panel_access_enabled?: boolean
@@ -2055,6 +2082,13 @@ export type Database = {
           website?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "bw_sale_customers_current_tier_id_fkey"
+            columns: ["current_tier_id"]
+            isOneToOne: false
+            referencedRelation: "bw_panel_pricing_slabs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bw_sale_customers_panel_branch_id_fkey"
             columns: ["panel_branch_id"]
@@ -10580,6 +10614,17 @@ export type Database = {
       }
     }
     Functions: {
+      bw_panel_recalc_customer_usage: {
+        Args: { _customer_id: string }
+        Returns: undefined
+      }
+      bw_panel_resolve_tier: {
+        Args: { _count: number }
+        Returns: {
+          estimated_bill: number
+          tier_id: string
+        }[]
+      }
       get_user_branch: { Args: { _user_id: string }; Returns: string }
       has_device_permission: {
         Args: {
