@@ -1,92 +1,121 @@
-# Pre-defined Employee Roles তৈরি
 
-আপনার চাহিদা অনুযায়ী ৪টা নতুন role তৈরি করব। প্রত্যেকটা role-এ relevant module গুলো `enabled = true` করে appropriate permission level (view/edit/delete) সহ pre-configure করা থাকবে। পরে আপনি `/dashboard/access/roles` থেকে যেকোনো সময় এগুলো customize করতে পারবেন।
+# Assets Module — Full Implementation Plan
 
-## যে Role গুলো তৈরি হবে
+`AssetList` ও `Destroyed Items` দুটো page এখন placeholder। আমি industry-standard Asset Management বানাবো, এবং প্রতিটি action automatic-ভাবে accounting (Cash Book / Expense) hit করবে।
 
-### 1. Support Engineer
-Client নিয়ে main কাজ করবে — monitoring, ticket, task assign।
+---
 
-**Edit access:**
-- DASHBOARD → Dashboard
-- CLIENTS → Client List, Add Client, Portal Manage, Scheduler
-- MONITORING → Online Clients, Live Traffic, POP Devices
-- BW_SALE → Customers, Invoices, Collections (reseller/bandwidth client সব)
-- BILLING → Client Profile, Billing List
-- COMMON_PERMISSIONS → Create, Edit, View, Print
+## ১. Asset List Page (`/dashboard/assets`)
 
-**View only:**
-- REPORTS → Customer, Bill Collection, Messages
-- NETWORK → Map, Diagram, Connections
-- OLT → ONU List, Users
-- HR_PAYROLL → Employees (অন্য employee দের assign করার জন্য)
+ISP/Office-এর সব physical asset এখানে register হবে — Router, Switch, OLT, Generator, AC, Computer, Furniture, Vehicle, Tools ইত্যাদি।
 
-### 2. Accountant
-Billing/accounting এর সব কাজ pre-defined access।
+### Features
+- **Stat cards**: মোট Asset সংখ্যা, মোট Asset মূল্য (৳), Active, Assigned, Destroyed
+- **Add Asset dialog** এ থাকবে:
+  - Name, Code (auto/manual), Category (dropdown: Network Equipment, IT Equipment, Furniture, Vehicle, Tools, Generator, AC, Other)
+  - Purchase Date, Purchase Price (৳)
+  - Location, Assigned To (employee dropdown — optional)
+  - Status: Active / In Repair / Idle
+  - **Payment Method** (Cash / Bank / bKash / Nagad / Card) — accounting এর জন্য
+  - Notes
+- **Filter / Search**: name, code, category, status
+- **Edit / Delete** action
+- **Assign / Unassign** quick action (আগে থেকেই `asset_assignments` table আছে, ভবিষ্যতে এটা integrate করা যাবে — এখন basic assigned_to দিয়েই কাজ চালাবো)
 
-**Edit access:**
-- DASHBOARD → Dashboard
-- ACCOUNTING → সবগুলা (Cash Book, Journal, Income, Expense, Chart of Accounts, Balance Sheet, P&L, Trial Balance)
-- BILLING → Billing List, Daily Collection, Client Profile
-- BW_SALE → Invoices, Collections, Recurring
-- BW_BUY → Bills, Subscriptions
-- SALES → Installation Fee, Product Invoice, Service Invoice
-- PURCHASES → Bills, Purchases, Vendors, Requisitions
-- BRANCHES → Funding, PGW Payments, PGW Settlement
-- COMMON_PERMISSIONS → Create, Edit, View, Print, Export
+### Auto Accounting Hit (নতুন asset add করলে)
+Purchase Price > 0 হলে automatically `expense_entries` table-এ একটি row insert হবে:
+- `category`: "Equipment"
+- `description`: "Asset Purchase: <name>"
+- `amount`: purchase_price
+- `payment_method`: form থেকে
+- `reference`: `asset:<asset_id>`
+- `expense_date`: purchase_date
 
-**View only:**
-- REPORTS → Bill Collection, Financial, Discount, Processing Fee, BTRC, Customer
-- CLIENTS → Client List
-- SHOP → Sales Report, Orders
+→ এর ফলে **Cash Book** automatically hit হবে (কারণ `CashBook.tsx` আগে থেকেই `expense_entries` থেকে data টানে), এবং Cash balance কমে যাবে। যদি Cash না থাকে, balance minus-এ যাবে — যেটা আপনি চেয়েছেন।
 
-### 3. Technician
-যে ticket/task assign হবে সেগুলা solve করবে, নতুন client install করতে পারবে।
+Asset delete করলে corresponding expense entry-ও delete হবে (reference দিয়ে match করে)।
 
-**Edit access:**
-- DASHBOARD → Dashboard
-- CLIENTS → Add Client, Client List, Scheduler (নিজে account খুলতে পারবে)
-- MONITORING → Online Clients, POP Devices
-- NETWORK → Map, Connections, POP
-- OLT → ONU List, Users
-- INVENTORY → Items, Stock (parts ব্যবহার করার জন্য)
-- COMMON_PERMISSIONS → Create, Edit, View
+---
 
-**View only:**
-- BILLING → Client Profile
-- NETWORK → Diagram
-- MIKROTIK → Servers
-- HR_PAYROLL → Attendance (নিজের attendance)
+## ২. Destroyed Items Page (`/dashboard/assets/destroyed`)
 
-### 4. Transmission Engineer
-Backbone/transmission/OLT/MikroTik device management।
+কোনো ONU, Router, Generator, Cable নষ্ট হলে এখানে log হবে — full write-off হিসেবে।
 
-**Edit access:**
-- DASHBOARD → Dashboard
-- MONITORING → Live Traffic, POP Devices, Online Clients
-- NETWORK → POP, Map, Diagram, Connections
-- OLT → Devices, ONU List, Sharing, Users
-- MIKROTIK → Servers, Backup, Import
-- BW_BUY → Providers, Subscriptions (upstream link)
-- COMMON_PERMISSIONS → Create, Edit, View
+### Features
+- **Stat cards**: মোট Destroyed item, মোট ক্ষতি মূল্য (৳), এই মাসে destroyed
+- **Add Destroyed Item dialog**:
+  - **Source toggle**:
+    - **From existing Asset** → existing Asset dropdown (filtered: status ≠ destroyed) → পরিচয় auto-fill হবে
+    - **Custom item** (যেমন ONU/cable যেটা assets table-এ নেই) → manual: item_name, estimated value
+  - Destroy Date, Reason (text), Loss Amount (৳)
+- **Table**: তারিখ, item, কারণ, ক্ষতি মূল্য, কে destroy করেছে, action
+- Edit / Delete
 
-**View only:**
-- CLIENTS → Client List
-- BILLING → Client Profile
-- REPORTS → BTRC
+### Auto Accounting Hit (item destroy করলে)
+1. যদি existing asset হয় → `assets.status = 'destroyed'` set হবে
+2. Loss Amount > 0 হলে `expense_entries`-এ row insert:
+   - `category`: "Loss / Write-off"
+   - `description`: "Destroyed: <item_name> — <reason>"
+   - `amount`: loss_amount
+   - `payment_method`: "Adjustment" (cash flow নেই, just book loss)
+   - `reference`: `destroyed:<destroyed_id>`
 
-## Technical Implementation
+→ এতে P&L-এ loss reflect হবে কিন্তু cash book-এ "Adjustment" হিসেবে show করবে (কারণ physical টাকা যায়নি, শুধু book value কমেছে)।
 
-1. **Database insert** — `app_roles` table-এ ৪টা নতুন row insert (`is_protected=false`, `is_default=false`, `status='Active'`, `redirect_url='/dashboard'`)। ফলে user চাইলে delete/edit করতে পারবে।
+Destroyed entry delete করলে: expense reverse হবে এবং (যদি asset হয়) status আবার `active` হবে।
 
-2. **Module seeding** — প্রত্যেক নতুন role-এর জন্য `app_role_modules` table-এ সব module group/module name combination insert করা হবে, কিন্তু শুধু উপরের list-এ থাকা module গুলোর `enabled = true` ও appropriate `permission` (view/edit) হবে। বাকিগুলা `enabled = false, permission='view'`।
+---
 
-3. **Permission mapping** — উপরে "Edit access" = `permission='edit'`, "View only" = `permission='view'`। কোনো role-এ default delete দেওয়া হবে না (security-এর জন্য) — দরকার হলে আপনি পরে turn on করবেন।
+## ৩. Technical Details
 
-4. **Idempotent SQL** — যদি একই নামের role আগে থেকে থাকে তবে duplicate insert হবে না (`ON CONFLICT DO NOTHING` বা existence check)।
+### Files to create/edit
+- ✏️ `src/pages/dashboard/assets/AssetList.tsx` — full rewrite (placeholder → full page)
+- ✏️ `src/pages/dashboard/assets/Destroyed.tsx` — full rewrite
 
-## Files / Areas Touched
-- শুধু database migration (data insert)। কোনো frontend code change লাগবে না — `AppRoles.tsx` page automatically নতুন role গুলো dropdown-এ দেখাবে।
+### Database
+**কোনো schema migration লাগবে না** — সব table আগে থেকেই আছে:
+- `assets` (id, name, code, category, purchase_date, purchase_price, location, assigned_to, status)
+- `destroyed_items` (id, asset_id, item_name, destroy_date, reason, destroyed_by)
+- `expense_entries` (অলরেডি accounting এর জন্য use হচ্ছে)
 
-## Approval-এর পর
-Approve করলে migration চালিয়ে role গুলো তৈরি করব। তারপর `/dashboard/access/roles` page-এ গিয়ে প্রত্যেকটা role select করে আপনি দেখতে পাবেন কোন module enabled আছে — এবং সেখান থেকেই পরে fine-tune করতে পারবেন।
+RLS policies already enabled — admin/super_admin manage করতে পারবে, authenticated users view করতে পারবে।
+
+**একটি ছোট addition দরকার** `destroyed_items` table-এ: `loss_amount numeric DEFAULT 0` column — যাতে ক্ষতি মূল্য store করা যায়। এটার জন্য একটা migration লাগবে।
+
+### Pattern
+`Expense.tsx`-এর exact same pattern follow করব — React Query, shadcn Dialog, Table, Toast, Bangla labels।
+
+### Accounting flow (summary)
+
+```text
+Asset Add (purchase price > 0)
+    └─> insert expense_entries (category=Equipment, ref=asset:<id>)
+            └─> CashBook auto-detects → Cash balance ↓
+
+Asset Delete
+    └─> delete expense_entries WHERE reference='asset:<id>'
+
+Item Destroyed (loss > 0)
+    ├─> assets.status = 'destroyed' (if linked)
+    └─> insert expense_entries (category=Loss, ref=destroyed:<id>)
+            └─> P&L shows loss
+
+Destroyed Delete
+    ├─> assets.status = 'active' (revert)
+    └─> delete expense_entries WHERE reference='destroyed:<id>'
+```
+
+---
+
+## ৪. মূল প্রতিশ্রুতি (User Requirements Mapping)
+
+| আপনার চাওয়া | কীভাবে হবে |
+|---|---|
+| Asset add | Asset List page-এ full form |
+| Destroyed item add | Destroyed page-এ form (existing asset বা custom) |
+| Account hit হবে | Auto `expense_entries` insert |
+| টাকা cash থেকে আসবে | payment_method = Cash → Cash Book auto deduct |
+| Cash minus/plus যেতে পারে | কোনো restriction নেই — যেকোনো amount allow |
+| Industry standard | Code/Category/Location/Assignment/Status সব included |
+
+Approve করলে আমি দুটি page বানিয়ে, ছোট migration (`loss_amount` column) দিয়ে শেষ করব।
