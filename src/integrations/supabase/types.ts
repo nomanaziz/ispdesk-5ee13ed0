@@ -5260,6 +5260,44 @@ export type Database = {
         }
         Relationships: []
       }
+      leave_policies: {
+        Row: {
+          category_id: string
+          created_at: string
+          days_allowed: number
+          id: string
+          scope_id: string
+          scope_type: string
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          days_allowed?: number
+          id?: string
+          scope_id: string
+          scope_type: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          days_allowed?: number
+          id?: string
+          scope_id?: string
+          scope_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_policies_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "leave_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media_servers: {
         Row: {
           active: boolean
