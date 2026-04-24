@@ -74,4 +74,26 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
+  build: {
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("react-dom") || id.match(/[\\/]react[\\/]/) || id.includes("react/jsx-runtime") || id.includes("scheduler")) return "react-vendor";
+          if (id.includes("react-router")) return "router";
+          if (id.includes("@tanstack")) return "query";
+          if (id.includes("recharts") || id.includes("d3-")) return "charts";
+          if (id.includes("@radix-ui")) return "radix";
+          if (id.includes("lucide-react")) return "icons";
+          if (id.includes("@supabase")) return "supabase";
+          if (id.includes("framer-motion")) return "motion";
+          if (id.includes("html2canvas") || id.includes("jspdf") || id.includes("dompurify")) return "pdf";
+          if (id.includes("date-fns") || id.includes("dayjs")) return "date";
+          if (id.includes("xlsx") || id.includes("exceljs")) return "excel";
+          return "vendor";
+        },
+      },
+    },
+  },
 }));
