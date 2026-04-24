@@ -80,6 +80,7 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
       setSetNextBilling(true);
       setSendSms(false);
       setApplyVat(false);
+      setOverpayMode("increase");
       setReceivedBy(user?.id || customer?.sub || "");
     }
   }, [open, billing, dueAmount, monthlyBill, user?.id, customer?.sub]);
