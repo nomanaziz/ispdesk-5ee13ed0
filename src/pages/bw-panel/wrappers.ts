@@ -2,7 +2,7 @@
 // independent BwPanelLayout shell. Data scoping is handled by the underlying
 // pages via usePopScope() (which reads customer.panel_branch_id for BW
 // customers — already wired in the portal-data edge function).
-export { default as BwPanelMikrotik } from "@/pages/reseller/config/PopDevices";
+export { default as BwPanelMikrotik } from "@/pages/bw-panel/BwPanelMikrotikServers";
 export { default as BwPanelClients } from "@/pages/dashboard/clients/ClientList";
 export { default as BwPanelClientAdd } from "@/pages/dashboard/clients/AddClient";
 export { default as BwPanelBulkImport } from "@/pages/reseller/clients/BulkClientImportHub";
