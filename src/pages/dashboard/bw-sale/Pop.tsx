@@ -243,16 +243,18 @@ export default function Pop() {
                   <TableHead>Mobile</TableHead>
                   <TableHead className="text-right">Balance Due</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Number of Clients</TableHead>
                   <TableHead className="w-28 text-center">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
                 ) : paginated.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No customers found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No customers found</TableCell></TableRow>
                 ) : paginated.map((c, i) => {
                   const due = dueByCustomer.get(c.id) || 0;
+                  const tier = tierLabel(c.current_tier_id);
                   return (
                     <TableRow key={c.id}>
                       <TableCell className="text-muted-foreground">{(page - 1) * perPage + i + 1}</TableCell>
@@ -265,6 +267,17 @@ export default function Pop() {
                         <Badge variant={(c.activity_status || "").toLowerCase() === "active" ? "default" : "secondary"}>
                           {c.activity_status}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {c.panel_access_enabled ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold">{c.active_client_count ?? 0}</span>
+                            <span className="text-xs text-muted-foreground">clients</span>
+                            {tier && <Badge variant="outline" className="text-[10px] py-0 px-1.5">{tier}</Badge>}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">Not applicable</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-center gap-1">
