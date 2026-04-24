@@ -114,6 +114,7 @@ const GROUP_COLORS: Record<string, string> = {
   "ব্যান্ডউইথ ক্লায়েন্ট": "text-cyan-600 dark:text-cyan-400",
   "ডিভাইস": "text-emerald-600 dark:text-emerald-400",
   "HR ও পেরোল": "text-pink-600 dark:text-pink-400",
+  "অ্যাক্সেস ম্যানেজমেন্ট": "text-indigo-700 dark:text-indigo-300",
   "OLT ম্যানেজমেন্ট": "text-purple-600 dark:text-purple-400",
   "নেটওয়ার্ক মনিটরিং": "text-green-600 dark:text-green-400",
   "নেটওয়ার্ক ডায়াগ্রাম": "text-lime-600 dark:text-lime-400",
@@ -263,6 +264,14 @@ const menuGroups: MenuGroup[] = [
       { title: "ZKTeco ডিভাইস", url: "/dashboard/hr/zkteco-devices", icon: Server },
       { title: "উপস্থিতি নিয়ম", url: "/dashboard/hr/attendance-rules", icon: Shield },
       { title: "HR সেটিংস", url: "/dashboard/hr/settings", icon: Settings },
+    ],
+  },
+  {
+    label: "অ্যাক্সেস ম্যানেজমেন্ট",
+    icon: ShieldCheck,
+    items: [
+      { title: "অ্যাপ ইউজার", url: "/dashboard/access/app-users", icon: Users },
+      { title: "রোল ও পারমিশন", url: "/dashboard/access/roles", icon: Shield },
     ],
   },
   {

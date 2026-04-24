@@ -121,6 +121,10 @@ import HrAttendanceRules from "@/pages/dashboard/hr/AttendanceRules";
 import HrSettings from "@/pages/dashboard/hr/HrSettings";
 import DashboardLinks from "@/pages/dashboard/Links";
 
+// Access Management
+import AppUsers from "@/pages/dashboard/access/AppUsers";
+import AppRoles from "@/pages/dashboard/access/AppRoles";
+
 // OLT
 import OltDevices from "@/pages/dashboard/olt/OltDevices";
 import OltUsers from "@/pages/dashboard/olt/OltUsers";
@@ -540,6 +544,10 @@ const App = () => (
               <Route path="/dashboard/hr/zkteco-devices" element={<P><HrZktecoDevices /></P>} />
               <Route path="/dashboard/hr/attendance-rules" element={<P><HrAttendanceRules /></P>} />
               <Route path="/dashboard/hr/settings" element={<P><HrSettings /></P>} />
+
+              {/* Access Management */}
+              <Route path="/dashboard/access/app-users" element={<P><AppUsers /></P>} />
+              <Route path="/dashboard/access/roles" element={<P><AppRoles /></P>} />
 
               {/* OLT */}
               <Route path="/dashboard/olt" element={<P><OltDevices /></P>} />
