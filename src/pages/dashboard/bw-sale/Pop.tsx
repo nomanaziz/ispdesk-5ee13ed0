@@ -41,6 +41,15 @@ interface Customer {
   password: string | null;
   activity_status: string;
   created_at: string;
+  panel_access_enabled?: boolean;
+  active_client_count?: number;
+  current_tier_id?: string | null;
+}
+
+interface Tier {
+  id: string;
+  tier_name: string | null;
+  display_order: number;
 }
 
 const emptyForm = {
