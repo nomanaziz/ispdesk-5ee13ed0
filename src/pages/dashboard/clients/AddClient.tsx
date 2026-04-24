@@ -40,7 +40,7 @@ export default function AddClient() {
     latitude: "", longitude: "", contact: "", phone_number: "", email: "",
     address: "", permanent_address: "", road_number: "", house_number: "",
     mikrotik_id: "", protocol_type: "PPPoE", zone_id: "", sub_zone_id: "", box_id: "",
-    connection_type: "", cable_length: "", fiber_code: "", core_count: "",
+    connection_type: "Optical Fiber", cable_length: "", fiber_code: "", core_count: "",
     core_color: "", device_type: "", device_serial: "", vendor: "", purchase_date: "",
     client_id: "", package_id: "", profile: "", client_type: urlClientType || "Home", billing_status: "Active",
     username: "", remote_address: "", password: "", joining_date: format(new Date(), "yyyy-MM-dd"),
@@ -223,6 +223,15 @@ export default function AddClient() {
   const protocolTypes = (isPopMode ? popMeta?.protocolTypes : protocolTypesAdmin) || [];
   const employees = (isPopMode ? popMeta?.employees : employeesAdmin) || [];
   const billingStatuses = (isPopMode ? popMeta?.billingStatuses : billingStatusesAdmin) || [];
+
+  // Safety: clear default "Optical Fiber" if not present in active list
+  useEffect(() => {
+    if (!connectionTypes.length) return;
+    if (form.connection_type && !connectionTypes.some((ct: any) => ct.name === form.connection_type)) {
+      setField("connection_type", "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectionTypes]);
 
 
   // POP mode: auto-fill default server, lock protocol to PPPoE, auto-suggest client_id + default credentials
