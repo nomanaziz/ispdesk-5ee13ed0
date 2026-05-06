@@ -391,81 +391,14 @@ function useStats() {
   });
 }
 
-// ─── Stat Card ────────────────────────────────────
-function StatCard({ title, value, icon: Icon, colorIndex, icons8, to }: {
-  title: string; value: string | number; icon: React.ElementType; colorIndex: number; icons8?: string; to?: string;
-}) {
-  const style = CARD_STYLES[colorIndex % CARD_STYLES.length];
-  const resolved = icons8 || resolveIcons8({ title });
-  const useIcons8 = hasIcons8Icon(resolved);
-  const inner = (
-    <Card className={`hover:shadow-md transition-shadow group ${to ? "cursor-pointer hover:-translate-y-0.5 transition-transform" : ""}`}>
-      <CardContent className="p-3">
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${style.bg} ${style.text} shrink-0 flex items-center justify-center`}>
-            {useIcons8 ? (
-              <Icons8Icon name={resolved!} size={28} />
-            ) : (
-              <Icon className="h-5 w-5" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="text-xl font-bold tracking-tight leading-tight">{value}</p>
-            <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">{title}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-  return to ? <Link to={to}>{inner}</Link> : inner;
-}
-
-function StatSkeleton() {
+// ─── Section heading ──────────────────────────────
+function SectionHeading({ title, hint }: { title: string; hint?: string }) {
   return (
-    <Card><CardContent className="p-4">
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-11 w-11 rounded-lg" />
-        <div className="space-y-1.5"><Skeleton className="h-3 w-16" /><Skeleton className="h-5 w-12" /></div>
+    <div className="flex items-end justify-between">
+      <div>
+        <h2 className="text-base font-bold tracking-tight text-foreground">{title}</h2>
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       </div>
-    </CardContent></Card>
-  );
-}
-
-function SectionCard({
-  title, icon: Icon, tint, children, icons8,
-}: {
-  title: string;
-  icon: React.ElementType;
-  tint: string; // e.g. "blue" | "emerald" | "amber" | ...
-  children: React.ReactNode;
-  icons8?: string;
-}) {
-  // Map tint name → tailwind classes (must be literal for JIT)
-  const tintMap: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
-    blue:    { bg: "bg-blue-500/5",    border: "border-blue-500/20",    text: "text-blue-600 dark:text-blue-400",       iconBg: "bg-blue-500/15" },
-    emerald: { bg: "bg-emerald-500/5", border: "border-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400", iconBg: "bg-emerald-500/15" },
-    amber:   { bg: "bg-amber-500/5",   border: "border-amber-500/20",   text: "text-amber-600 dark:text-amber-400",     iconBg: "bg-amber-500/15" },
-    violet:  { bg: "bg-violet-500/5",  border: "border-violet-500/20",  text: "text-violet-600 dark:text-violet-400",   iconBg: "bg-violet-500/15" },
-    cyan:    { bg: "bg-cyan-500/5",    border: "border-cyan-500/20",    text: "text-cyan-600 dark:text-cyan-400",       iconBg: "bg-cyan-500/15" },
-    pink:    { bg: "bg-pink-500/5",    border: "border-pink-500/20",    text: "text-pink-600 dark:text-pink-400",       iconBg: "bg-pink-500/15" },
-    orange:  { bg: "bg-orange-500/5",  border: "border-orange-500/20",  text: "text-orange-600 dark:text-orange-400",   iconBg: "bg-orange-500/15" },
-    teal:    { bg: "bg-teal-500/5",    border: "border-teal-500/20",    text: "text-teal-600 dark:text-teal-400",       iconBg: "bg-teal-500/15" },
-  };
-  const t = tintMap[tint] || tintMap.blue;
-  const useIcons8 = hasIcons8Icon(icons8);
-  return (
-    <div className={`rounded-xl border ${t.border} ${t.bg} p-3 sm:p-4`}>
-      <div className="flex items-center gap-2 mb-3">
-        <div className={`p-1.5 rounded-md ${t.iconBg} ${t.text} flex items-center justify-center group`}>
-          {useIcons8 ? (
-            <Icons8Icon name={icons8!} size={22} />
-          ) : (
-            <Icon className="h-4 w-4" />
-          )}
-        </div>
-        <h2 className={`text-sm font-semibold uppercase tracking-wider ${t.text}`}>{title}</h2>
-      </div>
-      {children}
     </div>
   );
 }
@@ -481,258 +414,266 @@ const Dashboard = () => {
   const lmStart = `${lmDate.getFullYear()}-${String(lmDate.getMonth() + 1).padStart(2, "0")}-01`;
   const lmEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
   const currentMonth = now.toISOString().slice(0, 7);
-  const lastMonth = `${lmDate.getFullYear()}-${String(lmDate.getMonth() + 1).padStart(2, "0")}`;
   const yesterdayStr = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
 
-  const renderCards = (items: { title: string; value: string | number; icon: React.ElementType; colorIndex: number; icons8?: string; to?: string }[]) => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5">
-      {isLoading ? Array.from({ length: items.length }).map((_, i) => <StatSkeleton key={i} />) :
-        items.map((item, i) => <StatCard key={i} {...item} />)}
-    </div>
-  );
+  const fmt = (n: number | undefined) => `৳${(n ?? 0).toLocaleString("en-IN")}`;
+  const num = (n: number | undefined) => (n ?? 0).toLocaleString("en-IN");
+
+  // Deltas
+  const joinDelta = d?.lastMonthJoin
+    ? (((d.thisMonthJoin - d.lastMonthJoin) / d.lastMonthJoin) * 100)
+    : (d?.thisMonthJoin ? 100 : 0);
+  const salesDelta = d?.lastMonthSales
+    ? (((d.thisMonthSales - d.lastMonthSales) / d.lastMonthSales) * 100)
+    : (d?.thisMonthSales ? 100 : 0);
+
+  // Resource gauges
+  const onlinePct = d && d.totalOnu > 0 ? (d.onlineOnu / d.totalOnu) * 100 : 0;
+  const paidPct = d && d.billingMonthRows > 0 ? (d.paidClients / d.billingMonthRows) * 100 : 0;
+  const collectionPct = d && d.totalBillAmount > 0 ? (d.totalPaidAmount / d.totalBillAmount) * 100 : 0;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-bold">ড্যাশবোর্ড</h1>
+          <p className="text-muted-foreground text-sm">ISP ERP ওভারভিউ</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-2xl" />)}
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-3">
-      <div>
-        <h1 className="text-2xl font-bold">ড্যাশবোর্ড</h1>
-        <p className="text-muted-foreground text-sm">ISP ERP ওভারভিউ</p>
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">ড্যাশবোর্ড</h1>
+          <p className="text-muted-foreground text-sm">ISP ERP ওভারভিউ — এক নজরে আপনার পুরো ব্যবসা</p>
+        </div>
       </div>
 
-      {/* Row 1: Client Overview */}
-      <SectionCard title="ক্লায়েন্ট ওভারভিউ" icon={Users} tint="blue" icons8="people">
-        {renderCards([
-          { title: "মোট ক্লায়েন্ট", value: d?.totalClients ?? 0, icon: Users, colorIndex: 0, icons8: "people", to: "/dashboard/clients/home" },
-          { title: "এই মাসে যোগ", value: d?.thisMonthJoin ?? 0, icon: UserPlus, colorIndex: 1, icons8: "add-user-male", to: `/dashboard/clients/home?from=${monthStart}&to=${todayStr}` },
-          { title: "গত মাসে যোগ", value: d?.lastMonthJoin ?? 0, icon: UserPlus, colorIndex: 2, icons8: "add-user-male", to: `/dashboard/clients/home?from=${lmStart}&to=${lmEnd}` },
-          { title: "হোম ক্লায়েন্ট", value: d?.homeClients ?? 0, icon: Home, colorIndex: 3, icons8: "home", to: "/dashboard/clients/home?clientType=Home" },
-          { title: "কর্পোরেট ক্লায়েন্ট", value: d?.corporateClients ?? 0, icon: Building2, colorIndex: 4, icons8: "company", to: "/dashboard/clients/corporate" },
-          { title: "সচল ক্লায়েন্ট", value: d?.totalActive ?? 0, icon: UserCheck, colorIndex: 5, icons8: "checked", to: "/dashboard/clients/home?status=active" },
-          { title: "হোম অ্যাক্টিভ", value: d?.homeActive ?? 0, icon: Home, colorIndex: 6, icons8: "home", to: "/dashboard/clients/home?clientType=Home&status=active" },
-          { title: "বিলিং ক্লায়েন্ট", value: d?.billingClients ?? 0, icon: FileText, colorIndex: 1, icons8: "documents", to: "/dashboard/clients/home?billingStatus=Active" },
-          { title: "ফ্রি ক্লায়েন্ট", value: d?.freeClients ?? 0, icon: ShieldCheck, colorIndex: 6, icons8: "guarantee", to: "/dashboard/clients/home?billingStatus=Free" },
-          { title: "পার্সোনাল ক্লায়েন্ট", value: d?.personalClients ?? 0, icon: UserCheck, colorIndex: 7, icons8: "checked", to: "/dashboard/clients/home?billingStatus=Personal" },
-          { title: "VIP ক্লায়েন্ট", value: d?.vipClients ?? 0, icon: Award, colorIndex: 11, icons8: "trophy", to: "/dashboard/clients/home?vip=1" },
-        ])}
-      </SectionCard>
+      {/* Hero KPI Row — 4 large gradient cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          label="মোট ক্লায়েন্ট"
+          value={num(d?.totalClients)}
+          icon={Users}
+          tone="blue"
+          delta={joinDelta}
+          caption="গত মাসের তুলনায়"
+          to="/dashboard/clients/home"
+        />
+        <KpiCard
+          label="অনলাইন ব্যবহারকারী"
+          value={num(d?.onlineOnu)}
+          icon={Wifi}
+          tone="emerald"
+          to="/dashboard/monitoring/online"
+        />
+        <KpiCard
+          label="সচল ক্লায়েন্ট"
+          value={num(d?.totalActive)}
+          icon={UserCheck}
+          tone="cyan"
+          to="/dashboard/clients/home?status=active"
+        />
+        <KpiCard
+          label="বন্ধ লাইন"
+          value={num(d?.blockedLineCount)}
+          icon={Ban}
+          tone="amber"
+          to="/dashboard/clients/home?mikrotikStatus=disabled"
+        />
+      </div>
 
-      {/* Row 2: Action-required Status (merged) */}
-      <SectionCard title="অ্যাকশন প্রয়োজন" icon={AlertTriangle} tint="emerald" icons8="combo-chart">
-        {renderCards([
-          { title: "ওভারডিউ বিলিং", value: d?.overdueBillingCount ?? 0, icon: AlertTriangle, colorIndex: 0, icons8: "high-priority", to: `/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}` },
-          { title: "বন্ধ লাইন", value: d?.blockedLineCount ?? 0, icon: Ban, colorIndex: 7, icons8: "cancel", to: "/dashboard/clients/home?mikrotikStatus=disabled" },
-          { title: "মেয়াদোত্তীর্ণ", value: d?.totalExpired ?? 0, icon: CalendarX, colorIndex: 3, icons8: "high-priority", to: "/dashboard/clients/home?status=expired" },
-          { title: "নিষ্ক্রিয়/বাতিল", value: d?.inactiveLeftCount ?? 0, icon: UserX, colorIndex: 6, icons8: "cancel", to: "/dashboard/clients/home?status=inactive" },
-          { title: "গ্রেস/এক্সটেনশন", value: d?.extensionGraceCount ?? 0, icon: Timer, colorIndex: 4, icons8: "alarm-clock", to: "/dashboard/clients/home?status=extended" },
-          { title: "পেন্ডিং ক্লায়েন্ট", value: d?.pendingClients ?? 0, icon: Clock, colorIndex: 1, icons8: "alarm-clock", to: "/dashboard/clients/home?status=pending" },
-        ])}
-      </SectionCard>
+      {/* System Overview (left, 2/3) + System Resources (right, 1/3) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* System Overview */}
+        <div className="lg:col-span-2 space-y-3">
+          <SectionHeading title="সিস্টেম ওভারভিউ" hint="বর্তমান মাসের মূল মেট্রিক" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <MetricTile label="অনলাইন ক্লায়েন্ট" value={num(d?.onlineOnu)} icon={Activity} tone="emerald" to="/dashboard/monitoring/online" hint={`${d?.totalOnu ?? 0} মোট ONU`} />
+            <MetricTile label="সচল ক্লায়েন্ট" value={num(d?.totalActive)} icon={UserCheck} tone="sky" to="/dashboard/clients/home?status=active" />
+            <MetricTile label="এই মাসের সেল" value={fmt(d?.thisMonthSales)} icon={TrendingUp} tone="violet" to={`/dashboard/billing/daily-collection?from=${monthStart}&to=${todayStr}`} />
+            <MetricTile label="আজকের সেল" value={fmt(d?.todaySales)} icon={DollarSign} tone="orange" to={`/dashboard/billing/daily-collection?date=${todayStr}`} />
+            <MetricTile label="বিলিং ক্লায়েন্ট" value={num(d?.billingClients)} icon={FileText} tone="indigo" to="/dashboard/clients/home?billingStatus=Active" />
+            <MetricTile label="মেয়াদোত্তীর্ণ" value={num(d?.totalExpired)} icon={CalendarX} tone="amber" to="/dashboard/clients/home?status=expired" />
+            <MetricTile label="বন্ধ লাইন" value={num(d?.blockedLineCount)} icon={Ban} tone="rose" to="/dashboard/clients/home?mikrotikStatus=disabled" />
+            <MetricTile label="বকেয়া ক্লায়েন্ট" value={num(d?.dueClients)} icon={AlertTriangle} tone="pink" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />
+          </div>
+        </div>
 
-      {/* Row 3: Billing Stats */}
-      <SectionCard title="বিলিং স্ট্যাটাস" icon={CreditCard} tint="amber" icons8="documents">
-        {renderCards([
-          { title: "বিলিং ক্লায়েন্ট", value: d?.billingClients ?? 0, icon: FileText, colorIndex: 1, icons8: "documents", to: "/dashboard/clients/home?billingStatus=Active" },
-          { title: "পেইড ক্লায়েন্ট", value: d?.paidClients ?? 0, icon: UserCheck, colorIndex: 2, icons8: "checked", to: `/dashboard/billing?paymentStatus=paid&month=${currentMonth}` },
-          { title: "আংশিক পেইড", value: d?.partialClients ?? 0, icon: CreditCard, colorIndex: 3, icons8: "coins", to: `/dashboard/billing?paymentStatus=partial&month=${currentMonth}` },
-          { title: "বকেয়া ক্লায়েন্ট", value: d?.dueClients ?? 0, icon: AlertTriangle, colorIndex: 0, icons8: "high-priority", to: `/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}` },
-          { title: "অনলাইন ONU", value: `${d?.onlineOnu ?? 0}/${d?.totalOnu ?? 0}`, icon: Wifi, colorIndex: 2, icons8: "wi-fi-connected", to: "/dashboard/monitoring/online" },
-          { title: "মোট POP", value: d?.totalPop ?? 0, icon: Radio, colorIndex: 8, icons8: "router-symbol", to: "/dashboard/branches/managers" },
-        ])}
-      </SectionCard>
+        {/* System Resources rail */}
+        <div className="space-y-3">
+          <SectionHeading title="সিস্টেম রিসোর্স" hint="বর্তমান মাসের অগ্রগতি" />
+          <Card>
+            <CardContent className="p-5">
+              <div className="grid grid-cols-3 gap-2">
+                <ResourceGauge label="ONU অনলাইন" value={onlinePct} tone="emerald" />
+                <ResourceGauge label="পেইড ক্লায়েন্ট" value={paidPct} tone="sky" />
+                <ResourceGauge label="কালেকশন" value={collectionPct} tone="violet" />
+              </div>
+            </CardContent>
+          </Card>
+          <InfoList
+            title="নেটওয়ার্ক তথ্য"
+            rows={[
+              { label: "মোট POP", value: num(d?.totalPop) },
+              { label: "POP ম্যানেজার", value: num(d?.totalPopMgrs) },
+              { label: "BW রিসেলার POP", value: num(d?.bwPopMgrs) },
+              { label: "BW পোর্টাল ইউজার", value: num(d?.bwTotalUsers) },
+              { label: "VIP ক্লায়েন্ট", value: num(d?.vipClients) },
+              { label: "SMS ব্যালেন্স", value: String(d?.smsBalance ?? "0") },
+            ]}
+          />
+        </div>
+      </div>
 
-      {/* NEW: POP & BW Network */}
-      <SectionCard title="POP ও BW নেটওয়ার্ক" icon={Network} tint="cyan" icons8="internet">
-        {renderCards([
-          { title: "মোট POP ম্যানেজার", value: d?.totalPopMgrs ?? 0, icon: Building2, colorIndex: 6, icons8: "city-buildings", to: "/dashboard/branches/managers" },
-          { title: "BW রিসেলার POP", value: d?.bwPopMgrs ?? 0, icon: Share2, colorIndex: 13, icons8: "mac-client", to: "/dashboard/branches/managers" },
-          { title: "রেগুলার POP", value: d?.regularPopMgrs ?? 0, icon: Radio, colorIndex: 1, icons8: "router-symbol", to: "/dashboard/branches/managers" },
-          { title: "POP মোট ক্লায়েন্ট", value: d?.popTotalClients ?? 0, icon: Users, colorIndex: 9, icons8: "people", to: "/dashboard/clients/home" },
-          { title: "POP অ্যাক্টিভ ক্লায়েন্ট", value: d?.popActiveClients ?? 0, icon: UserCheck, colorIndex: 2, icons8: "checked", to: "/dashboard/clients/home?status=active" },
-          { title: "POP ইন-অ্যাক্টিভ", value: d?.popInactiveClients ?? 0, icon: UserX, colorIndex: 0, icons8: "cancel", to: "/dashboard/clients/home?status=inactive" },
-        ])}
-      </SectionCard>
-
-      {/* NEW: BW Reseller Portal */}
-      <SectionCard title="BW রিসেলার পোর্টাল" icon={Globe} tint="pink" icons8="data-transfer">
-        {renderCards([
-          { title: "মোট পোর্টাল ইউজার", value: d?.bwTotalUsers ?? 0, icon: Users, colorIndex: 5, icons8: "people", to: "/dashboard/bw-sale/pop" },
-          { title: "অ্যাক্টিভ ইউজার", value: d?.bwActiveUsers ?? 0, icon: UserCheck, colorIndex: 2, icons8: "checked", to: "/dashboard/bw-sale/pop" },
-          { title: "ইন-অ্যাক্টিভ ইউজার", value: d?.bwInactiveUsers ?? 0, icon: UserX, colorIndex: 0, icons8: "cancel", to: "/dashboard/bw-sale/pop" },
-          { title: "সাব-রিসেলার দিয়েছে", value: d?.bwParentResellers ?? 0, icon: Share2, colorIndex: 13, icons8: "mac-client", to: "/dashboard/bw-sale/pop" },
-        ])}
-      </SectionCard>
-
-      {/* Row 4: Sales & Financial */}
-      <SectionCard title="বিক্রয় ও আর্থিক" icon={DollarSign} tint="violet" icons8="profit">
-        {renderCards([
-          { title: "আজকের সেল", value: `৳${(d?.todaySales ?? 0).toLocaleString()}`, icon: DollarSign, colorIndex: 2, icons8: "coins", to: `/dashboard/billing/daily-collection?date=${todayStr}` },
-          { title: "গতকালের সেল", value: `৳${(d?.yesterdaySales ?? 0).toLocaleString()}`, icon: DollarSign, colorIndex: 7, icons8: "coins", to: `/dashboard/billing/daily-collection?date=${yesterdayStr}` },
-          { title: "এই মাসের সেল", value: `৳${(d?.thisMonthSales ?? 0).toLocaleString()}`, icon: CreditCard, colorIndex: 1, icons8: "money", to: `/dashboard/billing/daily-collection?from=${monthStart}&to=${todayStr}` },
-          { title: "গত মাসের সেল", value: `৳${(d?.lastMonthSales ?? 0).toLocaleString()}`, icon: Receipt, colorIndex: 4, icons8: "money", to: `/dashboard/billing/daily-collection?from=${lmStart}&to=${lmEnd}` },
-          { title: "এই মাসের মুনাফা", value: `৳${(d?.thisMonthProfit ?? 0).toLocaleString()}`, icon: TrendingUp, colorIndex: 2, icons8: "positive-dynamic" },
-          { title: "গত মাসের মুনাফা", value: `৳${(d?.lastMonthProfit ?? 0).toLocaleString()}`, icon: TrendingDown, colorIndex: 0, icons8: "profit" },
-        ])}
-      </SectionCard>
-
-      {/* Row 5: Financial Details */}
-      <SectionCard title="আর্থিক বিবরণ" icon={Landmark} tint="teal" icons8="calculator">
-        {renderCards([
-          { title: "মোট বিল (এই মাস)", value: `৳${(d?.totalBillAmount ?? 0).toLocaleString()}`, icon: FileText, colorIndex: 1, icons8: "documents", to: `/dashboard/billing?month=${currentMonth}` },
-          { title: "কালেক্টেড বিল", value: `৳${(d?.totalPaidAmount ?? 0).toLocaleString()}`, icon: HandCoins, colorIndex: 2, icons8: "coins", to: `/dashboard/billing?paymentStatus=paid&month=${currentMonth}` },
-          { title: "মোট ডিসকাউন্ট", value: `৳${(d?.totalDiscount ?? 0).toLocaleString()}`, icon: CircleDollarSign, colorIndex: 3, icons8: "discount" },
-          { title: "মোট বকেয়া", value: `৳${(d?.totalDueAmount ?? 0).toLocaleString()}`, icon: AlertTriangle, colorIndex: 0, icons8: "high-priority", to: `/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}` },
-          { title: "আয় (এই মাস)", value: `৳${(d?.incTM ?? 0).toLocaleString()}`, icon: TrendingUp, colorIndex: 2, icons8: "profit" },
-          { title: "ব্যয় (এই মাস)", value: `৳${(d?.expTM ?? 0).toLocaleString()}`, icon: TrendingDown, colorIndex: 0, icons8: "cancel" },
-          { title: "বেতন পরিশোধ", value: `৳${(d?.paidSalary ?? 0).toLocaleString()}`, icon: Wallet, colorIndex: 4, icons8: "money" },
-          { title: "SMS ব্যালেন্স", value: String(d?.smsBalance ?? "0"), icon: MessageSquare, colorIndex: 5, icons8: "sms" },
-        ])}
-      </SectionCard>
-
-      {/* Row 6: Tickets & Tasks */}
-      <SectionCard title="সাপোর্ট ও টাস্ক" icon={ClipboardList} tint="orange" icons8="online-support">
-        {renderCards([
-          { title: "পেন্ডিং টিকেট", value: d?.pendingTickets ?? 0, icon: ClipboardList, colorIndex: 3, icons8: "online-support", to: "/dashboard/support/tickets?status=pending" },
-          { title: "প্রক্রিয়াধীন টিকেট", value: d?.processingTickets ?? 0, icon: TicketCheck, colorIndex: 1, icons8: "online-support", to: "/dashboard/support/tickets?status=processing" },
-          { title: "পেন্ডিং টাস্ক", value: d?.pendingTasks ?? 0, icon: ListTodo, colorIndex: 7, icons8: "to-do-list", to: "/dashboard/tasks?status=pending" },
-          { title: "প্রক্রিয়াধীন টাস্ক", value: d?.processingTasks ?? 0, icon: Activity, colorIndex: 9, icons8: "tasks", to: "/dashboard/tasks?status=processing" },
-        ])}
-      </SectionCard>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
-        {/* Monthly New Clients Chart */}
-        <Card>
-          <CardHeader className="pb-2 px-4 pt-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <UserPlus className="h-4 w-4 text-blue-500" />
+      {/* Traffic / chart (2/3) + Top Active Users (1/3) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <UserPlus className="h-4 w-4 text-primary" />
               মাসিক নতুন ক্লায়েন্ট
+              <span className="ml-auto text-xs font-normal text-muted-foreground">গত ৬ মাস</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-4 pb-4">
-            {isLoading ? <Skeleton className="h-48 w-full" /> : (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={d?.newClientChart || []}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} name="নতুন ক্লায়েন্ট" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+          <CardContent className="px-3 pb-3">
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={d?.newClientChart || []}>
+                <defs>
+                  <linearGradient id="barFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    background: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 12,
+                    fontSize: 12,
+                  }}
+                />
+                <Bar dataKey="count" fill="url(#barFill)" radius={[8, 8, 0, 0]} name="নতুন ক্লায়েন্ট" />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Zone Problem Chart */}
-        <Card>
-          <CardHeader className="pb-2 px-4 pt-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              জোন ভিত্তিক সমস্যা (এই মাস)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            {isLoading ? <Skeleton className="h-48 w-full" /> : (d?.zoneProblemChart?.length ?? 0) > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie data={d?.zoneProblemChart} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
-                    {(d?.zoneProblemChart || []).map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-center text-muted-foreground text-sm py-12">ডেটা নেই</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Top Downloaders + Unpaid Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Top Downloaders */}
         <Card>
-          <CardHeader className="pb-2 px-4 pt-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <ArrowDownToLine className="h-4 w-4 text-emerald-500" />
-              মাসিক টপ ডাউনলোডার
+              টপ অ্যাক্টিভ ব্যবহারকারী
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            {isLoading ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 w-full mb-1.5" />) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs py-1.5">#</TableHead>
-                    <TableHead className="text-xs py-1.5">User</TableHead>
-                    <TableHead className="text-xs text-right py-1.5">Download</TableHead>
-                    <TableHead className="text-xs text-right py-1.5">Upload</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(d?.topDownloaders ?? []).length > 0 ? (d?.topDownloaders ?? []).map((dl, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="text-xs py-1.5 font-bold">{i + 1}</TableCell>
-                      <TableCell className="text-xs py-1.5">{dl.client_name}</TableCell>
-                      <TableCell className="text-xs py-1.5 text-right font-mono text-emerald-500">{formatBytes(dl.download)}</TableCell>
-                      <TableCell className="text-xs py-1.5 text-right font-mono text-blue-500">{formatBytes(dl.upload)}</TableCell>
-                    </TableRow>
-                  )) : (
-                    <TableRow><TableCell colSpan={4} className="text-xs text-center py-4 text-muted-foreground">ডেটা নেই — traffic collection চালু করুন</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Top Unpaid */}
-        <Card>
-          <CardHeader className="pb-2 px-4 pt-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              বকেয়া ক্লায়েন্ট
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            {isLoading ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 w-full mb-1.5" />) : (
-              <div className="max-h-72 overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs py-1.5">#</TableHead>
-                      <TableHead className="text-xs py-1.5">নাম</TableHead>
-                      <TableHead className="text-xs text-right py-1.5">বিল</TableHead>
-                      <TableHead className="text-xs text-right py-1.5">বকেয়া</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(d?.unpaidList ?? []).length > 0 ? (d?.unpaidList ?? []).map((u, i) => (
-                      <TableRow key={i} className="hover:bg-muted/40">
-                        <TableCell className="text-xs py-1.5">{i + 1}</TableCell>
-                        <TableCell className="text-xs py-1.5">
-                          <Link to={`/dashboard/billing?search=${encodeURIComponent(u.client_name)}&month=${currentMonth}`} className="hover:underline text-foreground">
-                            {u.client_name}
-                          </Link>
-                        </TableCell>
-                        <TableCell className="text-xs py-1.5 text-right">৳{u.amount.toLocaleString()}</TableCell>
-                        <TableCell className="text-xs py-1.5 text-right text-red-500 font-semibold">৳{u.due.toLocaleString()}</TableCell>
-                      </TableRow>
-                    )) : (
-                      <TableRow><TableCell colSpan={4} className="text-xs text-center py-4 text-muted-foreground">কোনো বকেয়া নেই</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+            {(d?.topDownloaders ?? []).length > 0 ? (
+              <div className="divide-y divide-border">
+                {(d?.topDownloaders ?? []).slice(0, 6).map((dl, i) => {
+                  const initials = (dl.client_name || "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+                  return (
+                    <div key={i} className="flex items-center gap-3 py-2.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                        {initials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-foreground truncate">{dl.client_name}</p>
+                        <p className="text-[11px] text-muted-foreground">{formatBytes(dl.download)} ↓</p>
+                      </div>
+                      <Badge variant="secondary" className="text-[10px]">#{i + 1}</Badge>
+                    </div>
+                  );
+                })}
               </div>
+            ) : (
+              <p className="py-10 text-center text-xs text-muted-foreground">ডেটা নেই — traffic collection চালু করুন</p>
             )}
           </CardContent>
         </Card>
       </div>
 
+      {/* Action required + Finance summary */}
+      <div className="space-y-3">
+        <SectionHeading title="অ্যাকশন প্রয়োজন" hint="দ্রুত পদক্ষেপ নিন" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <MetricTile label="ওভারডিউ বিলিং" value={num(d?.overdueBillingCount)} icon={AlertTriangle} tone="rose" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />
+          <MetricTile label="মেয়াদোত্তীর্ণ" value={num(d?.totalExpired)} icon={CalendarX} tone="amber" to="/dashboard/clients/home?status=expired" />
+          <MetricTile label="নিষ্ক্রিয়/বাতিল" value={num(d?.inactiveLeftCount)} icon={UserX} tone="orange" to="/dashboard/clients/home?status=inactive" />
+          <MetricTile label="গ্রেস/এক্সটেনশন" value={num(d?.extensionGraceCount)} icon={Timer} tone="violet" to="/dashboard/clients/home?status=extended" />
+          <MetricTile label="পেন্ডিং টিকেট" value={num(d?.pendingTickets)} icon={ClipboardList} tone="indigo" to="/dashboard/support/tickets?status=pending" />
+          <MetricTile label="পেন্ডিং টাস্ক" value={num(d?.pendingTasks)} icon={ListTodo} tone="teal" to="/dashboard/tasks?status=pending" />
+        </div>
+      </div>
 
+      <div className="space-y-3">
+        <SectionHeading title="আর্থিক বিবরণ" hint="বর্তমান মাস" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <MetricTile label="মোট বিল" value={fmt(d?.totalBillAmount)} icon={FileText} tone="indigo" to={`/dashboard/billing?month=${currentMonth}`} />
+          <MetricTile label="কালেক্টেড" value={fmt(d?.totalPaidAmount)} icon={HandCoins} tone="emerald" to={`/dashboard/billing?paymentStatus=paid&month=${currentMonth}`} />
+          <MetricTile label="ডিসকাউন্ট" value={fmt(d?.totalDiscount)} icon={CircleDollarSign} tone="amber" />
+          <MetricTile label="বকেয়া" value={fmt(d?.totalDueAmount)} icon={AlertTriangle} tone="rose" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />
+          <MetricTile label="আয়" value={fmt(d?.incTM)} icon={TrendingUp} tone="lime" />
+          <MetricTile label="ব্যয়" value={fmt(d?.expTM)} icon={TrendingDown} tone="pink" />
+        </div>
+      </div>
+
+      {/* Bakeya client list */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-rose-500" />
+            বকেয়া ক্লায়েন্ট
+            <Badge variant="secondary" className="ml-2 text-[10px]">{(d?.unpaidList ?? []).length}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <div className="max-h-96 overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs py-1.5 w-10">#</TableHead>
+                  <TableHead className="text-xs py-1.5">নাম</TableHead>
+                  <TableHead className="text-xs text-right py-1.5">বিল</TableHead>
+                  <TableHead className="text-xs text-right py-1.5">বকেয়া</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(d?.unpaidList ?? []).length > 0 ? (d?.unpaidList ?? []).map((u, i) => (
+                  <TableRow key={i} className="hover:bg-muted/40">
+                    <TableCell className="text-xs py-1.5 text-muted-foreground">{i + 1}</TableCell>
+                    <TableCell className="text-xs py-1.5">
+                      <Link to={`/dashboard/billing?search=${encodeURIComponent(u.client_name)}&month=${currentMonth}`} className="hover:underline font-medium text-foreground">
+                        {u.client_name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-xs py-1.5 text-right">৳{u.amount.toLocaleString()}</TableCell>
+                    <TableCell className="text-xs py-1.5 text-right text-rose-500 font-semibold">৳{u.due.toLocaleString()}</TableCell>
+                  </TableRow>
+                )) : (
+                  <TableRow><TableCell colSpan={4} className="text-xs text-center py-8 text-muted-foreground">কোনো বকেয়া নেই</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
 export default Dashboard;
+
