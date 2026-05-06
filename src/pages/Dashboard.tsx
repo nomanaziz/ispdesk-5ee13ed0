@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
 import { resolveIcons8 } from "@/lib/iconResolver";
+import { Link } from "react-router-dom";
 
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
