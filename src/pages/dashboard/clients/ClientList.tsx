@@ -58,7 +58,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
     const mikrotikStatus = searchParams.get("mikrotikStatus");
     const from = searchParams.get("from");
     const to = searchParams.get("to");
-    const vip = searchParams.get("vip");
+    
     if (status) f.customStatus = status;
     if (clientType) f.clientType = clientType;
     if (billingStatus) f.billingStatus = billingStatus;
