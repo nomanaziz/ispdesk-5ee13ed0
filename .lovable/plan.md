@@ -1,106 +1,97 @@
-## Goal
-ড্যাশবোর্ডকে reference image (Unique WiFi style) এর মতো **professional, modern** look দেয়া। বর্তমান dense Vuexy-style cards-এর জায়গায় বড়, gradient-rich, "View Details" link সহ stat cards এবং পরিষ্কার section দিয়ে redesign।
+# Color Tone Cleanup — Pure Black Text, Dark Fixed Table Headers
 
-## Reference image থেকে নেয়া design pattern
+আপনার অভিযোগ ঠিক — এখন ফ্যাকাশে muted-foreground (HSL 220 15% 32%) text বেশি, একেক page এ একেক রঙ, table heading গুলো light bg-primary/10 (lavender ফ্যাকাশে)। সব জায়গায় একটাই strict palette চাই: **পুরো কালো text + dark slate table heading + একই tone সব page এ**।
 
+## ১. Global design tokens (`src/index.css`)
+
+Light mode tokens শক্ত করব যাতে পুরো app এ এক রঙ আসে:
+
+```text
+--background:      0 0% 100%       (pure white page)
+--foreground:      0 0% 0%         (pure black text — সব জায়গার default)
+--card:            0 0% 100%
+--card-foreground: 0 0% 0%
+--muted:           220 14% 96%     (light bg only)
+--muted-foreground: 220 9% 25%     (only for hint/secondary, much darker than now)
+--border:          220 13% 88%
+--primary:         258 90% 60%     (একই tone, accent only — heading bg নয়)
+
+/* NEW: dedicated table-header tokens — fixed, never changes */
+--table-head:            224 30% 14%   (deep slate-900)
+--table-head-foreground: 0 0% 100%     (white)
+--table-row-alt:         220 14% 97%   (zebra)
+--table-border:          220 13% 88%
 ```
-┌──────────────────────────────────────────────────────────────┐
-│ Top KPI Row — 4 large cards (icon + huge number + % delta)   │
-│   Total Users   Online Users   Active Users   Offline Users  │
-├──────────────────────────────────────────────────────────────┤
-│ System Overview (left, 2/3)         │ System Resources (1/3) │
-│  ┌────┐┌────┐┌────┐┌────┐           │  CPU / Memory / Disk   │
-│  │Onl ││Act ││Inc ││Tdy │           │  (3 donut gauges)      │
-│  └────┘└────┘└────┘└────┘           │                        │
-│  ┌────┐┌────┐┌────┐┌────┐           │  Router Information    │
-│  │ IP ││Exp ││Sus ││Due │           │  (key-value list)      │
-│  └────┘└────┘└────┘└────┘           │                        │
-├──────────────────────────────────────┴────────────────────────┤
-│ Traffic Overview (chart, 2/3)        │ Top Active Users (1/3) │
-└──────────────────────────────────────────────────────────────┘
-```
 
-প্রতিটি colored card:
-- Gradient bg (e.g. blue/sky, emerald/teal, amber/orange, rose/red)
-- Top: small uppercase label
-- Middle: huge bold number
-- Bottom: small "View Details →" link (entire card clickable, link route আগের plan অনুযায়ী)
+Dark mode এ `--foreground: 0 0% 100%` এবং `--table-head` একই deep slate রাখব যাতে দু'mode এ table head এক রকম দেখায়।
 
-## কাজের তালিকা
+## ২. Table component (`src/components/ui/table.tsx`) — single source of truth
 
-### ১. নতুন `KpiCard` ও `MetricTile` components (`src/components/dashboard/`)
-- `KpiCard.tsx`: বড় hero card — gradient bg, icon top-right, label, value, delta (+12.5%), bottom-right subtle "View Details →"। Click → route।
-- `MetricTile.tsx`: medium gradient tile — System Overview-এর ৮টা item (Online Customers, Active Customers, Total Income 30 Days, Today's Income, IP Binding, Expired, Suspended, Due Customers). Click → route।
-- `ResourceGauge.tsx`: donut gauge (recharts RadialBar) — CPU/Memory/Disk percent।
-- `InfoList.tsx`: Router Information style key-value list।
+পুরো codebase এ ৪০+ ফাইল `Table` component use করে, তাই এখানে বদল করলে সব table এ একসাথে effect হবে।
 
-প্রতিটি component fully token-driven (`bg-gradient-to-br from-primary to-primary-glow` ধাঁচের) — direct color class নয়, design tokens ব্যবহার করে।
+- `TableHeader`: `bg-primary/10` সরিয়ে `bg-[hsl(var(--table-head))] text-[hsl(var(--table-head-foreground))]` — সব `th` সাদা bold uppercase tracking-wide
+- `TableHead` (`th`): `text-muted-foreground` সরিয়ে `text-[hsl(var(--table-head-foreground))] font-semibold text-xs uppercase tracking-wider`
+- `TableBody`: zebra rows `--table-row-alt` token দিয়ে
+- `TableRow` hover: `hover:bg-muted/60` (consistent)
+- Border সব `--table-border`
+- `TableFooter`: same dark head tone
 
-### ২. Design tokens (`src/index.css` + `tailwind.config.ts`)
-নতুন gradient tokens যোগ করা হবে যাতে cards uniform থাকে:
+ফলাফল — পুরো app এর প্রতিটা table এ এক রকম dark header + পুরো কালো cell text।
+
+## ৩. Tailwind base — pure-black default text
+
+`src/index.css` এর `body` এ already `text-foreground` আছে, token কালো করায় সব page এ default টেক্সট কালো হবে। অতিরিক্ত utility:
+
 ```css
---gradient-card-blue, --gradient-card-emerald, --gradient-card-amber,
---gradient-card-rose, --gradient-card-violet, --gradient-card-cyan
---shadow-card-elevated
+@layer base {
+  body { @apply text-foreground; }
+  /* Force black for headings & data cells unless explicitly muted */
+  h1, h2, h3, h4, h5, h6, label, td, th, p, span, div { color: inherit; }
+}
 ```
-এগুলা HSL ভিত্তিক, dark/light উভয় mode-এ কাজ করবে।
 
-### ৩. `src/pages/Dashboard.tsx` rewrite (লেআউট only — data hook reuse)
+`text-muted-foreground` token-এর দাম ২৫% lightness করায় হালকা hint টেক্সটও আগের চেয়ে অনেক সাফ দেখাবে (একদম কালো না, কিন্তু ফ্যাকাশে নয়)।
 
-বর্তমান `useStats()` hook অপরিবর্তিত থাকবে। নতুন layout:
+## ৪. Dashboard page (`src/pages/Dashboard.tsx`) — tone unify
 
-**Section A — Hero KPIs (4 cards, large)**
-| Card | Value | Route |
-|---|---|---|
-| মোট ক্লায়েন্ট | totalClients | `/dashboard/clients/home` |
-| অনলাইন ব্যবহারকারী | onlineOnu | `/dashboard/monitoring/online` |
-| সচল ক্লায়েন্ট | totalActive | `/dashboard/clients/home?status=active` |
-| অফলাইন/বন্ধ | blockedLineCount | `/dashboard/clients/home?mikrotikStatus=disabled` |
+এখন এক page এ ৬-৭ রকম tone (sky/emerald/violet/rose/orange/lime/pink ইত্যাদি)। সীমিত করে dashboard-wide ৪টা semantic tone:
 
-প্রতিটিতে month-on-month delta (+/- %) দেখানো হবে (thisMonthJoin vs lastMonthJoin proportion থেকে calc).
+- **primary** (violet 258) — neutral / informational
+- **success** (emerald) — positive metrics (online, paid, income)
+- **warning** (amber) — pending / extended / due soon
+- **danger** (rose) — overdue / blocked / expired
 
-**Section B — System Overview (8 metric tiles, 2 rows × 4)**
-Online Customers, Active Customers, এই মাসের সেল, আজকের সেল | বিলিং ক্লায়েন্ট, মেয়াদোত্তীর্ণ, বন্ধ লাইন, বকেয়া ক্লায়েন্ট। প্রতিটি card-এ "বিস্তারিত দেখুন →"।
+প্রতিটা `MetricTile`, `KpiCard` এই ৪টার একটা বেছে নেবে — random rainbow নয়।
 
-**Section C — System Resources (right rail, ~1/3 width)**
-- ৩টা donut gauge: ONU অনলাইন%, পেইড%, কালেকশন% (current month progress)
-- "সিস্টেম তথ্য" list: মোট POP, POP ম্যানেজার, BW রিসেলার, MikroTik server count
+`KpiCard` এর gradient সরাবো — instead solid white card, dark black value text, colored icon chip। Hero card-এ KPI text এখন সাদা গ্রেডিয়েন্টের উপর — সেটা change করে black-on-white করব যাতে dashboard এর সব card একই look দেয়।
 
-**Section D — Traffic / Sales chart (২/৩) + Top Active Users (১/৩)**
-- Chart: existing monthly new clients line/area chart, redesigned with gradient stroke + area fill।
-- Top Active Users: top downloaders বা সচল ক্লায়েন্টের একটা compact list (avatar/initials + name + status badge)।
+## ৫. MetricTile / KpiCard / InfoList components
 
-**Section E — Action Required & Finance (collapsible, secondary)**
-আগের "অ্যাকশন প্রয়োজন", "আর্থিক বিবরণ", "সাপোর্ট ও টাস্ক" section গুলা smaller `MetricTile`-এ আলাদা rows-এ থাকবে (clickable, আগের route mapping বহাল)।
+- `MetricTile`: value text already foreground কিন্তু `text-[11px] text-muted-foreground` labels গুলো কালো semibold করব
+- `KpiCard`: gradient bg বাদ → white card + colored left bar + black 4xl value + colored icon chip
+- `InfoList`: label-value দুটোই কালো, শুধু label `font-medium` value `font-bold`
+- `ResourceGauge`: track stroke darker, label কালো
 
-**বাদ:**
-- পুরনো dense `StatCard` grid (২-৩ লাইনে ১৬+ small card)। সব cards হবে নতুন design system-এর অংশ।
-- "POP ও BW নেটওয়ার্ক" এবং "BW রিসেলার পোর্টাল" sections — System Resources rail-এ summary হিসেবে চলে যাবে।
+## ৬. Icons — switch to lighter / faster lucide-only
 
-**রাখা হবে:**
-- "বকেয়া ক্লায়েন্ট" table — সেটাকে নতুন card style-এ wrap করা হবে।
+বর্তমান `Icons8Icon` (3rd-party) Dashboard অনেকটা lazy। `lucide-react` আগে থেকেই imported আছে। Dashboard থেকে `Icons8Icon` / `hasIcons8Icon` / `resolveIcons8` import সরিয়ে শুধু lucide use করব — রেন্ডার দ্রুত, bundle ছোট, এবং সব icon এ same stroke-width দেখাবে (consistency)। এই ৩টা import পুরো dashboard এ ব্যবহৃত নয় (already KpiCard/MetricTile lucide), তাই safe।
 
-### ৪. Visual details
-- Card padding বড় (p-5/p-6), rounded-2xl
-- Big numerical font (text-3xl / text-4xl, tracking-tight, font-extrabold)
-- Soft shadow (`shadow-lg shadow-primary/5`), hover-এ `-translate-y-0.5` + `shadow-xl`
-- Icon background: white/15 frosted box top-right
-- Delta badges: +12.5% green pill, -2.1% red pill
-- Section headings: uppercase, tracking-widest, muted-foreground
+## ৭. একনজরে ফলাফল
 
-### ৫. Bengali labels everywhere
-সব hard-coded label বাংলায়।
+- পুরো app এর সব text ১০০% কালো (hint বাদে — সেটাও ২৫% lightness, ফ্যাকাশে নয়)
+- প্রতিটা table এ একই dark slate heading + সাদা bold uppercase th + zebra rows
+- Dashboard এ আর rainbow নয় — ৪টা semantic tone
+- Card pattern: white bg + black value + colored icon chip — সব page এ এক
+- Icons8 dependency dashboard থেকে বাদ → faster load
 
-### ৬. Files to create / edit
-- `src/index.css` — gradient + shadow tokens
-- `tailwind.config.ts` — token mapping
-- `src/components/dashboard/KpiCard.tsx` — নতুন
-- `src/components/dashboard/MetricTile.tsx` — নতুন
-- `src/components/dashboard/ResourceGauge.tsx` — নতুন
-- `src/components/dashboard/InfoList.tsx` — নতুন
-- `src/pages/Dashboard.tsx` — layout rewrite (data hook + filter routes অপরিবর্তিত)
+## Files to edit
 
-কোনো DB migration বা useStats পরিবর্তন নেই — শুধু visual/layout overhaul, পূর্বের clickable-routing plan এ যা যা mapping ছিল সব বহাল থাকবে।
+- `src/index.css` — token cleanup + table-head tokens + base text rules
+- `src/components/ui/table.tsx` — dark fixed header, black cell text, zebra
+- `src/pages/Dashboard.tsx` — tone palette ৪-এ সীমিত, Icons8 import drop
+- `src/components/dashboard/KpiCard.tsx` — gradient → white+icon chip
+- `src/components/dashboard/MetricTile.tsx` — labels darker
+- `src/components/dashboard/InfoList.tsx` — values black bold
+- `src/components/dashboard/ResourceGauge.tsx` — labels black
 
-### ৭. Out of scope (পরের subject — আগেও বলা হয়েছে)
-- Branch-ভিত্তিক "সবচেয়ে বেশি সমস্যা সমাধান" / branch leaderboard card
+কোনো individual page ফাইল ছোঁয়া লাগবে না — tokens + Table component বদলালে সবগুলো একসাথে align হবে।
