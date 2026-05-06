@@ -392,14 +392,14 @@ function useStats() {
 }
 
 // ─── Stat Card ────────────────────────────────────
-function StatCard({ title, value, icon: Icon, colorIndex, icons8 }: {
-  title: string; value: string | number; icon: React.ElementType; colorIndex: number; icons8?: string;
+function StatCard({ title, value, icon: Icon, colorIndex, icons8, to }: {
+  title: string; value: string | number; icon: React.ElementType; colorIndex: number; icons8?: string; to?: string;
 }) {
   const style = CARD_STYLES[colorIndex % CARD_STYLES.length];
   const resolved = icons8 || resolveIcons8({ title });
   const useIcons8 = hasIcons8Icon(resolved);
-  return (
-    <Card className="hover:shadow-md transition-shadow group">
+  const inner = (
+    <Card className={`hover:shadow-md transition-shadow group ${to ? "cursor-pointer hover:-translate-y-0.5 transition-transform" : ""}`}>
       <CardContent className="p-3">
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-lg ${style.bg} ${style.text} shrink-0 flex items-center justify-center`}>
@@ -417,6 +417,7 @@ function StatCard({ title, value, icon: Icon, colorIndex, icons8 }: {
       </CardContent>
     </Card>
   );
+  return to ? <Link to={to}>{inner}</Link> : inner;
 }
 
 function StatSkeleton() {
