@@ -49,7 +49,25 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
   const [currentPage, setCurrentPage] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [filters, setFilters] = useState<BillingFilters>(defaultFilters);
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<BillingFilters>(() => {
+    const f: BillingFilters = { ...defaultFilters };
+    const status = searchParams.get("status");
+    const clientType = searchParams.get("clientType");
+    const billingStatus = searchParams.get("billingStatus");
+    const mikrotikStatus = searchParams.get("mikrotikStatus");
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    const vip = searchParams.get("vip");
+    if (status) f.customStatus = status;
+    if (clientType) f.clientType = clientType;
+    if (billingStatus) f.billingStatus = billingStatus;
+    if (mikrotikStatus) f.mikrotikStatus = mikrotikStatus;
+    if (from) f.fromDate = from;
+    if (to) f.toDate = to;
+    if (vip === "1") f.billingStatus = f.billingStatus === "all" ? "VIP" : f.billingStatus;
+    return f;
+  });
   const queryClient = useQueryClient();
 
   // Dialogs
