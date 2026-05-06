@@ -36,7 +36,7 @@ export function BootGate({ children }: { children: React.ReactNode }) {
 
     if ("requestIdleCallback" in window) {
       const idleId = window.requestIdleCallback(warmIcons, { timeout: 2000 });
-      return () => window.cancelIdleCallback(idleId);
+      return () => window.cancelIdleCallback?.(idleId);
     }
 
     const timerId = window.setTimeout(warmIcons, 1);
@@ -63,34 +63,4 @@ declare global {
     ) => number;
     cancelIdleCallback?: (handle: number) => void;
   }
-}
-      try {
-        sessionStorage.setItem(SESSION_KEY, "1");
-      } catch {
-        /* ignore */
-      }
-      hideSplash();
-      setReady(true);
-    };
-
-    const timeout = window.setTimeout(finish, MAX_WAIT_MS);
-    Promise.all([preloadAllIcons8(), preloadAllHishabee()])
-      .then(finish)
-      .catch(finish)
-      .finally(() => window.clearTimeout(timeout));
-
-    return () => window.clearTimeout(timeout);
-  }, [alreadyWarmed]);
-
-  if (!ready) return null;
-  return <>{children}</>;
-}
-
-function hideSplash() {
-  if (typeof document === "undefined") return;
-  const el = document.getElementById("boot-splash");
-  if (!el) return;
-  el.style.opacity = "0";
-  el.style.pointerEvents = "none";
-  window.setTimeout(() => el.remove(), 250);
 }
