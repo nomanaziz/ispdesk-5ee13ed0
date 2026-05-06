@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
 import { resolveIcons8 } from "@/lib/iconResolver";
+import { Link } from "react-router-dom";
 
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -131,7 +132,7 @@ function useStats() {
         // New clients per month (last 6 months)
         supabase.from("clients").select("created_at").gte("created_at", new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString()),
         // Unpaid clients
-        supabase.from("billing").select("client_id, amount, paid, due, status").eq("status", "unpaid").gte("month", monthStart).order("amount", { ascending: false }).limit(20),
+        supabase.from("billing").select("client_id, amount, paid, due, status").eq("status", "unpaid").gte("month", monthStart).order("amount", { ascending: false }).limit(200),
         // POP count
         supabase.from("bw_sale_pops").select("id", { count: "exact", head: true }),
         // Salary this month
@@ -391,14 +392,14 @@ function useStats() {
 }
 
 // ─── Stat Card ────────────────────────────────────
-function StatCard({ title, value, icon: Icon, colorIndex, icons8 }: {
-  title: string; value: string | number; icon: React.ElementType; colorIndex: number; icons8?: string;
+function StatCard({ title, value, icon: Icon, colorIndex, icons8, to }: {
+  title: string; value: string | number; icon: React.ElementType; colorIndex: number; icons8?: string; to?: string;
 }) {
   const style = CARD_STYLES[colorIndex % CARD_STYLES.length];
   const resolved = icons8 || resolveIcons8({ title });
   const useIcons8 = hasIcons8Icon(resolved);
-  return (
-    <Card className="hover:shadow-md transition-shadow group">
+  const inner = (
+    <Card className={`hover:shadow-md transition-shadow group ${to ? "cursor-pointer hover:-translate-y-0.5 transition-transform" : ""}`}>
       <CardContent className="p-3">
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-lg ${style.bg} ${style.text} shrink-0 flex items-center justify-center`}>
@@ -416,6 +417,7 @@ function StatCard({ title, value, icon: Icon, colorIndex, icons8 }: {
       </CardContent>
     </Card>
   );
+  return to ? <Link to={to}>{inner}</Link> : inner;
 }
 
 function StatSkeleton() {
@@ -471,7 +473,18 @@ function SectionCard({
 const Dashboard = () => {
   const { data: d, isLoading } = useStats();
 
-  const renderCards = (items: { title: string; value: string | number; icon: React.ElementType; colorIndex: number; icons8?: string }[]) => (
+  // Date helpers for filter links
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const todayStr = now.toISOString().slice(0, 10);
+  const lmDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lmStart = `${lmDate.getFullYear()}-${String(lmDate.getMonth() + 1).padStart(2, "0")}-01`;
+  const lmEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+  const currentMonth = now.toISOString().slice(0, 7);
+  const lastMonth = `${lmDate.getFullYear()}-${String(lmDate.getMonth() + 1).padStart(2, "0")}`;
+  const yesterdayStr = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
+
+  const renderCards = (items: { title: string; value: string | number; icon: React.ElementType; colorIndex: number; icons8?: string; to?: string }[]) => (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5">
       {isLoading ? Array.from({ length: items.length }).map((_, i) => <StatSkeleton key={i} />) :
         items.map((item, i) => <StatCard key={i} {...item} />)}
@@ -488,73 +501,73 @@ const Dashboard = () => {
       {/* Row 1: Client Overview */}
       <SectionCard title="ক্লায়েন্ট ওভারভিউ" icon={Users} tint="blue" icons8="people">
         {renderCards([
-          { title: "মোট ক্লায়েন্ট", value: d?.totalClients ?? 0, icon: Users, colorIndex: 0, icons8: "people" },
-          { title: "এই মাসে যোগ", value: d?.thisMonthJoin ?? 0, icon: UserPlus, colorIndex: 1, icons8: "add-user-male" },
-          { title: "গত মাসে যোগ", value: d?.lastMonthJoin ?? 0, icon: UserPlus, colorIndex: 2, icons8: "add-user-male" },
-          { title: "হোম ক্লায়েন্ট", value: d?.homeClients ?? 0, icon: Home, colorIndex: 3, icons8: "home" },
-          { title: "কর্পোরেট ক্লায়েন্ট", value: d?.corporateClients ?? 0, icon: Building2, colorIndex: 4, icons8: "company" },
-          { title: "সচল ক্লায়েন্ট", value: d?.totalActive ?? 0, icon: UserCheck, colorIndex: 5, icons8: "checked" },
-          { title: "হোম অ্যাক্টিভ", value: d?.homeActive ?? 0, icon: Home, colorIndex: 6, icons8: "home" },
-          { title: "বিলিং ক্লায়েন্ট", value: d?.billingClients ?? 0, icon: FileText, colorIndex: 1, icons8: "documents" },
-          { title: "ফ্রি ক্লায়েন্ট", value: d?.freeClients ?? 0, icon: ShieldCheck, colorIndex: 6, icons8: "guarantee" },
-          { title: "পার্সোনাল ক্লায়েন্ট", value: d?.personalClients ?? 0, icon: UserCheck, colorIndex: 7, icons8: "checked" },
-          { title: "VIP ক্লায়েন্ট", value: d?.vipClients ?? 0, icon: Award, colorIndex: 11, icons8: "trophy" },
+          { title: "মোট ক্লায়েন্ট", value: d?.totalClients ?? 0, icon: Users, colorIndex: 0, icons8: "people", to: "/dashboard/clients/home" },
+          { title: "এই মাসে যোগ", value: d?.thisMonthJoin ?? 0, icon: UserPlus, colorIndex: 1, icons8: "add-user-male", to: `/dashboard/clients/home?from=${monthStart}&to=${todayStr}` },
+          { title: "গত মাসে যোগ", value: d?.lastMonthJoin ?? 0, icon: UserPlus, colorIndex: 2, icons8: "add-user-male", to: `/dashboard/clients/home?from=${lmStart}&to=${lmEnd}` },
+          { title: "হোম ক্লায়েন্ট", value: d?.homeClients ?? 0, icon: Home, colorIndex: 3, icons8: "home", to: "/dashboard/clients/home?clientType=Home" },
+          { title: "কর্পোরেট ক্লায়েন্ট", value: d?.corporateClients ?? 0, icon: Building2, colorIndex: 4, icons8: "company", to: "/dashboard/clients/corporate" },
+          { title: "সচল ক্লায়েন্ট", value: d?.totalActive ?? 0, icon: UserCheck, colorIndex: 5, icons8: "checked", to: "/dashboard/clients/home?status=active" },
+          { title: "হোম অ্যাক্টিভ", value: d?.homeActive ?? 0, icon: Home, colorIndex: 6, icons8: "home", to: "/dashboard/clients/home?clientType=Home&status=active" },
+          { title: "বিলিং ক্লায়েন্ট", value: d?.billingClients ?? 0, icon: FileText, colorIndex: 1, icons8: "documents", to: "/dashboard/clients/home?billingStatus=Active" },
+          { title: "ফ্রি ক্লায়েন্ট", value: d?.freeClients ?? 0, icon: ShieldCheck, colorIndex: 6, icons8: "guarantee", to: "/dashboard/clients/home?billingStatus=Free" },
+          { title: "পার্সোনাল ক্লায়েন্ট", value: d?.personalClients ?? 0, icon: UserCheck, colorIndex: 7, icons8: "checked", to: "/dashboard/clients/home?billingStatus=Personal" },
+          { title: "VIP ক্লায়েন্ট", value: d?.vipClients ?? 0, icon: Award, colorIndex: 11, icons8: "trophy", to: "/dashboard/clients/home?vip=1" },
         ])}
       </SectionCard>
 
       {/* Row 2: Action-required Status (merged) */}
       <SectionCard title="অ্যাকশন প্রয়োজন" icon={AlertTriangle} tint="emerald" icons8="combo-chart">
         {renderCards([
-          { title: "ওভারডিউ বিলিং", value: d?.overdueBillingCount ?? 0, icon: AlertTriangle, colorIndex: 0, icons8: "high-priority" },
-          { title: "বন্ধ লাইন", value: d?.blockedLineCount ?? 0, icon: Ban, colorIndex: 7, icons8: "cancel" },
-          { title: "মেয়াদোত্তীর্ণ", value: d?.totalExpired ?? 0, icon: CalendarX, colorIndex: 3, icons8: "high-priority" },
-          { title: "নিষ্ক্রিয়/বাতিল", value: d?.inactiveLeftCount ?? 0, icon: UserX, colorIndex: 6, icons8: "cancel" },
-          { title: "গ্রেস/এক্সটেনশন", value: d?.extensionGraceCount ?? 0, icon: Timer, colorIndex: 4, icons8: "alarm-clock" },
-          { title: "পেন্ডিং ক্লায়েন্ট", value: d?.pendingClients ?? 0, icon: Clock, colorIndex: 1, icons8: "alarm-clock" },
+          { title: "ওভারডিউ বিলিং", value: d?.overdueBillingCount ?? 0, icon: AlertTriangle, colorIndex: 0, icons8: "high-priority", to: `/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}` },
+          { title: "বন্ধ লাইন", value: d?.blockedLineCount ?? 0, icon: Ban, colorIndex: 7, icons8: "cancel", to: "/dashboard/clients/home?mikrotikStatus=disabled" },
+          { title: "মেয়াদোত্তীর্ণ", value: d?.totalExpired ?? 0, icon: CalendarX, colorIndex: 3, icons8: "high-priority", to: "/dashboard/clients/home?status=expired" },
+          { title: "নিষ্ক্রিয়/বাতিল", value: d?.inactiveLeftCount ?? 0, icon: UserX, colorIndex: 6, icons8: "cancel", to: "/dashboard/clients/home?status=inactive" },
+          { title: "গ্রেস/এক্সটেনশন", value: d?.extensionGraceCount ?? 0, icon: Timer, colorIndex: 4, icons8: "alarm-clock", to: "/dashboard/clients/home?status=extended" },
+          { title: "পেন্ডিং ক্লায়েন্ট", value: d?.pendingClients ?? 0, icon: Clock, colorIndex: 1, icons8: "alarm-clock", to: "/dashboard/clients/home?status=pending" },
         ])}
       </SectionCard>
 
       {/* Row 3: Billing Stats */}
       <SectionCard title="বিলিং স্ট্যাটাস" icon={CreditCard} tint="amber" icons8="documents">
         {renderCards([
-          { title: "বিলিং ক্লায়েন্ট", value: d?.billingClients ?? 0, icon: FileText, colorIndex: 1, icons8: "documents" },
-          { title: "পেইড ক্লায়েন্ট", value: d?.paidClients ?? 0, icon: UserCheck, colorIndex: 2, icons8: "checked" },
-          { title: "আংশিক পেইড", value: d?.partialClients ?? 0, icon: CreditCard, colorIndex: 3, icons8: "coins" },
-          { title: "বকেয়া ক্লায়েন্ট", value: d?.dueClients ?? 0, icon: AlertTriangle, colorIndex: 0, icons8: "high-priority" },
-          { title: "অনলাইন ONU", value: `${d?.onlineOnu ?? 0}/${d?.totalOnu ?? 0}`, icon: Wifi, colorIndex: 2, icons8: "wi-fi-connected" },
-          { title: "মোট POP", value: d?.totalPop ?? 0, icon: Radio, colorIndex: 8, icons8: "router-symbol" },
+          { title: "বিলিং ক্লায়েন্ট", value: d?.billingClients ?? 0, icon: FileText, colorIndex: 1, icons8: "documents", to: "/dashboard/clients/home?billingStatus=Active" },
+          { title: "পেইড ক্লায়েন্ট", value: d?.paidClients ?? 0, icon: UserCheck, colorIndex: 2, icons8: "checked", to: `/dashboard/billing?paymentStatus=paid&month=${currentMonth}` },
+          { title: "আংশিক পেইড", value: d?.partialClients ?? 0, icon: CreditCard, colorIndex: 3, icons8: "coins", to: `/dashboard/billing?paymentStatus=partial&month=${currentMonth}` },
+          { title: "বকেয়া ক্লায়েন্ট", value: d?.dueClients ?? 0, icon: AlertTriangle, colorIndex: 0, icons8: "high-priority", to: `/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}` },
+          { title: "অনলাইন ONU", value: `${d?.onlineOnu ?? 0}/${d?.totalOnu ?? 0}`, icon: Wifi, colorIndex: 2, icons8: "wi-fi-connected", to: "/dashboard/monitoring/online" },
+          { title: "মোট POP", value: d?.totalPop ?? 0, icon: Radio, colorIndex: 8, icons8: "router-symbol", to: "/dashboard/branches/managers" },
         ])}
       </SectionCard>
 
       {/* NEW: POP & BW Network */}
       <SectionCard title="POP ও BW নেটওয়ার্ক" icon={Network} tint="cyan" icons8="internet">
         {renderCards([
-          { title: "মোট POP ম্যানেজার", value: d?.totalPopMgrs ?? 0, icon: Building2, colorIndex: 6, icons8: "city-buildings" },
-          { title: "BW রিসেলার POP", value: d?.bwPopMgrs ?? 0, icon: Share2, colorIndex: 13, icons8: "mac-client" },
-          { title: "রেগুলার POP", value: d?.regularPopMgrs ?? 0, icon: Radio, colorIndex: 1, icons8: "router-symbol" },
-          { title: "POP মোট ক্লায়েন্ট", value: d?.popTotalClients ?? 0, icon: Users, colorIndex: 9, icons8: "people" },
-          { title: "POP অ্যাক্টিভ ক্লায়েন্ট", value: d?.popActiveClients ?? 0, icon: UserCheck, colorIndex: 2, icons8: "checked" },
-          { title: "POP ইন-অ্যাক্টিভ", value: d?.popInactiveClients ?? 0, icon: UserX, colorIndex: 0, icons8: "cancel" },
+          { title: "মোট POP ম্যানেজার", value: d?.totalPopMgrs ?? 0, icon: Building2, colorIndex: 6, icons8: "city-buildings", to: "/dashboard/branches/managers" },
+          { title: "BW রিসেলার POP", value: d?.bwPopMgrs ?? 0, icon: Share2, colorIndex: 13, icons8: "mac-client", to: "/dashboard/branches/managers" },
+          { title: "রেগুলার POP", value: d?.regularPopMgrs ?? 0, icon: Radio, colorIndex: 1, icons8: "router-symbol", to: "/dashboard/branches/managers" },
+          { title: "POP মোট ক্লায়েন্ট", value: d?.popTotalClients ?? 0, icon: Users, colorIndex: 9, icons8: "people", to: "/dashboard/clients/home" },
+          { title: "POP অ্যাক্টিভ ক্লায়েন্ট", value: d?.popActiveClients ?? 0, icon: UserCheck, colorIndex: 2, icons8: "checked", to: "/dashboard/clients/home?status=active" },
+          { title: "POP ইন-অ্যাক্টিভ", value: d?.popInactiveClients ?? 0, icon: UserX, colorIndex: 0, icons8: "cancel", to: "/dashboard/clients/home?status=inactive" },
         ])}
       </SectionCard>
 
       {/* NEW: BW Reseller Portal */}
       <SectionCard title="BW রিসেলার পোর্টাল" icon={Globe} tint="pink" icons8="data-transfer">
         {renderCards([
-          { title: "মোট পোর্টাল ইউজার", value: d?.bwTotalUsers ?? 0, icon: Users, colorIndex: 5, icons8: "people" },
-          { title: "অ্যাক্টিভ ইউজার", value: d?.bwActiveUsers ?? 0, icon: UserCheck, colorIndex: 2, icons8: "checked" },
-          { title: "ইন-অ্যাক্টিভ ইউজার", value: d?.bwInactiveUsers ?? 0, icon: UserX, colorIndex: 0, icons8: "cancel" },
-          { title: "সাব-রিসেলার দিয়েছে", value: d?.bwParentResellers ?? 0, icon: Share2, colorIndex: 13, icons8: "mac-client" },
+          { title: "মোট পোর্টাল ইউজার", value: d?.bwTotalUsers ?? 0, icon: Users, colorIndex: 5, icons8: "people", to: "/dashboard/bw-sale/pop" },
+          { title: "অ্যাক্টিভ ইউজার", value: d?.bwActiveUsers ?? 0, icon: UserCheck, colorIndex: 2, icons8: "checked", to: "/dashboard/bw-sale/pop" },
+          { title: "ইন-অ্যাক্টিভ ইউজার", value: d?.bwInactiveUsers ?? 0, icon: UserX, colorIndex: 0, icons8: "cancel", to: "/dashboard/bw-sale/pop" },
+          { title: "সাব-রিসেলার দিয়েছে", value: d?.bwParentResellers ?? 0, icon: Share2, colorIndex: 13, icons8: "mac-client", to: "/dashboard/bw-sale/pop" },
         ])}
       </SectionCard>
 
       {/* Row 4: Sales & Financial */}
       <SectionCard title="বিক্রয় ও আর্থিক" icon={DollarSign} tint="violet" icons8="profit">
         {renderCards([
-          { title: "আজকের সেল", value: `৳${(d?.todaySales ?? 0).toLocaleString()}`, icon: DollarSign, colorIndex: 2, icons8: "coins" },
-          { title: "গতকালের সেল", value: `৳${(d?.yesterdaySales ?? 0).toLocaleString()}`, icon: DollarSign, colorIndex: 7, icons8: "coins" },
-          { title: "এই মাসের সেল", value: `৳${(d?.thisMonthSales ?? 0).toLocaleString()}`, icon: CreditCard, colorIndex: 1, icons8: "money" },
-          { title: "গত মাসের সেল", value: `৳${(d?.lastMonthSales ?? 0).toLocaleString()}`, icon: Receipt, colorIndex: 4, icons8: "money" },
+          { title: "আজকের সেল", value: `৳${(d?.todaySales ?? 0).toLocaleString()}`, icon: DollarSign, colorIndex: 2, icons8: "coins", to: `/dashboard/billing/daily-collection?date=${todayStr}` },
+          { title: "গতকালের সেল", value: `৳${(d?.yesterdaySales ?? 0).toLocaleString()}`, icon: DollarSign, colorIndex: 7, icons8: "coins", to: `/dashboard/billing/daily-collection?date=${yesterdayStr}` },
+          { title: "এই মাসের সেল", value: `৳${(d?.thisMonthSales ?? 0).toLocaleString()}`, icon: CreditCard, colorIndex: 1, icons8: "money", to: `/dashboard/billing/daily-collection?from=${monthStart}&to=${todayStr}` },
+          { title: "গত মাসের সেল", value: `৳${(d?.lastMonthSales ?? 0).toLocaleString()}`, icon: Receipt, colorIndex: 4, icons8: "money", to: `/dashboard/billing/daily-collection?from=${lmStart}&to=${lmEnd}` },
           { title: "এই মাসের মুনাফা", value: `৳${(d?.thisMonthProfit ?? 0).toLocaleString()}`, icon: TrendingUp, colorIndex: 2, icons8: "positive-dynamic" },
           { title: "গত মাসের মুনাফা", value: `৳${(d?.lastMonthProfit ?? 0).toLocaleString()}`, icon: TrendingDown, colorIndex: 0, icons8: "profit" },
         ])}
@@ -563,10 +576,10 @@ const Dashboard = () => {
       {/* Row 5: Financial Details */}
       <SectionCard title="আর্থিক বিবরণ" icon={Landmark} tint="teal" icons8="calculator">
         {renderCards([
-          { title: "মোট বিল (এই মাস)", value: `৳${(d?.totalBillAmount ?? 0).toLocaleString()}`, icon: FileText, colorIndex: 1, icons8: "documents" },
-          { title: "কালেক্টেড বিল", value: `৳${(d?.totalPaidAmount ?? 0).toLocaleString()}`, icon: HandCoins, colorIndex: 2, icons8: "coins" },
+          { title: "মোট বিল (এই মাস)", value: `৳${(d?.totalBillAmount ?? 0).toLocaleString()}`, icon: FileText, colorIndex: 1, icons8: "documents", to: `/dashboard/billing?month=${currentMonth}` },
+          { title: "কালেক্টেড বিল", value: `৳${(d?.totalPaidAmount ?? 0).toLocaleString()}`, icon: HandCoins, colorIndex: 2, icons8: "coins", to: `/dashboard/billing?paymentStatus=paid&month=${currentMonth}` },
           { title: "মোট ডিসকাউন্ট", value: `৳${(d?.totalDiscount ?? 0).toLocaleString()}`, icon: CircleDollarSign, colorIndex: 3, icons8: "discount" },
-          { title: "মোট বকেয়া", value: `৳${(d?.totalDueAmount ?? 0).toLocaleString()}`, icon: AlertTriangle, colorIndex: 0, icons8: "high-priority" },
+          { title: "মোট বকেয়া", value: `৳${(d?.totalDueAmount ?? 0).toLocaleString()}`, icon: AlertTriangle, colorIndex: 0, icons8: "high-priority", to: `/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}` },
           { title: "আয় (এই মাস)", value: `৳${(d?.incTM ?? 0).toLocaleString()}`, icon: TrendingUp, colorIndex: 2, icons8: "profit" },
           { title: "ব্যয় (এই মাস)", value: `৳${(d?.expTM ?? 0).toLocaleString()}`, icon: TrendingDown, colorIndex: 0, icons8: "cancel" },
           { title: "বেতন পরিশোধ", value: `৳${(d?.paidSalary ?? 0).toLocaleString()}`, icon: Wallet, colorIndex: 4, icons8: "money" },
@@ -577,13 +590,12 @@ const Dashboard = () => {
       {/* Row 6: Tickets & Tasks */}
       <SectionCard title="সাপোর্ট ও টাস্ক" icon={ClipboardList} tint="orange" icons8="online-support">
         {renderCards([
-          { title: "পেন্ডিং টিকেট", value: d?.pendingTickets ?? 0, icon: ClipboardList, colorIndex: 3, icons8: "online-support" },
-          { title: "প্রক্রিয়াধীন টিকেট", value: d?.processingTickets ?? 0, icon: TicketCheck, colorIndex: 1, icons8: "online-support" },
-          { title: "পেন্ডিং টাস্ক", value: d?.pendingTasks ?? 0, icon: ListTodo, colorIndex: 7, icons8: "to-do-list" },
-          { title: "প্রক্রিয়াধীন টাস্ক", value: d?.processingTasks ?? 0, icon: Activity, colorIndex: 9, icons8: "tasks" },
+          { title: "পেন্ডিং টিকেট", value: d?.pendingTickets ?? 0, icon: ClipboardList, colorIndex: 3, icons8: "online-support", to: "/dashboard/support/tickets?status=pending" },
+          { title: "প্রক্রিয়াধীন টিকেট", value: d?.processingTickets ?? 0, icon: TicketCheck, colorIndex: 1, icons8: "online-support", to: "/dashboard/support/tickets?status=processing" },
+          { title: "পেন্ডিং টাস্ক", value: d?.pendingTasks ?? 0, icon: ListTodo, colorIndex: 7, icons8: "to-do-list", to: "/dashboard/tasks?status=pending" },
+          { title: "প্রক্রিয়াধীন টাস্ক", value: d?.processingTasks ?? 0, icon: Activity, colorIndex: 9, icons8: "tasks", to: "/dashboard/tasks?status=processing" },
         ])}
       </SectionCard>
-
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
@@ -680,7 +692,7 @@ const Dashboard = () => {
           <CardHeader className="pb-2 px-4 pt-4">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-red-500" />
-              টপ ২০ বকেয়া ক্লায়েন্ট
+              বকেয়া ক্লায়েন্ট
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
@@ -697,9 +709,13 @@ const Dashboard = () => {
                   </TableHeader>
                   <TableBody>
                     {(d?.unpaidList ?? []).length > 0 ? (d?.unpaidList ?? []).map((u, i) => (
-                      <TableRow key={i}>
+                      <TableRow key={i} className="hover:bg-muted/40">
                         <TableCell className="text-xs py-1.5">{i + 1}</TableCell>
-                        <TableCell className="text-xs py-1.5">{u.client_name}</TableCell>
+                        <TableCell className="text-xs py-1.5">
+                          <Link to={`/dashboard/billing?search=${encodeURIComponent(u.client_name)}&month=${currentMonth}`} className="hover:underline text-foreground">
+                            {u.client_name}
+                          </Link>
+                        </TableCell>
                         <TableCell className="text-xs py-1.5 text-right">৳{u.amount.toLocaleString()}</TableCell>
                         <TableCell className="text-xs py-1.5 text-right text-red-500 font-semibold">৳{u.due.toLocaleString()}</TableCell>
                       </TableRow>
@@ -714,119 +730,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Bottom Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        {/* Latest Invoices */}
-        <Card>
-          <CardHeader className="pb-2 px-4 pt-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <FileText className="h-4 w-4 text-blue-500" />
-              সর্বশেষ ইনভয়েস
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 w-full mb-1.5" />)
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs py-1.5">Inv No</TableHead>
-                    <TableHead className="text-xs py-1.5">User</TableHead>
-                    <TableHead className="text-xs text-right py-1.5">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(d?.latestInvoices ?? []).map((inv, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="text-xs py-1.5 font-mono">{inv.bill_id}</TableCell>
-                      <TableCell className="text-xs py-1.5">{inv.client_name}</TableCell>
-                      <TableCell className="text-xs py-1.5 text-right">৳{inv.amount.toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))}
-                  {(d?.latestInvoices ?? []).length === 0 && (
-                    <TableRow><TableCell colSpan={3} className="text-xs text-center py-4 text-muted-foreground">কোনো ইনভয়েস নেই</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Upcoming Expire */}
-        <Card>
-          <CardHeader className="pb-2 px-4 pt-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="h-4 w-4 text-amber-500" />
-              আসন্ন মেয়াদোত্তীর্ণ
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 w-full mb-1.5" />)
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs py-1.5">Username</TableHead>
-                    <TableHead className="text-xs text-right py-1.5">Bill</TableHead>
-                    <TableHead className="text-xs text-right py-1.5">Expire</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(d?.upcomingExpire ?? []).map((c, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="text-xs py-1.5">{c.name}</TableCell>
-                      <TableCell className="text-xs py-1.5 text-right">৳{c.bill.toLocaleString()}</TableCell>
-                      <TableCell className="text-xs py-1.5 text-right font-mono">{c.expire}</TableCell>
-                    </TableRow>
-                  ))}
-                  {(d?.upcomingExpire ?? []).length === 0 && (
-                    <TableRow><TableCell colSpan={3} className="text-xs text-center py-4 text-muted-foreground">কোনো ডেটা নেই</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Latest Expired */}
-        <Card>
-          <CardHeader className="pb-2 px-4 pt-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <CalendarX className="h-4 w-4 text-red-500" />
-              সর্বশেষ মেয়াদোত্তীর্ণ
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 w-full mb-1.5" />)
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs py-1.5">Username</TableHead>
-                    <TableHead className="text-xs text-right py-1.5">Bill</TableHead>
-                    <TableHead className="text-xs text-right py-1.5">Expired</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(d?.latestExpired ?? []).map((c, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="text-xs py-1.5">{c.name}</TableCell>
-                      <TableCell className="text-xs py-1.5 text-right">৳{c.bill.toLocaleString()}</TableCell>
-                      <TableCell className="text-xs py-1.5 text-right font-mono text-red-500">{c.expire}</TableCell>
-                    </TableRow>
-                  ))}
-                  {(d?.latestExpired ?? []).length === 0 && (
-                    <TableRow><TableCell colSpan={3} className="text-xs text-center py-4 text-muted-foreground">কোনো ডেটা নেই</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
     </div>
   );

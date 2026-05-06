@@ -1,99 +1,63 @@
 ## Goal
+ড্যাশবোর্ডের সব stat card-কে clickable বানানো — click করলে যেই page-এ data filter হয়ে যাওয়ার কথা, সেখানে query-param সহ navigate হবে। সাথে কিছু অপ্রয়োজনীয় section বাদ দেয়া। (Branch-ভিত্তিক sorting/সমাধান card এই round-এ বাদ — পরের subject।)
 
-Leave Management পুরোটা **HR & Payroll**-এর under নিয়ে যাওয়া, ৪টা আলাদা page-কে **একটা unified page**-এ merge করা (dialog/tab দিয়ে), department/designation-ভিত্তিক leave allocation যোগ করা, এবং ৬টা default leave category seed করা।
+## কাজের তালিকা
 
----
+### ১. Stat card → filter route mapping
+প্রতিটি card-কে `<Link>` দিয়ে wrap করা হবে। গন্তব্য page query-string থেকে initial filter বসাবে।
 
-## ১. Database changes (migration)
+| Card | Destination | Filter (query) |
+|---|---|---|
+| মোট ক্লায়েন্ট | `/dashboard/clients/home` (all clients) | none |
+| এই মাসে যোগ | `/dashboard/clients/home` | `?from=<monthStart>&to=<today>` |
+| গত মাসে যোগ | `/dashboard/clients/home` | `?from=<lmStart>&to=<lmEnd>` |
+| হোম ক্লায়েন্ট | `/dashboard/clients/home` | `?clientType=Home` |
+| কর্পোরেট ক্লায়েন্ট | `/dashboard/clients/corporate` | `?clientType=Corporate` |
+| সচল ক্লায়েন্ট | `/dashboard/clients/home` | `?status=active` |
+| হোম অ্যাক্টিভ | `/dashboard/clients/home` | `?clientType=Home&status=active` |
+| বিলিং ক্লায়েন্ট | `/dashboard/clients/home` | `?billingStatus=Active` |
+| ফ্রি ক্লায়েন্ট | `/dashboard/clients/home` | `?billingStatus=Free` |
+| পার্সোনাল ক্লায়েন্ট | `/dashboard/clients/home` | `?billingStatus=Personal` |
+| VIP ক্লায়েন্ট | `/dashboard/clients/home` | `?vip=1` |
+| ওভারডিউ বিলিং | `/dashboard/billing` | `?paymentStatus=unpaid` |
+| বন্ধ লাইন | `/dashboard/clients/home` | `?mikrotikStatus=disabled` |
+| মেয়াদোত্তীর্ণ | `/dashboard/clients/home` | `?status=expired` |
+| নিষ্ক্রিয়/বাতিল | `/dashboard/clients/home` | `?status=inactive` |
+| গ্রেস/এক্সটেনশন | `/dashboard/clients/home` | `?status=extended` |
+| পেন্ডিং ক্লায়েন্ট | `/dashboard/clients/home` | `?status=pending` |
+| পেইড / আংশিক / বকেয়া | `/dashboard/billing` | `?paymentStatus=paid|partial|unpaid` |
+| অনলাইন ONU | `/dashboard/monitoring/online` | none |
+| মোট POP | `/dashboard/branches/managers` | none |
+| POP ম্যানেজার cards | `/dashboard/branches/managers` | (type অনুযায়ী) |
+| BW রিসেলার cards | `/dashboard/bw-sale/pop` / `/dashboard/bw-sale/customers` | none |
+| আজকের সেল / গতকালের সেল | `/dashboard/billing/daily-collection` | `?date=...` |
+| এই মাসের / গত মাসের সেল | `/dashboard/billing/daily-collection` | `?from=...&to=...` |
+| পেন্ডিং / প্রক্রিয়াধীন টিকেট | `/dashboard/support/tickets` | `?status=pending|processing` |
+| পেন্ডিং / প্রক্রিয়াধীন টাস্ক | `/dashboard/tasks` | `?status=pending|processing` |
 
-**Seed 6 default leave categories** (idempotent — already-existing names skip):
-- Earn Leave, Religious Holidays, Unpaid Leave, Maternity Leave, Casual Leave, Sick Leave
+আর্থিক বিবরণ (মোট বিল, কালেক্টেড, ডিসকাউন্ট, আয়, ব্যয়, বেতন, SMS) — যেখানে relevant accounting/SMS page আছে সেখানে link করা হবে; না থাকলে non-clickable রাখা হবে।
 
-**নতুন table — `leave_policies`** (designation/department-ভিত্তিক default allocation):
-```
-id uuid pk
-scope_type text  -- 'department' | 'designation'
-scope_id uuid    -- departments.id or designations.id
-category_id uuid -> leave_categories
-days_allowed int
-created_at timestamptz
-unique (scope_type, scope_id, category_id)
-```
-RLS: authenticated users select/insert/update/delete (project-এর existing pattern অনুযায়ী)।
+### ২. ClientList / BillingList query-param support
+`ClientList.tsx` এবং `BillingList.tsx`-এ `useSearchParams` যোগ করা হবে। Mount-এ URL param থেকে `defaultFilters`-এর উপর override বসিয়ে initial state সেট করা হবে। সমর্থিত key: `status`, `clientType`, `billingStatus`, `mikrotikStatus`, `paymentStatus`, `from`, `to`, `vip`, `month`, `date`. Filter UI আগের মতোই — শুধু initial value pre-fill হবে।
 
-কোনো বর্তমান page বা data delete হবে না।
+### ৩. StatCard component update
+`StatCard`-এ optional `to?: string` prop যোগ করা হবে। থাকলে পুরো card `<Link>`-এ wrap হবে এবং hover-এ subtle shadow বাড়বে।
 
----
+### ৪. বাদ যাওয়া section (Dashboard.tsx থেকে remove)
+- "সর্বশেষ ইনভয়েস" table
+- "আসন্ন মেয়াদোত্তীর্ণ" table
+- "সর্বশেষ মেয়াদোত্তীর্ণ" table
+- পুরো bottom 3-column grid এবং সংশ্লিষ্ট useStats ফেতchগুলো (`latestBilling`, `upcomingExpire`, `latestExpired`) মুছে ফেলা হবে যাতে অপ্রয়োজনীয় query না হয়।
 
-## ২. Sidebar restructure
+### ৫. বকেয়া তালিকা
+"টপ ২০ বকেয়া ক্লায়েন্ট" → title হবে "বকেয়া ক্লায়েন্ট"; query-র `.limit(20)` সরিয়ে limit বাড়িয়ে 200 করা হবে এবং scroll container আগের মতোই থাকবে। প্রতিটি row name-এ click করলে `/dashboard/billing?search=<client_id>` এ যাবে।
 
-`AppSidebar.tsx`:
-- "**ছুটি ম্যানেজমেন্ট**" group পুরোপুরি **সরিয়ে** "HR ও পেরোল" group-এ একটি single item হিসেবে যুক্ত হবে:
-  - `{ title: "ছুটি ম্যানেজমেন্ট", url: "/dashboard/hr/leave", icon: CalendarDays }`
-- পুরনো `/dashboard/leave/*` route-গুলো App.tsx-এ থাকবে কিন্তু সব একই unified page-এ redirect/render হবে (backward compatibility)।
+### ৬. Defer (পরের subject)
+- Branch-ভিত্তিক "সবচেয়ে বেশি সমস্যা সমাধান" / "কোন branch থেকে বেশি line" — এই card এখন add হবে না।
 
----
+## Files to edit
+- `src/pages/Dashboard.tsx` — StatCard-এ `to` prop, items-এ link map, bottom 3 table block ও অপ্রয়োজনীয় queries মুছে ফেলা, top-unpaid limit + row click।
+- `src/pages/dashboard/clients/ClientList.tsx` — `useSearchParams` দিয়ে initial filter pre-fill।
+- `src/pages/dashboard/billing/BillingList.tsx` — একই ভাবে initial filter pre-fill (paymentStatus / from / to / search)।
 
-## ৩. Unified Leave page — `src/pages/dashboard/hr/LeaveManagement.tsx`
-
-একটাই page, ৪টা **tab**:
-
-### Tab 1 — Overview / আবেদন (default)
-- কর্মীর নিজের balance cards (Earn / Sick / Casual ইত্যাদি)
-- "নতুন আবেদন" button → **dialog** (employee select + category + dates + reason)
-- নিজের submitted application list (table)
-- Admin/HR হলে সব employee-এর application + status filter দেখাবে
-
-### Tab 2 — ক্যাটাগরি (admin only)
-- বর্তমান `Categories.tsx`-এর content inline → table + add/edit dialog
-
-### Tab 3 — Policy / Setup (admin only)  **[নতুন + পুরাতন merge]**
-দুটি sub-section একই page-এ:
-
-**(a) Department/Designation Policy** — uploaded image-এর "Assign a Leave Category" UI অনুযায়ী:
-- Designation/Department list (left)
-- Row click করলে right-এ "Assigned Leave Category" table খুলবে
-- Dropdown (category) + input (days) + "Assign Leave Category" button
-- Inline edit/delete per row
-- → `leave_policies` table-এ save
-
-**(b) Per-employee yearly allocation** — বর্তমান `Setup.tsx`-এর functionality:
-- Year selector + employee-wise balance grid
-- "সকল কর্মী বরাদ্দ" — এখন প্রথমে policy থেকে designation/department-এর days নেবে, না থাকলে category default
-- "একক বরাদ্দ" dialog আগের মতই
-
-### Tab 4 — অনুমোদন (admin only)
-- বর্তমান `Approval.tsx`-এর content inline (KPI cards + table + approve/decline action)
-
-Tabs admin role-অনুসারে hide/show হবে (`useAuth().isAdmin`)।
-
----
-
-## ৪. Routes (`App.tsx`)
-
-- নতুন: `/dashboard/hr/leave` → `<LeaveManagement />`
-- পুরনো `/dashboard/leave/categories|setup|apply|approval` → একই `<LeaveManagement />` render করবে (initial tab query param থেকে)। কোনো 404 হবে না।
-
----
-
-## ৫. Files
-
-**New:**
-- `supabase/migrations/<ts>_leave_policies_and_seed.sql`
-- `src/pages/dashboard/hr/LeaveManagement.tsx` (unified, tab-based)
-- `src/components/leave/PolicyEditor.tsx` (designation/department × category matrix)
-
-**Modified:**
-- `src/components/AppSidebar.tsx` — remove leave group, add single item under HR
-- `src/App.tsx` — add new route, point old leave routes to unified page
-
-**Kept (untouched, used as building blocks via internal imports/reuse):**
-- পুরনো 4টা page file delete হচ্ছে না — তবে sidebar থেকে hidden, এবং unified page-এ logic re-implement।
-
----
-
-## Out of scope
-
-- Maternity-leave specific gender/eligibility validation
-- Leave calendar visualization
-- Email/SMS notification on apply/approve
+কোনো DB migration লাগবে না।

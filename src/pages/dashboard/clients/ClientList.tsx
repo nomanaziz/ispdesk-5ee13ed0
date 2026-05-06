@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, CalendarClock, Crown, Wifi, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
@@ -48,7 +49,25 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
   const [currentPage, setCurrentPage] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [filters, setFilters] = useState<BillingFilters>(defaultFilters);
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<BillingFilters>(() => {
+    const f: BillingFilters = { ...defaultFilters };
+    const status = searchParams.get("status");
+    const clientType = searchParams.get("clientType");
+    const billingStatus = searchParams.get("billingStatus");
+    const mikrotikStatus = searchParams.get("mikrotikStatus");
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    
+    if (status) f.customStatus = status;
+    if (clientType) f.clientType = clientType;
+    if (billingStatus) f.billingStatus = billingStatus;
+    if (mikrotikStatus) f.mikrotikStatus = mikrotikStatus;
+    if (from) f.fromDate = from;
+    if (to) f.toDate = to;
+    return f;
+  });
+  const vipOnly = searchParams.get("vip") === "1";
   const queryClient = useQueryClient();
 
   // Dialogs
@@ -168,8 +187,9 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
     if (f.toExpireDate) list = list.filter((c: any) => c.expire_date && c.expire_date <= f.toExpireDate);
     if (f.fromDate) list = list.filter((c: any) => c.created_at >= f.fromDate);
     if (f.toDate) list = list.filter((c: any) => c.created_at <= f.toDate + "T23:59:59");
+    if (vipOnly) list = list.filter((c: any) => !!c.is_vip);
     return list;
-  }, [clients, filters, lockedClientType]);
+  }, [clients, filters, lockedClientType, vipOnly]);
 
   const paginated = useMemo(() => {
     return filtered.slice(currentPage * perPage, (currentPage + 1) * perPage);
