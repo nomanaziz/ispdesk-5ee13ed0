@@ -42,7 +42,19 @@ const currentMonth = () => {
 export default function BillingList() {
   const queryClient = useQueryClient();
   const { isPopMode, branchId } = usePopScope();
-  const [filters, setFilters] = useState<BillingFilters>({ ...defaultFilters, month: currentMonth() });
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<BillingFilters>(() => {
+    const f: BillingFilters = { ...defaultFilters, month: searchParams.get("month") || currentMonth() };
+    const ps = searchParams.get("paymentStatus");
+    const search = searchParams.get("search");
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    if (ps) f.paymentStatus = ps;
+    if (search) f.search = search;
+    if (from) f.fromDate = from;
+    if (to) f.toDate = to;
+    return f;
+  });
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
