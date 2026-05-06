@@ -34,13 +34,13 @@ export function BootGate({ children }: { children: React.ReactNode }) {
         });
     };
 
-    if ("requestIdleCallback" in window) {
+    if (typeof window.requestIdleCallback === "function") {
       const idleId = window.requestIdleCallback(warmIcons, { timeout: 2000 });
-      return () => window.cancelIdleCallback?.(idleId);
+      return () => window.cancelIdleCallback(idleId);
     }
 
-    const timerId = window.setTimeout(warmIcons, 1);
-    return () => window.clearTimeout(timerId);
+    const timerId = globalThis.setTimeout(warmIcons, 1);
+    return () => globalThis.clearTimeout(timerId);
   }, []);
 
   return <>{children}</>;
@@ -55,12 +55,3 @@ function hideSplash() {
   window.setTimeout(() => el.remove(), 250);
 }
 
-declare global {
-  interface Window {
-    requestIdleCallback?: (
-      callback: IdleRequestCallback,
-      options?: IdleRequestOptions,
-    ) => number;
-    cancelIdleCallback?: (handle: number) => void;
-  }
-}
