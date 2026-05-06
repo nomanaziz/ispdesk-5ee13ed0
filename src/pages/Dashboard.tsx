@@ -15,6 +15,10 @@ import {
 import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
 import { resolveIcons8 } from "@/lib/iconResolver";
 import { Link } from "react-router-dom";
+import KpiCard from "@/components/dashboard/KpiCard";
+import MetricTile from "@/components/dashboard/MetricTile";
+import ResourceGauge from "@/components/dashboard/ResourceGauge";
+import InfoList from "@/components/dashboard/InfoList";
 
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
