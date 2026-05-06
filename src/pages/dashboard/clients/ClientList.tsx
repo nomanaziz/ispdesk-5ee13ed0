@@ -187,8 +187,9 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
     if (f.toExpireDate) list = list.filter((c: any) => c.expire_date && c.expire_date <= f.toExpireDate);
     if (f.fromDate) list = list.filter((c: any) => c.created_at >= f.fromDate);
     if (f.toDate) list = list.filter((c: any) => c.created_at <= f.toDate + "T23:59:59");
+    if (vipOnly) list = list.filter((c: any) => !!c.is_vip);
     return list;
-  }, [clients, filters, lockedClientType]);
+  }, [clients, filters, lockedClientType, vipOnly]);
 
   const paginated = useMemo(() => {
     return filtered.slice(currentPage * perPage, (currentPage + 1) * perPage);
