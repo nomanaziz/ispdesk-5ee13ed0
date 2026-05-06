@@ -473,7 +473,18 @@ function SectionCard({
 const Dashboard = () => {
   const { data: d, isLoading } = useStats();
 
-  const renderCards = (items: { title: string; value: string | number; icon: React.ElementType; colorIndex: number; icons8?: string }[]) => (
+  // Date helpers for filter links
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const todayStr = now.toISOString().slice(0, 10);
+  const lmDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lmStart = `${lmDate.getFullYear()}-${String(lmDate.getMonth() + 1).padStart(2, "0")}-01`;
+  const lmEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+  const currentMonth = now.toISOString().slice(0, 7);
+  const lastMonth = `${lmDate.getFullYear()}-${String(lmDate.getMonth() + 1).padStart(2, "0")}`;
+  const yesterdayStr = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
+
+  const renderCards = (items: { title: string; value: string | number; icon: React.ElementType; colorIndex: number; icons8?: string; to?: string }[]) => (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5">
       {isLoading ? Array.from({ length: items.length }).map((_, i) => <StatSkeleton key={i} />) :
         items.map((item, i) => <StatCard key={i} {...item} />)}
