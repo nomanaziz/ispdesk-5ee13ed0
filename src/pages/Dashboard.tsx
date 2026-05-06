@@ -692,7 +692,7 @@ const Dashboard = () => {
           <CardHeader className="pb-2 px-4 pt-4">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-red-500" />
-              টপ ২০ বকেয়া ক্লায়েন্ট
+              বকেয়া ক্লায়েন্ট
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
