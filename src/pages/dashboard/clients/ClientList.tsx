@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, CalendarClock, Crown, Wifi, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
