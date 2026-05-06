@@ -65,9 +65,9 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
     if (mikrotikStatus) f.mikrotikStatus = mikrotikStatus;
     if (from) f.fromDate = from;
     if (to) f.toDate = to;
-    if (vip === "1") f.billingStatus = f.billingStatus === "all" ? "VIP" : f.billingStatus;
     return f;
   });
+  const vipOnly = searchParams.get("vip") === "1";
   const queryClient = useQueryClient();
 
   // Dialogs
