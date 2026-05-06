@@ -1,63 +1,106 @@
 ## Goal
-ড্যাশবোর্ডের সব stat card-কে clickable বানানো — click করলে যেই page-এ data filter হয়ে যাওয়ার কথা, সেখানে query-param সহ navigate হবে। সাথে কিছু অপ্রয়োজনীয় section বাদ দেয়া। (Branch-ভিত্তিক sorting/সমাধান card এই round-এ বাদ — পরের subject।)
+ড্যাশবোর্ডকে reference image (Unique WiFi style) এর মতো **professional, modern** look দেয়া। বর্তমান dense Vuexy-style cards-এর জায়গায় বড়, gradient-rich, "View Details" link সহ stat cards এবং পরিষ্কার section দিয়ে redesign।
+
+## Reference image থেকে নেয়া design pattern
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ Top KPI Row — 4 large cards (icon + huge number + % delta)   │
+│   Total Users   Online Users   Active Users   Offline Users  │
+├──────────────────────────────────────────────────────────────┤
+│ System Overview (left, 2/3)         │ System Resources (1/3) │
+│  ┌────┐┌────┐┌────┐┌────┐           │  CPU / Memory / Disk   │
+│  │Onl ││Act ││Inc ││Tdy │           │  (3 donut gauges)      │
+│  └────┘└────┘└────┘└────┘           │                        │
+│  ┌────┐┌────┐┌────┐┌────┐           │  Router Information    │
+│  │ IP ││Exp ││Sus ││Due │           │  (key-value list)      │
+│  └────┘└────┘└────┘└────┘           │                        │
+├──────────────────────────────────────┴────────────────────────┤
+│ Traffic Overview (chart, 2/3)        │ Top Active Users (1/3) │
+└──────────────────────────────────────────────────────────────┘
+```
+
+প্রতিটি colored card:
+- Gradient bg (e.g. blue/sky, emerald/teal, amber/orange, rose/red)
+- Top: small uppercase label
+- Middle: huge bold number
+- Bottom: small "View Details →" link (entire card clickable, link route আগের plan অনুযায়ী)
 
 ## কাজের তালিকা
 
-### ১. Stat card → filter route mapping
-প্রতিটি card-কে `<Link>` দিয়ে wrap করা হবে। গন্তব্য page query-string থেকে initial filter বসাবে।
+### ১. নতুন `KpiCard` ও `MetricTile` components (`src/components/dashboard/`)
+- `KpiCard.tsx`: বড় hero card — gradient bg, icon top-right, label, value, delta (+12.5%), bottom-right subtle "View Details →"। Click → route।
+- `MetricTile.tsx`: medium gradient tile — System Overview-এর ৮টা item (Online Customers, Active Customers, Total Income 30 Days, Today's Income, IP Binding, Expired, Suspended, Due Customers). Click → route।
+- `ResourceGauge.tsx`: donut gauge (recharts RadialBar) — CPU/Memory/Disk percent।
+- `InfoList.tsx`: Router Information style key-value list।
 
-| Card | Destination | Filter (query) |
+প্রতিটি component fully token-driven (`bg-gradient-to-br from-primary to-primary-glow` ধাঁচের) — direct color class নয়, design tokens ব্যবহার করে।
+
+### ২. Design tokens (`src/index.css` + `tailwind.config.ts`)
+নতুন gradient tokens যোগ করা হবে যাতে cards uniform থাকে:
+```css
+--gradient-card-blue, --gradient-card-emerald, --gradient-card-amber,
+--gradient-card-rose, --gradient-card-violet, --gradient-card-cyan
+--shadow-card-elevated
+```
+এগুলা HSL ভিত্তিক, dark/light উভয় mode-এ কাজ করবে।
+
+### ৩. `src/pages/Dashboard.tsx` rewrite (লেআউট only — data hook reuse)
+
+বর্তমান `useStats()` hook অপরিবর্তিত থাকবে। নতুন layout:
+
+**Section A — Hero KPIs (4 cards, large)**
+| Card | Value | Route |
 |---|---|---|
-| মোট ক্লায়েন্ট | `/dashboard/clients/home` (all clients) | none |
-| এই মাসে যোগ | `/dashboard/clients/home` | `?from=<monthStart>&to=<today>` |
-| গত মাসে যোগ | `/dashboard/clients/home` | `?from=<lmStart>&to=<lmEnd>` |
-| হোম ক্লায়েন্ট | `/dashboard/clients/home` | `?clientType=Home` |
-| কর্পোরেট ক্লায়েন্ট | `/dashboard/clients/corporate` | `?clientType=Corporate` |
-| সচল ক্লায়েন্ট | `/dashboard/clients/home` | `?status=active` |
-| হোম অ্যাক্টিভ | `/dashboard/clients/home` | `?clientType=Home&status=active` |
-| বিলিং ক্লায়েন্ট | `/dashboard/clients/home` | `?billingStatus=Active` |
-| ফ্রি ক্লায়েন্ট | `/dashboard/clients/home` | `?billingStatus=Free` |
-| পার্সোনাল ক্লায়েন্ট | `/dashboard/clients/home` | `?billingStatus=Personal` |
-| VIP ক্লায়েন্ট | `/dashboard/clients/home` | `?vip=1` |
-| ওভারডিউ বিলিং | `/dashboard/billing` | `?paymentStatus=unpaid` |
-| বন্ধ লাইন | `/dashboard/clients/home` | `?mikrotikStatus=disabled` |
-| মেয়াদোত্তীর্ণ | `/dashboard/clients/home` | `?status=expired` |
-| নিষ্ক্রিয়/বাতিল | `/dashboard/clients/home` | `?status=inactive` |
-| গ্রেস/এক্সটেনশন | `/dashboard/clients/home` | `?status=extended` |
-| পেন্ডিং ক্লায়েন্ট | `/dashboard/clients/home` | `?status=pending` |
-| পেইড / আংশিক / বকেয়া | `/dashboard/billing` | `?paymentStatus=paid|partial|unpaid` |
-| অনলাইন ONU | `/dashboard/monitoring/online` | none |
-| মোট POP | `/dashboard/branches/managers` | none |
-| POP ম্যানেজার cards | `/dashboard/branches/managers` | (type অনুযায়ী) |
-| BW রিসেলার cards | `/dashboard/bw-sale/pop` / `/dashboard/bw-sale/customers` | none |
-| আজকের সেল / গতকালের সেল | `/dashboard/billing/daily-collection` | `?date=...` |
-| এই মাসের / গত মাসের সেল | `/dashboard/billing/daily-collection` | `?from=...&to=...` |
-| পেন্ডিং / প্রক্রিয়াধীন টিকেট | `/dashboard/support/tickets` | `?status=pending|processing` |
-| পেন্ডিং / প্রক্রিয়াধীন টাস্ক | `/dashboard/tasks` | `?status=pending|processing` |
+| মোট ক্লায়েন্ট | totalClients | `/dashboard/clients/home` |
+| অনলাইন ব্যবহারকারী | onlineOnu | `/dashboard/monitoring/online` |
+| সচল ক্লায়েন্ট | totalActive | `/dashboard/clients/home?status=active` |
+| অফলাইন/বন্ধ | blockedLineCount | `/dashboard/clients/home?mikrotikStatus=disabled` |
 
-আর্থিক বিবরণ (মোট বিল, কালেক্টেড, ডিসকাউন্ট, আয়, ব্যয়, বেতন, SMS) — যেখানে relevant accounting/SMS page আছে সেখানে link করা হবে; না থাকলে non-clickable রাখা হবে।
+প্রতিটিতে month-on-month delta (+/- %) দেখানো হবে (thisMonthJoin vs lastMonthJoin proportion থেকে calc).
 
-### ২. ClientList / BillingList query-param support
-`ClientList.tsx` এবং `BillingList.tsx`-এ `useSearchParams` যোগ করা হবে। Mount-এ URL param থেকে `defaultFilters`-এর উপর override বসিয়ে initial state সেট করা হবে। সমর্থিত key: `status`, `clientType`, `billingStatus`, `mikrotikStatus`, `paymentStatus`, `from`, `to`, `vip`, `month`, `date`. Filter UI আগের মতোই — শুধু initial value pre-fill হবে।
+**Section B — System Overview (8 metric tiles, 2 rows × 4)**
+Online Customers, Active Customers, এই মাসের সেল, আজকের সেল | বিলিং ক্লায়েন্ট, মেয়াদোত্তীর্ণ, বন্ধ লাইন, বকেয়া ক্লায়েন্ট। প্রতিটি card-এ "বিস্তারিত দেখুন →"।
 
-### ৩. StatCard component update
-`StatCard`-এ optional `to?: string` prop যোগ করা হবে। থাকলে পুরো card `<Link>`-এ wrap হবে এবং hover-এ subtle shadow বাড়বে।
+**Section C — System Resources (right rail, ~1/3 width)**
+- ৩টা donut gauge: ONU অনলাইন%, পেইড%, কালেকশন% (current month progress)
+- "সিস্টেম তথ্য" list: মোট POP, POP ম্যানেজার, BW রিসেলার, MikroTik server count
 
-### ৪. বাদ যাওয়া section (Dashboard.tsx থেকে remove)
-- "সর্বশেষ ইনভয়েস" table
-- "আসন্ন মেয়াদোত্তীর্ণ" table
-- "সর্বশেষ মেয়াদোত্তীর্ণ" table
-- পুরো bottom 3-column grid এবং সংশ্লিষ্ট useStats ফেতchগুলো (`latestBilling`, `upcomingExpire`, `latestExpired`) মুছে ফেলা হবে যাতে অপ্রয়োজনীয় query না হয়।
+**Section D — Traffic / Sales chart (২/৩) + Top Active Users (১/৩)**
+- Chart: existing monthly new clients line/area chart, redesigned with gradient stroke + area fill।
+- Top Active Users: top downloaders বা সচল ক্লায়েন্টের একটা compact list (avatar/initials + name + status badge)।
 
-### ৫. বকেয়া তালিকা
-"টপ ২০ বকেয়া ক্লায়েন্ট" → title হবে "বকেয়া ক্লায়েন্ট"; query-র `.limit(20)` সরিয়ে limit বাড়িয়ে 200 করা হবে এবং scroll container আগের মতোই থাকবে। প্রতিটি row name-এ click করলে `/dashboard/billing?search=<client_id>` এ যাবে।
+**Section E — Action Required & Finance (collapsible, secondary)**
+আগের "অ্যাকশন প্রয়োজন", "আর্থিক বিবরণ", "সাপোর্ট ও টাস্ক" section গুলা smaller `MetricTile`-এ আলাদা rows-এ থাকবে (clickable, আগের route mapping বহাল)।
 
-### ৬. Defer (পরের subject)
-- Branch-ভিত্তিক "সবচেয়ে বেশি সমস্যা সমাধান" / "কোন branch থেকে বেশি line" — এই card এখন add হবে না।
+**বাদ:**
+- পুরনো dense `StatCard` grid (২-৩ লাইনে ১৬+ small card)। সব cards হবে নতুন design system-এর অংশ।
+- "POP ও BW নেটওয়ার্ক" এবং "BW রিসেলার পোর্টাল" sections — System Resources rail-এ summary হিসেবে চলে যাবে।
 
-## Files to edit
-- `src/pages/Dashboard.tsx` — StatCard-এ `to` prop, items-এ link map, bottom 3 table block ও অপ্রয়োজনীয় queries মুছে ফেলা, top-unpaid limit + row click।
-- `src/pages/dashboard/clients/ClientList.tsx` — `useSearchParams` দিয়ে initial filter pre-fill।
-- `src/pages/dashboard/billing/BillingList.tsx` — একই ভাবে initial filter pre-fill (paymentStatus / from / to / search)।
+**রাখা হবে:**
+- "বকেয়া ক্লায়েন্ট" table — সেটাকে নতুন card style-এ wrap করা হবে।
 
-কোনো DB migration লাগবে না।
+### ৪. Visual details
+- Card padding বড় (p-5/p-6), rounded-2xl
+- Big numerical font (text-3xl / text-4xl, tracking-tight, font-extrabold)
+- Soft shadow (`shadow-lg shadow-primary/5`), hover-এ `-translate-y-0.5` + `shadow-xl`
+- Icon background: white/15 frosted box top-right
+- Delta badges: +12.5% green pill, -2.1% red pill
+- Section headings: uppercase, tracking-widest, muted-foreground
+
+### ৫. Bengali labels everywhere
+সব hard-coded label বাংলায়।
+
+### ৬. Files to create / edit
+- `src/index.css` — gradient + shadow tokens
+- `tailwind.config.ts` — token mapping
+- `src/components/dashboard/KpiCard.tsx` — নতুন
+- `src/components/dashboard/MetricTile.tsx` — নতুন
+- `src/components/dashboard/ResourceGauge.tsx` — নতুন
+- `src/components/dashboard/InfoList.tsx` — নতুন
+- `src/pages/Dashboard.tsx` — layout rewrite (data hook + filter routes অপরিবর্তিত)
+
+কোনো DB migration বা useStats পরিবর্তন নেই — শুধু visual/layout overhaul, পূর্বের clickable-routing plan এ যা যা mapping ছিল সব বহাল থাকবে।
+
+### ৭. Out of scope (পরের subject — আগেও বলা হয়েছে)
+- Branch-ভিত্তিক "সবচেয়ে বেশি সমস্যা সমাধান" / branch leaderboard card
