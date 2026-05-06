@@ -1,51 +1,48 @@
-import { useEffect, useState } from "react";
-import { preloadAllIcons8 } from "@/components/icons/Icons8Icon";
-import { preloadAllHishabee } from "@/components/icons/HishabeeIcon";
+import { useEffect } from "react";
 
 const SESSION_KEY = "icons-warmed-v1";
-const MAX_WAIT_MS = 3000;
 
 /**
- * Holds the very first render until every Icons8 + Hishabee asset has
- * decoded, so sidebars/menus paint with all icons present (no
- * "text first, icon later" flash).
- *
- * Skipped on subsequent navigations within the same browser tab — the
- * splash element in index.html is hidden either way.
+ * Removes the static splash immediately and warms icon assets in the
+ * background. Keeping icon preload imports out of the first render avoids
+ * a long "ISP Desk / Loading…" screen on root and production loads.
  */
 export function BootGate({ children }: { children: React.ReactNode }) {
-  const alreadyWarmed =
-    typeof window !== "undefined" && sessionStorage.getItem(SESSION_KEY) === "1";
-  const [ready, setReady] = useState(alreadyWarmed);
-
   useEffect(() => {
+    hideSplash();
+
+    const alreadyWarmed =
+      typeof window !== "undefined" && sessionStorage.getItem(SESSION_KEY) === "1";
     if (alreadyWarmed) {
-      hideSplash();
       return;
     }
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      try {
-        sessionStorage.setItem(SESSION_KEY, "1");
-      } catch {
-        /* ignore */
-      }
-      hideSplash();
-      setReady(true);
+
+    const warmIcons = () => {
+      Promise.all([
+        import("@/components/icons/Icons8Icon").then((m) => m.preloadAllIcons8()),
+        import("@/components/icons/HishabeeIcon").then((m) => m.preloadAllHishabee()),
+      ])
+        .catch(() => {
+          /* non-critical warmup */
+        })
+        .finally(() => {
+          try {
+            sessionStorage.setItem(SESSION_KEY, "1");
+          } catch {
+            /* ignore */
+          }
+        });
     };
 
-    const timeout = window.setTimeout(finish, MAX_WAIT_MS);
-    Promise.all([preloadAllIcons8(), preloadAllHishabee()])
-      .then(finish)
-      .catch(finish)
-      .finally(() => window.clearTimeout(timeout));
+    if (typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(warmIcons, { timeout: 2000 });
+      return () => window.cancelIdleCallback(idleId);
+    }
 
-    return () => window.clearTimeout(timeout);
-  }, [alreadyWarmed]);
+    const timerId = globalThis.setTimeout(warmIcons, 1);
+    return () => globalThis.clearTimeout(timerId);
+  }, []);
 
-  if (!ready) return null;
   return <>{children}</>;
 }
 
@@ -57,3 +54,4 @@ function hideSplash() {
   el.style.pointerEvents = "none";
   window.setTimeout(() => el.remove(), 250);
 }
+
