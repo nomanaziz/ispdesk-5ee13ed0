@@ -42,16 +42,16 @@ export function MetricTile({ label, value, icon: Icon, tone = "sky", to, hint }:
       <div className={cn("pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b", t.bar)} />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground truncate">{label}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-foreground/75 truncate">{label}</p>
           <p className="text-2xl font-bold leading-tight text-foreground tracking-tight">{value}</p>
-          {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+          {hint && <p className="text-[11px] font-medium text-foreground/65">{hint}</p>}
         </div>
         <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", t.iconBg, t.iconText)}>
           <Icon className="h-4.5 w-4.5" />
         </div>
       </div>
       {to && (
-        <div className="relative mt-3 flex items-center gap-1 text-[11px] font-medium text-muted-foreground group-hover:text-foreground">
+        <div className="relative mt-3 flex items-center gap-1 text-[11px] font-semibold text-foreground/70 group-hover:text-foreground">
           বিস্তারিত দেখুন
           <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
         </div>

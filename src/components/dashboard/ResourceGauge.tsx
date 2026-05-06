@@ -8,11 +8,11 @@ interface Props {
 }
 
 const colorMap = {
-  emerald: "stroke-emerald-500",
+  emerald: "stroke-emerald-600",
   amber:   "stroke-amber-500",
-  rose:    "stroke-rose-500",
-  sky:     "stroke-sky-500",
-  violet:  "stroke-violet-500",
+  rose:    "stroke-rose-600",
+  sky:     "stroke-violet-600",
+  violet:  "stroke-violet-600",
 };
 
 export function ResourceGauge({ label, value, tone = "sky", caption }: Props) {
