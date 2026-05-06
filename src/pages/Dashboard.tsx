@@ -12,8 +12,6 @@ import {
   Package, Truck, Building2, Wallet, CircleDollarSign, HandCoins, Landmark,
   ClipboardList, TicketCheck, ListTodo, Award, Globe, Share2, Network
 } from "lucide-react";
-import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
-import { resolveIcons8 } from "@/lib/iconResolver";
 import { Link } from "react-router-dom";
 import KpiCard from "@/components/dashboard/KpiCard";
 import MetricTile from "@/components/dashboard/MetricTile";
@@ -469,7 +467,7 @@ const Dashboard = () => {
           label="মোট ক্লায়েন্ট"
           value={num(d?.totalClients)}
           icon={Users}
-          tone="blue"
+          tone="primary"
           delta={joinDelta}
           caption="গত মাসের তুলনায়"
           to="/dashboard/clients/home"
@@ -478,21 +476,21 @@ const Dashboard = () => {
           label="অনলাইন ব্যবহারকারী"
           value={num(d?.onlineOnu)}
           icon={Wifi}
-          tone="emerald"
+          tone="success"
           to="/dashboard/monitoring/online"
         />
         <KpiCard
           label="সচল ক্লায়েন্ট"
           value={num(d?.totalActive)}
           icon={UserCheck}
-          tone="cyan"
+          tone="success"
           to="/dashboard/clients/home?status=active"
         />
         <KpiCard
           label="বন্ধ লাইন"
           value={num(d?.blockedLineCount)}
           icon={Ban}
-          tone="amber"
+          tone="danger"
           to="/dashboard/clients/home?mikrotikStatus=disabled"
         />
       </div>
@@ -504,13 +502,13 @@ const Dashboard = () => {
           <SectionHeading title="সিস্টেম ওভারভিউ" hint="বর্তমান মাসের মূল মেট্রিক" />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             <MetricTile label="অনলাইন ক্লায়েন্ট" value={num(d?.onlineOnu)} icon={Activity} tone="emerald" to="/dashboard/monitoring/online" hint={`${d?.totalOnu ?? 0} মোট ONU`} />
-            <MetricTile label="সচল ক্লায়েন্ট" value={num(d?.totalActive)} icon={UserCheck} tone="sky" to="/dashboard/clients/home?status=active" />
+            <MetricTile label="সচল ক্লায়েন্ট" value={num(d?.totalActive)} icon={UserCheck} tone="emerald" to="/dashboard/clients/home?status=active" />
             <MetricTile label="এই মাসের সেল" value={fmt(d?.thisMonthSales)} icon={TrendingUp} tone="violet" to={`/dashboard/billing/daily-collection?from=${monthStart}&to=${todayStr}`} />
-            <MetricTile label="আজকের সেল" value={fmt(d?.todaySales)} icon={DollarSign} tone="orange" to={`/dashboard/billing/daily-collection?date=${todayStr}`} />
-            <MetricTile label="বিলিং ক্লায়েন্ট" value={num(d?.billingClients)} icon={FileText} tone="indigo" to="/dashboard/clients/home?billingStatus=Active" />
+            <MetricTile label="আজকের সেল" value={fmt(d?.todaySales)} icon={DollarSign} tone="violet" to={`/dashboard/billing/daily-collection?date=${todayStr}`} />
+            <MetricTile label="বিলিং ক্লায়েন্ট" value={num(d?.billingClients)} icon={FileText} tone="violet" to="/dashboard/clients/home?billingStatus=Active" />
             <MetricTile label="মেয়াদোত্তীর্ণ" value={num(d?.totalExpired)} icon={CalendarX} tone="amber" to="/dashboard/clients/home?status=expired" />
             <MetricTile label="বন্ধ লাইন" value={num(d?.blockedLineCount)} icon={Ban} tone="rose" to="/dashboard/clients/home?mikrotikStatus=disabled" />
-            <MetricTile label="বকেয়া ক্লায়েন্ট" value={num(d?.dueClients)} icon={AlertTriangle} tone="pink" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />
+            <MetricTile label="বকেয়া ক্লায়েন্ট" value={num(d?.dueClients)} icon={AlertTriangle} tone="rose" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />
           </div>
         </div>
 
@@ -521,7 +519,7 @@ const Dashboard = () => {
             <CardContent className="p-5">
               <div className="grid grid-cols-3 gap-2">
                 <ResourceGauge label="ONU অনলাইন" value={onlinePct} tone="emerald" />
-                <ResourceGauge label="পেইড ক্লায়েন্ট" value={paidPct} tone="sky" />
+                <ResourceGauge label="পেইড ক্লায়েন্ট" value={paidPct} tone="violet" />
                 <ResourceGauge label="কালেকশন" value={collectionPct} tone="violet" />
               </div>
             </CardContent>
@@ -616,22 +614,22 @@ const Dashboard = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <MetricTile label="ওভারডিউ বিলিং" value={num(d?.overdueBillingCount)} icon={AlertTriangle} tone="rose" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />
           <MetricTile label="মেয়াদোত্তীর্ণ" value={num(d?.totalExpired)} icon={CalendarX} tone="amber" to="/dashboard/clients/home?status=expired" />
-          <MetricTile label="নিষ্ক্রিয়/বাতিল" value={num(d?.inactiveLeftCount)} icon={UserX} tone="orange" to="/dashboard/clients/home?status=inactive" />
-          <MetricTile label="গ্রেস/এক্সটেনশন" value={num(d?.extensionGraceCount)} icon={Timer} tone="violet" to="/dashboard/clients/home?status=extended" />
-          <MetricTile label="পেন্ডিং টিকেট" value={num(d?.pendingTickets)} icon={ClipboardList} tone="indigo" to="/dashboard/support/tickets?status=pending" />
-          <MetricTile label="পেন্ডিং টাস্ক" value={num(d?.pendingTasks)} icon={ListTodo} tone="teal" to="/dashboard/tasks?status=pending" />
+          <MetricTile label="নিষ্ক্রিয়/বাতিল" value={num(d?.inactiveLeftCount)} icon={UserX} tone="rose" to="/dashboard/clients/home?status=inactive" />
+          <MetricTile label="গ্রেস/এক্সটেনশন" value={num(d?.extensionGraceCount)} icon={Timer} tone="amber" to="/dashboard/clients/home?status=extended" />
+          <MetricTile label="পেন্ডিং টিকেট" value={num(d?.pendingTickets)} icon={ClipboardList} tone="violet" to="/dashboard/support/tickets?status=pending" />
+          <MetricTile label="পেন্ডিং টাস্ক" value={num(d?.pendingTasks)} icon={ListTodo} tone="violet" to="/dashboard/tasks?status=pending" />
         </div>
       </div>
 
       <div className="space-y-3">
         <SectionHeading title="আর্থিক বিবরণ" hint="বর্তমান মাস" />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <MetricTile label="মোট বিল" value={fmt(d?.totalBillAmount)} icon={FileText} tone="indigo" to={`/dashboard/billing?month=${currentMonth}`} />
+          <MetricTile label="মোট বিল" value={fmt(d?.totalBillAmount)} icon={FileText} tone="violet" to={`/dashboard/billing?month=${currentMonth}`} />
           <MetricTile label="কালেক্টেড" value={fmt(d?.totalPaidAmount)} icon={HandCoins} tone="emerald" to={`/dashboard/billing?paymentStatus=paid&month=${currentMonth}`} />
           <MetricTile label="ডিসকাউন্ট" value={fmt(d?.totalDiscount)} icon={CircleDollarSign} tone="amber" />
           <MetricTile label="বকেয়া" value={fmt(d?.totalDueAmount)} icon={AlertTriangle} tone="rose" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />
-          <MetricTile label="আয়" value={fmt(d?.incTM)} icon={TrendingUp} tone="lime" />
-          <MetricTile label="ব্যয়" value={fmt(d?.expTM)} icon={TrendingDown} tone="pink" />
+          <MetricTile label="আয়" value={fmt(d?.incTM)} icon={TrendingUp} tone="emerald" />
+          <MetricTile label="ব্যয়" value={fmt(d?.expTM)} icon={TrendingDown} tone="rose" />
         </div>
       </div>
 
