@@ -1,41 +1,30 @@
 import { ReactNode } from "react";
-import { useLocation } from "react-router-dom";
-import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
-import { resolveByPath, resolveIcons8 } from "@/lib/iconResolver";
+import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
   title: string;
   description?: string;
-  /** Override the auto-resolved Icons8 name. */
+  /** Lucide icon component (preferred) */
+  icon?: LucideIcon;
+  /** Legacy: ignored — kept so existing callers don't break */
   icons8?: string;
   /** Right-side action slot (buttons). */
   action?: ReactNode;
-  /** Icon size in px. Default 44. */
-  size?: number;
   className?: string;
 }
 
 /**
- * Consistent page header with auto-resolved Icons8 illustration.
- * Falls back gracefully when no icon is found for the route.
+ * Unified page header used across every admin page.
+ * Identical visual pattern: icon chip + title + description + right actions.
  */
 export function PageHeader({
   title,
   description,
-  icons8,
+  icon: Icon,
   action,
-  size = 44,
   className,
 }: PageHeaderProps) {
-  const { pathname } = useLocation();
-  const resolved =
-    icons8 ||
-    resolveByPath(pathname) ||
-    resolveIcons8({ title }) ||
-    undefined;
-  const showIcon = hasIcons8Icon(resolved);
-
   return (
     <div
       className={cn(
@@ -44,9 +33,9 @@ export function PageHeader({
       )}
     >
       <div className="flex items-center gap-3 min-w-0">
-        {showIcon && (
-          <div className="shrink-0 rounded-xl bg-muted/40 dark:bg-white/5 p-2 group">
-            <Icons8Icon name={resolved!} size={size} />
+        {Icon && (
+          <div className="shrink-0 rounded-md bg-[hsl(var(--table-head))] text-[hsl(var(--table-head-foreground))] p-2">
+            <Icon className="h-5 w-5" />
           </div>
         )}
         <div className="min-w-0">

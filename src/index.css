@@ -194,6 +194,21 @@
     letter-spacing: 0.005em;
     line-height: 1.65;
   }
+
+  /* === Global table consistency overrides ===
+     Neutralize any per-page color attempts on table headers so every
+     table looks identical (dark slate head + white text). */
+  thead tr,
+  thead tr:hover {
+    background-color: transparent !important;
+  }
+  thead th {
+    color: hsl(var(--table-head-foreground)) !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.72rem !important;
+  }
 }
 
 /* Marquee animation for logo scrolling */

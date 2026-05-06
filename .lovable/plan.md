@@ -1,97 +1,77 @@
-# Color Tone Cleanup — Pure Black Text, Dark Fixed Table Headers
+## Goal
 
-আপনার অভিযোগ ঠিক — এখন ফ্যাকাশে muted-foreground (HSL 220 15% 32%) text বেশি, একেক page এ একেক রঙ, table heading গুলো light bg-primary/10 (lavender ফ্যাকাশে)। সব জায়গায় একটাই strict palette চাই: **পুরো কালো text + dark slate table heading + একই tone সব page এ**।
+Make every page in the app look like it came from the same designer:
+- One table style everywhere (dark header + zebra rows + same border/radius)
+- One button size system (no random `h-8`, `h-9`, `h-10`, `h-11` mixed)
+- One page header pattern (title + description + action area)
+- One filter card pattern
+- No more random violet/blue/black/rounded variations
 
-## ১. Global design tokens (`src/index.css`)
+No data, schema, or routes change — only UI components and class cleanup.
 
-Light mode tokens শক্ত করব যাতে পুরো app এ এক রঙ আসে:
+---
 
-```text
---background:      0 0% 100%       (pure white page)
---foreground:      0 0% 0%         (pure black text — সব জায়গার default)
---card:            0 0% 100%
---card-foreground: 0 0% 0%
---muted:           220 14% 96%     (light bg only)
---muted-foreground: 220 9% 25%     (only for hint/secondary, much darker than now)
---border:          220 13% 88%
---primary:         258 90% 60%     (একই tone, accent only — heading bg নয়)
+## What will change
 
-/* NEW: dedicated table-header tokens — fixed, never changes */
---table-head:            224 30% 14%   (deep slate-900)
---table-head-foreground: 0 0% 100%     (white)
---table-row-alt:         220 14% 97%   (zebra)
---table-border:          220 13% 88%
-```
+### 1. Single table style — `src/components/ui/table.tsx`
+Already has `--table-head` (dark slate) + `--table-row-alt` zebra. But many pages bypass it by adding `bg-primary` / `bg-blue-*` / custom header rows. The `<TableRow>` inside `<TableHeader>` will be forced to **inherit** the dark head color (no overrides). I'll:
+- Remove the custom `bg-primary` header row in `ReportLayout.tsx` so it uses the global dark head (matches screenshot 2).
+- Add a small CSS rule: `thead tr { background: transparent !important }` so any `bg-primary`/`bg-blue` accidentally set by pages is neutralized.
+- Tables always wrapped: `border rounded-lg overflow-hidden` (one radius — `rounded-lg`, never `rounded-2xl`/`rounded-xl`).
 
-Dark mode এ `--foreground: 0 0% 100%` এবং `--table-head` একই deep slate রাখব যাতে দু'mode এ table head এক রকম দেখায়।
+### 2. Single button size system — `src/components/ui/button.tsx`
+Current sizes: `default h-10`, `sm h-9`, `lg h-11`, `icon h-10`. The codebase mixes them randomly (toolbars use `h-8`, `h-9`, `h-10` side-by-side).
 
-## ২. Table component (`src/components/ui/table.tsx`) — single source of truth
+Standardize to **3 sizes only**, used consistently:
+- `default` → `h-9 px-4` (primary action — "Add", "Save", "Apply")
+- `sm` → `h-8 px-3 text-xs` (toolbar / table-row actions)
+- `icon` → `h-9 w-9` (icon-only)
+- `lg` kept but unused in CRUD pages.
 
-পুরো codebase এ ৪০+ ফাইল `Table` component use করে, তাই এখানে বদল করলে সব table এ একসাথে effect হবে।
+All `<Input>` and `<Select>` triggers will also default to `h-9` so toolbars line up with buttons (already the shadcn default — verify and fix the few places that set `h-8`/`h-10` inline).
 
-- `TableHeader`: `bg-primary/10` সরিয়ে `bg-[hsl(var(--table-head))] text-[hsl(var(--table-head-foreground))]` — সব `th` সাদা bold uppercase tracking-wide
-- `TableHead` (`th`): `text-muted-foreground` সরিয়ে `text-[hsl(var(--table-head-foreground))] font-semibold text-xs uppercase tracking-wider`
-- `TableBody`: zebra rows `--table-row-alt` token দিয়ে
-- `TableRow` hover: `hover:bg-muted/60` (consistent)
-- Border সব `--table-border`
-- `TableFooter`: same dark head tone
+### 3. Single page header — `src/components/common/PageHeader.tsx`
+Drop the Icons8 dependency (faster, removes inconsistent illustrations). New header = lucide icon chip + title + description + right-aligned actions, identical on every page. Pages currently rolling their own header (e.g. `PopActivityLog`, `PopBillPeriod`, `PopProcessingFee`, `PopPaymentGateways`, `PopPeriodSetup`) will switch to `<PageHeader>`.
 
-ফলাফল — পুরো app এর প্রতিটা table এ এক রকম dark header + পুরো কালো cell text।
+### 4. Single CRUD page shell — `src/components/config/ConfigCrudPage.tsx`
+Currently uses `<Card>`+`<CardHeader>`+custom search bar. Refactor to:
+- Use `<PageHeader>` at top (title + "+ নতুন যোগ করুন" action).
+- Toolbar row (search + bulk actions) using the standardized `h-9` controls.
+- Table block: `border rounded-lg overflow-hidden`, no inner card padding.
+- Action column: only `<Button size="icon" variant="ghost" className="h-8 w-8">` — same everywhere (Edit + Delete).
 
-## ৩. Tailwind base — pure-black default text
+This component is used by ~30 config pages, so fixing it propagates instantly.
 
-`src/index.css` এর `body` এ already `text-foreground` আছে, token কালো করায় সব page এ default টেক্সট কালো হবে। অতিরিক্ত utility:
+### 5. Single report shell — `src/components/reports/ReportLayout.tsx`
+- Filter banner: change from violet `bg-primary` strip to the same dark slate as table head (`bg-[hsl(var(--table-head))]`) — one tone everywhere (matches screenshot 1's request).
+- Remove the custom `<TableRow className="bg-primary hover:bg-primary">` — let the global dark `<TableHeader>` style win.
+- Export buttons (PDF/CSV/Excel) use `size="sm"` — already correct.
+- Pagination buttons use `size="sm"` — already correct.
 
-```css
-@layer base {
-  body { @apply text-foreground; }
-  /* Force black for headings & data cells unless explicitly muted */
-  h1, h2, h3, h4, h5, h6, label, td, th, p, span, div { color: inherit; }
-}
-```
+### 6. Class cleanups (sweep)
+A targeted ripgrep + edit pass through `src/pages/**` and `src/components/**` to remove these inconsistencies:
+- `bg-primary`, `bg-blue-*`, `bg-slate-900` applied to `<TableHeader>`/`<TableRow>` inside thead → removed.
+- `rounded-2xl`, `rounded-xl` on table/card containers → `rounded-lg`.
+- Random `h-8`/`h-10`/`h-11` on Buttons → `size="sm"` or default.
+- Inline `text-blue-600`, `text-purple-600` on table headers → removed (inherits white).
 
-`text-muted-foreground` token-এর দাম ২৫% lightness করায় হালকা hint টেক্সটও আগের চেয়ে অনেক সাফ দেখাবে (একদম কালো না, কিন্তু ফ্যাকাশে নয়)।
+Targeted files (highest impact, from rg results):
+`Dashboard.tsx`, `ResellerTickets`, `ResellerInvoices`, `ResellerInvoiceDetail`, `ResellerMikrotikUsers`, `ResellerUsers`, `PopOnlineMonitoring`, `PopActivityLog`, `PopBillPeriod`, `PopPaymentGateways`, `PopPeriodSetup`, `PopProcessingFee`, `PopAutomaticProcess`, `PopSmsTemplates`, `PopSmsGateway`, `PopSmsIndividual`, `PopBulkClientImport`, `PopIncome`, `PopExpense`, `PopCashBook`, `PopPackages`, `PopAllotedAreas`, `BwPanelMikrotikServers`, `BwPurchaseOrders`, `dashboard/support/*`, `dashboard/website/*`, `dashboard/hr/*`, `dashboard/sms/*`, `dashboard/purchases/*`, `dashboard/accounting/*`, `dashboard/system/*`, `dashboard/clients/*`, `dashboard/assets/*`, `dashboard/access/*`, `dashboard/reports/*`, `BwInvoiceDetailDialog`, `PgwFundDialog`.
 
-## ৪. Dashboard page (`src/pages/Dashboard.tsx`) — tone unify
+### 7. Files NOT touched
+- Database, RLS, edge functions, routes, business logic — none.
+- Mobile shell (`src/components/mobile/*`) — has its own design system on purpose.
+- Public marketing site (`src/pages/public/*`) — separate visual language.
 
-এখন এক page এ ৬-৭ রকম tone (sky/emerald/violet/rose/orange/lime/pink ইত্যাদি)। সীমিত করে dashboard-wide ৪টা semantic tone:
+---
 
-- **primary** (violet 258) — neutral / informational
-- **success** (emerald) — positive metrics (online, paid, income)
-- **warning** (amber) — pending / extended / due soon
-- **danger** (rose) — overdue / blocked / expired
+## Acceptance criteria
 
-প্রতিটা `MetricTile`, `KpiCard` এই ৪টার একটা বেছে নেবে — random rainbow নয়।
+After approval the user should see:
+- Every table on `/dashboard/...`, `/pop-admin/...`, `/portal/...`, `/bw/...` admin pages has the same dark head, same zebra rows, same border, same `rounded-lg` corners.
+- Every "Add / Save / Apply / Cancel" button is the same height (h-9). Every toolbar icon button is h-8 w-8.
+- Every page header looks identical: lucide icon chip + bold title + muted description + right-side actions.
+- Filter banner color matches table head color (no more violet strip + dark head mismatch).
+- No page uses `rounded-2xl` or `bg-primary` on a table.
 
-`KpiCard` এর gradient সরাবো — instead solid white card, dark black value text, colored icon chip। Hero card-এ KPI text এখন সাদা গ্রেডিয়েন্টের উপর — সেটা change করে black-on-white করব যাতে dashboard এর সব card একই look দেয়।
-
-## ৫. MetricTile / KpiCard / InfoList components
-
-- `MetricTile`: value text already foreground কিন্তু `text-[11px] text-muted-foreground` labels গুলো কালো semibold করব
-- `KpiCard`: gradient bg বাদ → white card + colored left bar + black 4xl value + colored icon chip
-- `InfoList`: label-value দুটোই কালো, শুধু label `font-medium` value `font-bold`
-- `ResourceGauge`: track stroke darker, label কালো
-
-## ৬. Icons — switch to lighter / faster lucide-only
-
-বর্তমান `Icons8Icon` (3rd-party) Dashboard অনেকটা lazy। `lucide-react` আগে থেকেই imported আছে। Dashboard থেকে `Icons8Icon` / `hasIcons8Icon` / `resolveIcons8` import সরিয়ে শুধু lucide use করব — রেন্ডার দ্রুত, bundle ছোট, এবং সব icon এ same stroke-width দেখাবে (consistency)। এই ৩টা import পুরো dashboard এ ব্যবহৃত নয় (already KpiCard/MetricTile lucide), তাই safe।
-
-## ৭. একনজরে ফলাফল
-
-- পুরো app এর সব text ১০০% কালো (hint বাদে — সেটাও ২৫% lightness, ফ্যাকাশে নয়)
-- প্রতিটা table এ একই dark slate heading + সাদা bold uppercase th + zebra rows
-- Dashboard এ আর rainbow নয় — ৪টা semantic tone
-- Card pattern: white bg + black value + colored icon chip — সব page এ এক
-- Icons8 dependency dashboard থেকে বাদ → faster load
-
-## Files to edit
-
-- `src/index.css` — token cleanup + table-head tokens + base text rules
-- `src/components/ui/table.tsx` — dark fixed header, black cell text, zebra
-- `src/pages/Dashboard.tsx` — tone palette ৪-এ সীমিত, Icons8 import drop
-- `src/components/dashboard/KpiCard.tsx` — gradient → white+icon chip
-- `src/components/dashboard/MetricTile.tsx` — labels darker
-- `src/components/dashboard/InfoList.tsx` — values black bold
-- `src/components/dashboard/ResourceGauge.tsx` — labels black
-
-কোনো individual page ফাইল ছোঁয়া লাগবে না — tokens + Table component বদলালে সবগুলো একসাথে align হবে।
+Total files touched: ~50 (mostly small className edits). Two component files (`table.tsx`, `button.tsx`) and three layout files (`PageHeader.tsx`, `ConfigCrudPage.tsx`, `ReportLayout.tsx`) carry most of the change.
