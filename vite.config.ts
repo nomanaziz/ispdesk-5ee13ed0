@@ -83,7 +83,10 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("react-dom") || id.match(/[\\/]react[\\/]/) || id.includes("react/jsx-runtime") || id.includes("scheduler")) return "react-vendor";
           if (id.includes("react-router")) return "router";
           if (id.includes("@tanstack")) return "query";
-          if (id.includes("recharts") || id.includes("d3-")) return "charts";
+          // NOTE: recharts + d3-* intentionally NOT split into a separate "charts"
+          // chunk — doing so caused a TDZ ReferenceError ("Cannot access 'rv'
+          // before initialization") due to a circular dep between d3 internals.
+          // Letting them fall through into the default "vendor" chunk fixes it.
           if (id.includes("@radix-ui")) return "radix";
           if (id.includes("lucide-react")) return "icons";
           if (id.includes("@supabase")) return "supabase";
