@@ -23,7 +23,7 @@ const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttribut
     <thead
       ref={ref}
       className={cn(
-        "bg-[hsl(var(--table-head))] text-[hsl(var(--table-head-foreground))] [&_tr]:border-b-0",
+        "bg-[hsl(var(--table-head))] text-[hsl(var(--table-head-foreground))] [&_tr]:border-b-0 [&_tr]:!bg-transparent [&_tr:hover]:!bg-transparent [&_th]:!text-[hsl(var(--table-head-foreground))]",
         className,
       )}
       {...props}
