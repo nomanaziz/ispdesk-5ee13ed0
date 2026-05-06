@@ -705,10 +705,11 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
       <div className="mb-0.5 px-2">
         <NavLink
           to={primaryItem.url}
-          className={cn("flex items-center gap-3 px-4 py-2 text-[13px] font-semibold transition-colors rounded-lg uppercase tracking-wider",
+          className={cn(
+            "relative flex items-center gap-3 px-4 py-2 text-[13px] font-semibold transition-colors rounded-lg uppercase tracking-wider",
             isActive
-              ? "bg-primary/10 text-primary"
-              : isLight ? "text-muted-foreground hover:text-foreground hover:bg-muted/50" : "text-slate-400 hover:text-white hover:bg-white/5"
+              ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:bg-sidebar-primary-foreground/80"
+              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           )}
         >
           <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} icons8={icons8ForItem(primaryItem.url, primaryItem.title, group.label)} customIcon={hishabeeForItem(primaryItem.url, primaryItem.title, group.label)} />
@@ -722,6 +723,79 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
       </div>
     );
   }
+
+  if (collapsed) {
+    return (
+      <div className="px-2 py-1">
+        {group.items.slice(0, 1).map((item) => {
+          const isActive = item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url);
+          return (
+            <NavLink key={item.url} to={item.url}
+              className={cn(
+                "relative flex items-center justify-center w-10 h-10 rounded-lg mb-0.5 transition-colors",
+                isActive
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )} title={groupLabel}>
+              <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} icons8={icons8ForGroup(group.label)} customIcon={hishabeeForGroup(group.label)} />
+              {groupBadgeCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+                  {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
+                </span>
+              )}
+            </NavLink>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-0.5">
+      <button onClick={() => setOpen(!open)}
+        className={cn(
+          "relative w-full flex items-center gap-3 px-4 py-2 text-[13px] font-semibold transition-colors rounded-lg mx-2 uppercase tracking-wider",
+          isActiveGroup
+            ? "text-sidebar-foreground before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:bg-sidebar-primary"
+            : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+        )} style={{ width: "calc(100% - 16px)" }}>
+        <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActiveGroup} icons8={icons8ForGroup(group.label)} customIcon={hishabeeForGroup(group.label)} />
+        <span className="flex-1 text-left truncate">{groupLabel}</span>
+        {groupBadgeCount > 0 && !effectiveOpen && (
+          <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+            {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
+          </span>
+        )}
+        {effectiveOpen ? <ChevronDown className="h-3 w-3 opacity-60" /> : <ChevronRight className="h-3 w-3 opacity-60" />}
+      </button>
+      {effectiveOpen && (
+        <div className="mx-2 mt-0.5 space-y-0.5">
+          {group.items.map((item) => {
+            const isActive = item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url);
+            const count = badges?.[item.url] || 0;
+            return (
+              <NavLink key={item.url} to={item.url}
+                className={cn(
+                  "relative flex items-center gap-2.5 px-3 py-[7px] text-[13px] rounded-lg transition-colors ml-3",
+                  isActive
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium shadow-sm"
+                    : "text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )}>
+                <MenuIconTile icon={item.icon} tint={tintForLabel(group.label)} active={isActive} size="sm" icons8={icons8ForItem(item.url, item.title, group.label)} customIcon={hishabeeForItem(item.url, item.title, group.label)} />
+                <span className="flex-1 truncate">{tr(item.title, lang)}</span>
+                {count > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                    {count > 99 ? "99+" : count}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
   if (collapsed) {
     return (
