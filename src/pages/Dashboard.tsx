@@ -709,9 +709,13 @@ const Dashboard = () => {
                   </TableHeader>
                   <TableBody>
                     {(d?.unpaidList ?? []).length > 0 ? (d?.unpaidList ?? []).map((u, i) => (
-                      <TableRow key={i}>
+                      <TableRow key={i} className="hover:bg-muted/40">
                         <TableCell className="text-xs py-1.5">{i + 1}</TableCell>
-                        <TableCell className="text-xs py-1.5">{u.client_name}</TableCell>
+                        <TableCell className="text-xs py-1.5">
+                          <Link to={`/dashboard/billing?search=${encodeURIComponent(u.client_name)}&month=${currentMonth}`} className="hover:underline text-foreground">
+                            {u.client_name}
+                          </Link>
+                        </TableCell>
                         <TableCell className="text-xs py-1.5 text-right">৳{u.amount.toLocaleString()}</TableCell>
                         <TableCell className="text-xs py-1.5 text-right text-red-500 font-semibold">৳{u.due.toLocaleString()}</TableCell>
                       </TableRow>
