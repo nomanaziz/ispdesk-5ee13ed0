@@ -132,7 +132,7 @@ function useStats() {
         // New clients per month (last 6 months)
         supabase.from("clients").select("created_at").gte("created_at", new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString()),
         // Unpaid clients
-        supabase.from("billing").select("client_id, amount, paid, due, status").eq("status", "unpaid").gte("month", monthStart).order("amount", { ascending: false }).limit(20),
+        supabase.from("billing").select("client_id, amount, paid, due, status").eq("status", "unpaid").gte("month", monthStart).order("amount", { ascending: false }).limit(200),
         // POP count
         supabase.from("bw_sale_pops").select("id", { count: "exact", head: true }),
         // Salary this month
