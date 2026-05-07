@@ -193,7 +193,92 @@ function useStats() {
         supabase.from("employees").select("id, name"),
       ]);
 
+      // ─── Top-Due aggregations ────────────────────────────────────────
+      const [
+        dueBillingRes, bwInvoicesDueRes, popNegativeRes,
+      ] = await Promise.all([
+        // All unpaid/partial billing rows (current + carried) — aggregate per client
+        supabase.from("billing").select("client_id, amount, paid, due, status").in("status", ["unpaid", "partial"]).limit(5000),
+        // Bandwidth sales invoices with due > 0
+        supabase.from("bw_sales_invoices").select("customer_id, due, total_amount, paid_amount").gt("due", 0).limit(2000),
+        // POPs with negative balance
+        supabase.from("branch_managers").select("id, name, balance, branch_id, pop_type").lt("balance", 0).order("balance", { ascending: true }).limit(20),
+      ]);
 
+      // Aggregate due per client
+      const dueByClient = new Map<string, number>();
+      for (const b of dueBillingRes.data ?? []) {
+        const cid = (b as any).client_id;
+        if (!cid) continue;
+        const amt = Number((b as any).amount) || 0;
+        const paid = Number((b as any).paid) || 0;
+        const dueRaw = (b as any).due;
+        const due = dueRaw != null ? Number(dueRaw) : Math.max(0, amt - paid);
+        if (due <= 0) continue;
+        dueByClient.set(cid, (dueByClient.get(cid) || 0) + due);
+      }
+      const dueClientIds = [...dueByClient.keys()];
+      let dueClientsMeta: any[] = [];
+      if (dueClientIds.length) {
+        const { data } = await supabase.from("clients")
+          .select("id, name, client_id, client_type, phone_number, contact")
+          .in("id", dueClientIds);
+        dueClientsMeta = data ?? [];
+      }
+      const buildTopDue = (type: string) => dueClientsMeta
+        .filter((c: any) => (c.client_type || "").toLowerCase() === type.toLowerCase())
+        .map((c: any) => ({
+          id: c.id,
+          name: c.name || c.client_id || "Unknown",
+          contact: c.phone_number || c.contact || "",
+          due: dueByClient.get(c.id) || 0,
+        }))
+        .filter(x => x.due > 0)
+        .sort((a, b) => b.due - a.due)
+        .slice(0, 20);
+      const topDueHome = buildTopDue("Home");
+      const topDueCorporate = buildTopDue("Corporate");
+      const totalDueHome = dueClientsMeta
+        .filter((c: any) => (c.client_type || "").toLowerCase() === "home")
+        .reduce((s, c) => s + (dueByClient.get(c.id) || 0), 0);
+      const totalDueCorporate = dueClientsMeta
+        .filter((c: any) => (c.client_type || "").toLowerCase() === "corporate")
+        .reduce((s, c) => s + (dueByClient.get(c.id) || 0), 0);
+
+      // Bandwidth aggregation
+      const dueByBwCustomer = new Map<string, number>();
+      for (const inv of bwInvoicesDueRes.data ?? []) {
+        const cid = (inv as any).customer_id;
+        if (!cid) continue;
+        const due = Number((inv as any).due) || 0;
+        if (due <= 0) continue;
+        dueByBwCustomer.set(cid, (dueByBwCustomer.get(cid) || 0) + due);
+      }
+      let bwCustomersMeta: any[] = [];
+      const bwIds = [...dueByBwCustomer.keys()];
+      if (bwIds.length) {
+        const { data } = await supabase.from("bw_sale_customers")
+          .select("id, customer_name, customer_code, mobile, contact_person")
+          .in("id", bwIds);
+        bwCustomersMeta = data ?? [];
+      }
+      const topDueBandwidth = bwCustomersMeta.map((c: any) => ({
+        id: c.id,
+        name: c.customer_name || c.customer_code || "Unknown",
+        contact: c.mobile || c.contact_person || "",
+        due: dueByBwCustomer.get(c.id) || 0,
+      })).sort((a, b) => b.due - a.due).slice(0, 20);
+      const totalDueBandwidth = [...dueByBwCustomer.values()].reduce((s, v) => s + v, 0);
+
+      // POP negative balance
+      const topNegativePops = (popNegativeRes.data ?? []).map((p: any) => ({
+        id: p.id,
+        name: p.name || "POP",
+        branch_id: p.branch_id,
+        pop_type: p.pop_type,
+        due: Math.abs(Number(p.balance) || 0),
+      }));
+      const totalDuePops = topNegativePops.reduce((s, p) => s + p.due, 0);
 
       // Fetch client names for latest billing
       const latestInvoices: { bill_id: string; amount: number; client_name: string; status: string }[] = [];
