@@ -109,8 +109,8 @@ export default function CashBook() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold">Cash Book / ক্যাশ বুক</h1>
-          <p className="text-muted-foreground text-sm">From {applied.from} to {applied.to}</p>
+          <h1 className="text-lg font-bold tracking-tight text-foreground">Cash Book / ক্যাশ বুক</h1>
+          <p className="text-xs text-muted-foreground">From {applied.from} to {applied.to}</p>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => exportPDF("Cash Book", cols, exportRows())}>

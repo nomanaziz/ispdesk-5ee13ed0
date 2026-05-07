@@ -121,8 +121,8 @@ export default function ComparePL() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold">Compare Profit &amp; Loss / লাভ-ক্ষতি তুলনা</h1>
-          <p className="text-muted-foreground text-sm">Period vs Compare Period</p>
+          <h1 className="text-lg font-bold tracking-tight text-foreground">Compare Profit &amp; Loss / লাভ-ক্ষতি তুলনা</h1>
+          <p className="text-xs text-muted-foreground">Period vs Compare Period</p>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => exportPDF("Compare Profit Loss", cols, buildExportRows())}>

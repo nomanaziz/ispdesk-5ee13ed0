@@ -48,8 +48,8 @@ export default function BalanceSheet() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">ব্যালেন্স শীট</h1>
-        <p className="text-muted-foreground text-sm">সম্পদ, দায় ও মূলধন বিবরণী</p>
+        <h1 className="text-lg font-bold tracking-tight text-foreground">ব্যালেন্স শীট</h1>
+        <p className="text-xs text-muted-foreground">সম্পদ, দায় ও মূলধন বিবরণী</p>
       </div>
 
       <div className="grid grid-cols-3 gap-3">

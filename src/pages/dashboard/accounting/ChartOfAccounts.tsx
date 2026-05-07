@@ -221,7 +221,7 @@ export default function ChartOfAccounts() {
         <div className="flex items-center gap-2">
           <BookOpen className="h-6 w-6 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">Chart of Accounts</h1>
+            <h1 className="text-lg font-bold tracking-tight text-foreground">Chart of Accounts</h1>
             <p className="text-xs text-muted-foreground">সকল অ্যাকাউন্টের তালিকা ও শ্রেণীবিভাগ</p>
           </div>
         </div>

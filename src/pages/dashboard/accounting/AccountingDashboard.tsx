@@ -222,7 +222,7 @@ export default function AccountingDashboard() {
             <BookOpen className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Accounting Dashboard</h1>
+            <h1 className="text-lg font-bold tracking-tight text-foreground">Accounting Dashboard</h1>
             <p className="text-xs text-muted-foreground">আর্থিক সারসংক্ষেপ — {range.from} → {range.to}</p>
           </div>
         </div>
@@ -242,7 +242,7 @@ export default function AccountingDashboard() {
           {preset === "custom" && (
             <>
               <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-[150px]" />
-              <span className="text-muted-foreground text-sm">to</span>
+              <span className="text-xs text-muted-foreground">to</span>
               <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-[150px]" />
             </>
           )}

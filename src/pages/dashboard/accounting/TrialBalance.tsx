@@ -86,8 +86,8 @@ export default function TrialBalance() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold">Trial Balance / ট্রায়াল ব্যালেন্স</h1>
-          <p className="text-muted-foreground text-sm">Till {tillDate}</p>
+          <h1 className="text-lg font-bold tracking-tight text-foreground">Trial Balance / ট্রায়াল ব্যালেন্স</h1>
+          <p className="text-xs text-muted-foreground">Till {tillDate}</p>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => exportPDF("Trial Balance", cols, exportRows)}>

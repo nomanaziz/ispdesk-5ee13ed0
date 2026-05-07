@@ -51,8 +51,8 @@ export default function ProfitLoss() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">লাভ-ক্ষতি বিবরণী</h1>
-          <p className="text-muted-foreground text-sm">মাসভিত্তিক আয়-ব্যয় সারসংক্ষেপ</p>
+          <h1 className="text-lg font-bold tracking-tight text-foreground">লাভ-ক্ষতি বিবরণী</h1>
+          <p className="text-xs text-muted-foreground">মাসভিত্তিক আয়-ব্যয় সারসংক্ষেপ</p>
         </div>
         <Input type="month" value={month} onChange={e => setMonth(e.target.value)} className="w-[180px]" />
       </div>
