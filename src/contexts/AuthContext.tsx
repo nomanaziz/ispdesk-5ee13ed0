@@ -61,12 +61,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    if (error) {
+      // best-effort log of failed login
+      const { logEvent } = await import("@/lib/audit");
+      logEvent({ action: "login_failed", entity_type: "auth", entity_label: email, severity: "warning", message: error.message });
+      throw error;
+    }
+    const { logEvent } = await import("@/lib/audit");
+    logEvent({ action: "login", entity_type: "auth", entity_label: email, severity: "info" });
   };
 
   const signOut = async () => {
+    const { logEvent } = await import("@/lib/audit");
+    logEvent({ action: "logout", entity_type: "auth", severity: "info" });
     await supabase.auth.signOut();
   };
+
 
   const hasRole = (role: AppRole) => roles.includes(role);
   const isAdmin = hasRole("super_admin") || hasRole("admin");
