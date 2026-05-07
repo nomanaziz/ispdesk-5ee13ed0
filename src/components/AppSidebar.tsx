@@ -759,7 +759,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
             ? "text-sidebar-foreground before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:bg-sidebar-primary"
             : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
         )} style={{ width: "calc(100% - 16px)" }}>
-        <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActiveGroup} icons8={icons8ForGroup(group.label)} customIcon={hishabeeForGroup(group.label)} />
+        <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActiveGroup} />
         <span className="flex-1 text-left truncate">{groupLabel}</span>
         {groupBadgeCount > 0 && !effectiveOpen && (
           <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
