@@ -1,50 +1,54 @@
-# গুরুত্বপূর্ণ লিংকে আইডি/পাসওয়ার্ড সংরক্ষণ ও কপি ফিচার
+## Dashboard-এ Top Due Clients সেকশন যোগ
 
-প্রতিটি লিংকের সাথে ঐচ্ছিক **Username, Password, Notes** যোগ করার সুবিধা দেওয়া হবে। কার্ডে show/hide, এক ক্লিকে কপি বাটন থাকবে।
+হোম পেজে (`/dashboard`) নতুন একটি **"টপ বকেয়া (Top Due)"** সেকশন যোগ হবে — যেখানে প্রতিটি ক্যাটাগরির শীর্ষ ২০ জন বকেয়াদার (নাম + পরিমাণ) এক জায়গায় দেখা যাবে, এবং উপরে summary KPI।
 
-## কী করা হবে
+### নতুন তথ্য
 
-### 1. ডাটাবেস (Migration)
-`important_links` টেবিলে নতুন কলাম যোগ:
-- `username text` — ঐচ্ছিক লগইন আইডি
-- `password_encrypted text` — পাসওয়ার্ড (pgcrypto দিয়ে এনক্রিপ্টেড)
-- `notes text` — অতিরিক্ত নোট (যেমন 2FA, server IP)
+**Summary KPI (৪টি ছোট কার্ড):**
+- হোম ক্লায়েন্ট মোট বকেয়া (৳)
+- কর্পোরেট ক্লায়েন্ট মোট বকেয়া (৳)
+- ব্যান্ডউইথ কাস্টমার মোট বকেয়া (৳)
+- POP নেগেটিভ ব্যালেন্স মোট (৳)
 
-পাসওয়ার্ড plain-text-এ সংরক্ষণ করা হবে না। `pgcrypto` extension ব্যবহার করে সংরক্ষণের আগে এনক্রিপ্ট ও পড়ার সময় ডিক্রিপ্ট করা হবে দুটি SECURITY DEFINER ফাংশনের মাধ্যমে:
-- `set_important_link_password(link_id, plain)` — শুধু admin role
-- `get_important_link_password(link_id)` — admin/super_admin/operator রোল চেক করে ডিক্রিপ্ট রিটার্ন করবে
+**Top 20 List Cards (৪টি ট্যাব/কলাম):**
+1. **🏠 হোম ক্লায়েন্ট — Top 20 বকেয়া**  
+   `billing` থেকে `due > 0` rows নিয়ে `client_id` ধরে aggregate, `clients` থেকে নাম + `client_type='home'` filter। দেখাবে: নাম, ফোন, মোট বকেয়া, কতগুলো বিল pending।
 
-এনক্রিপশন কী একটি Supabase secret (`LINK_VAULT_KEY`) থেকে আসবে।
+2. **🏢 কর্পোরেট ক্লায়েন্ট — Top 20 বকেয়া**  
+   একই, কিন্তু `client_type='corporate'`।
 
-### 2. লিংক ডায়ালগ (`ImportantLinkDialog.tsx`)
-নতুন ফিল্ড যোগ:
-- **ইউজারনেম / আইডি** (text input)
-- **পাসওয়ার্ড** (password input + show/hide চোখ আইকন)
-- **নোট** (textarea, ঐচ্ছিক)
+3. **🌐 ব্যান্ডউইথ কাস্টমার — Top 20 বকেয়া**  
+   `bw_sales_invoices` থেকে `due > 0` rows aggregate করে `customer_id` ধরে, `bw_sale_customers` থেকে নাম। দেখাবে: কাস্টমার নাম, কনট্যাক্ট, মোট বকেয়া।
 
-সংরক্ষণের সময় পাসওয়ার্ড আলাদা RPC কল-এ এনক্রিপ্ট হয়ে যাবে। এডিট মোডে পাসওয়ার্ড ফাঁকা থাকবে — শুধু পরিবর্তন করতে চাইলে নতুনটি দিতে হবে।
+4. **📡 POP — Top 20 নেগেটিভ ব্যালেন্স**  
+   `branch_managers` থেকে `balance < 0` rows, ascending order (সবচেয়ে negative প্রথমে)। দেখাবে: POP name, কত টাকা পাওয়া যাবে (`abs(balance)`).
 
-### 3. লিংক কার্ড (`ImportantLinkCard.tsx`)
-যেসব লিংকে credential আছে সেগুলোতে নতুন আইকন/বাটন:
-- 🔑 **Credentials** বাটন → একটি ছোট popover খোলে
-- Popover-এ:
-  - **আইডি**: `user@example.com` `[কপি]`
-  - **পাসওয়ার্ড**: `••••••••` `[👁 দেখান]` `[কপি]`
-  - **নোট** (যদি থাকে)
-- পাসওয়ার্ড কপি/দেখানোর সময় RPC কল করে ডিক্রিপ্ট হবে
-- কপি করলে toast: "কপি হয়েছে"
-- পাসওয়ার্ড 30 সেকেন্ড পর auto-hide
+### UI Layout
 
-### 4. সিকিউরিটি
-- শুধু `super_admin / admin / operator` credential দেখতে/কপি করতে পারবে (বর্তমান `canSee` লজিকের মতই)
-- পাসওয়ার্ড কখনো নেটওয়ার্কে plaintext-এ যাবে না সংরক্ষণের সময় (RPC দিয়ে এনক্রিপ্ট)
-- ডিক্রিপ্ট শুধু authorized request-এ
+```text
+─── টপ বকেয়া (Top Due) ───────────────────────
+[ হোম: ৳X ] [ কর্প: ৳X ] [ ব্যান্ড: ৳X ] [ POP: ৳X ]
 
-## টেকনিক্যাল সারাংশ
+Mobile:  ১ কলাম stack
+Desktop: ২×২ grid — ৪টি কার্ড পাশাপাশি
+Each card: scrollable list (max-h ~280px), rank #, নাম, বকেয়া
+প্রতিটি item ক্লিকে → সংশ্লিষ্ট client/customer/POP profile-এ যাবে
+```
 
-- Migration: `important_links`-এ ৩টা কলাম + 2টা SECURITY DEFINER ফাংশন + pgcrypto extension
-- Secret: `LINK_VAULT_KEY` (admin user-কে set করতে বলা হবে; না দিলে fallback hash)
-- Files edited:
-  - `src/components/dashboard/ImportantLinkDialog.tsx` — নতুন ফর্ম ফিল্ড
-  - `src/components/dashboard/ImportantLinkCard.tsx` — credentials popover + কপি/show
-  - `src/components/dashboard/ImportantLinksSection.tsx` — পাস-থ্রু props (canViewSecrets)
+### Files to change
+
+1. **`src/pages/Dashboard.tsx`**
+   - `useStats()` hook-এ ৪টি নতুন query যোগ:
+     - `clients` join `billing` → group by client_id, sum due, filter by client_type
+     - `bw_sales_invoices` → group by customer_id, sum due
+     - `branch_managers` → balance < 0 order by balance asc limit 20
+   - নতুন রেন্ডার সেকশন: KPI strip + 4 list cards
+   - নতুন helper component: `TopDueListCard({ title, items, href, tone })`
+
+### Technical Notes
+
+- Queries client-side aggregate করব (Supabase JS-এ `select('client_id, due')` → JS-এ `reduce`), কারণ এতে নতুন migration লাগবে না।
+- প্রতিটা list 20 rows-এ সীমাবদ্ধ; total pending bills count item-এ tooltip-এ দেখাব।
+- ফরম্যাট: `৳1,23,456` (existing `fmt()` helper reuse)।
+- Loading skeleton, "কোনো বকেয়া নেই" empty state।
+- মোবাইলে compact: ফন্ট ছোট, padding কম, full-width single column।
