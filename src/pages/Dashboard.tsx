@@ -541,16 +541,18 @@ function DonutCard({ title, data }: { title: string; data: { name: string; value
         {total === 0 ? (
           <p className="py-12 text-center text-xs text-muted-foreground">কোনো ডেটা নেই</p>
         ) : (
-          <div className="flex items-center gap-2">
-            <ResponsiveContainer width="55%" height={180}>
-              <PieChart>
-                <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={38} outerRadius={70} paddingAngle={1}>
-                  {data.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
-            <ul className="flex-1 space-y-1 text-[11px] max-h-[180px] overflow-y-auto pr-1">
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="w-full sm:w-1/2 h-[160px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={36} outerRadius={66} paddingAngle={1}>
+                    {data.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <ul className="w-full sm:flex-1 space-y-1 text-[11px] max-h-[160px] overflow-y-auto pr-1">
               {data.map((d, i) => (
                 <li key={i} className="flex items-center gap-1.5 min-w-0">
                   <span className="h-2 w-2 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
@@ -728,7 +730,7 @@ const Dashboard = () => {
       </div>
 
       {/* Zone / Subzone donuts + Tickets/Tasks column + Monthly Problem donut */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <DonutCard title="জোন অনুযায়ী সমস্যা" data={d?.zoneDonut || []} />
         <DonutCard title="সাবজোন অনুযায়ী সমস্যা" data={d?.subzoneDonut || []} />
         <div className="grid grid-cols-2 gap-2">
