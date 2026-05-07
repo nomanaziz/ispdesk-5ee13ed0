@@ -529,6 +529,66 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
   );
 }
 
+// ─── Donut card (zone / subzone / problem type) ──
+function DonutCard({ title, data }: { title: string; data: { name: string; value: number }[] }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xs font-semibold text-foreground">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="px-3 pb-3">
+        {total === 0 ? (
+          <p className="py-12 text-center text-xs text-muted-foreground">কোনো ডেটা নেই</p>
+        ) : (
+          <div className="flex items-center gap-2">
+            <ResponsiveContainer width="55%" height={180}>
+              <PieChart>
+                <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={38} outerRadius={70} paddingAngle={1}>
+                  {data.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+            <ul className="flex-1 space-y-1 text-[11px] max-h-[180px] overflow-y-auto pr-1">
+              {data.map((d, i) => (
+                <li key={i} className="flex items-center gap-1.5 min-w-0">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  <span className="truncate text-muted-foreground flex-1" title={d.name}>{d.name}</span>
+                  <span className="font-semibold text-foreground tabular-nums">{d.value}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Ticket / Task tile (compact horizontal) ──
+const TICKET_TILE_TONES: Record<string, string> = {
+  rose: "bg-rose-500/10 text-rose-600 border-rose-500/20",
+  cyan: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20",
+  amber: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  violet: "bg-violet-500/10 text-violet-600 border-violet-500/20",
+};
+function TicketTile({ label, value, icon: Icon, tone, to, hint }: { label: string; value: string; icon: any; tone: string; to: string; hint?: string }) {
+  const cls = TICKET_TILE_TONES[tone] || TICKET_TILE_TONES.violet;
+  return (
+    <Link to={to} className={`flex items-center gap-3 rounded-xl border p-3 transition hover:shadow-md ${cls}`}>
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background/60">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-medium opacity-80 truncate">{label}</p>
+        <p className="text-lg font-bold leading-tight">{value}</p>
+        {hint && <p className="text-[10px] opacity-70 truncate">{hint}</p>}
+      </div>
+    </Link>
+  );
+}
+
 const Dashboard = () => {
   const { data: d, isLoading } = useStats();
 
