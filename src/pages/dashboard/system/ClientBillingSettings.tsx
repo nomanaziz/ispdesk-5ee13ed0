@@ -48,7 +48,7 @@ function Section({ title, info, children }: { title: string; info: string; child
     <div className="border rounded-lg overflow-hidden bg-card">
       <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium flex items-center justify-between gap-3">
         <span className="flex items-center gap-2"><Info className="h-4 w-4" /> {title}</span>
-        <span className="text-[10px] text-white/75 hidden sm:block">{info}</span>
+        <span className="text-[10px] text-primary-foreground/75 hidden sm:block">{info}</span>
       </div>
       <div className="p-5 space-y-3 bg-card">{children}</div>
     </div>
