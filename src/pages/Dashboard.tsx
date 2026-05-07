@@ -162,6 +162,30 @@ function useStats() {
         supabase.from("billing").select("client_id, status, due, amount, paid").eq("month", currentMonth),
       ]);
 
+      // ─── Extra parallel queries (added) ──────────────────────────────
+      const last12Start = new Date(now.getFullYear(), now.getMonth() - 11, 1).toISOString().slice(0, 10);
+      const last12StartMonth = last12Start.slice(0, 7);
+      const todayStart = `${today}T00:00:00`;
+      const [
+        portalActiveRes, portalInactiveRes,
+        ticketsOpenRes, ticketsTodayRes, ticketsResolvedTodayRes,
+        ticketsZoneOpenRes, ticketsSubzoneOpenRes,
+        zonesRes,
+        billing12Res, collect12Res,
+      ] = await Promise.all([
+        supabase.from("clients").select("id", { count: "exact", head: true }).ilike("billing_status", "Active"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).not("billing_status", "ilike", "Active"),
+        supabase.from("support_tickets").select("id", { count: "exact", head: true }).in("status", ["pending", "processing", "open"]),
+        supabase.from("support_tickets").select("id", { count: "exact", head: true }).gte("created_at", todayStart),
+        supabase.from("support_tickets").select("id", { count: "exact", head: true }).gte("solved_at", todayStart),
+        supabase.from("support_tickets").select("zone_id").in("status", ["pending", "processing", "open"]),
+        supabase.from("support_tickets").select("subzone").in("status", ["pending", "processing", "open"]),
+        supabase.from("zones").select("id, name"),
+        supabase.from("billing").select("amount, paid, due, status, month").gte("month", last12Start),
+        supabase.from("bill_collections").select("amount, created_at").eq("status", "approved").gte("created_at", `${last12Start}T00:00:00`),
+      ]);
+
+
       // Fetch client names for latest billing
       const latestInvoices: { bill_id: string; amount: number; client_name: string; status: string }[] = [];
       if (latestBilling.data) {
