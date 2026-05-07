@@ -172,6 +172,9 @@ function useStats() {
         ticketsZoneOpenRes, ticketsSubzoneOpenRes,
         zonesRes,
         billing12Res, collect12Res,
+        popClientsEnabledRes, popClientsDisabledRes,
+        ticketsCategoryMonthRes, ticketsSolverMonthRes,
+        employeesRes,
       ] = await Promise.all([
         supabase.from("clients").select("id", { count: "exact", head: true }).ilike("billing_status", "Active"),
         supabase.from("clients").select("id", { count: "exact", head: true }).not("billing_status", "ilike", "Active"),
@@ -183,7 +186,13 @@ function useStats() {
         supabase.from("zones").select("id, name"),
         supabase.from("billing").select("amount, paid, due, status, month").gte("month", last12Start),
         supabase.from("bill_collections").select("amount, created_at").eq("status", "approved").gte("created_at", `${last12Start}T00:00:00`),
+        supabase.from("clients").select("id", { count: "exact", head: true }).not("branch_id", "is", null).neq("mikrotik_status", "disabled"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).not("branch_id", "is", null).eq("mikrotik_status", "disabled"),
+        supabase.from("support_tickets").select("subject").gte("created_at", monthStart),
+        supabase.from("support_tickets").select("solved_by").gte("solved_at", monthStart).not("solved_by", "is", null),
+        supabase.from("employees").select("id, name"),
       ]);
+
 
 
       // Fetch client names for latest billing
@@ -355,6 +364,41 @@ function useStats() {
       }
       const topSubzone = Object.entries(ticketSubzoneCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
 
+      // ─── Donut chart data: open tickets by zone & subzone ──
+      const zoneDonut = Object.entries(ticketZoneCounts)
+        .sort((a, b) => b[1] - a[1]).slice(0, 10)
+        .map(([name, value]) => ({ name, value }));
+      const subzoneDonut = Object.entries(ticketSubzoneCounts)
+        .sort((a, b) => b[1] - a[1]).slice(0, 10)
+        .map(([name, value]) => ({ name, value }));
+
+      // ─── Monthly problem occurrence (by subject) ──
+      const categoryCounts: Record<string, number> = {};
+      for (const t of ticketsCategoryMonthRes.data ?? []) {
+        const k = ((t as any).subject || "অন্যান্য").toString().trim() || "অন্যান্য";
+        categoryCounts[k] = (categoryCounts[k] || 0) + 1;
+      }
+      const monthlyProblemDonut = Object.entries(categoryCounts)
+        .sort((a, b) => b[1] - a[1]).slice(0, 10)
+        .map(([name, value]) => ({ name, value }));
+
+      // ─── Most problem solver (by employee) ──
+      const empNameMap = new Map<string, string>((employeesRes.data ?? []).map((e: any) => [e.id, e.name]));
+      const solverCounts: Record<string, number> = {};
+      for (const t of ticketsSolverMonthRes.data ?? []) {
+        const id = (t as any).solved_by;
+        const name = empNameMap.get(id) || "অজানা";
+        solverCounts[name] = (solverCounts[name] || 0) + 1;
+      }
+      const solverChart = Object.entries(solverCounts)
+        .sort((a, b) => b[1] - a[1]).slice(0, 12)
+        .map(([name, value]) => ({ name, value }));
+
+      // POP enabled/disabled
+      const popEnabledClients = popClientsEnabledRes.count ?? 0;
+      const popDisabledClients = popClientsDisabledRes.count ?? 0;
+
+
       // ─── 12-month trend ──
       const billByMonth: Record<string, { bill: number; due: number }> = {};
       for (const b of billing12Res.data ?? []) {
@@ -462,6 +506,9 @@ function useStats() {
         topZone, topSubzone,
         topZoneEntries,
         trend12,
+        zoneDonut, subzoneDonut, monthlyProblemDonut, solverChart,
+        popEnabledClients, popDisabledClients,
+
       };
     },
     refetchInterval: 120000,
@@ -479,6 +526,66 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
         {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       </div>
     </div>
+  );
+}
+
+// ─── Donut card (zone / subzone / problem type) ──
+function DonutCard({ title, data }: { title: string; data: { name: string; value: number }[] }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xs font-semibold text-foreground">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="px-3 pb-3">
+        {total === 0 ? (
+          <p className="py-12 text-center text-xs text-muted-foreground">কোনো ডেটা নেই</p>
+        ) : (
+          <div className="flex items-center gap-2">
+            <ResponsiveContainer width="55%" height={180}>
+              <PieChart>
+                <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={38} outerRadius={70} paddingAngle={1}>
+                  {data.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+            <ul className="flex-1 space-y-1 text-[11px] max-h-[180px] overflow-y-auto pr-1">
+              {data.map((d, i) => (
+                <li key={i} className="flex items-center gap-1.5 min-w-0">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  <span className="truncate text-muted-foreground flex-1" title={d.name}>{d.name}</span>
+                  <span className="font-semibold text-foreground tabular-nums">{d.value}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Ticket / Task tile (compact horizontal) ──
+const TICKET_TILE_TONES: Record<string, string> = {
+  rose: "bg-rose-500/10 text-rose-600 border-rose-500/20",
+  cyan: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20",
+  amber: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  violet: "bg-violet-500/10 text-violet-600 border-violet-500/20",
+};
+function TicketTile({ label, value, icon: Icon, tone, to, hint }: { label: string; value: string; icon: any; tone: string; to: string; hint?: string }) {
+  const cls = TICKET_TILE_TONES[tone] || TICKET_TILE_TONES.violet;
+  return (
+    <Link to={to} className={`flex items-center gap-3 rounded-xl border p-3 transition hover:shadow-md ${cls}`}>
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background/60">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-medium opacity-80 truncate">{label}</p>
+        <p className="text-lg font-bold leading-tight">{value}</p>
+        {hint && <p className="text-[10px] opacity-70 truncate">{hint}</p>}
+      </div>
+    </Link>
   );
 }
 
@@ -612,6 +719,57 @@ const Dashboard = () => {
           />
         </div>
       </div>
+
+      {/* POP Hero Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <MetricTile label="মোট POP" value={num(d?.totalPopMgrs)} icon={Network} tone="violet" to="/dashboard/pop-management" />
+        <MetricTile label="মোট POP ক্লায়েন্ট" value={num(d?.popTotalClients)} icon={Users} tone="emerald" to="/dashboard/clients/home" />
+        <MetricTile label="সচল POP ক্লায়েন্ট" value={num(d?.popEnabledClients)} icon={UserCheck} tone="violet" to="/dashboard/clients/home?status=active" />
+        <MetricTile label="নিষ্ক্রিয় POP ক্লায়েন্ট" value={num(d?.popDisabledClients)} icon={UserX} tone="rose" to="/dashboard/clients/home?mikrotikStatus=disabled" />
+      </div>
+
+      {/* Zone / Subzone donuts + Tickets/Tasks column + Monthly Problem donut */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <DonutCard title="জোন অনুযায়ী সমস্যা" data={d?.zoneDonut || []} />
+        <DonutCard title="সাবজোন অনুযায়ী সমস্যা" data={d?.subzoneDonut || []} />
+        <div className="grid grid-cols-1 gap-2">
+          <TicketTile label="পেন্ডিং টিকেট" value={num(d?.pendingTickets)} icon={ClipboardList} tone="rose" to="/dashboard/support/tickets?status=pending" hint="যেগুলো এখনো শুরু হয়নি" />
+          <TicketTile label="প্রসেসিং টিকেট" value={num(d?.processingTickets)} icon={TicketCheck} tone="cyan" to="/dashboard/support/tickets?status=processing" hint="চলমান টিকেট" />
+          <TicketTile label="পেন্ডিং টাস্ক" value={num(d?.pendingTasks)} icon={ListTodo} tone="amber" to="/dashboard/tasks?status=pending" hint="অপেক্ষমাণ টাস্ক" />
+          <TicketTile label="প্রসেসিং টাস্ক" value={num(d?.processingTasks)} icon={Activity} tone="violet" to="/dashboard/tasks?status=processing" hint="চলমান টাস্ক" />
+        </div>
+        <DonutCard title="মাসিক সমস্যার ধরন" data={d?.monthlyProblemDonut || []} />
+      </div>
+
+      {/* Most Problem Solver */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Award className="h-4 w-4 text-emerald-500" />
+            সর্বোচ্চ সমস্যা সমাধানকারী
+            <span className="ml-auto text-[11px] font-normal text-muted-foreground">এই মাস</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-3 pb-3">
+          {(d?.solverChart ?? []).length === 0 ? (
+            <p className="py-12 text-center text-xs text-muted-foreground">এই মাসে কোনো সমাধান হয়নি</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(220, (d?.solverChart?.length || 0) * 28)}>
+              <BarChart data={d?.solverChart || []} layout="vertical" margin={{ left: 8, right: 24, top: 4, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={130} />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 12 }} />
+                <Bar dataKey="value" radius={[0, 6, 6, 0]} name="সমাধান">
+                  {(d?.solverChart || []).map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Traffic / chart (2/3) + Top Active Users (1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

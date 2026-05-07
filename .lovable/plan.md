@@ -1,51 +1,52 @@
-## Dashboard Redesign — Remove Duplicates, Add Real Insight
+## Add Reference-Style Dashboard Widgets
 
-### Problems in current `src/pages/Dashboard.tsx`
-- **Duplicate KPIs**: "অনলাইন ক্লায়েন্ট", "সচল ক্লায়েন্ট", "বন্ধ লাইন" appear in both the Hero row and the System Overview grid.
-- **Network info block**: shows POP / POP Manager / BW Reseller — user does not want this on the main dashboard.
-- **Top Active Users** card has no drill-down page.
-- **বকেয়া ক্লায়েন্ট** table is huge and dominates the page.
-- Missing: ticket synchronization (pending/active/zone/subzone hotspots) and 12-month trend.
+The reference image has a very specific 4-column layout. I'll match its pattern using existing tokens (no new colors).
 
-### Changes
+### Layout
 
-**1. Hero KPI Row (4 cards) — keep as the only place these appear**
-- মোট ক্লায়েন্ট · অনলাইন ব্যবহারকারী · সচল ক্লায়েন্ট · বন্ধ লাইন
+```
+Row 1 — POP hero (4 tiles, full width):
+[Total POP] [Total POP Clients] [Enabled POP Clients] [Disabled POP Clients]
 
-**2. System Overview grid — drop the duplicates**
-Remove: অনলাইন ক্লায়েন্ট, সচল ক্লায়েন্ট, বন্ধ লাইন, বকেয়া ক্লায়েন্ট (the last is in Action Required).
-Keep: এই মাসের সেল · আজকের সেল · বিলিং ক্লায়েন্ট · মেয়াদোত্তীর্ণ
-Add: **পোর্টাল অ্যাক্টিভ ইউজার** (clients with `billing_status = 'Active'` and a portal account) and **পোর্টাল ইনঅ্যাক্টিভ** — link to `/dashboard/clients/home?portal=active|inactive`.
+Row 2 — 4 columns:
+[Zone Wise Donut]  [Sub-Zone Donut]  [Ticket+Task tile column]  [Monthly Problem Donut]
 
-**3. Replace right-rail "নেটওয়ার্ক তথ্য" block** with **Support / Operations** info list:
-- পেন্ডিং টিকেট · অ্যাক্টিভ টিকেট · আজকের নতুন টিকেট · টপ সমস্যা জোন · টপ সমস্যা সাবজোন · SMS ব্যালেন্স
-Each row clickable → `/dashboard/support/tickets?status=…&zone=…`.
+Row 3 — 2 columns:
+[Most Problem Solver — horizontal bar]   [Monthly New Clients — bar (existing)]
+```
 
-**4. Top Active Users card → make clickable + new page**
-- Card heading link "সব দেখুন" → new route `/dashboard/monitoring/top-users`.
-- New page `src/pages/dashboard/monitoring/TopUsers.tsx`:
-  - Tabs: **এই মাস**, **গত মাস**, **২ মাস আগে** (only previous 2 months kept).
-  - Sortable table: Name, Username, Download, Upload, Total — default desc by download.
-  - Source: `client_traffic_monthly` (or whatever feeds existing `topDownloadersMonthly` query).
-- Wire the route in `src/App.tsx`.
+This row replaces the current right-rail "সাপোর্ট/অপারেশন" InfoList and the standalone "টপ অ্যাক্টিভ ব্যবহারকারী" card moves below the new rows. Hero KPI row + System Overview + Action Required + Finance + 12-month trend + বকেয়া list stay where they are.
 
-**5. Shrink the বকেয়া ক্লায়েন্ট table**
-- Move into a 2-column row with a new **১২-মাসের ট্রেন্ড** chart (line/area: monthly bill vs collection vs due). If <12 months data, start from first month.
-- Limit list to top 8 by due, add "সব দেখুন →" linking to existing billing page; remove the 96-row scroll area.
-- Compact row: single line `নাম · ৳বকেয়া` with right-aligned amount; no separate bill column.
+### Components
 
-**6. New "টিকেট সারাংশ" mini-section** (between Action Required and Finance):
-- 4 small tiles: ওপেন · ইন-প্রগ্রেস · আজ রিজলভড · গড় রেসপন্স টাইম
-- Mini bar showing top 5 zones by open ticket count.
+**POP hero tiles (`PopHeroCard`)** — 4 tiles using existing `MetricTile`-style colors (sky / teal / violet / slate via `bg-primary`, `bg-emerald-500/10`, etc.). Values:
+- Total POP = `branch_managers` count
+- Total POP Clients = clients with `branch_id IS NOT NULL` (already as `popTotalClients`)
+- Enabled = `popTotalClients - mikrotik_status='disabled' (POP)`
+- Disabled = `mikrotik_status='disabled'` among POP clients
 
-### Technical notes
-- Add queries for: portal active/inactive counts (`clients.portal_account_status` or join `portal_users`), tickets group by `zone_id` / `subzone_id`, monthly bill+collect aggregation for last 12 months.
-- Add `topDownloaders(monthOffset)` helper returning prev-month and 2-months-ago data for the new TopUsers page (cache by month key).
-- All new tiles use existing `MetricTile`, `KpiCard`, `InfoList`, `ResourceGauge`; no new design tokens.
-- Keep current theme/tokens — no color/style changes outside swapping which fields appear.
+**Zone donut** — recharts `PieChart` of open tickets grouped by `zone_id` (resolved to zone name). Shows top 8 + percentage labels, side legend (matches reference).
+
+**Sub-Zone donut** — same as above but `subzone` text column.
+
+**Ticket+Task column** — 4 stacked colored tiles: Pending Tickets, Processing Tickets, Pending Task, Processing Task (data already in `d`). Each row clickable.
+
+**Monthly Problem Occurrence donut** — group `support_tickets` by `subject` (or `category_id` if any) for current month, top 10 categories.
+
+**Most Problem Solver (horizontal bar)** — `support_tickets.solved_by` joined to `employees.name`, current month, top 12, recharts `BarChart layout="vertical"`.
+
+### New queries to add inside the existing `Promise.all`
+
+- `clients` count: `branch_id NOT NULL AND mikrotik_status != 'disabled'` → enabled POP clients
+- `clients` count: `branch_id NOT NULL AND mikrotik_status = 'disabled'` → disabled POP clients
+- `support_tickets.subject` rows for current month → category aggregation
+- `support_tickets.solved_by` rows for current month → solver aggregation
+- `employees(id, name)` → name lookup
+
+### Color palette (donuts/bars)
+Use a fixed 12-color HSL array tied to tokens-like hues (the existing `PIE_COLORS` constant is already defined at the top of the file). Reuse it.
 
 ### Files
-- edit `src/pages/Dashboard.tsx`
-- create `src/pages/dashboard/monitoring/TopUsers.tsx`
-- edit `src/App.tsx` (add route)
-- (maybe) edit `src/components/dashboard/InfoList.tsx` only if row-link support missing
+- edit `src/pages/Dashboard.tsx` (add queries + rebuild middle section JSX)
+
+No DB changes, no new routes, no new files.
