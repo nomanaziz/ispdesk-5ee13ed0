@@ -679,6 +679,69 @@ function TicketTile({ label, value, icon: Icon, tone, to, hint }: { label: strin
   );
 }
 
+// ─── Top-Due list card ─────────────────────────────
+const TOP_DUE_TONES: Record<string, { ring: string; text: string; bg: string }> = {
+  rose:    { ring: "ring-rose-500/30",    text: "text-rose-600",    bg: "bg-rose-500/10" },
+  amber:   { ring: "ring-amber-500/30",   text: "text-amber-600",   bg: "bg-amber-500/10" },
+  violet:  { ring: "ring-violet-500/30",  text: "text-violet-600",  bg: "bg-violet-500/10" },
+  cyan:    { ring: "ring-cyan-500/30",    text: "text-cyan-600",    bg: "bg-cyan-500/10" },
+};
+function TopDueListCard({
+  title, icon: Icon, tone, total, items, allHref, itemHref,
+}: {
+  title: string;
+  icon: any;
+  tone: keyof typeof TOP_DUE_TONES;
+  total: number;
+  items: { id: string; name: string; contact?: string; due: number }[];
+  allHref?: string;
+  itemHref?: (it: any) => string;
+}) {
+  const t = TOP_DUE_TONES[tone];
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xs font-semibold flex items-center gap-2">
+          <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${t.bg} ${t.text}`}>
+            <Icon className="h-3.5 w-3.5" />
+          </span>
+          <span className="truncate">{title}</span>
+          <span className={`ml-auto text-[11px] font-bold tabular-nums ${t.text}`}>৳{(total || 0).toLocaleString("en-IN")}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-2 pb-2">
+        {items.length === 0 ? (
+          <p className="py-8 text-center text-xs text-muted-foreground">কোনো বকেয়া নেই</p>
+        ) : (
+          <div className="divide-y divide-border max-h-[280px] overflow-y-auto">
+            {items.map((it, i) => {
+              const inner = (
+                <>
+                  <span className="text-[10px] text-muted-foreground tabular-nums w-5 shrink-0">#{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground truncate">{it.name}</p>
+                    {it.contact && <p className="text-[10px] text-muted-foreground truncate">{it.contact}</p>}
+                  </div>
+                  <span className={`text-xs font-bold tabular-nums shrink-0 ${t.text}`}>৳{it.due.toLocaleString("en-IN")}</span>
+                </>
+              );
+              const cls = "flex items-center gap-2 py-1.5 px-2 hover:bg-muted/40 rounded transition";
+              return itemHref ? (
+                <Link key={it.id || i} to={itemHref(it)} className={cls}>{inner}</Link>
+              ) : (
+                <div key={it.id || i} className={cls}>{inner}</div>
+              );
+            })}
+          </div>
+        )}
+        {allHref && items.length > 0 && (
+          <Link to={allHref} className="mt-2 block text-center text-[11px] text-primary hover:underline">সব দেখুন →</Link>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 const Dashboard = () => {
   const { data: d, isLoading } = useStats();
 
