@@ -95,8 +95,8 @@
     --accent: 224 18% 22%;
     --accent-foreground: 0 0% 100%;
 
-    --table-head: 224 35% 10%;
-    --table-head-foreground: 0 0% 100%;
+    --table-head: var(--primary);
+    --table-head-foreground: var(--primary-foreground);
     --table-row-alt: 224 20% 19%;
     --table-border: 224 18% 26%;
 
