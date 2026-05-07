@@ -337,7 +337,7 @@ export default function AccountingDashboard() {
       {!isLoading && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="overflow-hidden">
-            <div className="bg-gradient-to-r from-sky-500 to-sky-600 text-white text-center py-2 font-semibold tracking-wide text-sm">
+            <div className="bg-primary text-primary-foreground text-center py-2 font-semibold tracking-wide text-sm">
               LATEST INCOMES
             </div>
             <div className="overflow-x-auto">
@@ -364,7 +364,7 @@ export default function AccountingDashboard() {
             </div>
           </Card>
           <Card className="overflow-hidden">
-            <div className="bg-gradient-to-r from-sky-500 to-sky-600 text-white text-center py-2 font-semibold tracking-wide text-sm">
+            <div className="bg-primary text-primary-foreground text-center py-2 font-semibold tracking-wide text-sm">
               LATEST EXPENSES
             </div>
             <div className="overflow-x-auto">
