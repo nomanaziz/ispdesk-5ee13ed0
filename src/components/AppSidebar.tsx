@@ -769,19 +769,21 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
         {effectiveOpen ? <ChevronDown className="h-3 w-3 opacity-60" /> : <ChevronRight className="h-3 w-3 opacity-60" />}
       </button>
       {effectiveOpen && (
-        <div className="mx-2 mt-0.5 space-y-0.5">
+        <div className="relative ml-7 mr-2 mt-1 mb-1 pl-4 border-l border-sidebar-border/70 space-y-0.5">
           {group.items.map((item) => {
             const isActive = item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url);
             const count = badges?.[item.url] || 0;
+            const Icon = item.icon;
             return (
               <NavLink key={item.url} to={item.url}
                 className={cn(
-                  "relative flex items-center gap-2.5 px-3 py-[7px] text-[13px] rounded-lg transition-colors ml-3",
+                  "group/sub relative flex items-center gap-2.5 px-3 py-[7px] text-[13px] rounded-md transition-colors",
+                  "before:absolute before:left-[-16px] before:top-1/2 before:-translate-y-1/2 before:w-3 before:h-px before:bg-sidebar-border/70",
                   isActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium shadow-sm"
-                    : "text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    ? "bg-sidebar-accent text-sidebar-foreground font-semibold after:absolute after:left-[-17px] after:top-1.5 after:bottom-1.5 after:w-[2px] after:rounded-full after:bg-sidebar-primary before:bg-sidebar-primary"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}>
-                <MenuIconTile icon={item.icon} tint={tintForLabel(group.label)} active={isActive} size="sm" icons8={icons8ForItem(item.url, item.title, group.label)} customIcon={hishabeeForItem(item.url, item.title, group.label)} />
+                <Icon className={cn("h-4 w-4 shrink-0", isActive ? "opacity-100" : "opacity-70")} strokeWidth={2} />
                 <span className="flex-1 truncate">{tr(item.title, lang)}</span>
                 {count > 0 && (
                   <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">

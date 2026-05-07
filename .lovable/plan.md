@@ -1,77 +1,57 @@
+# Sidebar — Parent vs Sub-menu Clarity + Remove Icon Packs
+
+## Problem
+1. সাইডবারে main group (parent) আর sub-menu visually মিলে যাচ্ছে — কোনটা parent কোনটা child বোঝা যায় না।
+2. Icons8 / Hishabee free icon pack এখনও sidebar-এ ব্যবহার হচ্ছে — চাই না।
+
 ## Goal
+- প্রতিটা open group-এর sub-items এর বাঁ পাশে একটা সরু vertical "guide rail" (lamp/line) দেখাবে, যাতে sub-menu গুলো parent-এর under এ visually nest হয়ে আছে — পরিষ্কার বোঝা যায়।
+- Active sub-item-এর সাথে rail-এ একটা ছোট হাইলাইট segment (টান) — current item কোথায় আছে সেটাও বোঝা যায়।
+- Sub-item icon tile, Icons8 PNG, এবং Hishabee SVG illustration — সব sidebar থেকে remove। শুধু lucide icon, ছোট আকারে।
+- Parent (group header) আগের মতই uppercase + bold থাকবে; সামান্য বড় font/weight দিয়ে hierarchy আরো জোর হবে।
 
-Make every page in the app look like it came from the same designer:
-- One table style everywhere (dark header + zebra rows + same border/radius)
-- One button size system (no random `h-8`, `h-9`, `h-10`, `h-11` mixed)
-- One page header pattern (title + description + action area)
-- One filter card pattern
-- No more random violet/blue/black/rounded variations
+## Changes
 
-No data, schema, or routes change — only UI components and class cleanup.
+### 1. `src/components/AppSidebar.tsx` — `CollapsibleGroup` expanded sub-items block (lines 771–795)
+- `<div className="mx-2 mt-0.5 space-y-0.5">` কে relative wrapper বানাব এবং বাঁ পাশে একটা continuous vertical rail যোগ করব:
+  ```
+  <div className="relative ml-5 mt-1 pl-4 border-l border-sidebar-border/70">
+    {group.items.map(...)}
+  </div>
+  ```
+- প্রতিটা sub-item `<NavLink>`-এ:
+  - বাঁ পাশে ছোট horizontal "tick" connector: `before:absolute before:left-[-16px] before:top-1/2 before:w-3 before:h-px before:bg-sidebar-border/70`
+  - Active হলে rail-এ vertical highlight segment + tick উজ্জ্বল হবে: `after:absolute after:left-[-17px] after:top-1 after:bottom-1 after:w-[2px] after:rounded-full after:bg-sidebar-primary`
+  - `MenuIconTile` সরিয়ে plain lucide icon: `<item.icon className="h-4 w-4 shrink-0 opacity-70" />`
+  - Active state-এ background আরো subtle: `bg-sidebar-accent text-sidebar-foreground font-medium` (আগে ছিল `bg-sidebar-primary` — সেটা parent-only রঙ থাকবে যাতে hierarchy আলাদা থাকে)। Active accent-এর বদলে subtle highlight।
 
----
+### 2. Parent group header (lines 753–770) — slight emphasis bump
+- Font: `text-[13px]` → `text-[12.5px] font-bold` রাখা, কিন্তু `text-sidebar-foreground` (full opacity) সবসময়, যাতে sub-menu-এর `text-sidebar-foreground/80` থেকে আলাদা দেখায়।
+- `MenuIconTile` parent-এ থাকবে (filled tinted tile) — parent-এর identity tile-ই বহন করবে; sub-menu plain icon।
 
-## What will change
+### 3. Direct (no children) groups — line 704–724
+- কোনো পরিবর্তন দরকার নেই, parent-style হিসেবে already render হয়।
 
-### 1. Single table style — `src/components/ui/table.tsx`
-Already has `--table-head` (dark slate) + `--table-row-alt` zebra. But many pages bypass it by adding `bg-primary` / `bg-blue-*` / custom header rows. The `<TableRow>` inside `<TableHeader>` will be forced to **inherit** the dark head color (no overrides). I'll:
-- Remove the custom `bg-primary` header row in `ReportLayout.tsx` so it uses the global dark head (matches screenshot 2).
-- Add a small CSS rule: `thead tr { background: transparent !important }` so any `bg-primary`/`bg-blue` accidentally set by pages is neutralized.
-- Tables always wrapped: `border rounded-lg overflow-hidden` (one radius — `rounded-lg`, never `rounded-2xl`/`rounded-xl`).
+### 4. Remove icon-pack usage from sidebar
+- `MenuIconTile` কে sub-items থেকে সরানো হচ্ছে (১ এ বর্ণিত)।
+- Parent tile (`MenuIconTile`) থেকে `icons8` ও `customIcon` props বাদ দেব — শুধু `icon` + `tint` pass হবে। কারণ user "free icon pack" চায় না।
+  - Lines 693, 715, 740, 762: `icons8={...}` এবং `customIcon={...}` props remove।
+- Imports cleanup: top-of-file `ICONS8_BY_*`, `HISHABEE_BY_*` maps এবং helper functions (`icons8ForItem`, `icons8ForGroup`, `hishabeeForItem`, `hishabeeForGroup`) ব্যবহার হবে না — remove করব।
 
-### 2. Single button size system — `src/components/ui/button.tsx`
-Current sizes: `default h-10`, `sm h-9`, `lg h-11`, `icon h-10`. The codebase mixes them randomly (toolbars use `h-8`, `h-9`, `h-10` side-by-side).
+### 5. `MenuIconTile.tsx` — small cleanup
+- `icons8` ও `customIcon` props internally optional হলেও সরিয়ে দেব এবং সংশ্লিষ্ট `Icons8Icon`/`HishabeeIcon` import গুলোও remove। শুধু lucide-tinted-tile path থাকবে।
 
-Standardize to **3 sizes only**, used consistently:
-- `default` → `h-9 px-4` (primary action — "Add", "Save", "Apply")
-- `sm` → `h-8 px-3 text-xs` (toolbar / table-row actions)
-- `icon` → `h-9 w-9` (icon-only)
-- `lg` kept but unused in CRUD pages.
+## Out of Scope
+- Portal sidebar (`PortalLayout.tsx`) — user just dashboard sidebar এর কথা বলেছে, কিন্তু consistency জন্য পরে আলাদা request এ করা যাবে।
+- Color tokens / theme changes — already finalized, untouched।
+- Collapsed (mini) sidebar — sub-items hidden; কোনো rail দরকার নেই, untouched।
 
-All `<Input>` and `<Select>` triggers will also default to `h-9` so toolbars line up with buttons (already the shadcn default — verify and fix the few places that set `h-8`/`h-10` inline).
-
-### 3. Single page header — `src/components/common/PageHeader.tsx`
-Drop the Icons8 dependency (faster, removes inconsistent illustrations). New header = lucide icon chip + title + description + right-aligned actions, identical on every page. Pages currently rolling their own header (e.g. `PopActivityLog`, `PopBillPeriod`, `PopProcessingFee`, `PopPaymentGateways`, `PopPeriodSetup`) will switch to `<PageHeader>`.
-
-### 4. Single CRUD page shell — `src/components/config/ConfigCrudPage.tsx`
-Currently uses `<Card>`+`<CardHeader>`+custom search bar. Refactor to:
-- Use `<PageHeader>` at top (title + "+ নতুন যোগ করুন" action).
-- Toolbar row (search + bulk actions) using the standardized `h-9` controls.
-- Table block: `border rounded-lg overflow-hidden`, no inner card padding.
-- Action column: only `<Button size="icon" variant="ghost" className="h-8 w-8">` — same everywhere (Edit + Delete).
-
-This component is used by ~30 config pages, so fixing it propagates instantly.
-
-### 5. Single report shell — `src/components/reports/ReportLayout.tsx`
-- Filter banner: change from violet `bg-primary` strip to the same dark slate as table head (`bg-[hsl(var(--table-head))]`) — one tone everywhere (matches screenshot 1's request).
-- Remove the custom `<TableRow className="bg-primary hover:bg-primary">` — let the global dark `<TableHeader>` style win.
-- Export buttons (PDF/CSV/Excel) use `size="sm"` — already correct.
-- Pagination buttons use `size="sm"` — already correct.
-
-### 6. Class cleanups (sweep)
-A targeted ripgrep + edit pass through `src/pages/**` and `src/components/**` to remove these inconsistencies:
-- `bg-primary`, `bg-blue-*`, `bg-slate-900` applied to `<TableHeader>`/`<TableRow>` inside thead → removed.
-- `rounded-2xl`, `rounded-xl` on table/card containers → `rounded-lg`.
-- Random `h-8`/`h-10`/`h-11` on Buttons → `size="sm"` or default.
-- Inline `text-blue-600`, `text-purple-600` on table headers → removed (inherits white).
-
-Targeted files (highest impact, from rg results):
-`Dashboard.tsx`, `ResellerTickets`, `ResellerInvoices`, `ResellerInvoiceDetail`, `ResellerMikrotikUsers`, `ResellerUsers`, `PopOnlineMonitoring`, `PopActivityLog`, `PopBillPeriod`, `PopPaymentGateways`, `PopPeriodSetup`, `PopProcessingFee`, `PopAutomaticProcess`, `PopSmsTemplates`, `PopSmsGateway`, `PopSmsIndividual`, `PopBulkClientImport`, `PopIncome`, `PopExpense`, `PopCashBook`, `PopPackages`, `PopAllotedAreas`, `BwPanelMikrotikServers`, `BwPurchaseOrders`, `dashboard/support/*`, `dashboard/website/*`, `dashboard/hr/*`, `dashboard/sms/*`, `dashboard/purchases/*`, `dashboard/accounting/*`, `dashboard/system/*`, `dashboard/clients/*`, `dashboard/assets/*`, `dashboard/access/*`, `dashboard/reports/*`, `BwInvoiceDetailDialog`, `PgwFundDialog`.
-
-### 7. Files NOT touched
-- Database, RLS, edge functions, routes, business logic — none.
-- Mobile shell (`src/components/mobile/*`) — has its own design system on purpose.
-- Public marketing site (`src/pages/public/*`) — separate visual language.
-
----
-
-## Acceptance criteria
-
-After approval the user should see:
-- Every table on `/dashboard/...`, `/pop-admin/...`, `/portal/...`, `/bw/...` admin pages has the same dark head, same zebra rows, same border, same `rounded-lg` corners.
-- Every "Add / Save / Apply / Cancel" button is the same height (h-9). Every toolbar icon button is h-8 w-8.
-- Every page header looks identical: lucide icon chip + bold title + muted description + right-side actions.
-- Filter banner color matches table head color (no more violet strip + dark head mismatch).
-- No page uses `rounded-2xl` or `bg-primary` on a table.
-
-Total files touched: ~50 (mostly small className edits). Two component files (`table.tsx`, `button.tsx`) and three layout files (`PageHeader.tsx`, `ConfigCrudPage.tsx`, `ReportLayout.tsx`) carry most of the change.
+## Visual Result (ASCII)
+```
+[●] OLT ম্যানেজমেন্ট           ← parent: tinted tile + bold uppercase
+ │
+ ├─ ◌ OLT / ONU ওভারভিউ        ← sub: lucide icon + tick
+ ├─ ◌ OLT ডিভাইস
+ ├─■ OLT Power Dashboard       ← active: rail segment হাইলাইট
+ └─ ◌ ONU তালিকা
+```
