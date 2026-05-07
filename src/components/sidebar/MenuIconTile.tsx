@@ -1,7 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { HishabeeIcon, hasHishabeeIcon } from "@/components/icons/HishabeeIcon";
-import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
 
 export type Tint =
   | "rose" | "orange" | "amber" | "yellow" | "lime"
@@ -9,8 +7,6 @@ export type Tint =
   | "blue" | "indigo" | "violet" | "purple" | "fuchsia"
   | "pink" | "slate" | "zinc" | "stone" | "red";
 
-// Bright filled tile (light mode) + softer tinted tile (dark mode).
-// Active state is slightly stronger.
 const TINT_BG: Record<Tint, string> = {
   rose: "bg-rose-500 dark:bg-rose-500/20 dark:text-rose-300",
   orange: "bg-orange-500 dark:bg-orange-500/20 dark:text-orange-300",
@@ -34,7 +30,6 @@ const TINT_BG: Record<Tint, string> = {
   red: "bg-red-500 dark:bg-red-500/20 dark:text-red-300",
 };
 
-// Map existing Bangla group labels (and a few keywords) to a tint.
 const LABEL_TINT: Record<string, Tint> = {
   "ড্যাশবোর্ড": "indigo",
   "ওয়েবসাইট প্যানেল": "sky",
@@ -75,72 +70,20 @@ interface MenuIconTileProps {
   active?: boolean;
   size?: "sm" | "md";
   className?: string;
-  /**
-   * Optional Icons8 PNG name (highest priority). Falls back to hishabee → lucide.
-   */
-  icons8?: string | null;
-  /**
-   * Optional Hishabee illustration name (e.g. "home", "purchase", "sell").
-   */
-  customIcon?: string | null;
 }
 
-/**
- * Colorful rounded-square tile that wraps a Lucide icon.
- * Light mode: filled bright bg + white icon.
- * Dark mode: tinted soft bg + tinted icon.
- */
 export function MenuIconTile({
   icon: Icon,
   tint = "slate",
   active = false,
   size = "md",
   className,
-  icons8,
-  customIcon,
 }: MenuIconTileProps) {
-  const useIcons8 = hasIcons8Icon(icons8);
-  const useCustom = !useIcons8 && hasHishabeeIcon(customIcon);
   const dims =
     size === "sm"
       ? "w-5 h-5 rounded-[6px]"
       : "w-6 h-6 rounded-[7px]";
   const iconSize = size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
-  const customPx = size === "sm" ? 16 : 20;
-
-  if (useIcons8) {
-    return (
-      <span
-        className={cn(
-          "inline-flex items-center justify-center shrink-0 transition-all",
-          dims,
-          "bg-transparent",
-          active && "scale-[1.08]",
-          className,
-        )}
-        aria-hidden="true"
-      >
-        <Icons8Icon name={icons8!} size={customPx + 2} interactive={false} />
-      </span>
-    );
-  }
-
-  if (useCustom) {
-    return (
-      <span
-        className={cn(
-          "inline-flex items-center justify-center shrink-0 transition-all",
-          dims,
-          "bg-muted/60 dark:bg-white/5",
-          active && "shadow-sm scale-[1.05] bg-muted dark:bg-white/10",
-          className,
-        )}
-        aria-hidden="true"
-      >
-        <HishabeeIcon name={customIcon!} size={customPx} />
-      </span>
-    );
-  }
 
   return (
     <span

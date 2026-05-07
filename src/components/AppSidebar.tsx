@@ -26,82 +26,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
-import { ICONS8_BY_URL, ICONS8_BY_TITLE, ICONS8_BY_LABEL } from "@/lib/iconResolver";
-
-function icons8ForItem(url: string, title: string, groupLabel?: string): string | undefined {
-  return (
-    ICONS8_BY_URL[url] ??
-    ICONS8_BY_TITLE[title] ??
-    (groupLabel ? ICONS8_BY_LABEL[groupLabel] : undefined)
-  );
-}
-function icons8ForGroup(label: string): string | undefined {
-  return ICONS8_BY_LABEL[label];
-}
 
 interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
 interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
 
-// Map a sidebar URL or group label to a Hishabee illustration name.
-// Only confident matches; everything else falls back to lucide+tint.
-const HISHABEE_BY_URL: Record<string, string> = {
-  "/dashboard": "home",
-  "/dashboard/billing-overview": "business-overview",
-  "/dashboard/olt-overview": "business-overview",
-};
-const HISHABEE_BY_LABEL: Record<string, string> = {
-  "ড্যাশবোর্ড": "home",
-  "ক্রয়": "purchase",
-  "বিক্রয় ও সার্ভিস": "sell",
-  "ব্যান্ডউইথ ক্রয়": "purchase-list",
-  "ইনভেন্টরি": "stock-management",
-  "অ্যাকাউন্টিং": "transaction",
-  "রিপোর্ট": "business-overview",
-  "SMS সার্ভিস": "sms-marketing",
-  "সাপোর্ট ও টিকেটিং": "contact",
-  "HR ও পেরোল": "access-management",
-  "সিস্টেম": "access-management",
-  "ই-কমার্স": "online-shop",
-};
-const HISHABEE_BY_TITLE: Record<string, string> = {
-  "ড্যাশবোর্ড": "home",
-  "ক্যাশবক্স": "cashbox",
-  "এক্সপেন্স": "expense",
-  "খরচ": "expense",
-  "বকেয়া": "due",
-  "লেনদেন": "transaction",
-  "প্রোডাক্ট": "product-list",
-  "পণ্য তালিকা": "product-list",
-  "স্টক": "stock-management",
-  "প্রিন্টার": "printer",
-  "SMS মার্কেটিং": "sms-marketing",
-  "অনলাইন শপ": "online-shop",
-  "ই-কমার্স": "online-shop",
-  "ট্রেনিং": "training",
-  "ওয়ারেন্টি": "warranty",
-  "রিসাইকেল বিন": "recycle-bin",
-  "মেয়াদোত্তীর্ণ": "expired",
-  "সাবস্ক্রিপশন": "buy-subscription",
-  "কুইক সেল": "quick-sell",
-  "দ্রুত বিক্রয়": "quick-sell",
-  "ক্রয় তালিকা": "purchase-list",
-  "কেনার তালিকা": "purchase-list",
-  "বিজনেস ওভারভিউ": "business-overview",
-  "কোম্পানি ওভারভিউ": "business-overview",
-  "কন্টাক্ট": "contact",
-  "যোগাযোগ": "contact",
-};
-
-function hishabeeForItem(url: string, title: string, groupLabel?: string): string | undefined {
-  return (
-    HISHABEE_BY_URL[url] ??
-    HISHABEE_BY_TITLE[title] ??
-    (groupLabel ? HISHABEE_BY_LABEL[groupLabel] : undefined)
-  );
-}
-function hishabeeForGroup(label: string): string | undefined {
-  return HISHABEE_BY_LABEL[label];
-}
 
 // Rainbow candy-tone color per group label. Light: -600, Dark: -400 for readability.
 const GROUP_COLORS: Record<string, string> = {
@@ -690,7 +618,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
             )}
             title={groupLabel}
           >
-            <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} icons8={icons8ForItem(primaryItem.url, primaryItem.title, group.label)} customIcon={hishabeeForItem(primaryItem.url, primaryItem.title, group.label)} />
+            <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} />
             {groupBadgeCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                 {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
@@ -712,7 +640,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
               : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           )}
         >
-          <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} icons8={icons8ForItem(primaryItem.url, primaryItem.title, group.label)} customIcon={hishabeeForItem(primaryItem.url, primaryItem.title, group.label)} />
+          <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} />
           <span className="flex-1 truncate">{groupLabel}</span>
           {groupBadgeCount > 0 && (
             <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
@@ -737,7 +665,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
                   ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
                   : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )} title={groupLabel}>
-              <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} icons8={icons8ForGroup(group.label)} customIcon={hishabeeForGroup(group.label)} />
+              <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} />
               {groupBadgeCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                   {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
@@ -759,7 +687,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
             ? "text-sidebar-foreground before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:bg-sidebar-primary"
             : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
         )} style={{ width: "calc(100% - 16px)" }}>
-        <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActiveGroup} icons8={icons8ForGroup(group.label)} customIcon={hishabeeForGroup(group.label)} />
+        <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActiveGroup} />
         <span className="flex-1 text-left truncate">{groupLabel}</span>
         {groupBadgeCount > 0 && !effectiveOpen && (
           <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
@@ -769,19 +697,21 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
         {effectiveOpen ? <ChevronDown className="h-3 w-3 opacity-60" /> : <ChevronRight className="h-3 w-3 opacity-60" />}
       </button>
       {effectiveOpen && (
-        <div className="mx-2 mt-0.5 space-y-0.5">
+        <div className="relative ml-7 mr-2 mt-1 mb-1 pl-4 border-l border-sidebar-border/70 space-y-0.5">
           {group.items.map((item) => {
             const isActive = item.url === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(item.url);
             const count = badges?.[item.url] || 0;
+            const Icon = item.icon;
             return (
               <NavLink key={item.url} to={item.url}
                 className={cn(
-                  "relative flex items-center gap-2.5 px-3 py-[7px] text-[13px] rounded-lg transition-colors ml-3",
+                  "group/sub relative flex items-center gap-2.5 px-3 py-[7px] text-[13px] rounded-md transition-colors",
+                  "before:absolute before:left-[-16px] before:top-1/2 before:-translate-y-1/2 before:w-3 before:h-px before:bg-sidebar-border/70",
                   isActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium shadow-sm"
-                    : "text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    ? "bg-sidebar-accent text-sidebar-foreground font-semibold after:absolute after:left-[-17px] after:top-1.5 after:bottom-1.5 after:w-[2px] after:rounded-full after:bg-sidebar-primary before:bg-sidebar-primary"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 )}>
-                <MenuIconTile icon={item.icon} tint={tintForLabel(group.label)} active={isActive} size="sm" icons8={icons8ForItem(item.url, item.title, group.label)} customIcon={hishabeeForItem(item.url, item.title, group.label)} />
+                <Icon className={cn("h-4 w-4 shrink-0", isActive ? "opacity-100" : "opacity-70")} strokeWidth={2} />
                 <span className="flex-1 truncate">{tr(item.title, lang)}</span>
                 {count > 0 && (
                   <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
