@@ -92,8 +92,8 @@ export default function Expense() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">ব্যয়</h1>
-          <p className="text-muted-foreground text-sm">সকল ব্যয়ের এন্ট্রি</p>
+          <h1 className="text-lg font-bold tracking-tight text-foreground">ব্যয়</h1>
+          <p className="text-xs text-muted-foreground">সকল ব্যয়ের এন্ট্রি</p>
         </div>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditId(null); setForm(defaultForm); } }}>
           <DialogTrigger asChild>

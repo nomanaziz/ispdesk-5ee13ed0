@@ -222,7 +222,7 @@ export default function AccountingDashboard() {
             <BookOpen className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Accounting Dashboard</h1>
+            <h1 className="text-lg font-bold tracking-tight text-foreground">Accounting Dashboard</h1>
             <p className="text-xs text-muted-foreground">আর্থিক সারসংক্ষেপ — {range.from} → {range.to}</p>
           </div>
         </div>
@@ -242,7 +242,7 @@ export default function AccountingDashboard() {
           {preset === "custom" && (
             <>
               <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-[150px]" />
-              <span className="text-muted-foreground text-sm">to</span>
+              <span className="text-xs text-muted-foreground">to</span>
               <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-[150px]" />
             </>
           )}
@@ -337,7 +337,7 @@ export default function AccountingDashboard() {
       {!isLoading && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="overflow-hidden">
-            <div className="bg-gradient-to-r from-sky-500 to-sky-600 text-white text-center py-2 font-semibold tracking-wide text-sm">
+            <div className="bg-primary text-primary-foreground text-center py-2 font-semibold tracking-wide text-sm">
               LATEST INCOMES
             </div>
             <div className="overflow-x-auto">
@@ -364,7 +364,7 @@ export default function AccountingDashboard() {
             </div>
           </Card>
           <Card className="overflow-hidden">
-            <div className="bg-gradient-to-r from-sky-500 to-sky-600 text-white text-center py-2 font-semibold tracking-wide text-sm">
+            <div className="bg-primary text-primary-foreground text-center py-2 font-semibold tracking-wide text-sm">
               LATEST EXPENSES
             </div>
             <div className="overflow-x-auto">

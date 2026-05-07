@@ -25,8 +25,8 @@ export default function Balances() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">অ্যাকাউন্ট ব্যালেন্স</h1>
-        <p className="text-muted-foreground text-sm">সকল অ্যাকাউন্টের বর্তমান ব্যালেন্স</p>
+        <h1 className="text-lg font-bold tracking-tight text-foreground">অ্যাকাউন্ট ব্যালেন্স</h1>
+        <p className="text-xs text-muted-foreground">সকল অ্যাকাউন্টের বর্তমান ব্যালেন্স</p>
       </div>
 
       {isLoading ? <Skeleton className="h-40 w-full" /> : Object.entries(grouped).map(([type, accts]) => {

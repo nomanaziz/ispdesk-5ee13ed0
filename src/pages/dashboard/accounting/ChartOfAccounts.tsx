@@ -221,11 +221,11 @@ export default function ChartOfAccounts() {
         <div className="flex items-center gap-2">
           <BookOpen className="h-6 w-6 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">Chart of Accounts</h1>
+            <h1 className="text-lg font-bold tracking-tight text-foreground">Chart of Accounts</h1>
             <p className="text-xs text-muted-foreground">সকল অ্যাকাউন্টের তালিকা ও শ্রেণীবিভাগ</p>
           </div>
         </div>
-        <Button onClick={() => openCreate()} className="gap-1">
+        <Button size="sm" onClick={() => openCreate()} className="gap-1">
           <Plus className="h-4 w-4" /> Create New Account
         </Button>
       </div>
@@ -254,9 +254,9 @@ export default function ChartOfAccounts() {
               type="button"
               onClick={() => setActiveTab(t.value)}
               className={cn(
-                "rounded-full border h-11 px-4 text-sm font-medium transition-all",
+                "rounded-full border h-9 px-4 text-sm font-medium transition-all",
                 isActive
-                  ? "bg-slate-800 text-white border-slate-800 shadow"
+                  ? "bg-primary text-primary-foreground border-primary shadow"
                   : "bg-background text-foreground hover:bg-muted border-border",
               )}
             >
@@ -276,7 +276,7 @@ export default function ChartOfAccounts() {
           {grouped.map(([subtype, items]) => (
             <Card key={subtype} className="overflow-hidden border-border">
               {/* Section header (dark band) */}
-              <div className="flex items-center justify-between bg-slate-800 text-white px-4 py-2.5">
+              <div className="flex items-center justify-between bg-primary text-primary-foreground px-4 py-2.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <span>{subtype}</span>
                   <Info className="h-3.5 w-3.5 opacity-60" />
@@ -284,7 +284,7 @@ export default function ChartOfAccounts() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-white hover:bg-white/10 gap-1"
+                  className="h-7 text-primary-foreground hover:bg-primary-foreground/10 gap-1"
                   onClick={() => openCreate(subtype)}
                 >
                   <Plus className="h-3.5 w-3.5" /> Create New Account
