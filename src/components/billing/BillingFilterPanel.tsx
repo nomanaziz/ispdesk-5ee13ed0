@@ -145,22 +145,28 @@ export default function BillingFilterPanel({ filters, onChange, onReset }: Props
   return (
     <div className="space-y-3">
       {/* Search + Toggle */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex-1 min-w-[220px] max-w-xs">
+          <label className="text-xs font-semibold text-foreground mb-1 block">সার্চ</label>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="ID / নাম / মোবাইল"
+              className="pl-9 h-9 text-sm"
+              value={filters.search}
+              onChange={(e) => set("search", e.target.value)}
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-foreground mb-1 block">মাস</label>
           <Input
-            placeholder="সার্চ (ID/নাম/মোবাইল)"
-            className="pl-9"
-            value={filters.search}
-            onChange={(e) => set("search", e.target.value)}
+            type="month"
+            value={filters.month}
+            onChange={(e) => set("month", e.target.value)}
+            className="w-44 h-9 text-sm"
           />
         </div>
-        <Input
-          type="month"
-          value={filters.month}
-          onChange={(e) => set("month", e.target.value)}
-          className="w-44"
-        />
         <Button
           size="sm"
           onClick={() => setExpanded(!expanded)}
