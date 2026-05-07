@@ -297,8 +297,10 @@ export default function AddClient() {
         address: form.address, zone_id: form.zone_id || null, sub_zone_id: form.sub_zone_id || null,
         connection_type: form.connection_type || null, client_type: form.client_type || null,
         package_id: form.package_id || null, monthly_bill: form.billing_status === "Active" ? (form.monthly_bill || 0) : 0,
-        mikrotik_id: form.mikrotik_id || null, username: form.username || null,
-        password: form.password || null, remote_address: form.remote_address || null,
+        mikrotik_id: form.mikrotik_id || null,
+        username: form.protocol_type === "Static" ? null : (form.username || null),
+        password: form.protocol_type === "Static" ? null : (form.password || null),
+        remote_address: form.protocol_type === "Static" ? null : (form.remote_address || null),
         mac_address: form.mac_address || null, protocol_type: form.protocol_type || null,
         profile: form.profile || null, billing_status: form.billing_status || "Active",
         server_name: form.server_name || null, gender: form.gender || null,
@@ -327,10 +329,10 @@ export default function AddClient() {
         company_name: form.client_type === "Corporate" ? (form.company_name || null) : null,
         trade_license_no: form.client_type === "Corporate" ? (form.trade_license_no || null) : null,
         contact_person: form.client_type === "Corporate" ? (form.contact_person || null) : null,
-        static_ip: form.client_type === "Corporate" ? (form.static_ip || null) : null,
+        static_ip: (form.client_type === "Corporate" || form.protocol_type === "Static") ? (form.static_ip || null) : null,
         routing_protocol: form.client_type === "Corporate" ? (form.routing_protocol || null) : null,
         bgp_as_number: form.client_type === "Corporate" ? (form.bgp_as_number || null) : null,
-        peer_ip: form.client_type === "Corporate" ? (form.peer_ip || null) : null,
+        peer_ip: (form.client_type === "Corporate" || form.protocol_type === "Static") ? (form.peer_ip || null) : null,
         bandwidth_committed_mbps: form.client_type === "Corporate" && form.bandwidth_committed_mbps ? Number(form.bandwidth_committed_mbps) : null,
         bandwidth_burst_mbps: form.client_type === "Corporate" && form.bandwidth_burst_mbps ? Number(form.bandwidth_burst_mbps) : null,
         sla_uptime_percent: form.client_type === "Corporate" && form.sla_uptime_percent ? Number(form.sla_uptime_percent) : null,
@@ -866,18 +868,49 @@ export default function AddClient() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>ইউজারনেম/IP *</Label>
-            <Input value={form.username} onChange={e => setField("username", e.target.value)} />
-          </div>
-          <div>
-            <Label>রিমোট অ্যাড্রেস</Label>
-            <Input value={form.remote_address} onChange={e => setField("remote_address", e.target.value)} />
-          </div>
-          <div>
-            <Label>পাসওয়ার্ড *</Label>
-            <Input value={form.password} onChange={e => setField("password", e.target.value)} />
-          </div>
+          {form.protocol_type === "Static" ? (
+            <>
+              <div>
+                <Label>Static IP / Subnet *</Label>
+                <Input
+                  value={form.static_ip}
+                  onChange={e => setField("static_ip", e.target.value)}
+                  placeholder="যেমন: 192.168.10.25/24"
+                />
+              </div>
+              <div>
+                <Label>রাউটার MAC Address</Label>
+                <Input
+                  value={form.mac_address}
+                  onChange={e => setField("mac_address", e.target.value)}
+                  placeholder="যেমন: AA:BB:CC:11:22:33"
+                />
+              </div>
+              <div>
+                <Label>গেটওয়ে / Peer IP</Label>
+                <Input
+                  value={form.peer_ip}
+                  onChange={e => setField("peer_ip", e.target.value)}
+                  placeholder="যেমন: 192.168.10.1"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <Label>ইউজারনেম *</Label>
+                <Input value={form.username} onChange={e => setField("username", e.target.value)} />
+              </div>
+              <div>
+                <Label>রিমোট অ্যাড্রেস</Label>
+                <Input value={form.remote_address} onChange={e => setField("remote_address", e.target.value)} />
+              </div>
+              <div>
+                <Label>পাসওয়ার্ড *</Label>
+                <Input value={form.password} onChange={e => setField("password", e.target.value)} />
+              </div>
+            </>
+          )}
           <div>
             <Label>যোগদানের তারিখ *</Label>
             <Input type="date" value={form.joining_date} onChange={e => setField("joining_date", e.target.value)} />
