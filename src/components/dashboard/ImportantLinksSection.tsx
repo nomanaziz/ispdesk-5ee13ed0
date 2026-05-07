@@ -160,12 +160,16 @@ export function ImportantLinksSection() {
                       <p className="text-xs text-muted-foreground py-3">কোনো লিংক নেই</p>
                     ) : (
                       <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9 xl:grid-cols-10 gap-2 pt-1">
-                        {items.map((l) => (
+                        {items.map((l: any) => (
                           <ImportantLinkCard
                             key={l.id}
+                            id={l.id}
                             title={l.title}
                             url={l.url}
                             iconUrl={l.icon_url}
+                            username={l.username}
+                            notes={l.notes}
+                            hasPassword={!!l.password_encrypted}
                             canEdit={isAdmin}
                             onEdit={() => { setEditingLink(l as any); setLinkDialog(true); }}
                             onDelete={() => handleDelete(l.id)}

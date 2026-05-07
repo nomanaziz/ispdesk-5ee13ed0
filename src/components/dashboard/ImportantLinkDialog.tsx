@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Loader2, Eye, EyeOff } from "lucide-react";
 
 export interface LinkRow {
   id?: string;
@@ -15,6 +15,8 @@ export interface LinkRow {
   url: string;
   icon_url?: string | null;
   description?: string | null;
+  username?: string | null;
+  notes?: string | null;
   sort_order?: number;
 }
 
@@ -33,6 +35,10 @@ export function ImportantLinkDialog({ open, onOpenChange, categories, initial, d
   const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
   const [iconUrl, setIconUrl] = useState<string | null>(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [notes, setNotes] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -44,6 +50,10 @@ export function ImportantLinkDialog({ open, onOpenChange, categories, initial, d
       setCategoryId(initial?.category_id || defaultCategoryId || categories[0]?.id || "");
       setDescription(initial?.description || "");
       setIconUrl(initial?.icon_url || null);
+      setUsername(initial?.username || "");
+      setNotes(initial?.notes || "");
+      setPassword("");
+      setShowPassword(false);
     }
   }, [open, initial, defaultCategoryId, categories]);
 
@@ -77,14 +87,30 @@ export function ImportantLinkDialog({ open, onOpenChange, categories, initial, d
         category_id: categoryId,
         description: description.trim() || null,
         icon_url: iconUrl,
+        username: username.trim() || null,
+        notes: notes.trim() || null,
       };
-      if (initial?.id) {
-        const { error } = await supabase.from("important_links").update(payload).eq("id", initial.id);
+      let linkId = initial?.id;
+      if (linkId) {
+        const { error } = await supabase.from("important_links").update(payload).eq("id", linkId);
         if (error) throw error;
       } else {
         const { data: { user } } = await supabase.auth.getUser();
-        const { error } = await supabase.from("important_links").insert({ ...payload, created_by: user?.id });
+        const { data, error } = await supabase
+          .from("important_links")
+          .insert({ ...payload, created_by: user?.id })
+          .select("id")
+          .single();
         if (error) throw error;
+        linkId = data.id;
+      }
+      // Save password via secure RPC if provided (or cleared explicitly with empty edit)
+      if (password.length > 0 && linkId) {
+        const { error: pwErr } = await supabase.rpc("set_important_link_password", {
+          _link_id: linkId,
+          _password: password,
+        });
+        if (pwErr) throw pwErr;
       }
       toast.success("সংরক্ষিত হয়েছে");
       onSaved();
@@ -98,7 +124,7 @@ export function ImportantLinkDialog({ open, onOpenChange, categories, initial, d
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initial?.id ? "লিংক সম্পাদনা" : "নতুন লিংক"}</DialogTitle>
         </DialogHeader>
@@ -154,6 +180,41 @@ export function ImportantLinkDialog({ open, onOpenChange, categories, initial, d
           <div>
             <Label>বিবরণ (ঐচ্ছিক)</Label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+          </div>
+
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 space-y-2">
+            <p className="text-xs font-semibold text-foreground">🔐 ক্রেডেনশিয়াল (ঐচ্ছিক)</p>
+            <div>
+              <Label className="text-xs">ইউজারনেম / আইডি</Label>
+              <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="user@example.com" />
+            </div>
+            <div>
+              <Label className="text-xs">পাসওয়ার্ড</Label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={initial?.id ? "পরিবর্তন করতে চাইলে নতুন পাসওয়ার্ড দিন" : ""}
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(s => !s)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {initial?.id && (
+                <p className="text-[10px] text-muted-foreground mt-1">খালি রাখলে আগের পাসওয়ার্ড অপরিবর্তিত থাকবে</p>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs">নোট (যেমন: 2FA, server IP)</Label>
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+            </div>
           </div>
         </div>
         <DialogFooter>

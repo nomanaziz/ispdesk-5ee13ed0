@@ -216,6 +216,21 @@ export type Database = {
           },
         ]
       }
+      app_vault: {
+        Row: {
+          key: string
+          value: string
+        }
+        Insert: {
+          key: string
+          value: string
+        }
+        Update: {
+          key?: string
+          value?: string
+        }
+        Relationships: []
+      }
       asset_assignments: {
         Row: {
           assigned_at: string
@@ -4703,10 +4718,13 @@ export type Database = {
           description: string | null
           icon_url: string | null
           id: string
+          notes: string | null
+          password_encrypted: string | null
           sort_order: number
           title: string
           updated_at: string
           url: string
+          username: string | null
         }
         Insert: {
           category_id?: string | null
@@ -4715,10 +4733,13 @@ export type Database = {
           description?: string | null
           icon_url?: string | null
           id?: string
+          notes?: string | null
+          password_encrypted?: string | null
           sort_order?: number
           title: string
           updated_at?: string
           url: string
+          username?: string | null
         }
         Update: {
           category_id?: string | null
@@ -4727,10 +4748,13 @@ export type Database = {
           description?: string | null
           icon_url?: string | null
           id?: string
+          notes?: string | null
+          password_encrypted?: string | null
           sort_order?: number
           title?: string
           updated_at?: string
           url?: string
+          username?: string | null
         }
         Relationships: [
           {
@@ -10980,6 +11004,10 @@ export type Database = {
           tier_id: string
         }[]
       }
+      get_important_link_password: {
+        Args: { _link_id: string }
+        Returns: string
+      }
       get_tenant_by_domain: {
         Args: { _domain: string }
         Returns: {
@@ -11023,6 +11051,10 @@ export type Database = {
         Returns: undefined
       }
       seed_pop_defaults: { Args: { _branch_id: string }; Returns: undefined }
+      set_important_link_password: {
+        Args: { _link_id: string; _password: string }
+        Returns: undefined
+      }
     }
     Enums: {
       alert_channel: "dashboard" | "telegram"
