@@ -172,6 +172,9 @@ function useStats() {
         ticketsZoneOpenRes, ticketsSubzoneOpenRes,
         zonesRes,
         billing12Res, collect12Res,
+        popClientsEnabledRes, popClientsDisabledRes,
+        ticketsCategoryMonthRes, ticketsSolverMonthRes,
+        employeesRes,
       ] = await Promise.all([
         supabase.from("clients").select("id", { count: "exact", head: true }).ilike("billing_status", "Active"),
         supabase.from("clients").select("id", { count: "exact", head: true }).not("billing_status", "ilike", "Active"),
@@ -183,7 +186,13 @@ function useStats() {
         supabase.from("zones").select("id, name"),
         supabase.from("billing").select("amount, paid, due, status, month").gte("month", last12Start),
         supabase.from("bill_collections").select("amount, created_at").eq("status", "approved").gte("created_at", `${last12Start}T00:00:00`),
+        supabase.from("clients").select("id", { count: "exact", head: true }).not("branch_id", "is", null).neq("mikrotik_status", "disabled"),
+        supabase.from("clients").select("id", { count: "exact", head: true }).not("branch_id", "is", null).eq("mikrotik_status", "disabled"),
+        supabase.from("support_tickets").select("subject").gte("created_at", monthStart),
+        supabase.from("support_tickets").select("solved_by").gte("solved_at", monthStart).not("solved_by", "is", null),
+        supabase.from("employees").select("id, name"),
       ]);
+
 
 
       // Fetch client names for latest billing
