@@ -168,16 +168,14 @@ export default function Setup() {
                   <Label className="text-xs mb-1 block">কাটঅফ সময়</Label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground z-10" />
-                    <Select value={enfForm.cutoff_time} onValueChange={v => setEnf("cutoff_time", v)}>
-                      <SelectTrigger className="pl-9"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="00:00">রাত ১২:০০ AM</SelectItem>
-                        <SelectItem value="07:00">পরের দিন সকাল ৭:০০</SelectItem>
-                        <SelectItem value="08:00">পরের দিন সকাল ৮:০০</SelectItem>
-                        <SelectItem value="12:00">পরের দিন দুপুর ১২:০০</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      type="time"
+                      value={enfForm.cutoff_time}
+                      onChange={e => setEnf("cutoff_time", e.target.value)}
+                      className="pl-9"
+                    />
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1">আপনি যেই সময় দেবেন সেই সময়েই লাইন বন্ধ হবে</p>
                 </div>
                 <div>
                   <Label className="text-xs mb-1 block">রিচেক ইন্টারভাল</Label>
