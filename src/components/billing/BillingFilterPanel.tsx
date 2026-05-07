@@ -65,7 +65,7 @@ interface Props {
 }
 
 export default function BillingFilterPanel({ filters, onChange, onReset }: Props) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const set = (key: keyof BillingFilters, value: string) =>
     onChange({ ...filters, [key]: value });
