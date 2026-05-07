@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react";
 
 export interface BillingFilters {
   search: string;
@@ -65,7 +65,7 @@ interface Props {
 }
 
 export default function BillingFilterPanel({ filters, onChange, onReset }: Props) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const set = (key: keyof BillingFilters, value: string) =>
     onChange({ ...filters, [key]: value });
@@ -145,27 +145,38 @@ export default function BillingFilterPanel({ filters, onChange, onReset }: Props
   return (
     <div className="space-y-3">
       {/* Search + Toggle */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex-1 min-w-[220px] max-w-xs">
+          <label className="text-xs font-semibold text-foreground mb-1 block">সার্চ</label>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="ID / নাম / মোবাইল"
+              className="pl-9 h-9 text-sm"
+              value={filters.search}
+              onChange={(e) => set("search", e.target.value)}
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-foreground mb-1 block">মাস</label>
           <Input
-            placeholder="সার্চ (ID/নাম/মোবাইল)"
-            className="pl-9"
-            value={filters.search}
-            onChange={(e) => set("search", e.target.value)}
+            type="month"
+            value={filters.month}
+            onChange={(e) => set("month", e.target.value)}
+            className="w-44 h-9 text-sm"
           />
         </div>
-        <Input
-          type="month"
-          value={filters.month}
-          onChange={(e) => set("month", e.target.value)}
-          className="w-44"
-        />
-        <Button variant="outline" size="sm" onClick={() => setExpanded(!expanded)}>
-          {expanded ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+        <Button
+          size="sm"
+          onClick={() => setExpanded(!expanded)}
+          className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm gap-1.5"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
           {expanded ? "ফিল্টার লুকান" : "ফিল্টার দেখান"}
+          {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </Button>
-        <Button variant="ghost" size="sm" onClick={onReset}>
+        <Button variant="outline" size="sm" onClick={onReset}>
           রিসেট
         </Button>
       </div>
@@ -241,9 +252,9 @@ function FilterSelect({ label, value, onChange, options, placeholder }: {
 }) {
   return (
     <div>
-      <label className="text-[10px] text-muted-foreground mb-0.5 block">{label}</label>
+      <label className="text-xs font-semibold text-foreground mb-1 block">{label}</label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-7 text-[11px]">
+        <SelectTrigger className="h-9 text-sm font-medium">
           <SelectValue placeholder={placeholder || `সকল ${label}`} />
         </SelectTrigger>
         <SelectContent>
@@ -264,8 +275,8 @@ function DateInput({ label, value, onChange }: {
 }) {
   return (
     <div>
-      <label className="text-[10px] text-muted-foreground mb-0.5 block">{label}</label>
-      <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} className="h-7 text-[11px]" />
+      <label className="text-xs font-semibold text-foreground mb-1 block">{label}</label>
+      <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} className="h-9 text-sm" />
     </div>
   );
 }
