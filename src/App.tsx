@@ -152,6 +152,7 @@ const PingTools = lazy(() => import("@/pages/dashboard/monitoring/PingTools"));
 const PopDevices = lazy(() => import("@/pages/dashboard/monitoring/PopDevices"));
 const OnlineClientMonitoring = lazy(() => import("@/pages/dashboard/monitoring/OnlineClientMonitoring"));
 const LiveTraffic = lazy(() => import("@/pages/dashboard/monitoring/LiveTraffic"));
+const TopUsers = lazy(() => import("@/pages/dashboard/monitoring/TopUsers"));
 
 // Network
 const NetworkDiagram = lazy(() => import("@/pages/dashboard/network/Diagram"));
