@@ -15,6 +15,8 @@ export interface LinkRow {
   url: string;
   icon_url?: string | null;
   description?: string | null;
+  username?: string | null;
+  notes?: string | null;
   sort_order?: number;
 }
 
