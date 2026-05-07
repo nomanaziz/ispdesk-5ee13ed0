@@ -20,7 +20,7 @@ import InfoList from "@/components/dashboard/InfoList";
 
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
+  PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area
 } from "recharts";
 
 // ─── Vuexy-style light-bg color palette ───────────────────────────────
