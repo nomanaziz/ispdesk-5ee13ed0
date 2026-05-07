@@ -573,6 +573,7 @@ const App = () => (
               {/* Network Monitoring */}
               <Route path="/dashboard/monitoring/online" element={<P><OnlineClientMonitoring /></P>} />
               <Route path="/dashboard/monitoring/live-traffic" element={<P><LiveTraffic /></P>} />
+              <Route path="/dashboard/monitoring/top-users" element={<P><TopUsers /></P>} />
               <Route path="/dashboard/monitoring/switches" element={<P><SwitchList /></P>} />
               <Route path="/dashboard/monitoring/add-switch" element={<P><AddSwitch /></P>} />
               <Route path="/dashboard/monitoring/pop-dass" element={<P><PopDass /></P>} />
