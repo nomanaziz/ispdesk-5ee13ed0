@@ -276,7 +276,7 @@ export default function ChartOfAccounts() {
           {grouped.map(([subtype, items]) => (
             <Card key={subtype} className="overflow-hidden border-border">
               {/* Section header (dark band) */}
-              <div className="flex items-center justify-between bg-slate-800 text-white px-4 py-2.5">
+              <div className="flex items-center justify-between bg-primary text-primary-foreground px-4 py-2.5">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <span>{subtype}</span>
                   <Info className="h-3.5 w-3.5 opacity-60" />
@@ -284,7 +284,7 @@ export default function ChartOfAccounts() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-white hover:bg-white/10 gap-1"
+                  className="h-7 text-primary-foreground hover:bg-primary-foreground/10 gap-1"
                   onClick={() => openCreate(subtype)}
                 >
                   <Plus className="h-3.5 w-3.5" /> Create New Account
