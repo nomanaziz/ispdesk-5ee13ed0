@@ -985,6 +985,53 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* Top Due — by category */}
+      <div className="space-y-3">
+        <SectionHeading title="টপ বকেয়া" hint="প্রতি ক্যাটাগরির শীর্ষ ২০ বকেয়াদার" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <MetricTile label="হোম বকেয়া" value={fmt(d?.totalDueHome)} icon={Home} tone="rose" to="/dashboard/billing?paymentStatus=unpaid" />
+          <MetricTile label="কর্পোরেট বকেয়া" value={fmt(d?.totalDueCorporate)} icon={Building2} tone="amber" to="/dashboard/billing?paymentStatus=unpaid" />
+          <MetricTile label="ব্যান্ডউইথ বকেয়া" value={fmt(d?.totalDueBandwidth)} icon={Share2} tone="violet" to="/dashboard/bandwidth/sales/invoices" />
+          <MetricTile label="POP নেগেটিভ" value={fmt(d?.totalDuePops)} icon={Network} tone="rose" to="/dashboard/pop-management" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          <TopDueListCard
+            title="হোম ক্লায়েন্ট — টপ ২০"
+            icon={Home}
+            tone="rose"
+            total={d?.totalDueHome || 0}
+            items={d?.topDueHome || []}
+            allHref="/dashboard/billing?paymentStatus=unpaid"
+            itemHref={(it) => `/dashboard/billing?search=${encodeURIComponent(it.name)}`}
+          />
+          <TopDueListCard
+            title="কর্পোরেট ক্লায়েন্ট — টপ ২০"
+            icon={Building2}
+            tone="amber"
+            total={d?.totalDueCorporate || 0}
+            items={d?.topDueCorporate || []}
+            allHref="/dashboard/billing?paymentStatus=unpaid"
+            itemHref={(it) => `/dashboard/billing?search=${encodeURIComponent(it.name)}`}
+          />
+          <TopDueListCard
+            title="ব্যান্ডউইথ কাস্টমার — টপ ২০"
+            icon={Share2}
+            tone="violet"
+            total={d?.totalDueBandwidth || 0}
+            items={d?.topDueBandwidth || []}
+            allHref="/dashboard/bandwidth/sales/invoices"
+          />
+          <TopDueListCard
+            title="POP নেগেটিভ ব্যালেন্স — টপ ২০"
+            icon={Network}
+            tone="cyan"
+            total={d?.totalDuePops || 0}
+            items={d?.topNegativePops || []}
+            allHref="/dashboard/pop-management"
+          />
+        </div>
+      </div>
+
       {/* Action required */}
       <div className="space-y-3">
         <SectionHeading title="অ্যাকশন প্রয়োজন" hint="দ্রুত পদক্ষেপ নিন" />
