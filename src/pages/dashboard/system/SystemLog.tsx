@@ -144,13 +144,18 @@ export default function SystemLog() {
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><ScrollText className="h-6 w-6" /> সিস্টেম অডিট লগ</h1>
-          <p className="text-sm text-muted-foreground">সমস্ত user activity, login এবং data পরিবর্তনের রেকর্ড</p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <ScrollText className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">সিস্টেম অডিট লগ</h1>
+            <p className="text-xs text-muted-foreground">সিস্টেম &gt; অডিট লগ — user activity, login, ও data পরিবর্তনের রেকর্ড</p>
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-1" /> রিফ্রেশ</Button>
           <Button variant="outline" size="sm" onClick={exportCsv}><Download className="h-4 w-4 mr-1" /> CSV</Button>
           <Button variant="outline" size="sm" onClick={exportJson}><Download className="h-4 w-4 mr-1" /> JSON</Button>
