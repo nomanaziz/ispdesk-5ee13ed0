@@ -16,6 +16,7 @@ import { NotesButton } from "@/components/notes/NotesButton";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { toast } from "@/hooks/use-toast";
 import { HeaderClock } from "@/components/HeaderClock";
+import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
