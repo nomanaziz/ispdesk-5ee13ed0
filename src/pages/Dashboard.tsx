@@ -193,7 +193,92 @@ function useStats() {
         supabase.from("employees").select("id, name"),
       ]);
 
+      // ─── Top-Due aggregations ────────────────────────────────────────
+      const [
+        dueBillingRes, bwInvoicesDueRes, popNegativeRes,
+      ] = await Promise.all([
+        // All unpaid/partial billing rows (current + carried) — aggregate per client
+        supabase.from("billing").select("client_id, amount, paid, due, status").in("status", ["unpaid", "partial"]).limit(5000),
+        // Bandwidth sales invoices with due > 0
+        supabase.from("bw_sales_invoices").select("customer_id, due, total_amount, paid_amount").gt("due", 0).limit(2000),
+        // POPs with negative balance
+        supabase.from("branch_managers").select("id, name, balance, branch_id, pop_type").lt("balance", 0).order("balance", { ascending: true }).limit(20),
+      ]);
 
+      // Aggregate due per client
+      const dueByClient = new Map<string, number>();
+      for (const b of dueBillingRes.data ?? []) {
+        const cid = (b as any).client_id;
+        if (!cid) continue;
+        const amt = Number((b as any).amount) || 0;
+        const paid = Number((b as any).paid) || 0;
+        const dueRaw = (b as any).due;
+        const due = dueRaw != null ? Number(dueRaw) : Math.max(0, amt - paid);
+        if (due <= 0) continue;
+        dueByClient.set(cid, (dueByClient.get(cid) || 0) + due);
+      }
+      const dueClientIds = [...dueByClient.keys()];
+      let dueClientsMeta: any[] = [];
+      if (dueClientIds.length) {
+        const { data } = await supabase.from("clients")
+          .select("id, name, client_id, client_type, phone_number, contact")
+          .in("id", dueClientIds);
+        dueClientsMeta = data ?? [];
+      }
+      const buildTopDue = (type: string) => dueClientsMeta
+        .filter((c: any) => (c.client_type || "").toLowerCase() === type.toLowerCase())
+        .map((c: any) => ({
+          id: c.id,
+          name: c.name || c.client_id || "Unknown",
+          contact: c.phone_number || c.contact || "",
+          due: dueByClient.get(c.id) || 0,
+        }))
+        .filter(x => x.due > 0)
+        .sort((a, b) => b.due - a.due)
+        .slice(0, 20);
+      const topDueHome = buildTopDue("Home");
+      const topDueCorporate = buildTopDue("Corporate");
+      const totalDueHome = dueClientsMeta
+        .filter((c: any) => (c.client_type || "").toLowerCase() === "home")
+        .reduce((s, c) => s + (dueByClient.get(c.id) || 0), 0);
+      const totalDueCorporate = dueClientsMeta
+        .filter((c: any) => (c.client_type || "").toLowerCase() === "corporate")
+        .reduce((s, c) => s + (dueByClient.get(c.id) || 0), 0);
+
+      // Bandwidth aggregation
+      const dueByBwCustomer = new Map<string, number>();
+      for (const inv of bwInvoicesDueRes.data ?? []) {
+        const cid = (inv as any).customer_id;
+        if (!cid) continue;
+        const due = Number((inv as any).due) || 0;
+        if (due <= 0) continue;
+        dueByBwCustomer.set(cid, (dueByBwCustomer.get(cid) || 0) + due);
+      }
+      let bwCustomersMeta: any[] = [];
+      const bwIds = [...dueByBwCustomer.keys()];
+      if (bwIds.length) {
+        const { data } = await supabase.from("bw_sale_customers")
+          .select("id, customer_name, customer_code, mobile, contact_person")
+          .in("id", bwIds);
+        bwCustomersMeta = data ?? [];
+      }
+      const topDueBandwidth = bwCustomersMeta.map((c: any) => ({
+        id: c.id,
+        name: c.customer_name || c.customer_code || "Unknown",
+        contact: c.mobile || c.contact_person || "",
+        due: dueByBwCustomer.get(c.id) || 0,
+      })).sort((a, b) => b.due - a.due).slice(0, 20);
+      const totalDueBandwidth = [...dueByBwCustomer.values()].reduce((s, v) => s + v, 0);
+
+      // POP negative balance
+      const topNegativePops = (popNegativeRes.data ?? []).map((p: any) => ({
+        id: p.id,
+        name: p.name || "POP",
+        branch_id: p.branch_id,
+        pop_type: p.pop_type,
+        due: Math.abs(Number(p.balance) || 0),
+      }));
+      const totalDuePops = topNegativePops.reduce((s, p) => s + p.due, 0);
 
       // Fetch client names for latest billing
       const latestInvoices: { bill_id: string; amount: number; client_name: string; status: string }[] = [];
@@ -508,6 +593,9 @@ function useStats() {
         trend12,
         zoneDonut, subzoneDonut, monthlyProblemDonut, solverChart,
         popEnabledClients, popDisabledClients,
+        // ── Top due ──
+        topDueHome, topDueCorporate, topDueBandwidth, topNegativePops,
+        totalDueHome, totalDueCorporate, totalDueBandwidth, totalDuePops,
 
       };
     },
@@ -588,6 +676,69 @@ function TicketTile({ label, value, icon: Icon, tone, to, hint }: { label: strin
         {hint && <p className="text-[10px] opacity-70 truncate">{hint}</p>}
       </div>
     </Link>
+  );
+}
+
+// ─── Top-Due list card ─────────────────────────────
+const TOP_DUE_TONES: Record<string, { ring: string; text: string; bg: string }> = {
+  rose:    { ring: "ring-rose-500/30",    text: "text-rose-600",    bg: "bg-rose-500/10" },
+  amber:   { ring: "ring-amber-500/30",   text: "text-amber-600",   bg: "bg-amber-500/10" },
+  violet:  { ring: "ring-violet-500/30",  text: "text-violet-600",  bg: "bg-violet-500/10" },
+  cyan:    { ring: "ring-cyan-500/30",    text: "text-cyan-600",    bg: "bg-cyan-500/10" },
+};
+function TopDueListCard({
+  title, icon: Icon, tone, total, items, allHref, itemHref,
+}: {
+  title: string;
+  icon: any;
+  tone: keyof typeof TOP_DUE_TONES;
+  total: number;
+  items: { id: string; name: string; contact?: string; due: number }[];
+  allHref?: string;
+  itemHref?: (it: any) => string;
+}) {
+  const t = TOP_DUE_TONES[tone];
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xs font-semibold flex items-center gap-2">
+          <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${t.bg} ${t.text}`}>
+            <Icon className="h-3.5 w-3.5" />
+          </span>
+          <span className="truncate">{title}</span>
+          <span className={`ml-auto text-[11px] font-bold tabular-nums ${t.text}`}>৳{(total || 0).toLocaleString("en-IN")}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-2 pb-2">
+        {items.length === 0 ? (
+          <p className="py-8 text-center text-xs text-muted-foreground">কোনো বকেয়া নেই</p>
+        ) : (
+          <div className="divide-y divide-border max-h-[280px] overflow-y-auto">
+            {items.map((it, i) => {
+              const inner = (
+                <>
+                  <span className="text-[10px] text-muted-foreground tabular-nums w-5 shrink-0">#{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground truncate">{it.name}</p>
+                    {it.contact && <p className="text-[10px] text-muted-foreground truncate">{it.contact}</p>}
+                  </div>
+                  <span className={`text-xs font-bold tabular-nums shrink-0 ${t.text}`}>৳{it.due.toLocaleString("en-IN")}</span>
+                </>
+              );
+              const cls = "flex items-center gap-2 py-1.5 px-2 hover:bg-muted/40 rounded transition";
+              return itemHref ? (
+                <Link key={it.id || i} to={itemHref(it)} className={cls}>{inner}</Link>
+              ) : (
+                <div key={it.id || i} className={cls}>{inner}</div>
+              );
+            })}
+          </div>
+        )}
+        {allHref && items.length > 0 && (
+          <Link to={allHref} className="mt-2 block text-center text-[11px] text-primary hover:underline">সব দেখুন →</Link>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -832,6 +983,53 @@ const Dashboard = () => {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Top Due — by category */}
+      <div className="space-y-3">
+        <SectionHeading title="টপ বকেয়া" hint="প্রতি ক্যাটাগরির শীর্ষ ২০ বকেয়াদার" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <MetricTile label="হোম বকেয়া" value={fmt(d?.totalDueHome)} icon={Home} tone="rose" to="/dashboard/billing?paymentStatus=unpaid" />
+          <MetricTile label="কর্পোরেট বকেয়া" value={fmt(d?.totalDueCorporate)} icon={Building2} tone="amber" to="/dashboard/billing?paymentStatus=unpaid" />
+          <MetricTile label="ব্যান্ডউইথ বকেয়া" value={fmt(d?.totalDueBandwidth)} icon={Share2} tone="violet" to="/dashboard/bandwidth/sales/invoices" />
+          <MetricTile label="POP নেগেটিভ" value={fmt(d?.totalDuePops)} icon={Network} tone="rose" to="/dashboard/pop-management" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          <TopDueListCard
+            title="হোম ক্লায়েন্ট — টপ ২০"
+            icon={Home}
+            tone="rose"
+            total={d?.totalDueHome || 0}
+            items={d?.topDueHome || []}
+            allHref="/dashboard/billing?paymentStatus=unpaid"
+            itemHref={(it) => `/dashboard/billing?search=${encodeURIComponent(it.name)}`}
+          />
+          <TopDueListCard
+            title="কর্পোরেট ক্লায়েন্ট — টপ ২০"
+            icon={Building2}
+            tone="amber"
+            total={d?.totalDueCorporate || 0}
+            items={d?.topDueCorporate || []}
+            allHref="/dashboard/billing?paymentStatus=unpaid"
+            itemHref={(it) => `/dashboard/billing?search=${encodeURIComponent(it.name)}`}
+          />
+          <TopDueListCard
+            title="ব্যান্ডউইথ কাস্টমার — টপ ২০"
+            icon={Share2}
+            tone="violet"
+            total={d?.totalDueBandwidth || 0}
+            items={d?.topDueBandwidth || []}
+            allHref="/dashboard/bandwidth/sales/invoices"
+          />
+          <TopDueListCard
+            title="POP নেগেটিভ ব্যালেন্স — টপ ২০"
+            icon={Network}
+            tone="cyan"
+            total={d?.totalDuePops || 0}
+            items={d?.topNegativePops || []}
+            allHref="/dashboard/pop-management"
+          />
+        </div>
       </div>
 
       {/* Action required */}
