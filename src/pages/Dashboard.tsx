@@ -337,6 +337,50 @@ function useStats() {
       // Extension/Grace
       const extensionGraceCount = (clientsExtended.count ?? 0) + (clientsGrace.count ?? 0);
 
+      // ─── Tickets / zone hotspots ──
+      const zoneNameMap = new Map<string, string>((zonesRes.data ?? []).map((z: any) => [z.id, z.name]));
+      const ticketZoneCounts: Record<string, number> = {};
+      for (const t of ticketsZoneOpenRes.data ?? []) {
+        const id = (t as any).zone_id || "Unknown";
+        const name = (id !== "Unknown" && zoneNameMap.get(id)) || "অজানা";
+        ticketZoneCounts[name] = (ticketZoneCounts[name] || 0) + 1;
+      }
+      const topZoneEntries = Object.entries(ticketZoneCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const topZone = topZoneEntries[0]?.[0] || "—";
+
+      const ticketSubzoneCounts: Record<string, number> = {};
+      for (const t of ticketsSubzoneOpenRes.data ?? []) {
+        const id = (t as any).subzone || "অজানা";
+        ticketSubzoneCounts[id] = (ticketSubzoneCounts[id] || 0) + 1;
+      }
+      const topSubzone = Object.entries(ticketSubzoneCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+
+      // ─── 12-month trend ──
+      const billByMonth: Record<string, { bill: number; due: number }> = {};
+      for (const b of billing12Res.data ?? []) {
+        const m = String((b as any).month).slice(0, 7);
+        if (!billByMonth[m]) billByMonth[m] = { bill: 0, due: 0 };
+        billByMonth[m].bill += Number((b as any).amount) || 0;
+        const due = (b as any).due != null ? Number((b as any).due) : Math.max(0, (Number((b as any).amount) || 0) - (Number((b as any).paid) || 0));
+        billByMonth[m].due += due;
+      }
+      const collectByMonth: Record<string, number> = {};
+      for (const c of collect12Res.data ?? []) {
+        const m = String((c as any).created_at).slice(0, 7);
+        collectByMonth[m] = (collectByMonth[m] || 0) + (Number((c as any).amount) || 0);
+      }
+      const monthsArr: string[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        monthsArr.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+      }
+      const trend12 = monthsArr.map(m => ({
+        name: `${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][parseInt(m.slice(5,7)) - 1]} ${m.slice(2,4)}`,
+        bill: billByMonth[m]?.bill || 0,
+        collect: collectByMonth[m] || 0,
+        due: billByMonth[m]?.due || 0,
+      }));
+
 
       return {
         totalClients: clientsAll.count ?? 0,
