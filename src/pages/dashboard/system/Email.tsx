@@ -48,7 +48,7 @@ export default function Email() {
       </div>
 
       <div className="border rounded-lg overflow-hidden">
-        <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
+        <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium flex items-center gap-2">
           <Mail className="h-4 w-4" /> Email Protocol & SMTP কনফিগারেশন
         </div>
         <div className="p-5 space-y-5 bg-card">
@@ -127,7 +127,7 @@ export default function Email() {
             <Button variant="outline" onClick={() => toast.info("টেস্ট ইমেইল পাঠানো হবে")} className="gap-2">
               <Send className="h-4 w-4" /> টেস্ট ইমেইল
             </Button>
-            <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
+            <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
               <Save className="h-4 w-4" /> {isSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
             </Button>
           </div>

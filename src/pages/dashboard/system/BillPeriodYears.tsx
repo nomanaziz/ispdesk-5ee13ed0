@@ -43,7 +43,7 @@ export default function BillPeriodYears() {
       </div>
 
       <div className="border rounded-lg overflow-hidden bg-card">
-        <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
+        <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium flex items-center gap-2">
           <CalendarDays className="h-4 w-4" /> Bill Period List
         </div>
 
@@ -57,7 +57,7 @@ export default function BillPeriodYears() {
               onChange={(e) => setNewYear(e.target.value)}
             />
           </div>
-          <Button onClick={add} disabled={isSaving || !/^\d{4}$/.test(newYear.trim())} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
+          <Button onClick={add} disabled={isSaving || !/^\d{4}$/.test(newYear.trim())} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
             <Plus className="h-4 w-4" /> যোগ
           </Button>
         </div>

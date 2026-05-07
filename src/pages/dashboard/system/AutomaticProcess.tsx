@@ -96,7 +96,7 @@ export default function AutomaticProcess() {
         {SCOPES.map(s => (
           <TabsContent key={s.value} value={s.value} className="mt-4">
             <div className="border rounded-lg overflow-hidden bg-card">
-              <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
+              <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium flex items-center gap-2">
                 <Activity className="h-4 w-4" /> {s.label} — Automatic Process List
               </div>
               <div className="overflow-x-auto">
@@ -241,7 +241,7 @@ export default function AutomaticProcess() {
                 enabled: editing.enabled,
               })}
               disabled={update.isPending}
-              className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]"
+              className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               <Save className="h-4 w-4" /> সংরক্ষণ
             </Button>

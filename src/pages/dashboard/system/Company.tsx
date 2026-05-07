@@ -83,7 +83,7 @@ export default function Company() {
 
       {/* Section */}
       <div className="border rounded-lg overflow-hidden">
-        <div className="bg-[#2c5f6e] text-white px-4 py-2.5 flex items-center gap-2 text-sm font-medium">
+        <div className="bg-primary text-primary-foreground px-4 py-2.5 flex items-center gap-2 text-sm font-medium">
           <Building2 className="h-4 w-4" /> কোম্পানি তথ্য
         </div>
         <div className="p-5 space-y-5 bg-card">
@@ -218,7 +218,7 @@ export default function Company() {
 
           {/* Submit */}
           <div className="flex justify-end pt-2">
-            <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
+            <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
               <Save className="h-4 w-4" /> {isSaving ? "আপডেট হচ্ছে..." : "আপডেট কোম্পানি তথ্য"}
             </Button>
           </div>

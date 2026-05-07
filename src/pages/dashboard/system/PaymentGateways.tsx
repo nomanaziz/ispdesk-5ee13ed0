@@ -184,7 +184,7 @@ export default function PaymentGateways() {
       </div>
 
       <div className="border rounded-lg overflow-hidden">
-        <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center justify-between">
+        <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium flex items-center justify-between">
           <span className="flex items-center gap-2"><CreditCard className="h-4 w-4" /> পেমেন্ট মেথড কনফিগারেশন</span>
           <Button onClick={() => save(gateways)} disabled={isSaving} size="sm" variant="secondary" className="gap-1 h-7 text-xs">
             <Save className="h-3 w-3" /> {isSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
