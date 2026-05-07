@@ -364,6 +364,41 @@ function useStats() {
       }
       const topSubzone = Object.entries(ticketSubzoneCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
 
+      // ─── Donut chart data: open tickets by zone & subzone ──
+      const zoneDonut = Object.entries(ticketZoneCounts)
+        .sort((a, b) => b[1] - a[1]).slice(0, 10)
+        .map(([name, value]) => ({ name, value }));
+      const subzoneDonut = Object.entries(ticketSubzoneCounts)
+        .sort((a, b) => b[1] - a[1]).slice(0, 10)
+        .map(([name, value]) => ({ name, value }));
+
+      // ─── Monthly problem occurrence (by subject) ──
+      const categoryCounts: Record<string, number> = {};
+      for (const t of ticketsCategoryMonthRes.data ?? []) {
+        const k = ((t as any).subject || "অন্যান্য").toString().trim() || "অন্যান্য";
+        categoryCounts[k] = (categoryCounts[k] || 0) + 1;
+      }
+      const monthlyProblemDonut = Object.entries(categoryCounts)
+        .sort((a, b) => b[1] - a[1]).slice(0, 10)
+        .map(([name, value]) => ({ name, value }));
+
+      // ─── Most problem solver (by employee) ──
+      const empNameMap = new Map<string, string>((employeesRes.data ?? []).map((e: any) => [e.id, e.name]));
+      const solverCounts: Record<string, number> = {};
+      for (const t of ticketsSolverMonthRes.data ?? []) {
+        const id = (t as any).solved_by;
+        const name = empNameMap.get(id) || "অজানা";
+        solverCounts[name] = (solverCounts[name] || 0) + 1;
+      }
+      const solverChart = Object.entries(solverCounts)
+        .sort((a, b) => b[1] - a[1]).slice(0, 12)
+        .map(([name, value]) => ({ name, value }));
+
+      // POP enabled/disabled
+      const popEnabledClients = popClientsEnabledRes.count ?? 0;
+      const popDisabledClients = popClientsDisabledRes.count ?? 0;
+
+
       // ─── 12-month trend ──
       const billByMonth: Record<string, { bill: number; due: number }> = {};
       for (const b of billing12Res.data ?? []) {
