@@ -9,16 +9,14 @@ export function useMySubscription() {
     queryKey: ["my-subscription", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      // Get profile (branch_id + email)
       const { data: profile } = await supabase
         .from("profiles")
         .select("branch_id, email")
         .eq("user_id", user!.id)
         .maybeSingle();
 
-      if (!profile) return null;
+      if (!profile) return { customer: null, history: [] as any[] };
 
-      // Try branch match first
       let customer: any = null;
       if (profile.branch_id) {
         const { data } = await supabase
@@ -28,8 +26,6 @@ export function useMySubscription() {
           .maybeSingle();
         customer = data;
       }
-
-      // Fallback: email match
       if (!customer && profile.email) {
         const { data } = await supabase
           .from("bw_sale_customers")
@@ -39,16 +35,16 @@ export function useMySubscription() {
         customer = data;
       }
 
-      if (!customer) return { customer: null, invoices: [] };
+      if (!customer) return { customer: null, history: [] as any[] };
 
-      const { data: invoices } = await supabase
-        .from("bw_sale_invoices")
-        .select("id, invoice_no, total_amount, status, due_date, created_at")
+      const { data: history } = await supabase
+        .from("bw_panel_subscriptions")
+        .select("id, period_start, period_end, monthly_price, paid_amount, status, payment_method, created_at")
         .eq("customer_id", customer.id)
-        .order("created_at", { ascending: false })
-        .limit(6);
+        .order("period_start", { ascending: false })
+        .limit(8);
 
-      return { customer, invoices: invoices ?? [] };
+      return { customer, history: history ?? [] };
     },
     refetchOnWindowFocus: false,
   });
