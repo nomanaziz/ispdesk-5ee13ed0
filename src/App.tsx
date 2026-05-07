@@ -280,6 +280,8 @@ const SystemProcessingFee = lazy(() => import("@/pages/dashboard/system/SysProce
 const SystemLog = lazy(() => import("@/pages/dashboard/system/SystemLog"));
 const SystemBillPeriodYears = lazy(() => import("@/pages/dashboard/system/BillPeriodYears"));
 const SystemAutomaticProcess = lazy(() => import("@/pages/dashboard/system/AutomaticProcess"));
+const SystemCustomDomain = lazy(() => import("@/pages/system/CustomDomainPage"));
+const MySubscription = lazy(() => import("@/pages/MySubscription"));
 
 // Config (additional)
 const ConfigServiceTypes = lazy(() => import("@/pages/dashboard/config/ServiceTypes"));
@@ -710,6 +712,8 @@ const App = () => (
               <Route path="/dashboard/system/system-log" element={<P><SystemLog /></P>} />
               <Route path="/dashboard/system/bill-period-years" element={<P><SystemBillPeriodYears /></P>} />
               <Route path="/dashboard/system/automatic-process" element={<P><SystemAutomaticProcess /></P>} />
+              <Route path="/dashboard/system/custom-domain" element={<P><SystemCustomDomain /></P>} />
+              <Route path="/dashboard/my-subscription" element={<P><MySubscription /></P>} />
               {/* Removed: users, roles, olt-permissions, device-permissions */}
               <Route path="/dashboard/system/users" element={<Navigate to="/dashboard/system/setup" replace />} />
               <Route path="/dashboard/system/users/:id" element={<Navigate to="/dashboard/system/setup" replace />} />

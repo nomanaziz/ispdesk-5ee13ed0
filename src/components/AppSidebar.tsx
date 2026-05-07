@@ -383,6 +383,8 @@ const menuGroups: MenuGroup[] = [
       { title: "প্রসেসিং ফি", url: "/dashboard/system/processing-fee", icon: DollarSign },
       { title: "অটোমেটিক প্রসেস", url: "/dashboard/system/automatic-process", icon: Activity },
       { title: "সিস্টেম লগ", url: "/dashboard/system/system-log", icon: ScrollText },
+      { title: "কাস্টম ডোমেইন", url: "/dashboard/system/custom-domain", icon: Globe },
+      { title: "আমার সাবস্ক্রিপশন", url: "/dashboard/my-subscription", icon: CreditCardIcon },
       { title: "বিলিং সাইকেল সেটিংস", url: "/dashboard/billing/cycle-settings", icon: Cog },
     ],
   },
