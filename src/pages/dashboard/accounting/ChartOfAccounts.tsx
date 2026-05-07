@@ -225,7 +225,7 @@ export default function ChartOfAccounts() {
             <p className="text-xs text-muted-foreground">সকল অ্যাকাউন্টের তালিকা ও শ্রেণীবিভাগ</p>
           </div>
         </div>
-        <Button onClick={() => openCreate()} className="gap-1">
+        <Button size="sm" onClick={() => openCreate()} className="gap-1">
           <Plus className="h-4 w-4" /> Create New Account
         </Button>
       </div>
