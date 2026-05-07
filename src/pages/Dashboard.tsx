@@ -593,6 +593,9 @@ function useStats() {
         trend12,
         zoneDonut, subzoneDonut, monthlyProblemDonut, solverChart,
         popEnabledClients, popDisabledClients,
+        // ── Top due ──
+        topDueHome, topDueCorporate, topDueBandwidth, topNegativePops,
+        totalDueHome, totalDueCorporate, totalDueBandwidth, totalDuePops,
 
       };
     },
