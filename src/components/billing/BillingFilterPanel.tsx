@@ -246,9 +246,9 @@ function FilterSelect({ label, value, onChange, options, placeholder }: {
 }) {
   return (
     <div>
-      <label className="text-[10px] text-muted-foreground mb-0.5 block">{label}</label>
+      <label className="text-xs font-semibold text-foreground mb-1 block">{label}</label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-7 text-[11px]">
+        <SelectTrigger className="h-9 text-sm font-medium">
           <SelectValue placeholder={placeholder || `সকল ${label}`} />
         </SelectTrigger>
         <SelectContent>
