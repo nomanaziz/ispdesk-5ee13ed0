@@ -568,6 +568,8 @@ const SIDEBAR_EN: Record<string, string> = {
   "সিস্টেম সেটআপ": "System Setup",
   "বিলিং সাইকেল সেটিংস": "Billing Cycle Settings",
   "সিস্টেম লগ": "System Log",
+  "কাস্টম ডোমেইন": "Custom Domain",
+  "আমার সাবস্ক্রিপশন": "My Subscription",
 };
 
 function tr(label: string, lang: "bn" | "en"): string {
