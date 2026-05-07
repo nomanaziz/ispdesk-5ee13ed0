@@ -254,9 +254,9 @@ export default function ChartOfAccounts() {
               type="button"
               onClick={() => setActiveTab(t.value)}
               className={cn(
-                "rounded-full border h-11 px-4 text-sm font-medium transition-all",
+                "rounded-full border h-9 px-4 text-sm font-medium transition-all",
                 isActive
-                  ? "bg-slate-800 text-white border-slate-800 shadow"
+                  ? "bg-primary text-primary-foreground border-primary shadow"
                   : "bg-background text-foreground hover:bg-muted border-border",
               )}
             >
