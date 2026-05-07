@@ -161,11 +161,16 @@ export default function BillingFilterPanel({ filters, onChange, onReset }: Props
           onChange={(e) => set("month", e.target.value)}
           className="w-44"
         />
-        <Button variant="outline" size="sm" onClick={() => setExpanded(!expanded)}>
-          {expanded ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+        <Button
+          size="sm"
+          onClick={() => setExpanded(!expanded)}
+          className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm gap-1.5"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
           {expanded ? "ফিল্টার লুকান" : "ফিল্টার দেখান"}
+          {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </Button>
-        <Button variant="ghost" size="sm" onClick={onReset}>
+        <Button variant="outline" size="sm" onClick={onReset}>
           রিসেট
         </Button>
       </div>
