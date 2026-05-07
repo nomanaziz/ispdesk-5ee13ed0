@@ -142,15 +142,7 @@ export function TopBar() {
           )}
 
           {/* Notifications */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 text-muted-foreground hover:text-foreground relative hidden sm:inline-flex"
-            title={t("নোটিফিকেশন", "Notifications")}
-          >
-            <Bell className="h-4 w-4" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
-          </Button>
+          <AdminNotificationBell />
 
           {/* User menu — contains profile, notes, language, theme, settings, website, install, sign out */}
           <DropdownMenu>
