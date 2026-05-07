@@ -636,7 +636,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Page header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -646,7 +646,8 @@ const Dashboard = () => {
       </div>
 
       {/* Hero KPI Row — 4 large gradient cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 auto-rows-fr">
+
         <KpiCard
           label="মোট ক্লায়েন্ট"
           value={num(d?.totalClients)}
