@@ -636,7 +636,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Page header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -646,7 +646,8 @@ const Dashboard = () => {
       </div>
 
       {/* Hero KPI Row — 4 large gradient cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 auto-rows-fr">
+
         <KpiCard
           label="মোট ক্লায়েন্ট"
           value={num(d?.totalClients)}
@@ -698,25 +699,23 @@ const Dashboard = () => {
         <div className="space-y-3">
           <SectionHeading title="সিস্টেম রিসোর্স" hint="বর্তমান মাসের অগ্রগতি" />
           <Card>
-            <CardContent className="p-5">
+            <CardContent className="p-4 space-y-3">
               <div className="grid grid-cols-3 gap-2">
                 <ResourceGauge label="ONU অনলাইন" value={onlinePct} tone="emerald" />
                 <ResourceGauge label="পেইড ক্লায়েন্ট" value={paidPct} tone="violet" />
                 <ResourceGauge label="কালেকশন" value={collectionPct} tone="violet" />
               </div>
+              <Link to="/dashboard/sms" className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2.5 hover:bg-muted/60 transition">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600">
+                    <MessageSquare className="h-4 w-4" />
+                  </div>
+                  <span className="text-xs font-semibold text-foreground">SMS ব্যালেন্স</span>
+                </div>
+                <span className="text-base font-bold tabular-nums text-foreground">{String(d?.smsBalance ?? "0")}</span>
+              </Link>
             </CardContent>
           </Card>
-          <InfoList
-            title="সাপোর্ট / অপারেশন"
-            rows={[
-              { label: "ওপেন টিকেট", value: num(d?.ticketsOpen), to: "/dashboard/support/tickets?status=pending" },
-              { label: "আজকের নতুন টিকেট", value: num(d?.ticketsToday), to: "/dashboard/support/tickets" },
-              { label: "আজ রিজলভড", value: num(d?.ticketsResolvedToday), to: "/dashboard/support/tickets?status=resolved" },
-              { label: "টপ সমস্যা জোন", value: d?.topZone || "—", to: "/dashboard/support/tickets" },
-              { label: "টপ সমস্যা সাবজোন", value: d?.topSubzone || "—", to: "/dashboard/support/tickets" },
-              { label: "SMS ব্যালেন্স", value: String(d?.smsBalance ?? "0"), to: "/dashboard/sms" },
-            ]}
-          />
         </div>
       </div>
 
