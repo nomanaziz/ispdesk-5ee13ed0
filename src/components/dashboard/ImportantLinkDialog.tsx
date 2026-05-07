@@ -35,6 +35,10 @@ export function ImportantLinkDialog({ open, onOpenChange, categories, initial, d
   const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
   const [iconUrl, setIconUrl] = useState<string | null>(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [notes, setNotes] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -46,6 +50,10 @@ export function ImportantLinkDialog({ open, onOpenChange, categories, initial, d
       setCategoryId(initial?.category_id || defaultCategoryId || categories[0]?.id || "");
       setDescription(initial?.description || "");
       setIconUrl(initial?.icon_url || null);
+      setUsername(initial?.username || "");
+      setNotes(initial?.notes || "");
+      setPassword("");
+      setShowPassword(false);
     }
   }, [open, initial, defaultCategoryId, categories]);
 
