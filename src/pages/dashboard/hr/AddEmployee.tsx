@@ -212,16 +212,26 @@ export default function AddEmployee() {
       const payload: any = {
         ...form,
         salary: form.salary ? parseFloat(form.salary) : 0,
-        department_id: form.department_id || null,
-        position_id: form.position_id || null,
-        zkteco_device_id: form.zkteco_device_id || null,
-        payroll_template_id: form.payroll_template_id || null,
-        default_in_time: form.default_in_time || null,
-        default_out_time: form.default_out_time || null,
         phone: form.personal_phone, // keep legacy phone field in sync
       };
       // Remove fields not in DB
       delete payload.personal_phone;
+      delete payload.division_id;
+      delete payload.district_id;
+      // Nullify empty uuid / date / time / numeric fields to avoid Postgres syntax errors
+      const nullableKeys = [
+        "department_id", "position_id", "zkteco_device_id", "payroll_template_id",
+        "default_in_time", "default_out_time",
+        "date_of_birth", "joining_date",
+        "passing_year",
+      ];
+      for (const k of nullableKeys) {
+        if (payload[k] === "" || payload[k] === undefined) payload[k] = null;
+      }
+      // Also nullify any remaining empty strings for safety on optional enum/text/uuid columns
+      ["gender", "marital_status"].forEach((k) => {
+        if (payload[k] === "") payload[k] = null;
+      });
 
       if (editId) {
         const { error } = await supabase.from("employees").update(payload).eq("id", editId);
