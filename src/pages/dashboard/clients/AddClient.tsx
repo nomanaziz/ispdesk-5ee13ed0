@@ -866,18 +866,49 @@ export default function AddClient() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>ইউজারনেম/IP *</Label>
-            <Input value={form.username} onChange={e => setField("username", e.target.value)} />
-          </div>
-          <div>
-            <Label>রিমোট অ্যাড্রেস</Label>
-            <Input value={form.remote_address} onChange={e => setField("remote_address", e.target.value)} />
-          </div>
-          <div>
-            <Label>পাসওয়ার্ড *</Label>
-            <Input value={form.password} onChange={e => setField("password", e.target.value)} />
-          </div>
+          {form.protocol_type === "Static" ? (
+            <>
+              <div>
+                <Label>Static IP / Subnet *</Label>
+                <Input
+                  value={form.static_ip}
+                  onChange={e => setField("static_ip", e.target.value)}
+                  placeholder="যেমন: 192.168.10.25/24"
+                />
+              </div>
+              <div>
+                <Label>রাউটার MAC Address</Label>
+                <Input
+                  value={form.mac_address}
+                  onChange={e => setField("mac_address", e.target.value)}
+                  placeholder="যেমন: AA:BB:CC:11:22:33"
+                />
+              </div>
+              <div>
+                <Label>গেটওয়ে / Peer IP</Label>
+                <Input
+                  value={form.peer_ip}
+                  onChange={e => setField("peer_ip", e.target.value)}
+                  placeholder="যেমন: 192.168.10.1"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <Label>ইউজারনেম *</Label>
+                <Input value={form.username} onChange={e => setField("username", e.target.value)} />
+              </div>
+              <div>
+                <Label>রিমোট অ্যাড্রেস</Label>
+                <Input value={form.remote_address} onChange={e => setField("remote_address", e.target.value)} />
+              </div>
+              <div>
+                <Label>পাসওয়ার্ড *</Label>
+                <Input value={form.password} onChange={e => setField("password", e.target.value)} />
+              </div>
+            </>
+          )}
           <div>
             <Label>যোগদানের তারিখ *</Label>
             <Input type="date" value={form.joining_date} onChange={e => setField("joining_date", e.target.value)} />
