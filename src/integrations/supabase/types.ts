@@ -457,7 +457,7 @@ export type Database = {
           branch_id: string | null
           created_at: string
           enabled: boolean
-          execute_at: string
+          execute_at: string | null
           execution_day: string | null
           id: string
           interval_type: string
@@ -466,13 +466,14 @@ export type Database = {
           notes: string | null
           process_key: string
           process_name: string
+          scope: string
           updated_at: string
         }
         Insert: {
           branch_id?: string | null
           created_at?: string
           enabled?: boolean
-          execute_at?: string
+          execute_at?: string | null
           execution_day?: string | null
           id?: string
           interval_type?: string
@@ -481,13 +482,14 @@ export type Database = {
           notes?: string | null
           process_key: string
           process_name: string
+          scope?: string
           updated_at?: string
         }
         Update: {
           branch_id?: string | null
           created_at?: string
           enabled?: boolean
-          execute_at?: string
+          execute_at?: string | null
           execution_day?: string | null
           id?: string
           interval_type?: string
@@ -496,6 +498,7 @@ export type Database = {
           notes?: string | null
           process_key?: string
           process_name?: string
+          scope?: string
           updated_at?: string
         }
         Relationships: [
