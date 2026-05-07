@@ -660,6 +660,57 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* POP Hero Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <MetricTile label="মোট POP" value={num(d?.totalPopMgrs)} icon={Network} tone="violet" to="/dashboard/pop-management" />
+        <MetricTile label="মোট POP ক্লায়েন্ট" value={num(d?.popTotalClients)} icon={Users} tone="emerald" to="/dashboard/clients/home" />
+        <MetricTile label="সচল POP ক্লায়েন্ট" value={num(d?.popEnabledClients)} icon={UserCheck} tone="violet" to="/dashboard/clients/home?status=active" />
+        <MetricTile label="নিষ্ক্রিয় POP ক্লায়েন্ট" value={num(d?.popDisabledClients)} icon={UserX} tone="rose" to="/dashboard/clients/home?mikrotikStatus=disabled" />
+      </div>
+
+      {/* Zone / Subzone donuts + Tickets/Tasks column + Monthly Problem donut */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <DonutCard title="জোন অনুযায়ী সমস্যা" data={d?.zoneDonut || []} />
+        <DonutCard title="সাবজোন অনুযায়ী সমস্যা" data={d?.subzoneDonut || []} />
+        <div className="grid grid-cols-1 gap-2">
+          <TicketTile label="পেন্ডিং টিকেট" value={num(d?.pendingTickets)} icon={ClipboardList} tone="rose" to="/dashboard/support/tickets?status=pending" hint="যেগুলো এখনো শুরু হয়নি" />
+          <TicketTile label="প্রসেসিং টিকেট" value={num(d?.processingTickets)} icon={TicketCheck} tone="cyan" to="/dashboard/support/tickets?status=processing" hint="চলমান টিকেট" />
+          <TicketTile label="পেন্ডিং টাস্ক" value={num(d?.pendingTasks)} icon={ListTodo} tone="amber" to="/dashboard/tasks?status=pending" hint="অপেক্ষমাণ টাস্ক" />
+          <TicketTile label="প্রসেসিং টাস্ক" value={num(d?.processingTasks)} icon={Activity} tone="violet" to="/dashboard/tasks?status=processing" hint="চলমান টাস্ক" />
+        </div>
+        <DonutCard title="মাসিক সমস্যার ধরন" data={d?.monthlyProblemDonut || []} />
+      </div>
+
+      {/* Most Problem Solver */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Award className="h-4 w-4 text-emerald-500" />
+            সর্বোচ্চ সমস্যা সমাধানকারী
+            <span className="ml-auto text-[11px] font-normal text-muted-foreground">এই মাস</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-3 pb-3">
+          {(d?.solverChart ?? []).length === 0 ? (
+            <p className="py-12 text-center text-xs text-muted-foreground">এই মাসে কোনো সমাধান হয়নি</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(220, (d?.solverChart?.length || 0) * 28)}>
+              <BarChart data={d?.solverChart || []} layout="vertical" margin={{ left: 8, right: 24, top: 4, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={130} />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 12 }} />
+                <Bar dataKey="value" radius={[0, 6, 6, 0]} name="সমাধান">
+                  {(d?.solverChart || []).map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Traffic / chart (2/3) + Top Active Users (1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
