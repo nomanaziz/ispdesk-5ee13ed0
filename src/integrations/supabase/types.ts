@@ -9889,6 +9889,53 @@ export type Database = {
           },
         ]
       }
+      tenant_domains: {
+        Row: {
+          created_at: string
+          domain: string
+          error_message: string | null
+          id: string
+          is_primary: boolean
+          last_checked_at: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          verification_token: string
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          error_message?: string | null
+          id?: string
+          is_primary?: boolean
+          last_checked_at?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          verification_token?: string
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          error_message?: string | null
+          id?: string
+          is_primary?: boolean
+          last_checked_at?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          verification_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_domains_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       upazilas: {
         Row: {
           code: string | null
@@ -10850,6 +10897,14 @@ export type Database = {
         Returns: {
           estimated_bill: number
           tier_id: string
+        }[]
+      }
+      get_tenant_by_domain: {
+        Args: { _domain: string }
+        Returns: {
+          customer_name: string
+          panel_branch_id: string
+          tenant_id: string
         }[]
       }
       get_user_branch: { Args: { _user_id: string }; Returns: string }

@@ -383,6 +383,8 @@ const menuGroups: MenuGroup[] = [
       { title: "প্রসেসিং ফি", url: "/dashboard/system/processing-fee", icon: DollarSign },
       { title: "অটোমেটিক প্রসেস", url: "/dashboard/system/automatic-process", icon: Activity },
       { title: "সিস্টেম লগ", url: "/dashboard/system/system-log", icon: ScrollText },
+      { title: "কাস্টম ডোমেইন", url: "/dashboard/system/custom-domain", icon: Globe },
+      { title: "আমার সাবস্ক্রিপশন", url: "/dashboard/my-subscription", icon: CreditCardIcon },
       { title: "বিলিং সাইকেল সেটিংস", url: "/dashboard/billing/cycle-settings", icon: Cog },
     ],
   },
@@ -566,6 +568,8 @@ const SIDEBAR_EN: Record<string, string> = {
   "সিস্টেম সেটআপ": "System Setup",
   "বিলিং সাইকেল সেটিংস": "Billing Cycle Settings",
   "সিস্টেম লগ": "System Log",
+  "কাস্টম ডোমেইন": "Custom Domain",
+  "আমার সাবস্ক্রিপশন": "My Subscription",
 };
 
 function tr(label: string, lang: "bn" | "en"): string {
