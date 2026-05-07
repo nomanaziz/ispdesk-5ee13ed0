@@ -46,7 +46,7 @@ export default function SysProcessingFee() {
 
   const renderBlock = (label: string, block: FeeConfig["default"], onChange: (patch: any) => void) => (
     <div className="border rounded-lg overflow-hidden">
-      <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium">{label}</div>
+      <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium">{label}</div>
       <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-card">
         <div>
           <Label className="text-xs mb-1 block">Fee % (e.g. 1.5)</Label>
@@ -87,7 +87,7 @@ export default function SysProcessingFee() {
       {renderBlock("Portal Clients (Reseller's clients paying via portal)", form.portal_clients, (p) => updateBlock("portal_clients", p))}
 
       <div className="border rounded-lg overflow-hidden">
-        <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center justify-between">
+        <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium flex items-center justify-between">
           <span>Per-Reseller Override</span>
           <Button size="sm" variant="secondary" onClick={addReseller} className="h-7 gap-1"><Plus className="h-3 w-3" /> Add</Button>
         </div>
@@ -134,7 +134,7 @@ export default function SysProcessingFee() {
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
+        <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
           <Save className="h-4 w-4" /> {isSaving ? "Saving..." : "Save Settings"}
         </Button>
       </div>

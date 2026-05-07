@@ -46,7 +46,7 @@ const defaults: CBSettings = {
 function Section({ title, info, children }: { title: string; info: string; children: React.ReactNode }) {
   return (
     <div className="border rounded-lg overflow-hidden bg-card">
-      <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center justify-between gap-3">
+      <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium flex items-center justify-between gap-3">
         <span className="flex items-center gap-2"><Info className="h-4 w-4" /> {title}</span>
         <span className="text-[10px] text-white/75 hidden sm:block">{info}</span>
       </div>
@@ -187,7 +187,7 @@ export default function ClientBillingSettings() {
       </Section>
 
       <div className="flex justify-end sticky bottom-2">
-        <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069] shadow-lg">
+        <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg">
           <Save className="h-4 w-4" /> {isSaving ? "সংরক্ষণ হচ্ছে..." : "সব সেটিংস সংরক্ষণ"}
         </Button>
       </div>

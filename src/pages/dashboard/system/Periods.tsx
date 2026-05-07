@@ -37,7 +37,7 @@ export default function Periods() {
       </div>
 
       <div className="border rounded-lg overflow-hidden">
-        <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
+        <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium flex items-center gap-2">
           <CalendarDays className="h-4 w-4" /> বিলিং পিরিয়ড কনফিগারেশন
         </div>
         <div className="p-5 space-y-5 bg-card">
@@ -95,7 +95,7 @@ export default function Periods() {
             </div>
           </div>
           <div className="flex justify-end pt-2">
-            <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
+            <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
               <Save className="h-4 w-4" /> {isSaving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
             </Button>
           </div>

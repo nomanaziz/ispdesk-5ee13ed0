@@ -116,7 +116,7 @@ export default function Invoice() {
         {/* Invoice Settings Tab */}
         <TabsContent value="invoice">
           <div className="border rounded-lg overflow-hidden">
-            <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium flex items-center gap-2">
               <FileText className="h-4 w-4" /> ইনভয়েস কনফিগারেশন
             </div>
             <div className="p-5 space-y-5 bg-card">
@@ -219,7 +219,7 @@ export default function Invoice() {
                 </div>
               </div>
               <div className="flex justify-end pt-2">
-                <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
+                <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
                   <Save className="h-4 w-4" /> {isSaving ? "সংরক্ষণ হচ্ছে..." : "সাবমিট করুন"}
                 </Button>
               </div>
@@ -230,7 +230,7 @@ export default function Invoice() {
         {/* Money Receipt Tab */}
         <TabsContent value="receipt">
           <div className="border rounded-lg overflow-hidden">
-            <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center gap-2">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium flex items-center gap-2">
               <Receipt className="h-4 w-4" /> মানি রিসিপ্ট কনফিগারেশন
             </div>
             <div className="p-5 space-y-5 bg-card">
@@ -285,7 +285,7 @@ export default function Invoice() {
                 </div>
               </div>
               <div className="flex justify-end pt-2">
-                <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-[#2c5f6e] hover:bg-[#245069]">
+                <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
                   <Save className="h-4 w-4" /> {isSaving ? "সংরক্ষণ হচ্ছে..." : "সাবমিট করুন"}
                 </Button>
               </div>
