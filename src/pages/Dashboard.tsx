@@ -506,6 +506,9 @@ function useStats() {
         topZone, topSubzone,
         topZoneEntries,
         trend12,
+        zoneDonut, subzoneDonut, monthlyProblemDonut, solverChart,
+        popEnabledClients, popDisabledClients,
+
       };
     },
     refetchInterval: 120000,
