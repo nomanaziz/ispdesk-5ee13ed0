@@ -9696,26 +9696,107 @@ export type Database = {
           },
         ]
       }
+      system_log_forwarders: {
+        Row: {
+          auth_header: string | null
+          created_at: string
+          enabled: boolean
+          endpoint_type: string
+          event_filter: Json
+          failure_count: number
+          id: string
+          last_error: string | null
+          last_sent_at: string | null
+          min_severity: string
+          name: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          auth_header?: string | null
+          created_at?: string
+          enabled?: boolean
+          endpoint_type?: string
+          event_filter?: Json
+          failure_count?: number
+          id?: string
+          last_error?: string | null
+          last_sent_at?: string | null
+          min_severity?: string
+          name: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          auth_header?: string | null
+          created_at?: string
+          enabled?: boolean
+          endpoint_type?: string
+          event_filter?: Json
+          failure_count?: number
+          id?: string
+          last_error?: string | null
+          last_sent_at?: string | null
+          min_severity?: string
+          name?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       system_logs: {
         Row: {
+          action: string | null
+          branch_id: string | null
           created_at: string
           device_name: string | null
+          entity_id: string | null
+          entity_label: string | null
+          entity_type: string | null
+          forwarded: boolean
+          forwarded_at: string | null
           id: string
-          log_message: string
+          ip_address: string | null
+          log_message: string | null
+          metadata: Json
+          severity: string
+          user_agent: string | null
           user_id: string | null
         }
         Insert: {
+          action?: string | null
+          branch_id?: string | null
           created_at?: string
           device_name?: string | null
+          entity_id?: string | null
+          entity_label?: string | null
+          entity_type?: string | null
+          forwarded?: boolean
+          forwarded_at?: string | null
           id?: string
-          log_message: string
+          ip_address?: string | null
+          log_message?: string | null
+          metadata?: Json
+          severity?: string
+          user_agent?: string | null
           user_id?: string | null
         }
         Update: {
+          action?: string | null
+          branch_id?: string | null
           created_at?: string
           device_name?: string | null
+          entity_id?: string | null
+          entity_label?: string | null
+          entity_type?: string | null
+          forwarded?: boolean
+          forwarded_at?: string | null
           id?: string
-          log_message?: string
+          ip_address?: string | null
+          log_message?: string | null
+          metadata?: Json
+          severity?: string
+          user_agent?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -10925,6 +11006,17 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_super: { Args: { _user_id: string }; Returns: boolean }
+      log_action: {
+        Args: {
+          _action: string
+          _entity_id?: string
+          _entity_label?: string
+          _entity_type: string
+          _metadata?: Json
+          _severity?: string
+        }
+        Returns: string
+      }
       revert_mikrotik_client: { Args: { _mt_id: string }; Returns: Json }
       seed_default_pop_hierarchy_for_branch: {
         Args: { _branch_id: string }
