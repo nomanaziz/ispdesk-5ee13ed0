@@ -1,22 +1,50 @@
-## Static-protocol client form: replace Username/Password with IP/MAC fields
+# গুরুত্বপূর্ণ লিংকে আইডি/পাসওয়ার্ড সংরক্ষণ ও কপি ফিচার
 
-When `protocol_type === "Static"` the AddClient form should hide `Username`, `Password`, `Remote Address` and instead show three fields. Client code (client_id) remains as is — needed for billing.
+প্রতিটি লিংকের সাথে ঐচ্ছিক **Username, Password, Notes** যোগ করার সুবিধা দেওয়া হবে। কার্ডে show/hide, এক ক্লিকে কপি বাটন থাকবে।
 
-### Conditional fields (Static only)
+## কী করা হবে
 
-| Field | Maps to existing column | Example |
-|------|------------------------|---------|
-| Static IP / Subnet * | `clients.static_ip` (existing) | `192.168.10.25/24` |
-| রাউটার MAC Address | `clients.mac_address` (existing) | `AA:BB:CC:11:22:33` |
-| গেটওয়ে / Peer IP | `clients.peer_ip` (existing) | `192.168.10.1` |
+### 1. ডাটাবেস (Migration)
+`important_links` টেবিলে নতুন কলাম যোগ:
+- `username text` — ঐচ্ছিক লগইন আইডি
+- `password_encrypted text` — পাসওয়ার্ড (pgcrypto দিয়ে এনক্রিপ্টেড)
+- `notes text` — অতিরিক্ত নোট (যেমন 2FA, server IP)
 
-No new DB columns needed — all three target columns already exist on `clients`.
+পাসওয়ার্ড plain-text-এ সংরক্ষণ করা হবে না। `pgcrypto` extension ব্যবহার করে সংরক্ষণের আগে এনক্রিপ্ট ও পড়ার সময় ডিক্রিপ্ট করা হবে দুটি SECURITY DEFINER ফাংশনের মাধ্যমে:
+- `set_important_link_password(link_id, plain)` — শুধু admin role
+- `get_important_link_password(link_id)` — admin/super_admin/operator রোল চেক করে ডিক্রিপ্ট রিটার্ন করবে
 
-### Save logic
-In `saveMutation`, when `protocol_type === "Static"`:
-- send `username = null`, `password = null`, `remote_address = null`
-- always send `static_ip`, `mac_address`, `peer_ip` (currently `static_ip`/`peer_ip` are gated by `client_type === "Corporate"` — drop that gate when protocol is Static)
-- skip MikroTik PPPoE secret sync (`shouldSyncMikrotik` already requires `username`, so this is automatic)
+এনক্রিপশন কী একটি Supabase secret (`LINK_VAULT_KEY`) থেকে আসবে।
 
-### File
-- edit `src/pages/dashboard/clients/AddClient.tsx` — swap field block + adjust save payload
+### 2. লিংক ডায়ালগ (`ImportantLinkDialog.tsx`)
+নতুন ফিল্ড যোগ:
+- **ইউজারনেম / আইডি** (text input)
+- **পাসওয়ার্ড** (password input + show/hide চোখ আইকন)
+- **নোট** (textarea, ঐচ্ছিক)
+
+সংরক্ষণের সময় পাসওয়ার্ড আলাদা RPC কল-এ এনক্রিপ্ট হয়ে যাবে। এডিট মোডে পাসওয়ার্ড ফাঁকা থাকবে — শুধু পরিবর্তন করতে চাইলে নতুনটি দিতে হবে।
+
+### 3. লিংক কার্ড (`ImportantLinkCard.tsx`)
+যেসব লিংকে credential আছে সেগুলোতে নতুন আইকন/বাটন:
+- 🔑 **Credentials** বাটন → একটি ছোট popover খোলে
+- Popover-এ:
+  - **আইডি**: `user@example.com` `[কপি]`
+  - **পাসওয়ার্ড**: `••••••••` `[👁 দেখান]` `[কপি]`
+  - **নোট** (যদি থাকে)
+- পাসওয়ার্ড কপি/দেখানোর সময় RPC কল করে ডিক্রিপ্ট হবে
+- কপি করলে toast: "কপি হয়েছে"
+- পাসওয়ার্ড 30 সেকেন্ড পর auto-hide
+
+### 4. সিকিউরিটি
+- শুধু `super_admin / admin / operator` credential দেখতে/কপি করতে পারবে (বর্তমান `canSee` লজিকের মতই)
+- পাসওয়ার্ড কখনো নেটওয়ার্কে plaintext-এ যাবে না সংরক্ষণের সময় (RPC দিয়ে এনক্রিপ্ট)
+- ডিক্রিপ্ট শুধু authorized request-এ
+
+## টেকনিক্যাল সারাংশ
+
+- Migration: `important_links`-এ ৩টা কলাম + 2টা SECURITY DEFINER ফাংশন + pgcrypto extension
+- Secret: `LINK_VAULT_KEY` (admin user-কে set করতে বলা হবে; না দিলে fallback hash)
+- Files edited:
+  - `src/components/dashboard/ImportantLinkDialog.tsx` — নতুন ফর্ম ফিল্ড
+  - `src/components/dashboard/ImportantLinkCard.tsx` — credentials popover + কপি/show
+  - `src/components/dashboard/ImportantLinksSection.tsx` — পাস-থ্রু props (canViewSecrets)
