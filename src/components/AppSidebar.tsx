@@ -690,7 +690,7 @@ function CollapsibleGroup({ group, forceOpen, openKey, onToggle }: { group: Menu
             )}
             title={groupLabel}
           >
-            <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} icons8={icons8ForItem(primaryItem.url, primaryItem.title, group.label)} customIcon={hishabeeForItem(primaryItem.url, primaryItem.title, group.label)} />
+            <MenuIconTile icon={group.icon} tint={tintForLabel(group.label)} active={isActive} />
             {groupBadgeCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                 {groupBadgeCount > 99 ? "99+" : groupBadgeCount}
