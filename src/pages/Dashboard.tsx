@@ -728,7 +728,7 @@ const Dashboard = () => {
       </div>
 
       {/* Zone / Subzone donuts + Tickets/Tasks column + Monthly Problem donut */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         <DonutCard title="জোন অনুযায়ী সমস্যা" data={d?.zoneDonut || []} />
         <DonutCard title="সাবজোন অনুযায়ী সমস্যা" data={d?.subzoneDonut || []} />
         <div className="grid grid-cols-2 gap-2">
