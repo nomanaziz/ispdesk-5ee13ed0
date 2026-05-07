@@ -46,11 +46,11 @@ const defaults: CBSettings = {
 function Section({ title, info, children }: { title: string; info: string; children: React.ReactNode }) {
   return (
     <div className="border rounded-lg overflow-hidden bg-card">
-      <div className="bg-muted/50 px-4 py-2.5 text-sm font-medium flex items-center justify-between">
-        <span>{title}</span>
-        <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Info className="h-3 w-3" /> {info}</span>
+      <div className="bg-[#2c5f6e] text-white px-4 py-2.5 text-sm font-medium flex items-center justify-between gap-3">
+        <span className="flex items-center gap-2"><Info className="h-4 w-4" /> {title}</span>
+        <span className="text-[10px] text-white/75 hidden sm:block">{info}</span>
       </div>
-      <div className="p-4">{children}</div>
+      <div className="p-5 space-y-3 bg-card">{children}</div>
     </div>
   );
 }
