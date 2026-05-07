@@ -731,7 +731,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
         <DonutCard title="জোন অনুযায়ী সমস্যা" data={d?.zoneDonut || []} />
         <DonutCard title="সাবজোন অনুযায়ী সমস্যা" data={d?.subzoneDonut || []} />
-        <div className="grid grid-cols-1 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <TicketTile label="পেন্ডিং টিকেট" value={num(d?.pendingTickets)} icon={ClipboardList} tone="rose" to="/dashboard/support/tickets?status=pending" hint="যেগুলো এখনো শুরু হয়নি" />
           <TicketTile label="প্রসেসিং টিকেট" value={num(d?.processingTickets)} icon={TicketCheck} tone="cyan" to="/dashboard/support/tickets?status=processing" hint="চলমান টিকেট" />
           <TicketTile label="পেন্ডিং টাস্ক" value={num(d?.pendingTasks)} icon={ListTodo} tone="amber" to="/dashboard/tasks?status=pending" hint="অপেক্ষমাণ টাস্ক" />
