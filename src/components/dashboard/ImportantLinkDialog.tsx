@@ -181,6 +181,41 @@ export function ImportantLinkDialog({ open, onOpenChange, categories, initial, d
             <Label>বিবরণ (ঐচ্ছিক)</Label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
           </div>
+
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 space-y-2">
+            <p className="text-xs font-semibold text-foreground">🔐 ক্রেডেনশিয়াল (ঐচ্ছিক)</p>
+            <div>
+              <Label className="text-xs">ইউজারনেম / আইডি</Label>
+              <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="user@example.com" />
+            </div>
+            <div>
+              <Label className="text-xs">পাসওয়ার্ড</Label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={initial?.id ? "পরিবর্তন করতে চাইলে নতুন পাসওয়ার্ড দিন" : ""}
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(s => !s)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {initial?.id && (
+                <p className="text-[10px] text-muted-foreground mt-1">খালি রাখলে আগের পাসওয়ার্ড অপরিবর্তিত থাকবে</p>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs">নোট (যেমন: 2FA, server IP)</Label>
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>বাতিল</Button>
