@@ -269,8 +269,8 @@ function DateInput({ label, value, onChange }: {
 }) {
   return (
     <div>
-      <label className="text-[10px] text-muted-foreground mb-0.5 block">{label}</label>
-      <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} className="h-7 text-[11px]" />
+      <label className="text-xs font-semibold text-foreground mb-1 block">{label}</label>
+      <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} className="h-9 text-sm" />
     </div>
   );
 }
