@@ -453,6 +453,15 @@ function useStats() {
         mikrotikDisabledCount,
         inactiveLeftCount,
         extensionGraceCount,
+        // ── New ──
+        portalActive: portalActiveRes.count ?? 0,
+        portalInactive: portalInactiveRes.count ?? 0,
+        ticketsOpen: ticketsOpenRes.count ?? 0,
+        ticketsToday: ticketsTodayRes.count ?? 0,
+        ticketsResolvedToday: ticketsResolvedTodayRes.count ?? 0,
+        topZone, topSubzone,
+        topZoneEntries,
+        trend12,
       };
     },
     refetchInterval: 120000,
