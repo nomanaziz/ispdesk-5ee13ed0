@@ -87,14 +87,30 @@ export function ImportantLinkDialog({ open, onOpenChange, categories, initial, d
         category_id: categoryId,
         description: description.trim() || null,
         icon_url: iconUrl,
+        username: username.trim() || null,
+        notes: notes.trim() || null,
       };
-      if (initial?.id) {
-        const { error } = await supabase.from("important_links").update(payload).eq("id", initial.id);
+      let linkId = initial?.id;
+      if (linkId) {
+        const { error } = await supabase.from("important_links").update(payload).eq("id", linkId);
         if (error) throw error;
       } else {
         const { data: { user } } = await supabase.auth.getUser();
-        const { error } = await supabase.from("important_links").insert({ ...payload, created_by: user?.id });
+        const { data, error } = await supabase
+          .from("important_links")
+          .insert({ ...payload, created_by: user?.id })
+          .select("id")
+          .single();
         if (error) throw error;
+        linkId = data.id;
+      }
+      // Save password via secure RPC if provided (or cleared explicitly with empty edit)
+      if (password.length > 0 && linkId) {
+        const { error: pwErr } = await supabase.rpc("set_important_link_password", {
+          _link_id: linkId,
+          _password: password,
+        });
+        if (pwErr) throw pwErr;
       }
       toast.success("সংরক্ষিত হয়েছে");
       onSaved();
