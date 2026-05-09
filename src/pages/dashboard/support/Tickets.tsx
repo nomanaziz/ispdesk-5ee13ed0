@@ -574,6 +574,57 @@ export default function Tickets() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Solve Confirmation Dialog */}
+      <Dialog open={solveDialogOpen} onOpenChange={setSolveDialogOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader><DialogTitle>Press Yes if solved</DialogTitle></DialogHeader>
+          {solveTicket && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">CONNECTIVITY STATUS</Label>
+                  <Input readOnly value={(solveTicket.clients as any)?.billing_status === "active" ? "Connected" : "Disconnected"} />
+                </div>
+                <div>
+                  <Label className="text-xs">STATUS</Label>
+                  <Input readOnly value={solveTicket.status === "processing" ? "Offline" : "Online"} className="bg-destructive/10" />
+                </div>
+                <div>
+                  <Label className="text-xs">UPTIME</Label>
+                  <Input readOnly value="" placeholder="—" />
+                </div>
+                <div>
+                  <Label className="text-xs">LAST LOGOUT TIME</Label>
+                  <Input readOnly value={format(new Date(), "dd/MM/yyyy hh:mm a")} />
+                </div>
+                <div>
+                  <Label className="text-xs">MAC ADDRESS / CALLER ID</Label>
+                  <Input readOnly value={(solveTicket.clients as any)?.mac_address || ""} />
+                </div>
+                <div>
+                  <Label className="text-xs">IP ADDRESS</Label>
+                  <Input readOnly value={(solveTicket.clients as any)?.remote_address || ""} />
+                </div>
+              </div>
+              <div className="bg-muted/50 p-3 rounded text-xs space-y-1">
+                <div><strong>টিকেট:</strong> {solveTicket.ticket_no} — {solveTicket.subject}</div>
+                <div><strong>ক্লায়েন্ট:</strong> {(solveTicket.clients as any)?.name || "—"}</div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="destructive" onClick={() => setSolveDialogOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-slate-800 hover:bg-slate-900 text-white"
+              onClick={() => solveTicket && resolveMutation.mutate(solveTicket.id)}
+              disabled={resolveMutation.isPending}
+            >
+              {resolveMutation.isPending ? "সেভ হচ্ছে..." : "Yes, Solved"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
