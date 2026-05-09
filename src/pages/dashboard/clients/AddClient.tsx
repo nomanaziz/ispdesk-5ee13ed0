@@ -57,6 +57,26 @@ export default function AddClient() {
   const [mikrotikProfiles, setMikrotikProfiles] = useState<{ name: string; rateLimit?: string }[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
   const [clientCodeError, setClientCodeError] = useState<string>("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>("");
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize photo preview from prefill (edit mode)
+  useEffect(() => {
+    if (prefill?.photo_url && !photoPreview) setPhotoPreview(prefill.photo_url);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill?.photo_url]);
+
+  const onPickPhoto = (file: File | undefined | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("শুধু ছবি ফাইল গ্রহণযোগ্য"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("ছবির আকার ২MB-এর কম হতে হবে"); return; }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const errClass = (key: string) => errors[key] ? "border-destructive ring-1 ring-destructive" : "";
 
   // Compute full expire_date from selected day-of-month (1-31). Uses current month;
   // if today is past that day, rolls to next month. Clamps to last day if month-এ দিন কম.
