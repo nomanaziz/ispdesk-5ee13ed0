@@ -415,7 +415,23 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                 return (
                   <TableRow key={c.id} data-state={selectedIds.has(c.id) ? "selected" : undefined}>
                     <TableCell><Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} /></TableCell>
-                    <TableCell className="text-xs font-medium">{c.client_id}</TableCell>
+                    <TableCell className="text-xs font-medium">
+                      <div className="flex items-center gap-1">
+                        <span>{c.client_id}</span>
+                        <button
+                          onClick={() => setCommentClient(c)}
+                          className={cn(
+                            "inline-flex items-center justify-center h-4 w-4 rounded-full border transition-colors",
+                            c.remarks
+                              ? "bg-blue-500/15 text-blue-600 border-blue-500/40 hover:bg-blue-500/25"
+                              : "text-muted-foreground border-muted-foreground/30 hover:text-foreground hover:border-foreground/50"
+                          )}
+                          title={c.remarks ? `Note: ${c.remarks}` : "Add comment / note"}
+                        >
+                          <Info className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-xs">
                       <div className="flex items-center gap-1.5">
                         <div className={cn("h-2 w-2 rounded-full shrink-0", c.is_online ? "bg-green-500" : "bg-gray-400")} />
