@@ -1,0 +1,71 @@
+// Cron: rolls expired clients of resellers with auto_recharge_enabled by 1 day
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const sb = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  const today = new Date().toISOString().slice(0, 10);
+  const results: any[] = [];
+
+  try {
+    const { data: pops, error: popsErr } = await sb
+      .from("branch_managers")
+      .select("id, name, branch_id, balance, fund_started, auto_recharge_enabled, allow_negative_balance")
+      .eq("auto_recharge_enabled", true)
+      .eq("fund_started", true);
+    if (popsErr) throw popsErr;
+
+    for (const pop of pops ?? []) {
+      if (!pop.branch_id) continue;
+
+      // Find clients due: expire_date < today AND mikrotik enabled (not manually disabled)
+      const { data: dueClients, error: dErr } = await sb
+        .from("clients")
+        .select("id, monthly_bill, expire_date, mikrotik_status, status")
+        .eq("branch_id", pop.branch_id)
+        .lt("expire_date", today)
+        .gt("monthly_bill", 0)
+        .neq("status", "left")
+        .neq("mikrotik_status", "disabled");
+      if (dErr) {
+        results.push({ pop: pop.name, error: dErr.message });
+        continue;
+      }
+
+      const ids = (dueClients || []).map((c: any) => c.id);
+      if (!ids.length) {
+        results.push({ pop: pop.name, due: 0 });
+        continue;
+      }
+
+      const { data: rpcRes, error: rpcErr } = await sb.rpc("pop_bulk_recharge_clients", {
+        p_client_ids: ids,
+        p_days: 1,
+      });
+      if (rpcErr) {
+        results.push({ pop: pop.name, error: rpcErr.message, due: ids.length });
+        continue;
+      }
+      results.push({ pop: pop.name, due: ids.length, ...(rpcRes as any) });
+    }
+
+    return new Response(JSON.stringify({ ok: true, date: today, results }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e: any) {
+    return new Response(JSON.stringify({ ok: false, error: e?.message || String(e) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
