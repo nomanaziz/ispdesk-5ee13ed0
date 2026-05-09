@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useSystemSetting } from "@/hooks/useSystemSetting";
 import { Building2, Smartphone, ArrowLeft, CheckCircle2, Copy, CreditCard } from "lucide-react";
 
 type Category = "mobile_personal" | "mobile_merchant" | "bank" | "gateway";
