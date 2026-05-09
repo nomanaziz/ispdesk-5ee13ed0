@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Building2, Save, Mail, Phone, Globe, MapPin, FileText, Image as ImageIcon, Upload, X, Loader2 } from "lucide-react";
+import { Building2, Save, Mail, Phone, Globe, MapPin, FileText, Image as ImageIcon, Upload, X, Loader2, Link2 } from "lucide-react";
 
 interface CompanyInfo {
   name: string;
