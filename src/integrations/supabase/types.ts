@@ -11048,6 +11048,28 @@ export type Database = {
         }
         Returns: string
       }
+      public_lookup_bills: {
+        Args: { _client_id: string }
+        Returns: {
+          amount: number
+          due: number
+          id: string
+          month: string
+          paid: number
+          status: string
+        }[]
+      }
+      public_lookup_client: {
+        Args: { _q: string }
+        Returns: {
+          client_id: string
+          contact: string
+          id: string
+          monthly_bill: number
+          name: string
+          status: string
+        }[]
+      }
       revert_mikrotik_client: { Args: { _mt_id: string }; Returns: Json }
       seed_default_pop_hierarchy_for_branch: {
         Args: { _branch_id: string }
