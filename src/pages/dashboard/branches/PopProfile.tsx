@@ -126,7 +126,7 @@ export default function PopProfile() {
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
         <h1 className="text-2xl font-bold">POP Profile — {pop.company_name || pop.name}</h1>
-        <Badge variant={pop.pop_type === "prepaid" ? "default" : "secondary"}>{pop.pop_type}</Badge>
+        
         <Badge variant={pop.fund_started ? "default" : "secondary"}>
           {pop.fund_started ? "Fund Started" : "Fund Off"}
         </Badge>
