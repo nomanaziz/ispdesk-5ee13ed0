@@ -490,7 +490,12 @@ export default function BillingList() {
                       </TableCell>
                       <TableCell className="text-right">{Number(c.monthly_bill || 0).toLocaleString()}</TableCell>
                       <TableCell className="text-right">{paidAmt.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">{dueAmt.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="font-semibold">{dueAmt.toLocaleString()}</div>
+                        {c.overdueMonths >= 2 && (
+                          <Badge variant="destructive" className="text-[9px] h-4 px-1 mt-0.5">{c.overdueMonths} মাস</Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">{Number(b?.advance || 0).toLocaleString()}</TableCell>
                       <TableCell className="text-xs">{b?.pay_date || "-"}</TableCell>
                       <TableCell>
