@@ -38,6 +38,9 @@ export default function Tickets() {
   const [newTicketOpen, setNewTicketOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [conversationOpen, setConversationOpen] = useState(false);
+  const [solveDialogOpen, setSolveDialogOpen] = useState(false);
+  const [solveTicket, setSolveTicket] = useState<any>(null);
+  const [myOnly, setMyOnly] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [newComment, setNewComment] = useState("");
