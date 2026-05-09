@@ -17,7 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Plus, Search, Pencil, Trash2, MessageSquare, CheckCircle, ListTodo, Clock, AlertTriangle, FolderOpen } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 const priorityColors: Record<string, string> = {
   high: "bg-red-100 text-red-800 border-red-200",
