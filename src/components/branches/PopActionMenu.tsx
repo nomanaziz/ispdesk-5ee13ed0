@@ -14,7 +14,6 @@ import {
   LogIn,
   KeyRound,
   Wallet,
-  ArrowLeftRight,
   Trash2,
   Mail,
 } from "lucide-react";
@@ -25,7 +24,6 @@ interface Props {
   onLogin: () => void;
   onPasswordRegen: () => void;
   onFund: () => void;
-  onTypeChange: () => void;
   onSendMessage: () => void;
   onDelete: () => void;
 }
