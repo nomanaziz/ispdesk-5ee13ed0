@@ -193,14 +193,13 @@ export default function BillingList() {
       const b = c.currentBill;
       const derived = getBillStatus(b);
       monthlyBill += Number(c.monthly_bill || 0);
+      received += Number(c.totalPaid || 0);
+      due += Number(c.totalDue || 0);
       if (b) {
-        received += Number(b.paid || 0);
-        due += Number(b.due || 0);
         if (derived === "paid") paid++;
         else unpaid++;
       } else unpaid++;
-      const expDate = c.expire_date ? new Date(c.expire_date) : null;
-      if (expDate && expDate < now && derived !== "paid") overdue++;
+      if (c.isOverdue) overdue++;
     });
     return { total, active, paid, unpaid, overdue, received, due, monthlyBill };
   }, [clients]);
@@ -212,8 +211,8 @@ export default function BillingList() {
     let monthly = 0, paid = 0, due = 0, advance = 0;
     paginated.forEach((c: any) => {
       monthly += Number(c.monthly_bill || 0);
-      paid += Number(c.currentBill?.paid || 0);
-      due += Number(c.currentBill?.due || 0);
+      paid += Number(c.totalPaid || 0);
+      due += Number(c.totalDue || 0);
       advance += Number(c.currentBill?.advance || 0);
     });
     return { monthly, paid, due, advance };
