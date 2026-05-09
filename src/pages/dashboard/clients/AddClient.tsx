@@ -193,9 +193,12 @@ export default function AddClient() {
   // ─── Admin-mode queries (unchanged) ───
   const { data: zonesAdmin } = useQuery({
     enabled: !isPopMode,
-    queryKey: ["zones-active-admin"],
+    queryKey: ["zones-active-admin-with-geo"],
     queryFn: async () => {
-      const { data } = await supabase.from("zones").select("id, name").eq("status", "active");
+      const { data } = await supabase
+        .from("zones")
+        .select("id, name, division_id, district_id, upazila_id, divisions(name), districts(name), upazilas(name)")
+        .eq("status", "active");
       return data || [];
     },
   });
