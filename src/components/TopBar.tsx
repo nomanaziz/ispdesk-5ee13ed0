@@ -143,6 +143,9 @@ export function TopBar() {
             </Button>
           )}
 
+          {/* Quick Create (+) */}
+          <QuickCreateMenu />
+
           {/* Notifications */}
           <AdminNotificationBell />
 
