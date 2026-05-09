@@ -68,9 +68,28 @@ export default function Tickets() {
   const { data: allAssignees = [] } = useQuery({
     queryKey: ["ticket_assignees"],
     queryFn: async () => {
-      const { data } = await supabase.from("support_ticket_assignees").select("*, employees(name)");
+      const { data } = await supabase.from("support_ticket_assignees").select("*, employees(id, name, user_id)");
       return data || [];
     },
+  });
+
+  // Fetch profiles for created_by / solved_by display
+  const userIds = useMemo(() => {
+    const ids = new Set<string>();
+    tickets.forEach((t: any) => { if (t.created_by) ids.add(t.created_by); if (t.solved_by) ids.add(t.solved_by); });
+    return Array.from(ids);
+  }, [tickets]);
+
+  const { data: profilesMap = {} } = useQuery({
+    queryKey: ["ticket_profiles", userIds.join(",")],
+    queryFn: async () => {
+      if (userIds.length === 0) return {};
+      const { data } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
+      const map: Record<string, string> = {};
+      (data || []).forEach((p: any) => { map[p.user_id] = p.full_name; });
+      return map;
+    },
+    enabled: userIds.length > 0,
   });
 
   const { data: categories = [] } = useQuery({
