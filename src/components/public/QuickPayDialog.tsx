@@ -69,6 +69,8 @@ export default function QuickPayDialog({ open, onOpenChange, client, defaultAmou
       toast({ title: "ত্রুটি", description: "পরিমাণ দিন", variant: "destructive" });
       return;
     }
+    setLastGateway(gw);
+    setLastError(null);
     setSubmitting(true);
     try {
       // 1) Create payment_request row first to get an ID for callback (RLS-safe RPC)
