@@ -471,6 +471,42 @@ function PendingOnlinePayments() {
         .update({ status: "approved", approved_at: new Date().toISOString() })
         .eq("id", req.id);
       if (error) throw error;
+
+      // Auto-enable MikroTik if client has no remaining due across all bills
+      try {
+        const { data: client } = await supabase
+          .from("clients")
+          .select("id, mikrotik_id, username, billing_status, mikrotik_status")
+          .eq("id", req.client_id)
+          .maybeSingle();
+
+        if (client?.mikrotik_id && client?.username) {
+          const { data: openBills } = await supabase
+            .from("billing")
+            .select("due")
+            .eq("client_id", req.client_id)
+            .gt("due", 0);
+          const totalDue = (openBills || []).reduce((s: number, b: any) => s + Number(b.due || 0), 0);
+
+          if (totalDue <= 0) {
+            await supabase.from("clients").update({
+              billing_status: "Active",
+              mikrotik_status: "enabled",
+            }).eq("id", client.id);
+            await supabase.functions.invoke("manage-mikrotik-ppp", {
+              body: {
+                client_id: client.id,
+                mikrotik_id: client.mikrotik_id,
+                username: client.username,
+                action: "update",
+                disabled: false,
+              },
+            });
+          }
+        }
+      } catch (e) {
+        console.error("auto re-enable mikrotik failed", e);
+      }
     },
     onSuccess: () => {
       toast({ title: "অনুমোদিত", description: "পেমেন্ট approve হয়েছে এবং billing update হয়েছে" });
