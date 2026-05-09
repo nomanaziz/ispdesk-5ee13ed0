@@ -1,20 +1,45 @@
-## Goal
-Trim the uploaded ISP Desk image so only the logo mark (the blue "iD + wifi" icon) remains — drop all surrounding white space and the "ISP DESK" wordmark, then use it across the app.
+# সুন্দর Dynamic 404 Page
 
-## Steps
+## লক্ষ্য
 
-1. **Crop the icon-only logo using ImageMagick**
-   - Take `user-uploads://ISP_Desk_Logo-2.png` (1536×1024, mostly white).
-   - Crop to the icon mark region only (approx left 13%–28%, top 32%–66% of the source).
-   - Run `-trim +repage` to remove any remaining white border, then `-resize` to a clean square (e.g. 512×512) on a transparent background.
-   - Save as `src/assets/isp-desk-logo.png` (overwrite existing) and `public/isp-desk-logo.png`.
+বর্তমান `src/pages/NotFound.tsx` খুবই সাধারণ ("404 / Oops! Page not found / Return to Home")। এটাকে একটা modern, branded, dynamic 404 page দিয়ে replace করব — যেটা hard refresh বা ভুল URL এর সময় সুন্দরভাবে দেখাবে।
 
-2. **Adjust sidebar sizing**
-   - The existing sidebar uses `h-12 w-auto` for the logo (sized for the wide wordmark version). With the square icon-only mark, switch to `h-10 w-10` (expanded) and `h-9 w-9` (collapsed) so it sits centred without looking oversized.
+> **Note:** যে `NOT_FOUND / bom1::...` error screenshot টা আসছে সেটা hosting platform (Vercel-style) এর infrastructure 404, app এর না। Lovable hosting (`*.lovable.app` / custom domain via Lovable) এ SPA fallback automatic — তাই hard refresh এ React Router এর `NotFound` page ই render হবে, infrastructure 404 না। যদি app অন্য কোথাও (যেমন Vercel) deploy করা থাকে, সেখানে আলাদা SPA rewrite config লাগবে — সেটা আলাদা issue, code এর না।
 
-3. **Other surfaces — no code change needed**
-   - `Login.tsx`, `PublicNavbar.tsx`, `PublicFooter.tsx` already point to the same `@/assets/isp-desk-logo.png`. Replacing the file automatically updates them. Will visually QA each after the swap.
+## নতুন 404 Page এর Design
 
-## Out of scope
-- Favicon / `index.html` icons (current request is about the in-app logo only).
-- Re-adding "ISP Desk / ERP System" text next to the sidebar logo (already removed per previous instruction).
+**Layout:**
+- Full-screen centered card, subtle gradient background (semantic tokens থেকে — `--background`, `--primary`, `--accent`)
+- বড় animated "404" headline (framer-motion দিয়ে subtle float / fade-in)
+- Decorative floating shapes / blur orbs background এ (brand color tone)
+- Company logo উপরে (existing `useCompanyInfo()` hook ব্যবহার করে — uploaded logo থাকলে সেটা, নাহলে default ISP Desk logo)
+
+**Content (Bangla + English):**
+- Heading: "404"
+- Subheading: "দুঃখিত, পেজটি খুঁজে পাওয়া যায়নি"
+- Description: ছোট লাইন — "যে পেজটি খুঁজছেন সেটি সরিয়ে নেওয়া হয়েছে, নাম বদলেছে, অথবা কখনোই ছিল না।"
+- যে invalid path এ এসেছে সেটা একটা muted code badge এ দেখাবে (debugging সুবিধা)
+
+**Actions (buttons):**
+1. **হোম পেজে যান** (Home icon) — `/` এ navigate
+2. **ড্যাশবোর্ডে যান** (LayoutDashboard icon) — `/dashboard` এ navigate (যদি logged in হয়)
+3. **পিছনে যান** (ArrowLeft icon) — `navigate(-1)` ব্যবহার করে browser back
+4. Optional: **লগইন করুন** — যদি not authenticated
+
+Auth status check করার জন্য existing Supabase session check pattern ব্যবহার করব যাতে context-aware buttons দেখানো যায়।
+
+**Styling rules:**
+- শুধুই semantic tokens (`bg-background`, `text-foreground`, `text-primary`, `text-muted-foreground`, ইত্যাদি) — কোনো hardcoded color না
+- shadcn `Button` component (variant: `default`, `outline`, `ghost`)
+- framer-motion ইতিমধ্যে project এ আছে — সেটা ব্যবহার করব entrance animation এর জন্য
+- Mobile responsive — buttons stack on small screens
+
+## Files যেগুলো বদলাবে
+
+- **`src/pages/NotFound.tsx`** — সম্পূর্ণ rewrite নতুন design এ, useCompanyInfo + useNavigate + auth check সহ
+
+## যা পরিবর্তন হবে না
+
+- Routing config (App.tsx এ `*` catch-all already আছে ধরে নিচ্ছি — verify করব implementation এর সময়)
+- কোনো backend / business logic না
+- অন্য কোনো page না
