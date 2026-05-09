@@ -429,27 +429,7 @@ export default function PopForm({ mode, pop }: Props) {
             </p>
           </div>
 
-          {form.pop_type === "postpaid" && (
-            <>
-              <div>
-                <Label>Auto-disable তারিখ (১–২৮)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={28}
-                  value={form.auto_disable_day}
-                  onChange={(e) => upd("auto_disable_day", Math.max(1, Math.min(28, Number(e.target.value) || 10)))}
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  মাসের কত তারিখের মধ্যে আগের মাসের পাওনা মিটানো must
-                </p>
-              </div>
-              <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning/10 p-3 text-[12px] text-foreground">
-                <strong>Postpaid নিয়ম:</strong> Postpaid POP-ও daily-rate এ deduct হবে। Auto-disable তারিখের মধ্যে balance এর পাওনা না মিটালে সব client off হবে। Admin fund দিতে পারে (ধার), POP নিজেও recharge করতে পারে।
-              </div>
-            </>
-          )}
-          {form.pop_type !== "postpaid" && <div className="md:col-span-2" />}
+          <div className="md:col-span-2" />
 
           <div>
             <Label>Username {mode === "create" && <Req />} {lockUsername && <Lock className="inline h-3 w-3 ml-1" />}</Label>
