@@ -189,12 +189,7 @@ const LoginInner = () => {
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm">{t("পাসওয়ার্ড", "Password")}</Label>
-                <Link to="/reset-password" className="text-xs text-primary hover:underline font-medium">
-                  {t("পাসওয়ার্ড ভুলেছেন?", "Forgot password?")}
-                </Link>
-              </div>
+              <Label htmlFor="password" className="text-sm">{t("পাসওয়ার্ড", "Password")}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -214,6 +209,11 @@ const LoginInner = () => {
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
+              </div>
+              <div className="flex justify-end">
+                <Link to="/reset-password" className="text-xs text-primary hover:underline font-medium">
+                  {t("পাসওয়ার্ড ভুলেছেন?", "Forgot password?")}
+                </Link>
               </div>
             </div>
 
