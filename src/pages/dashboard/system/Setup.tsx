@@ -16,6 +16,7 @@ interface SystemConfig {
 interface BillingEnforcement {
   enabled: boolean; cutoff_time: string; recheck_interval: string;
   grace_days: number; enforcement_day: "same" | "next";
+  disable_when_no_bill?: boolean;
 }
 interface VatDefault { percent: number; mode: "including" | "excluding"; }
 
@@ -26,7 +27,7 @@ const defaults: SystemConfig = {
 };
 const enforcementDefaults: BillingEnforcement = {
   enabled: false, cutoff_time: "00:00", recheck_interval: "60",
-  grace_days: 0, enforcement_day: "same",
+  grace_days: 0, enforcement_day: "same", disable_when_no_bill: false,
 };
 
 export default function Setup() {
