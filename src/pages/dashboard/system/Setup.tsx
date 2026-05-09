@@ -16,6 +16,7 @@ interface SystemConfig {
 interface BillingEnforcement {
   enabled: boolean; cutoff_time: string; recheck_interval: string;
   grace_days: number; enforcement_day: "same" | "next";
+  disable_when_no_bill?: boolean;
 }
 interface VatDefault { percent: number; mode: "including" | "excluding"; }
 
@@ -26,7 +27,7 @@ const defaults: SystemConfig = {
 };
 const enforcementDefaults: BillingEnforcement = {
   enabled: false, cutoff_time: "00:00", recheck_interval: "60",
-  grace_days: 0, enforcement_day: "same",
+  grace_days: 0, enforcement_day: "same", disable_when_no_bill: false,
 };
 
 export default function Setup() {
@@ -162,6 +163,13 @@ export default function Setup() {
                   <div className="text-xs text-muted-foreground">বিল না দিলে স্বয়ংক্রিয়ভাবে PPP লাইন বন্ধ হবে</div>
                 </div>
                 <Switch checked={enfForm.enabled} onCheckedChange={(v) => setEnf("enabled", v)} />
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                <div>
+                  <div className="font-medium text-sm">বিল না থাকা ক্লায়েন্টদেরও বন্ধ করব</div>
+                  <div className="text-xs text-muted-foreground">যাদের চলতি মাসের বিল generate হয়নি (free / complimentary line সহ) তাদেরও disable হবে। সাধারণত বন্ধ রাখুন।</div>
+                </div>
+                <Switch checked={!!enfForm.disable_when_no_bill} onCheckedChange={(v) => setEnf("disable_when_no_bill", v)} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>

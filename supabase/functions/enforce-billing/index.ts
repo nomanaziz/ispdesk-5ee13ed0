@@ -186,7 +186,9 @@ Deno.serve(async (req) => {
     const cutoffTime = settings.cutoff_time ?? "00:00";
     const enforcementDay = settings.enforcement_day ?? "same";
     const graceDays = Math.max(0, Number(settings.grace_days ?? 0));
-    const disableWhenNoBill = settings.disable_when_no_bill !== false; // default true (preserve old behavior)
+    // Default: do NOT disable clients without a billing row (free / not-yet-generated lines).
+    // Admin must explicitly opt-in via system setting.
+    const disableWhenNoBill = settings.disable_when_no_bill === true;
 
     // 2. Calculate current time in Dhaka (UTC+6)
     const now = new Date();
@@ -220,7 +222,7 @@ Deno.serve(async (req) => {
     // 3. Fetch active candidates (case-insensitive on status)
     const { data: candidates, error: clientsErr } = await supabase
       .from("clients")
-      .select("id, username, mikrotik_id, mikrotik_status, billing_date, name, client_id, is_vip, expire_date, branch_id, status")
+      .select("id, username, mikrotik_id, mikrotik_status, billing_date, name, client_id, is_vip, expire_date, branch_id, status, monthly_bill")
       .eq("is_vip", false)
       .lte("billing_date", checkDate)
       .neq("mikrotik_status", "disabled");
@@ -264,6 +266,12 @@ Deno.serve(async (req) => {
 
     const clientsToDisable: typeof expiredClients = [];
     for (const c of expiredClients) {
+      // Skip free / complimentary lines (no monthly bill expected)
+      if (!c.monthly_bill || Number(c.monthly_bill) <= 0) {
+        totalSkippedNoBill++;
+        details.push({ client_id: c.client_id, name: c.name, action: "skipped_free_line" });
+        continue;
+      }
       const b = billingByClient.get(c.id);
       const paid = Number(b?.paid || 0);
       const amount = Number(b?.amount || 0);
