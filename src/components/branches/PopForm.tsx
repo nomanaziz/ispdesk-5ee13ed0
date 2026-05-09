@@ -199,15 +199,14 @@ export default function PopForm({ mode, pop }: Props) {
         
         pop_prefix: form.pop_prefix || null,
         set_prefix_mikrotik: form.set_prefix_mikrotik,
-        pop_type: form.pop_type,
         min_recharge: form.min_recharge,
         address: form.address || null,
         company_name: form.company_name || null,
         disable_clients: form.disable_clients,
         min_balance: form.min_balance === "" || form.min_balance === null ? null : Number(form.min_balance),
-        // Derived: empty min_balance => negative allowed automatically
-        allow_negative_balance: form.pop_type === "postpaid" && (form.min_balance === "" || form.min_balance === null),
-        auto_disable_day: form.pop_type === "postpaid" ? form.auto_disable_day : 10,
+        // Empty min_balance => allow negative balance
+        allow_negative_balance: (form.min_balance === "" || form.min_balance === null),
+        auto_disable_day: form.auto_disable_day || 10,
         permissions,
         logo_url,
       };
