@@ -235,8 +235,8 @@ export default function BillingFilterPanel({ filters, onChange, onReset }: Props
 
           {/* Row 3: Date ranges */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5">
-            <DateInput label="মেয়াদ শুরু" value={filters.fromExpireDate} onChange={(v) => set("fromExpireDate", v)} />
-            <DateInput label="মেয়াদ শেষ" value={filters.toExpireDate} onChange={(v) => set("toExpireDate", v)} />
+            <DateInput label="Exp Date শুরু" value={filters.fromExpireDate} onChange={(v) => set("fromExpireDate", v)} />
+            <DateInput label="Exp Date শেষ" value={filters.toExpireDate} onChange={(v) => set("toExpireDate", v)} />
             <DateInput label="তারিখ থেকে" value={filters.fromDate} onChange={(v) => set("fromDate", v)} />
             <DateInput label="তারিখ পর্যন্ত" value={filters.toDate} onChange={(v) => set("toDate", v)} />
           </div>
