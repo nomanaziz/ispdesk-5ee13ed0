@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import ispDeskLogo from "@/assets/isp-desk-logo.png";
 
 const fallbackLinksBn = [
   { title: "হোম", url: "/" },
@@ -183,13 +184,7 @@ export function PublicNavbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <NavLink to="/" className="flex items-center gap-2.5">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-lg shadow-teal-500/20">
-              <Wifi className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <span className="text-lg font-bold text-slate-900 leading-tight block">ISP Desk</span>
-              <span className="text-[10px] text-slate-400 leading-none -mt-0.5 block">{t("ইন্টারনেট সেবা", "Internet Service")}</span>
-            </div>
+            <img src={ispDeskLogo} alt="ISP Desk" className="h-10 w-auto object-contain" />
           </NavLink>
 
           <nav className="hidden lg:flex items-center gap-0.5">

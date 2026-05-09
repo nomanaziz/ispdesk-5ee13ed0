@@ -11,6 +11,7 @@ import { Activity, User, Lock, Eye, EyeOff, MapPin, Phone, Mail, Users, Wifi, Sh
 import { Checkbox } from "@/components/ui/checkbox";
 import { PublicLayout } from "@/components/PublicLayout";
 import { useLanguage } from "@/contexts/LanguageContext";
+import ispDeskLogo from "@/assets/isp-desk-logo.png";
 
 const LoginInner = () => {
   const [identifier, setIdentifier] = useState("");
@@ -86,9 +87,7 @@ const LoginInner = () => {
             {company?.logo_url ? (
               <img src={company.logo_url} alt={company.name || "logo"} className="h-12 w-auto object-contain bg-primary-foreground/10 rounded-lg p-1.5" />
             ) : (
-              <div className="h-12 w-12 rounded-xl bg-primary-foreground/15 flex items-center justify-center backdrop-blur-sm">
-                <Activity className="h-6 w-6" />
-              </div>
+              <img src={ispDeskLogo} alt="ISP Desk" className="h-12 w-auto object-contain bg-primary-foreground rounded-lg p-1.5" />
             )}
             <span className="text-xl font-bold">{company?.name || "ISP Desk"}</span>
           </div>
