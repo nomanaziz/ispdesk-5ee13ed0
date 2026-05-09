@@ -25,19 +25,9 @@ export default function QuickPay() {
     setClient(null);
     setBills([]);
 
-    // Case-insensitive multi-field search across separate queries (avoids PostgREST .or() escaping issues with _ , % etc.)
-    const cols = "id, name, client_id, contact, monthly_bill, status, user_id, address";
-    const tryQueries = [
-      supabase.from("clients").select(cols).ilike("client_id", q).limit(1),
-      supabase.from("clients").select(cols).ilike("user_id", q).limit(1),
-      supabase.from("clients").select(cols).ilike("contact", `%${q}%`).limit(1),
-      supabase.from("clients").select(cols).ilike("name", `%${q}%`).limit(1),
-    ];
-    let clientData: any = null;
-    for (const p of tryQueries) {
-      const { data } = await p;
-      if (data && data.length > 0) { clientData = data[0]; break; }
-    }
+    // Public lookup via SECURITY DEFINER RPC — returns minimal masked client info
+    const { data: rows } = await supabase.rpc("public_lookup_client", { _q: q });
+    const clientData: any = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
     if (!clientData) {
       toast({
         title: "গ্রাহক পাওয়া যায়নি",
@@ -48,13 +38,8 @@ export default function QuickPay() {
       return;
     }
     setClient(clientData);
-    const { data: billData } = await supabase
-      .from("billing")
-      .select("*")
-      .eq("client_id", clientData.id)
-      .order("month", { ascending: false })
-      .limit(12);
-    setBills(billData || []);
+    const { data: billData } = await supabase.rpc("public_lookup_bills", { _client_id: clientData.id });
+    setBills((billData as any[]) || []);
     setLoading(false);
   };
 
