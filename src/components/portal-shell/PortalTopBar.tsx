@@ -37,7 +37,7 @@ interface PortalTopBarProps {
 }
 
 export function PortalTopBar({
-  notesOwner = "reseller",
+  notesOwner = "pop",
   profilePath,
   extra,
 }: PortalTopBarProps) {
