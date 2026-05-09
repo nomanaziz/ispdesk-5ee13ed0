@@ -800,7 +800,7 @@ export default function AddClient() {
       <div className="border rounded-lg">
         <SectionHeader icon="📡" title="নেটওয়ার্ক ও প্রোডাক্ট তথ্য" />
         <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
+          <div data-field="mikrotik_id">
             <Label>সার্ভার *</Label>
             <Select
               value={form.mikrotik_id}
