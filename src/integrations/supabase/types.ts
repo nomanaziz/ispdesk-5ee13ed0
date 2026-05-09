@@ -11007,6 +11007,15 @@ export type Database = {
           tier_id: string
         }[]
       }
+      create_public_payment_request: {
+        Args: {
+          _amount: number
+          _client_id: string
+          _method: string
+          _note?: string
+        }
+        Returns: string
+      }
       get_important_link_password: {
         Args: { _link_id: string }
         Returns: string
