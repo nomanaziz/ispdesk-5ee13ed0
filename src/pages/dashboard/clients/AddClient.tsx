@@ -991,14 +991,15 @@ export default function AddClient() {
               <p className="text-xs text-muted-foreground mt-1">প্যাকেজ অনুযায়ী tariff থেকে লক করা</p>
             )}
           </div>
-          <div>
+          <div data-field="client_type">
             <Label>ক্লায়েন্ট টাইপ *</Label>
             <Select value={form.client_type} onValueChange={v => setField("client_type", v)}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+              <SelectTrigger className={errClass("client_type")}><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {clientTypes?.map((ct: any) => <SelectItem key={ct.id} value={ct.name}>{ct.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.client_type && <p className="text-xs text-destructive mt-1">{errors.client_type}</p>}
           </div>
           <div>
             <Label>বিলিং স্ট্যাটাস *</Label>
