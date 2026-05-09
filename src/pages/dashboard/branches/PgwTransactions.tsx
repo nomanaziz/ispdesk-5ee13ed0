@@ -61,7 +61,6 @@ export default function PgwTransactions() {
   const filteredRollup = useMemo(() => {
     return (rollup ?? []).filter((r: any) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      if (popTypeFilter !== "all" && r.pop_type !== popTypeFilter) return false;
       if (search) {
         const q = search.toLowerCase();
         const hay = `${r.pop_code || ""} ${r.name || ""} ${r.company_name || ""} ${r.phone || ""}`.toLowerCase();
@@ -69,7 +68,7 @@ export default function PgwTransactions() {
       }
       return true;
     });
-  }, [rollup, statusFilter, popTypeFilter, search]);
+  }, [rollup, statusFilter, search]);
 
   const rollupTotals = useMemo(() => {
     return filteredRollup.reduce((acc: any, r: any) => ({
