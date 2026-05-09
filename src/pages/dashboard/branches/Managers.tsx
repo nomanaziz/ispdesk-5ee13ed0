@@ -54,10 +54,11 @@ export default function Managers() {
         const overall = (c as any).status;
         const st = (c as any).billing_status;
         const isLeft = overall === "left" || overall === "inactive";
+        // Running = সকল ক্লায়েন্ট (enabled + disabled + left)
+        map[bid].running++;
         if (isLeft) {
           map[bid].left++;
         } else {
-          map[bid].running++;
           if (st === "active" || st === "enabled") map[bid].enabled++;
           else if (st === "disabled" || st === "expired") map[bid].disabled++;
           if ((c as any).is_online) map[bid].online++;
