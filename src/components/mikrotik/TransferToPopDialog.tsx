@@ -35,7 +35,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     queryFn: async () => {
       const { data, error } = await supabase
         .from("branch_managers")
-        .select("id, name, pop_code, branch_id, tariff_id, pop_type, balance, status, fund_started")
+        .select("id, name, pop_code, branch_id, tariff_id, pop_type, balance, status, fund_started, allow_negative_balance")
         .order("name");
       if (error) throw error;
       // case-insensitive active filter — DB has mix of "Active" & "active"
