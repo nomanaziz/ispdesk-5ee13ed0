@@ -120,14 +120,26 @@ export default function BillingList() {
 
       const monthKey = filters.month; // YYYY-MM
       return (data || []).map((c: any) => {
-        const bill = (c.billing || []).find((b: any) => {
+        const allBills = c.billing || [];
+        const bill = allBills.find((b: any) => {
           if (!b?.month) return false;
-          const m = String(b.month).slice(0, 7); // normalize YYYY-MM-01 -> YYYY-MM
+          const m = String(b.month).slice(0, 7);
           return m === monthKey;
         });
+        const totalDue = allBills.reduce((s: number, b: any) => s + Number(b.due || 0), 0);
+        const totalPaid = allBills.reduce((s: number, b: any) => s + Number(b.paid || 0), 0);
+        const unpaidMonths = allBills.filter((b: any) => Number(b.due || 0) > 0).length;
+        const monthly = Number(c.monthly_bill || 0);
+        const overdueMonths = monthly > 0 ? Math.floor(totalDue / monthly) : 0;
+        const isOverdue = totalDue >= 1 && totalDue > monthly;
         return {
           ...c,
           currentBill: bill || null,
+          totalDue,
+          totalPaid,
+          unpaidMonths,
+          overdueMonths,
+          isOverdue,
           isOnlineLive: Boolean(c.is_online),
         };
       });
@@ -155,10 +167,14 @@ export default function BillingList() {
       if (f.paymentStatus !== "all") {
         const b = c.currentBill;
         const derived = getBillStatus(b);
-        const now = new Date();
-        const expDate = c.expire_date ? new Date(c.expire_date) : null;
-        if (f.paymentStatus === "overdue") {
-          if (!expDate || expDate >= now || derived === "paid") return false;
+        if (f.paymentStatus === "overdue" || f.paymentStatus === "overdue_1") {
+          if (!c.isOverdue) return false;
+        } else if (f.paymentStatus === "overdue_2") {
+          if ((c.overdueMonths || 0) < 2) return false;
+        } else if (f.paymentStatus === "overdue_3") {
+          if ((c.overdueMonths || 0) < 3) return false;
+        } else if (f.paymentStatus === "overdue_3plus") {
+          if ((c.overdueMonths || 0) <= 3) return false;
         } else if (f.paymentStatus !== derived) return false;
       }
       if (f.billingStatus !== "all" && c.billing_status !== f.billingStatus) return false;
@@ -177,14 +193,13 @@ export default function BillingList() {
       const b = c.currentBill;
       const derived = getBillStatus(b);
       monthlyBill += Number(c.monthly_bill || 0);
+      received += Number(c.totalPaid || 0);
+      due += Number(c.totalDue || 0);
       if (b) {
-        received += Number(b.paid || 0);
-        due += Number(b.due || 0);
         if (derived === "paid") paid++;
         else unpaid++;
       } else unpaid++;
-      const expDate = c.expire_date ? new Date(c.expire_date) : null;
-      if (expDate && expDate < now && derived !== "paid") overdue++;
+      if (c.isOverdue) overdue++;
     });
     return { total, active, paid, unpaid, overdue, received, due, monthlyBill };
   }, [clients]);
@@ -196,8 +211,8 @@ export default function BillingList() {
     let monthly = 0, paid = 0, due = 0, advance = 0;
     paginated.forEach((c: any) => {
       monthly += Number(c.monthly_bill || 0);
-      paid += Number(c.currentBill?.paid || 0);
-      due += Number(c.currentBill?.due || 0);
+      paid += Number(c.totalPaid || 0);
+      due += Number(c.totalDue || 0);
       advance += Number(c.currentBill?.advance || 0);
     });
     return { monthly, paid, due, advance };
@@ -427,8 +442,8 @@ export default function BillingList() {
                   <TableRow><TableCell colSpan={isPrepaidPop ? 20 : 19} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
                 ) : paginated.map((c: any, i: number) => {
                   const b = c.currentBill;
-                  const paidAmt = Number(b?.paid || 0);
-                  const dueAmt = Number(b?.due || 0);
+                  const paidAmt = Number(c.totalPaid || 0);
+                  const dueAmt = Number(c.totalDue || 0);
                   const derived = getBillStatus(b);
                   const isPaid = derived === "paid";
                   const isPartial = derived === "partial";
@@ -475,7 +490,12 @@ export default function BillingList() {
                       </TableCell>
                       <TableCell className="text-right">{Number(c.monthly_bill || 0).toLocaleString()}</TableCell>
                       <TableCell className="text-right">{paidAmt.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">{dueAmt.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="font-semibold">{dueAmt.toLocaleString()}</div>
+                        {c.overdueMonths >= 2 && (
+                          <Badge variant="destructive" className="text-[9px] h-4 px-1 mt-0.5">{c.overdueMonths} মাস</Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">{Number(b?.advance || 0).toLocaleString()}</TableCell>
                       <TableCell className="text-xs">{b?.pay_date || "-"}</TableCell>
                       <TableCell>

@@ -210,7 +210,10 @@ export default function BillingFilterPanel({ filters, onChange, onReset }: Props
                 { value: "paid", label: "পরিশোধিত" },
                 { value: "unpaid", label: "অপরিশোধিত" },
                 { value: "partial", label: "আংশিক" },
-                { value: "overdue", label: "ওভারডিউ" },
+                { value: "overdue_1", label: "ওভারডিউ (১+ মাস)" },
+                { value: "overdue_2", label: "ওভারডিউ (২+ মাস)" },
+                { value: "overdue_3", label: "ওভারডিউ (৩+ মাস)" },
+                { value: "overdue_3plus", label: "ওভারডিউ (৩ মাসের বেশি)" },
               ]} />
             <FilterSelect label="MikroTik স্ট্যাটাস" value={filters.mikrotikStatus} onChange={(v) => set("mikrotikStatus", v)}
               options={[

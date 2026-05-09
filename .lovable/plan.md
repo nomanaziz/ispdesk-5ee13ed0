@@ -1,44 +1,45 @@
-# Quick Pay সার্চ ঠিক করা
+# বিলিং লিস্ট: মোট বকেয়া + ওভারডিউ ফিল্টার
 
 ## সমস্যা
 
-Public site-এর `/quick-pay` (বিল পরিশোধ) page থেকে গ্রাহক ID দিয়ে search করলে "গ্রাহক পাওয়া যায়নি" আসছে — যদিও গ্রাহক database-এ আছে।
+1. **ভুল বকেয়া**: লিস্টে nafisa-এর বকেয়া দেখাচ্ছে ৳1,500 (শুধু চলতি মাস May), কিন্তু client detail-এ মোট ৳3,000 (April + May)। আগের মাসের বাকি লিস্টে আসছে না।
+2. **ওভারডিউ ফিল্টার নেই**: বর্তমান "overdue" ফিল্টার শুধু `expire_date < today` দেখে — পূর্বের বাকি দিয়ে ফিল্টার করা যায় না।
 
-## কারণ
+## সংজ্ঞা (user-confirmed)
 
-সাম্প্রতিক security hardening-এ `clients` এবং `billing` table-এর RLS policy-তে SELECT সীমিত করা হয়েছে শুধু `authenticated` users-এর জন্য (admin বা একই branch-এর staff)। কিন্তু QuickPay page public — anon key ব্যবহার করে — তাই কোনো row রিটার্ন হয় না, এবং UI সেটাকে "not found" হিসেবে দেখায়।
+- **Overdue**: `total_due ≥ 1` AND `total_due > monthly_bill` (অর্থাৎ চলতি মাসের চেয়ে কমপক্ষে ১ টাকা বেশি বাকি = পূর্বের কোনো মাসের বাকি জমে আছে)
+- **Overdue months** = `floor(total_due / monthly_bill)` যখন `monthly_bill > 0`
 
-পুরোনো "Authenticated can view clients" policy বদলে শুধু branch-scoped করায় anon access সম্পূর্ণ বন্ধ হয়ে গেছে।
+## পরিকল্পনা
 
-## সমাধানের পরিকল্পনা
+### 1. `src/pages/dashboard/billing/BillingList.tsx`
 
-Anon access আবার পুরোপুরি খুলে দিলে security regression হবে। তাই দু'টি `SECURITY DEFINER` RPC তৈরি করব যা শুধু **নির্দিষ্ট minimal field** রিটার্ন করে (sensitive data যেমন address, NID, parent details exposed হবে না):
+- ক্লায়েন্ট fetch-এর সময়ে ইতিমধ্যে সব `billing` rows আসছে (`billing!billing_client_id_fkey(...)`)। ক্লায়েন্ট mapping-এ যোগ করব:
+  - `totalDue` = `sum(b.due)` সব billing rows-এর
+  - `totalPaid` = `sum(b.paid)` সব billing rows
+  - `unpaidMonths` = `count(b where b.due > 0)`
+  - `overdueMonths` = `monthly_bill > 0 ? floor(totalDue / monthly_bill) : 0`
+  - `isOverdue` = `totalDue > monthly_bill && totalDue >= 1`
+- "বকেয়া" কলামে দেখাব **মোট বকেয়া** (`totalDue`), নিচে ছোট করে যত মাসের overdue (যেমন `2 মাস`) badge। Tooltip-এ চলতি মাসের আলাদা ভাঙন।
+- "পেজ মোট" footer-এ `due` → `totalDue` দিয়ে যোগ।
+- Summary card "ওভারডিউ" — নতুন সংজ্ঞা অনুযায়ী count (`isOverdue` true).
+- `paymentStatus === "overdue"` ফিল্টারের শর্ত পরিবর্তন: `c.isOverdue`.
 
-### 1. Database migration
+### 2. `src/components/billing/BillingFilterPanel.tsx`
 
-- `public.public_lookup_client(_q text)` — anon + authenticated execute করতে পারবে
-  - Match logic: `client_id ILIKE _q` OR `username ILIKE _q` OR `contact = _q` OR (length(_q) ≥ 4 AND `name ILIKE %_q%`)
-  - শুধু **এক row** রিটার্ন: `id, name, client_id, contact_masked, monthly_bill, status`
-  - `contact_masked`: শেষ ৩ digit ছাড়া বাকিগুলো `*` দিয়ে replace
-  - Empty বা < 3 char query reject
+- পেমেন্ট স্ট্যাটাস select-এ option যোগ:
+  - `overdue_1` — ১+ মাস overdue (যেকোনো overdue)
+  - `overdue_2` — ২+ মাস overdue
+  - `overdue_3` — ৩+ মাস overdue
+  - `overdue_3plus` — ৩ মাসের বেশি
+- পুরোনো `overdue` রাখব backward-compat হিসেবে।
+- BillingList ফিল্টারিং অনুযায়ী match: `c.overdueMonths >= N`.
 
-- `public.public_lookup_bills(_client_id uuid)` — anon + authenticated execute
-  - শেষ ১২ মাসের billing row রিটার্ন: `id, month, amount, paid, due, status`
+### 3. কোন backend/RLS পরিবর্তন নেই
 
-- `GRANT EXECUTE ... TO anon, authenticated` দু'টোতেই
-- `search_path = public` set করা থাকবে
-
-### 2. Frontend: `src/pages/public/QuickPay.tsx`
-
-- বর্তমান চারটা `supabase.from("clients").ilike(...)` query সরিয়ে একটা `supabase.rpc("public_lookup_client", { _q: q })` call
-- Bills fetch-ও `supabase.rpc("public_lookup_bills", { _client_id: clientData.id })` দিয়ে replace
-- বাকি UI/state logic অপরিবর্তিত
-
-### 3. কোনো ফাইল delete বা অন্য page-এ পরিবর্তন নেই
-
-QuickPayDialog-এ যেহেতু payment submit হয় (insert into payments), সেটার RLS আলাদা — এই plan-এ touch করছি না; problem থাকলে আলাদাভাবে দেখব।
+`billing` table থেকে সব row আসছেই — শুধু ফ্রন্টএন্ডে aggregation।
 
 ## প্রভাবিত ফাইল
 
-- নতুন migration (clients + billing public lookup RPC)
-- `src/pages/public/QuickPay.tsx` — search ও bill fetch দুটো call rewrite
+- `src/pages/dashboard/billing/BillingList.tsx`
+- `src/components/billing/BillingFilterPanel.tsx`
