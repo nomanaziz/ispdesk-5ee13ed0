@@ -31,7 +31,7 @@ const ResellerDashboard = () => {
 
   // ============ Company-level data (between POP and main company) ============
   const { data: company } = useQuery({
-    queryKey: ["reseller-company", popId, billingId],
+    queryKey: ["reseller-company", popId, billingId, branchId],
     enabled: !!popId,
     queryFn: async () => {
       const lastInvs = billingId
@@ -51,13 +51,27 @@ const ResellerDashboard = () => {
       const monthlyCharged = thisMonth.reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
       const monthlyPaid = thisMonth.reduce((s: number, r: any) => s + Number(r.paid_amount || 0), 0);
       const monthlyDiscount = thisMonth.reduce((s: number, r: any) => s + Number(r.discount || 0), 0);
-      const totalDue = (lastInvs.data || []).reduce((s: number, r: any) => s + Number(r.due || 0), 0);
+      const invoiceDue = (lastInvs.data || []).reduce((s: number, r: any) => s + Number(r.due || 0), 0);
+
+      // Also include outstanding due from POP funding (admin-recorded)
+      let fundingDue = 0;
+      if (branchId) {
+        const { data: funds } = await supabase
+          .from("branch_funding")
+          .select("due_amount")
+          .eq("branch_id", branchId);
+        fundingDue = (funds || []).reduce(
+          (s: number, r: any) => s + Number(r.due_amount || 0),
+          0,
+        );
+      }
+
       return {
         smsBalance: 0,
         monthlyCharged,
         monthlyPaid,
         monthlyDiscount,
-        totalDue,
+        totalDue: invoiceDue + fundingDue,
       };
     },
   });
