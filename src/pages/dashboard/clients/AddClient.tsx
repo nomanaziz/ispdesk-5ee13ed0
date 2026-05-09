@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { Camera } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,26 @@ export default function AddClient() {
   const [mikrotikProfiles, setMikrotikProfiles] = useState<{ name: string; rateLimit?: string }[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
   const [clientCodeError, setClientCodeError] = useState<string>("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>("");
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize photo preview from prefill (edit mode)
+  useEffect(() => {
+    if (prefill?.photo_url && !photoPreview) setPhotoPreview(prefill.photo_url);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill?.photo_url]);
+
+  const onPickPhoto = (file: File | undefined | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("শুধু ছবি ফাইল গ্রহণযোগ্য"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("ছবির আকার ২MB-এর কম হতে হবে"); return; }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const errClass = (key: string) => errors[key] ? "border-destructive ring-1 ring-destructive" : "";
 
   // Compute full expire_date from selected day-of-month (1-31). Uses current month;
   // if today is past that day, rolls to next month. Clamps to last day if month-এ দিন কম.
@@ -76,11 +97,18 @@ export default function AddClient() {
     return `${year}-${mm}-${dd}`;
   };
 
-  const setField = (key: string, value: any) => setForm(prev => {
-    const next = { ...prev, [key]: value };
-    if (key === "same_address" && value) next.permanent_address = prev.address;
-    return next;
-  });
+  const setField = (key: string, value: any) => {
+    setForm(prev => {
+      const next = { ...prev, [key]: value };
+      if (key === "same_address" && value) next.permanent_address = prev.address;
+      return next;
+    });
+    setErrors(prev => {
+      if (!prev[key]) return prev;
+      const { [key]: _, ...rest } = prev;
+      return rest;
+    });
+  };
 
   // Prefill from NewRequest convert or MikroTik import
   useEffect(() => {
@@ -165,9 +193,12 @@ export default function AddClient() {
   // ─── Admin-mode queries (unchanged) ───
   const { data: zonesAdmin } = useQuery({
     enabled: !isPopMode,
-    queryKey: ["zones-active-admin"],
+    queryKey: ["zones-active-admin-with-geo"],
     queryFn: async () => {
-      const { data } = await supabase.from("zones").select("id, name").eq("status", "active");
+      const { data } = await supabase
+        .from("zones")
+        .select("id, name, division_id, district_id, upazila_id, divisions(name), districts(name), upazilas(name)")
+        .eq("status", "active");
       return data || [];
     },
   });
@@ -287,11 +318,67 @@ export default function AddClient() {
   const filteredSubZones = useMemo(() => form.zone_id ? subZones?.filter((s: any) => s.zone_id === form.zone_id) : subZones, [form.zone_id, subZones]);
   const filteredBoxes = useMemo(() => form.zone_id ? boxes?.filter((b: any) => b.zone_id === form.zone_id) : boxes, [form.zone_id, boxes]);
 
+  const selectedZone: any = useMemo(
+    () => zones?.find((z: any) => z.id === form.zone_id) || null,
+    [zones, form.zone_id],
+  );
+
+  const runValidate = (): boolean => {
+    const e: Record<string, string> = {};
+    const req = (k: string, msg: string) => { if (!String(form[k] ?? "").trim()) e[k] = msg; };
+    req("name", "নাম আবশ্যক");
+    req("client_id", "ক্লায়েন্ট কোড আবশ্যক");
+    req("contact", "মোবাইল নম্বর আবশ্যক");
+    if (form.contact && !/^01\d{9}$/.test(String(form.contact).trim())) {
+      e.contact = "১১ সংখ্যার বৈধ নম্বর দিন (01... দিয়ে শুরু)";
+    }
+    req("nid_number", "NID/জন্ম সনদ নম্বর আবশ্যক");
+    req("zone_id", "জোন নির্বাচন করুন");
+    if (!isPopMode) req("mikrotik_id", "সার্ভার নির্বাচন করুন");
+    req("protocol_type", "প্রোটোকল টাইপ আবশ্যক");
+    req("connection_type", "কানেকশন টাইপ আবশ্যক");
+    req("client_type", "ক্লায়েন্ট টাইপ আবশ্যক");
+    req("package_id", "প্যাকেজ নির্বাচন করুন");
+    if (form.protocol_type === "Static") {
+      req("static_ip", "Static IP আবশ্যক");
+    } else {
+      req("username", "ইউজারনেম আবশ্যক");
+      req("password", "পাসওয়ার্ড আবশ্যক");
+    }
+    setErrors(e);
+    if (Object.keys(e).length === 0) return true;
+    const firstKey = Object.keys(e)[0];
+    toast.error(`অসম্পূর্ণ তথ্য: ${e[firstKey]}`);
+    setTimeout(() => {
+      const el = document.querySelector(`[data-field="${firstKey}"]`) as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        const focusable = el.querySelector("input, textarea, button, [role='combobox']") as HTMLElement | null;
+        focusable?.focus?.();
+      }
+    }, 80);
+    return false;
+  };
+
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!form.name || !form.client_id) throw new Error("নাম ও ক্লায়েন্ট কোড আবশ্যক");
       const shouldSyncMikrotik = Boolean(form.mikrotik_id && form.username);
       let mikrotikStatus = shouldSyncMikrotik ? "unknown" : null;
+
+      // Upload photo if a new file was picked
+      let photoUrl: string | null = prefill?.photo_url || null;
+      if (photoFile) {
+        const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
+        const safeCode = (form.client_id || crypto.randomUUID()).replace(/[^a-zA-Z0-9-_]/g, "_");
+        const path = `${safeCode}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("client-photos")
+          .upload(path, photoFile, { upsert: true, contentType: photoFile.type });
+        if (upErr) throw new Error(`প্রোফাইল ছবি আপলোড ব্যর্থ: ${upErr.message}`);
+        const { data: pub } = supabase.storage.from("client-photos").getPublicUrl(path);
+        photoUrl = pub.publicUrl;
+      }
+
       const payload: any = {
         name: form.name, client_id: form.client_id, contact: form.contact, email: form.email,
         address: form.address, zone_id: form.zone_id || null, sub_zone_id: form.sub_zone_id || null,
@@ -321,10 +408,12 @@ export default function AddClient() {
         installed_by_ids: form.installed_by_ids && form.installed_by_ids.length > 0 ? form.installed_by_ids : null,
         expire_day: form.billing_status === "Active" ? Number(form.expire_day || 10) : null,
         mikrotik_status: mikrotikStatus,
-        // POP-mode: auto-inject branch + default district/upazila from POP profile
+        photo_url: photoUrl,
+        // Branch + geo: POP-mode uses POP profile; Admin-mode auto-derives district/upazila/division from selected zone
         branch_id: isPopMode ? branchId : (form.branch_id || null),
-        district_id: isPopMode ? (districtId || null) : (form.district_id || null),
-        upazila_id: isPopMode ? (upazilaId || null) : (form.upazila_id || null),
+        district_id: isPopMode ? (districtId || null) : (selectedZone?.district_id || form.district_id || null),
+        upazila_id: isPopMode ? (upazilaId || null) : (selectedZone?.upazila_id || form.upazila_id || null),
+        division_id: isPopMode ? null : (selectedZone?.division_id || null),
         // Corporate-specific (only persisted when client_type='Corporate')
         company_name: form.client_type === "Corporate" ? (form.company_name || null) : null,
         trade_license_no: form.client_type === "Corporate" ? (form.trade_license_no || null) : null,
@@ -528,12 +617,43 @@ export default function AddClient() {
         <SectionHeader icon="👤" title="ব্যক্তিগত তথ্য" />
         <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-1 md:row-span-3 flex flex-col items-center gap-2">
-            <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center text-4xl text-muted-foreground">👤</div>
-            <span className="text-xs text-muted-foreground">প্রোফাইল ছবি</span>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => onPickPhoto(e.target.files?.[0])}
+            />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              className="relative w-32 h-32 rounded-full bg-muted overflow-hidden flex items-center justify-center text-muted-foreground hover:ring-2 hover:ring-primary transition group"
+              title="প্রোফাইল ছবি যোগ করতে ক্লিক করুন"
+            >
+              {photoPreview ? (
+                <img src={photoPreview} alt="profile" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-4xl">👤</span>
+              )}
+              <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                <Camera className="h-6 w-6 text-white" />
+              </span>
+            </button>
+            <span className="text-xs text-muted-foreground">প্রোফাইল ছবি (ক্লিক করুন)</span>
+            {photoPreview && (
+              <button
+                type="button"
+                onClick={() => { setPhotoFile(null); setPhotoPreview(""); if (photoInputRef.current) photoInputRef.current.value = ""; }}
+                className="text-xs text-destructive hover:underline"
+              >
+                সরান
+              </button>
+            )}
           </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-2" data-field="name">
             <Label>কাস্টমার নাম *</Label>
-            <Input value={form.name} onChange={e => setField("name", e.target.value)} />
+            <Input value={form.name} onChange={e => setField("name", e.target.value)} className={errClass("name")} />
+            {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
           </div>
           <div>
             <Label>মন্তব্য/বিশেষ নোট</Label>
@@ -558,9 +678,10 @@ export default function AddClient() {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div data-field="nid_number">
             <Label>NID/জন্ম সনদ নম্বর *</Label>
-            <Input value={form.nid_number} onChange={e => setField("nid_number", e.target.value)} />
+            <Input value={form.nid_number} onChange={e => setField("nid_number", e.target.value)} className={errClass("nid_number")} />
+            {errors.nid_number && <p className="text-xs text-destructive mt-1">{errors.nid_number}</p>}
           </div>
           <div>
             <Label>লিঙ্গ</Label>
@@ -616,13 +737,18 @@ export default function AddClient() {
             <Label>মানচিত্র অক্ষাংশ</Label>
             <Input value={form.latitude} onChange={e => setField("latitude", e.target.value)} />
           </div>
-          <div>
+          <div data-field="contact">
             <Label>মোবাইল নম্বর *</Label>
-            <Input value={form.contact} onChange={e => setField("contact", e.target.value)} />
+            <Input value={form.contact} onChange={e => setField("contact", e.target.value)} className={errClass("contact")} inputMode="tel" maxLength={11} />
+            {errors.contact && <p className="text-xs text-destructive mt-1">{errors.contact}</p>}
           </div>
           <div>
-            <Label>জেলা</Label>
-            <Input disabled value={isPopMode ? (popMeta?.districtName || "") : ""} placeholder={isPopMode ? "POP প্রোফাইল থেকে" : "জোন থেকে"} />
+            <Label>জেলা {isPopMode ? "" : "(জোন থেকে)"}</Label>
+            <Input
+              disabled
+              value={isPopMode ? (popMeta?.districtName || "") : (selectedZone?.districts?.name || "")}
+              placeholder={isPopMode ? "POP প্রোফাইল থেকে" : (form.zone_id ? "জোনে জেলা সেট নেই" : "জোন নির্বাচন করুন")}
+            />
           </div>
           <div className="md:row-span-2">
             <Label>বর্তমান ঠিকানা</Label>
@@ -637,8 +763,15 @@ export default function AddClient() {
             <Input value={form.phone_number} onChange={e => setField("phone_number", e.target.value)} />
           </div>
           <div>
-            <Label>উপজেলা/থানা</Label>
-            <Input disabled value={isPopMode ? (popMeta?.upazilaName || "") : ""} placeholder={isPopMode ? "POP প্রোফাইল থেকে" : "জোন থেকে"} />
+            <Label>উপজেলা/থানা {isPopMode ? "" : "(জোন থেকে)"}</Label>
+            <Input
+              disabled
+              value={isPopMode ? (popMeta?.upazilaName || "") : (selectedZone?.upazilas?.name || "")}
+              placeholder={isPopMode ? "POP প্রোফাইল থেকে" : (form.zone_id ? "জোনে উপজেলা সেট নেই" : "জোন নির্বাচন করুন")}
+            />
+            {!isPopMode && selectedZone?.divisions?.name && (
+              <p className="text-xs text-muted-foreground mt-1">বিভাগ: {selectedZone.divisions.name}</p>
+            )}
           </div>
           <div>
             <Label>ইমেইল ঠিকানা</Label>
@@ -667,7 +800,7 @@ export default function AddClient() {
       <div className="border rounded-lg">
         <SectionHeader icon="📡" title="নেটওয়ার্ক ও প্রোডাক্ট তথ্য" />
         <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
+          <div data-field="mikrotik_id">
             <Label>সার্ভার *</Label>
             <Select
               value={form.mikrotik_id}
@@ -685,35 +818,43 @@ export default function AddClient() {
                   .finally(() => setLoadingProfiles(false));
               }}
             >
-              <SelectTrigger><SelectValue placeholder={isPopMode ? "POP-এর ডিফল্ট সার্ভার" : "নির্বাচন করুন"} /></SelectTrigger>
+              <SelectTrigger className={errClass("mikrotik_id")}><SelectValue placeholder={isPopMode ? "POP-এর ডিফল্ট সার্ভার" : "নির্বাচন করুন"} /></SelectTrigger>
               <SelectContent>
                 {mikrotiks?.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.mikrotik_id && <p className="text-xs text-destructive mt-1">{errors.mikrotik_id}</p>}
             {isPopMode && (
               <p className="text-xs text-muted-foreground mt-1">POP প্রোফাইল থেকে স্বয়ংক্রিয়</p>
             )}
           </div>
-          <div>
+          <div data-field="protocol_type">
             <Label>প্রোটোকল টাইপ *</Label>
             <Select value={form.protocol_type} onValueChange={v => setField("protocol_type", v)} disabled={isPopMode}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+              <SelectTrigger className={errClass("protocol_type")}><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {(protocolTypes as any[])?.map((p: any) => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.protocol_type && <p className="text-xs text-destructive mt-1">{errors.protocol_type}</p>}
             {isPopMode && (
               <p className="text-xs text-muted-foreground mt-1">POP-এর জন্য PPPoE লক করা</p>
             )}
           </div>
-          <div>
+          <div data-field="zone_id">
             <Label>জোন *</Label>
             <Select value={form.zone_id} onValueChange={v => { setField("zone_id", v); setField("sub_zone_id", ""); setField("box_id", ""); }}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+              <SelectTrigger className={errClass("zone_id")}><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
-                {zones?.map(z => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
+                {zones?.map((z: any) => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.zone_id && <p className="text-xs text-destructive mt-1">{errors.zone_id}</p>}
+            {!isPopMode && selectedZone && (selectedZone.districts?.name || selectedZone.upazilas?.name) && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {[selectedZone.divisions?.name, selectedZone.districts?.name, selectedZone.upazilas?.name].filter(Boolean).join(" · ")}
+              </p>
+            )}
           </div>
           <div>
             <Label>সাব জোন</Label>
@@ -733,14 +874,15 @@ export default function AddClient() {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div data-field="connection_type">
             <Label>কানেকশন টাইপ *</Label>
             <Select value={form.connection_type} onValueChange={v => setField("connection_type", v)}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+              <SelectTrigger className={errClass("connection_type")}><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
-                {connectionTypes?.map(ct => <SelectItem key={ct.id} value={ct.name}>{ct.name}</SelectItem>)}
+                {connectionTypes?.map((ct: any) => <SelectItem key={ct.id} value={ct.name}>{ct.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.connection_type && <p className="text-xs text-destructive mt-1">{errors.connection_type}</p>}
           </div>
           <div>
             <Label>ক্যাবল প্রয়োজন (মিটার)</Label>
@@ -797,17 +939,19 @@ export default function AddClient() {
       <div className="border rounded-lg">
         <SectionHeader icon="🔒" title="সার্ভিস তথ্য" />
         <div className="p-4 grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div>
+          <div data-field="client_id">
             <Label>ক্লায়েন্ট কোড *</Label>
             <Input
               value={form.client_id}
               onChange={e => { setField("client_id", e.target.value); if (clientCodeError) setClientCodeError(""); }}
               onBlur={checkClientCodeUnique}
               placeholder={isPopMode && popMeta?.popPrefix ? `স্বয়ংক্রিয়: ${popMeta.popPrefix}-000001` : "স্বয়ংক্রিয় বা কাস্টম"}
+              className={errClass("client_id")}
             />
+            {errors.client_id && <p className="text-xs text-destructive mt-1">{errors.client_id}</p>}
             {clientCodeError && <p className="text-xs text-destructive mt-1">{clientCodeError}</p>}
           </div>
-          <div>
+          <div data-field="package_id">
             <Label>প্যাকেজ *</Label>
             <Select value={form.package_id} onValueChange={v => {
               setField("package_id", v);
@@ -822,11 +966,12 @@ export default function AddClient() {
                 });
               }
             }}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+              <SelectTrigger className={errClass("package_id")}><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
-                {packages?.map(p => <SelectItem key={p.id} value={p.id}>{p.name} - ৳{p.price}</SelectItem>)}
+                {packages?.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name} - ৳{p.price}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.package_id && <p className="text-xs text-destructive mt-1">{errors.package_id}</p>}
           </div>
           <div>
             <Label>প্রোফাইল</Label>
@@ -846,14 +991,15 @@ export default function AddClient() {
               <p className="text-xs text-muted-foreground mt-1">প্যাকেজ অনুযায়ী tariff থেকে লক করা</p>
             )}
           </div>
-          <div>
+          <div data-field="client_type">
             <Label>ক্লায়েন্ট টাইপ *</Label>
             <Select value={form.client_type} onValueChange={v => setField("client_type", v)}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+              <SelectTrigger className={errClass("client_type")}><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {clientTypes?.map((ct: any) => <SelectItem key={ct.id} value={ct.name}>{ct.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.client_type && <p className="text-xs text-destructive mt-1">{errors.client_type}</p>}
           </div>
           <div>
             <Label>বিলিং স্ট্যাটাস *</Label>
@@ -870,13 +1016,15 @@ export default function AddClient() {
           </div>
           {form.protocol_type === "Static" ? (
             <>
-              <div>
+              <div data-field="static_ip">
                 <Label>Static IP / Subnet *</Label>
                 <Input
                   value={form.static_ip}
                   onChange={e => setField("static_ip", e.target.value)}
                   placeholder="যেমন: 192.168.10.25/24"
+                  className={errClass("static_ip")}
                 />
+                {errors.static_ip && <p className="text-xs text-destructive mt-1">{errors.static_ip}</p>}
               </div>
               <div>
                 <Label>রাউটার MAC Address</Label>
@@ -897,17 +1045,19 @@ export default function AddClient() {
             </>
           ) : (
             <>
-              <div>
+              <div data-field="username">
                 <Label>ইউজারনেম *</Label>
-                <Input value={form.username} onChange={e => setField("username", e.target.value)} />
+                <Input value={form.username} onChange={e => setField("username", e.target.value)} className={errClass("username")} />
+                {errors.username && <p className="text-xs text-destructive mt-1">{errors.username}</p>}
               </div>
               <div>
                 <Label>রিমোট অ্যাড্রেস</Label>
                 <Input value={form.remote_address} onChange={e => setField("remote_address", e.target.value)} />
               </div>
-              <div>
+              <div data-field="password">
                 <Label>পাসওয়ার্ড *</Label>
-                <Input value={form.password} onChange={e => setField("password", e.target.value)} />
+                <Input value={form.password} onChange={e => setField("password", e.target.value)} className={errClass("password")} />
+                {errors.password && <p className="text-xs text-destructive mt-1">{errors.password}</p>}
               </div>
             </>
           )}
@@ -1085,7 +1235,7 @@ export default function AddClient() {
       {/* Footer */}
       <div className="flex justify-between items-center py-4">
         <Button variant="outline" onClick={() => navigate(isPopMode ? "/pop-admin/clients" : "/dashboard/clients")}><ArrowLeft className="h-4 w-4 mr-1" /> তালিকায় ফিরুন</Button>
-        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+        <Button onClick={() => { if (runValidate()) saveMutation.mutate(); }} disabled={saveMutation.isPending}>
           <Save className="h-4 w-4 mr-1" /> {saveMutation.isPending ? "সেভ হচ্ছে..." : "সংরক্ষণ ও বের হন"}
         </Button>
       </div>
