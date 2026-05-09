@@ -763,8 +763,15 @@ export default function AddClient() {
             <Input value={form.phone_number} onChange={e => setField("phone_number", e.target.value)} />
           </div>
           <div>
-            <Label>উপজেলা/থানা</Label>
-            <Input disabled value={isPopMode ? (popMeta?.upazilaName || "") : ""} placeholder={isPopMode ? "POP প্রোফাইল থেকে" : "জোন থেকে"} />
+            <Label>উপজেলা/থানা {isPopMode ? "" : "(জোন থেকে)"}</Label>
+            <Input
+              disabled
+              value={isPopMode ? (popMeta?.upazilaName || "") : (selectedZone?.upazilas?.name || "")}
+              placeholder={isPopMode ? "POP প্রোফাইল থেকে" : (form.zone_id ? "জোনে উপজেলা সেট নেই" : "জোন নির্বাচন করুন")}
+            />
+            {!isPopMode && selectedZone?.divisions?.name && (
+              <p className="text-xs text-muted-foreground mt-1">বিভাগ: {selectedZone.divisions.name}</p>
+            )}
           </div>
           <div>
             <Label>ইমেইল ঠিকানা</Label>
