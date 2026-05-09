@@ -939,14 +939,16 @@ export default function AddClient() {
       <div className="border rounded-lg">
         <SectionHeader icon="🔒" title="সার্ভিস তথ্য" />
         <div className="p-4 grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div>
+          <div data-field="client_id">
             <Label>ক্লায়েন্ট কোড *</Label>
             <Input
               value={form.client_id}
               onChange={e => { setField("client_id", e.target.value); if (clientCodeError) setClientCodeError(""); }}
               onBlur={checkClientCodeUnique}
               placeholder={isPopMode && popMeta?.popPrefix ? `স্বয়ংক্রিয়: ${popMeta.popPrefix}-000001` : "স্বয়ংক্রিয় বা কাস্টম"}
+              className={errClass("client_id")}
             />
+            {errors.client_id && <p className="text-xs text-destructive mt-1">{errors.client_id}</p>}
             {clientCodeError && <p className="text-xs text-destructive mt-1">{clientCodeError}</p>}
           </div>
           <div>
