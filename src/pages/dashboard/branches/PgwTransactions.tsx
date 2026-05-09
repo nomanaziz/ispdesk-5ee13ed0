@@ -19,7 +19,7 @@ export default function PgwTransactions() {
 
   // Tab 1 state
   const [search, setSearch] = useState("");
-  const [popTypeFilter, setPopTypeFilter] = useState("all");
+  
   const [statusFilter, setStatusFilter] = useState("active");
   const [cashOpen, setCashOpen] = useState(false);
   const [fundOpen, setFundOpen] = useState(false);
@@ -61,7 +61,6 @@ export default function PgwTransactions() {
   const filteredRollup = useMemo(() => {
     return (rollup ?? []).filter((r: any) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      if (popTypeFilter !== "all" && r.pop_type !== popTypeFilter) return false;
       if (search) {
         const q = search.toLowerCase();
         const hay = `${r.pop_code || ""} ${r.name || ""} ${r.company_name || ""} ${r.phone || ""}`.toLowerCase();
@@ -69,7 +68,7 @@ export default function PgwTransactions() {
       }
       return true;
     });
-  }, [rollup, statusFilter, popTypeFilter, search]);
+  }, [rollup, statusFilter, search]);
 
   const rollupTotals = useMemo(() => {
     return filteredRollup.reduce((acc: any, r: any) => ({
@@ -164,14 +163,6 @@ export default function PgwTransactions() {
                   <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input className="pl-8" placeholder="খুঁজুন (কোড / নাম / মোবাইল)" value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
-                <Select value={popTypeFilter} onValueChange={setPopTypeFilter}>
-                  <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">সব Type</SelectItem>
-                    <SelectItem value="prepaid">Prepaid</SelectItem>
-                    <SelectItem value="postpaid">Postpaid</SelectItem>
-                  </SelectContent>
-                </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -192,7 +183,6 @@ export default function PgwTransactions() {
                       <TableRow>
                         <TableHead>Code</TableHead>
                         <TableHead>POP Name</TableHead>
-                        <TableHead>Type</TableHead>
                         <TableHead>Mobile</TableHead>
                         <TableHead className="text-right">Total Received</TableHead>
                         <TableHead className="text-right">Settled</TableHead>
@@ -210,11 +200,6 @@ export default function PgwTransactions() {
                             <TableCell className="font-medium">
                               {r.name}
                               {r.company_name && <div className="text-xs text-muted-foreground">{r.company_name}</div>}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={r.pop_type === "postpaid" ? "secondary" : "outline"}>
-                                {r.pop_type === "postpaid" ? "Postpaid" : "Prepaid"}
-                              </Badge>
                             </TableCell>
                             <TableCell>{r.phone || r.contact || "-"}</TableCell>
                             <TableCell className="text-right font-mono">{fmt(r.received)}</TableCell>

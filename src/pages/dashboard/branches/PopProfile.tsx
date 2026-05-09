@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Mail, KeyRound, LogIn, Plus, ArrowLeftRight, Edit, MapPin, Phone,
+  ArrowLeft, Mail, KeyRound, LogIn, Plus, Edit, MapPin, Phone,
 } from "lucide-react";
 import FundDeductionDialog from "@/components/branches/FundDeductionDialog";
 import PasswordRegenerateDialog from "@/components/branches/PasswordRegenerateDialog";
@@ -126,7 +126,7 @@ export default function PopProfile() {
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
         <h1 className="text-2xl font-bold">POP Profile — {pop.company_name || pop.name}</h1>
-        <Badge variant={pop.pop_type === "prepaid" ? "default" : "secondary"}>{pop.pop_type}</Badge>
+        
         <Badge variant={pop.fund_started ? "default" : "secondary"}>
           {pop.fund_started ? "Fund Started" : "Fund Off"}
         </Badge>
@@ -167,44 +167,18 @@ export default function PopProfile() {
               <Toggle label="Fund Started" checked={pop.fund_started} onChange={(v) => update.mutate({ fund_started: v, fund_started_at: v ? new Date().toISOString() : null })} />
               <Toggle label="Is Locked" checked={pop.is_locked} onChange={(v) => update.mutate({ is_locked: v })} />
 
-              {/* Postpaid-only */}
-              {pop.pop_type === "postpaid" && (
-                <>
-                  <Toggle label="Client Create Permission" checked={pop.client_create_permission} onChange={(v) => update.mutate({ client_create_permission: v })} />
-                  <Toggle label="Allow Negative Balance" checked={!!pop.allow_negative_balance} onChange={(v) => update.mutate({ allow_negative_balance: v })} />
-                  <div className="flex items-center justify-between gap-2 py-1">
-                    <label className="text-sm">Auto-disable Day of Month</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={28}
-                      defaultValue={pop.auto_disable_day ?? 10}
-                      onBlur={(e) => {
-                        const v = Math.max(1, Math.min(28, Number(e.target.value) || 10));
-                        if (v !== (pop.auto_disable_day ?? 10)) update.mutate({ auto_disable_day: v });
-                      }}
-                      className="h-8 w-16 rounded border border-input bg-background px-2 text-sm text-right"
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Prepaid-only */}
-              {pop.pop_type === "prepaid" && (
-                <Toggle
-                  label="Credit Refund Policy"
-                  checked={!!pop.credit_refund_policy}
-                  onChange={(v) => update.mutate({ credit_refund_policy: v })}
-                />
-              )}
+              <Toggle label="Client Create Permission" checked={pop.client_create_permission} onChange={(v) => update.mutate({ client_create_permission: v })} />
+              <Toggle label="Allow Negative Balance" checked={!!pop.allow_negative_balance} onChange={(v) => update.mutate({ allow_negative_balance: v })} />
+              <Toggle
+                label="Credit Refund Policy"
+                checked={!!pop.credit_refund_policy}
+                onChange={(v) => update.mutate({ credit_refund_policy: v })}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-2 border-t">
               <Button size="sm" variant="outline" onClick={() => navigate(`/dashboard/branches/edit-manager/${id}`)}><Edit className="h-3.5 w-3.5" /> Update</Button>
               <Button size="sm" variant="outline" onClick={() => toast.info("Coming soon")}><Mail className="h-3.5 w-3.5" /> Send Email</Button>
-              <Button size="sm" variant="outline" onClick={() => update.mutate({ pop_type: pop.pop_type === "prepaid" ? "postpaid" : "prepaid" })}>
-                <ArrowLeftRight className="h-3.5 w-3.5" /> Type Change
-              </Button>
               <Button size="sm" variant="outline" onClick={() => setPwdOpen(true)}><KeyRound className="h-3.5 w-3.5" /> Password</Button>
               <Button size="sm" variant="outline" onClick={() => loginAsUser("reseller", id!).then(() => toast.success("নতুন ট্যাবে লগইন হচ্ছে")).catch((e) => toast.error(e.message))}><LogIn className="h-3.5 w-3.5" /> Login as POP</Button>
               <Button size="sm" variant="outline" onClick={() => navigate("/dashboard/clients/add-client")}><Plus className="h-3.5 w-3.5" /> Add Client</Button>
@@ -232,21 +206,13 @@ export default function PopProfile() {
 
               <TabsContent value="info" className="space-y-4 mt-4">
                 <Section title="Service Info">
-                  <Field label="POP Type" value={pop.pop_type} />
                   <Field label="Tariff" value={pop.reseller_tariffs?.name} />
                   <Field label="Selling Rate" value={pop.reseller_tariffs?.selling_rate ? `৳${pop.reseller_tariffs.selling_rate}` : "-"} />
                   <Field label="Activation Days" value={pop.reseller_tariffs?.activation_days} />
                   <Field label="Min Balance" value={`৳${pop.min_balance ?? 0}`} />
                   <Field label="Min Recharge" value={`৳${pop.min_recharge ?? 0}`} />
-                  {pop.pop_type === "prepaid" && (
-                    <Field label="Credit Refund Policy" value={pop.credit_refund_policy ? "Enabled" : "Disabled"} />
-                  )}
-                  {pop.pop_type === "postpaid" && (
-                    <>
-                      <Field label="Allow Negative Balance" value={pop.allow_negative_balance ? "Yes" : "No"} />
-                      <Field label="Auto-disable Day" value={pop.auto_disable_day ?? 10} />
-                    </>
-                  )}
+                  <Field label="Allow Negative Balance" value={pop.allow_negative_balance ? "Yes" : "No"} />
+                  <Field label="Credit Refund Policy" value={pop.credit_refund_policy ? "Enabled" : "Disabled"} />
                 </Section>
                 <Section title="Personal Info">
                   <Field label="Contact Person" value={pop.name} />

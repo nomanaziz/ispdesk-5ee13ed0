@@ -71,7 +71,7 @@ export default function PopForm({ mode, pop }: Props) {
     pop_code: pop?.pop_code || "",
     pop_prefix: pop?.pop_prefix || "",
     set_prefix_mikrotik: pop?.set_prefix_mikrotik ?? false,
-    pop_type: (pop?.pop_type || "prepaid") as "prepaid" | "postpaid",
+    pop_type: pop?.pop_type || null,
     min_recharge: pop?.min_recharge ?? 100,
     address: pop?.address || "",
     company_name: pop?.company_name || "",
@@ -145,11 +145,7 @@ export default function PopForm({ mode, pop }: Props) {
     return () => clearTimeout(t);
   }, [form.pop_prefix, mode, pop?.id]);
 
-  const fundNotice = useMemo(() => {
-    if (form.pop_type === "prepaid")
-      return "Prepaid: Admin fund start না করা পর্যন্ত POP client create করতে পারবে না।";
-    return "Postpaid: POP সরাসরি client create করতে পারবে।";
-  }, [form.pop_type]);
+  
 
   const validate = (): string | null => {
     const e: Record<string, string> = {};
@@ -163,7 +159,7 @@ export default function PopForm({ mode, pop }: Props) {
     if (!form.company_name.trim()) e.company_name = "আবশ্যক";
     if (!form.pop_prefix.trim()) e.pop_prefix = "আবশ্যক";
     else if (prefixCheck.available === false) e.pop_prefix = "এই Prefix অন্যজন ব্যবহার করছে";
-    if (!form.pop_type) e.pop_type = "আবশ্যক";
+    
     if (Number(form.min_recharge) < 100) e.min_recharge = "সর্বনিম্ন 100";
     if (mode === "create") {
       if (!form.tariff_id) e.tariff_id = "আবশ্যক";
@@ -203,15 +199,14 @@ export default function PopForm({ mode, pop }: Props) {
         
         pop_prefix: form.pop_prefix || null,
         set_prefix_mikrotik: form.set_prefix_mikrotik,
-        pop_type: form.pop_type,
         min_recharge: form.min_recharge,
         address: form.address || null,
         company_name: form.company_name || null,
         disable_clients: form.disable_clients,
         min_balance: form.min_balance === "" || form.min_balance === null ? null : Number(form.min_balance),
-        // Derived: empty min_balance => negative allowed automatically
-        allow_negative_balance: form.pop_type === "postpaid" && (form.min_balance === "" || form.min_balance === null),
-        auto_disable_day: form.pop_type === "postpaid" ? form.auto_disable_day : 10,
+        // Empty min_balance => allow negative balance
+        allow_negative_balance: (form.min_balance === "" || form.min_balance === null),
+        auto_disable_day: form.auto_disable_day || 10,
         permissions,
         logo_url,
       };
@@ -223,9 +218,8 @@ export default function PopForm({ mode, pop }: Props) {
           username: form.username,
           password: form.password,
           portal_enabled: true,
-          // Postpaid → fund auto-start; prepaid → wait for admin
-          fund_started: form.pop_type === "postpaid",
-          fund_started_at: form.pop_type === "postpaid" ? new Date().toISOString() : null,
+          fund_started: false,
+          fund_started_at: null,
         };
         const { error } = await supabase.from("branch_managers").insert(insertPayload);
         if (error) throw error;
@@ -355,22 +349,7 @@ export default function PopForm({ mode, pop }: Props) {
             </div>
           </div>
 
-          <div>
-            <Label>POP Type <Req /></Label>
-            <Select value={form.pop_type} onValueChange={(v) => upd("pop_type", v)}>
-              <SelectTrigger className={errCls("pop_type")}><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="prepaid">Prepaid (Daily Billing)</SelectItem>
-                <SelectItem value="postpaid">Postpaid (Monthly)</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1 flex items-start gap-1">
-              <Info className="h-3 w-3 mt-0.5" /> {fundNotice}
-            </p>
-            {mode === "edit" && (
-              <p className="text-[11px] text-amber-600 mt-1">⚠ একই দিনে POP type একবারই পরিবর্তন করা যাবে।</p>
-            )}
-          </div>
+          <div className="md:col-span-1" />
 
           <div>
             <Label>Min Rechargeable Amount <Req /></Label>
@@ -450,27 +429,7 @@ export default function PopForm({ mode, pop }: Props) {
             </p>
           </div>
 
-          {form.pop_type === "postpaid" && (
-            <>
-              <div>
-                <Label>Auto-disable তারিখ (১–২৮)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={28}
-                  value={form.auto_disable_day}
-                  onChange={(e) => upd("auto_disable_day", Math.max(1, Math.min(28, Number(e.target.value) || 10)))}
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  মাসের কত তারিখের মধ্যে আগের মাসের পাওনা মিটানো must
-                </p>
-              </div>
-              <div className="md:col-span-2 rounded-md border border-warning/30 bg-warning/10 p-3 text-[12px] text-foreground">
-                <strong>Postpaid নিয়ম:</strong> Postpaid POP-ও daily-rate এ deduct হবে। Auto-disable তারিখের মধ্যে balance এর পাওনা না মিটালে সব client off হবে। Admin fund দিতে পারে (ধার), POP নিজেও recharge করতে পারে।
-              </div>
-            </>
-          )}
-          {form.pop_type !== "postpaid" && <div className="md:col-span-2" />}
+          <div className="md:col-span-2" />
 
           <div>
             <Label>Username {mode === "create" && <Req />} {lockUsername && <Lock className="inline h-3 w-3 ml-1" />}</Label>

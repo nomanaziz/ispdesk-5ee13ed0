@@ -22,7 +22,7 @@ export default function Managers() {
 
   const [search, setSearch] = useState("");
   const [filterFundStart, setFilterFundStart] = useState<string>("all");
-  const [filterPopType, setFilterPopType] = useState<string>("all");
+  
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
   const [fundPop, setFundPop] = useState<any>(null);
@@ -104,11 +104,10 @@ export default function Managers() {
         ) return false;
       }
       if (filterFundStart !== "all" && String(m.fund_started) !== filterFundStart) return false;
-      if (filterPopType !== "all" && m.pop_type !== filterPopType) return false;
       if (filterStatus !== "all" && m.status !== filterStatus) return false;
       return true;
     });
-  }, [managers, search, filterFundStart, filterPopType, filterStatus]);
+  }, [managers, search, filterFundStart, filterStatus]);
 
   const stats = useMemo(() => {
     const total = managers?.length ?? 0;
@@ -131,12 +130,6 @@ export default function Managers() {
       toast.error(e.message || "Login failed");
     }
   };
-  const handleTypeChange = (m: any) => {
-    const next = m.pop_type === "prepaid" ? "postpaid" : "prepaid";
-    update.mutate({ id: m.id, patch: { pop_type: next } });
-    toast.success(`POP type → ${next}`);
-  };
-
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -158,7 +151,7 @@ export default function Managers() {
 
       {/* Filters */}
       <Card>
-        <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input className="pl-8" placeholder="নাম / কোড / ইউজার..." value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -169,14 +162,6 @@ export default function Managers() {
               <SelectItem value="all">All Fund Status</SelectItem>
               <SelectItem value="true">Fund Started</SelectItem>
               <SelectItem value="false">Fund Off</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterPopType} onValueChange={setFilterPopType}>
-            <SelectTrigger><SelectValue placeholder="POP Type" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="prepaid">Prepaid</SelectItem>
-              <SelectItem value="postpaid">Postpaid</SelectItem>
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -200,7 +185,7 @@ export default function Managers() {
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>Code</TableHead>
                   <TableHead>POP Name</TableHead>
-                  <TableHead>Type</TableHead>
+                  
                   <TableHead>Contact Person</TableHead>
                   <TableHead>Mobile</TableHead>
                   <TableHead>Tariff</TableHead>
@@ -231,9 +216,6 @@ export default function Managers() {
                           <button className="hover:underline text-left" onClick={() => navigate(`/dashboard/branches/pop/${m.id}`)}>
                             {m.company_name || m.name}
                           </button>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={m.pop_type === "prepaid" ? "default" : "secondary"}>{m.pop_type}</Badge>
                         </TableCell>
                         <TableCell>{m.name}</TableCell>
                         <TableCell>{m.contact || "-"}</TableCell>
@@ -270,7 +252,7 @@ export default function Managers() {
                             onLogin={() => handleLoginAs(m)}
                             onPasswordRegen={() => setPwdPop(m)}
                             onFund={() => setFundPop(m)}
-                            onTypeChange={() => handleTypeChange(m)}
+                            
                             onSendMessage={() => toast.info("Coming soon")}
                             onDelete={() => {
                               if (confirm(`"${m.name}" POP মুছবেন?`)) del.mutate(m.id);

@@ -35,7 +35,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     queryFn: async () => {
       const { data, error } = await supabase
         .from("branch_managers")
-        .select("id, name, pop_code, branch_id, tariff_id, pop_type, balance, status, fund_started")
+        .select("id, name, pop_code, branch_id, tariff_id, pop_type, balance, status, fund_started, allow_negative_balance")
         .order("name");
       if (error) throw error;
       // case-insensitive active filter — DB has mix of "Active" & "active"
@@ -107,7 +107,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
       if (isMixed) throw new Error("Mixed profile — single profile-এর user select করুন");
       if (profileMismatch) throw new Error(`Profile mismatch — User profile "${uniqueProfile}" ≠ Package profile "${selectedPkg.mikrotik_profile}"`);
 
-      if (selectedPop.pop_type === "prepaid" && selectedPop.fund_started && Number(selectedPop.balance || 0) < creditable) {
+      if (selectedPop.fund_started && Number(selectedPop.balance || 0) < creditable && !selectedPop.allow_negative_balance) {
         throw new Error(`POP-এর balance অপ্রতুল (${selectedPop.balance} < ${creditable})`);
       }
 
@@ -324,7 +324,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
             </p>
           )}
 
-          {selectedPop?.pop_type === "prepaid" && selectedPop?.fund_started && creditable > Number(selectedPop?.balance || 0) && (
+          {selectedPop?.fund_started && !selectedPop?.allow_negative_balance && creditable > Number(selectedPop?.balance || 0) && (
             <p className="text-xs text-destructive">
               ⚠️ POP balance ৳{Number(selectedPop.balance || 0).toFixed(2)} — creditable ৳{creditable.toFixed(2)} এর চেয়ে কম। Export blocked।
             </p>
@@ -336,7 +336,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
           <Button
             onClick={() => transfer.mutate()}
             disabled={!popId || !packageId || !targetMikrotik?.id || transfer.isPending || isMixed || profileMismatch ||
-              (selectedPop?.pop_type === "prepaid" && selectedPop?.fund_started && creditable > Number(selectedPop?.balance || 0))}
+              (selectedPop?.fund_started && !selectedPop?.allow_negative_balance && creditable > Number(selectedPop?.balance || 0))}
           >
             {transfer.isPending ? "Exporting..." : `Export ✓ (${selectedIds.length})`}
           </Button>
