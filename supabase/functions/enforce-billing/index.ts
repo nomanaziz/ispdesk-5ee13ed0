@@ -222,7 +222,7 @@ Deno.serve(async (req) => {
     // 3. Fetch active candidates (case-insensitive on status)
     const { data: candidates, error: clientsErr } = await supabase
       .from("clients")
-      .select("id, username, mikrotik_id, mikrotik_status, billing_date, name, client_id, is_vip, expire_date, branch_id, status")
+      .select("id, username, mikrotik_id, mikrotik_status, billing_date, name, client_id, is_vip, expire_date, branch_id, status, monthly_bill")
       .eq("is_vip", false)
       .lte("billing_date", checkDate)
       .neq("mikrotik_status", "disabled");
