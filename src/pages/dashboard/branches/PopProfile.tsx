@@ -167,36 +167,13 @@ export default function PopProfile() {
               <Toggle label="Fund Started" checked={pop.fund_started} onChange={(v) => update.mutate({ fund_started: v, fund_started_at: v ? new Date().toISOString() : null })} />
               <Toggle label="Is Locked" checked={pop.is_locked} onChange={(v) => update.mutate({ is_locked: v })} />
 
-              {/* Postpaid-only */}
-              {pop.pop_type === "postpaid" && (
-                <>
-                  <Toggle label="Client Create Permission" checked={pop.client_create_permission} onChange={(v) => update.mutate({ client_create_permission: v })} />
-                  <Toggle label="Allow Negative Balance" checked={!!pop.allow_negative_balance} onChange={(v) => update.mutate({ allow_negative_balance: v })} />
-                  <div className="flex items-center justify-between gap-2 py-1">
-                    <label className="text-sm">Auto-disable Day of Month</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={28}
-                      defaultValue={pop.auto_disable_day ?? 10}
-                      onBlur={(e) => {
-                        const v = Math.max(1, Math.min(28, Number(e.target.value) || 10));
-                        if (v !== (pop.auto_disable_day ?? 10)) update.mutate({ auto_disable_day: v });
-                      }}
-                      className="h-8 w-16 rounded border border-input bg-background px-2 text-sm text-right"
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Prepaid-only */}
-              {pop.pop_type === "prepaid" && (
-                <Toggle
-                  label="Credit Refund Policy"
-                  checked={!!pop.credit_refund_policy}
-                  onChange={(v) => update.mutate({ credit_refund_policy: v })}
-                />
-              )}
+              <Toggle label="Client Create Permission" checked={pop.client_create_permission} onChange={(v) => update.mutate({ client_create_permission: v })} />
+              <Toggle label="Allow Negative Balance" checked={!!pop.allow_negative_balance} onChange={(v) => update.mutate({ allow_negative_balance: v })} />
+              <Toggle
+                label="Credit Refund Policy"
+                checked={!!pop.credit_refund_policy}
+                onChange={(v) => update.mutate({ credit_refund_policy: v })}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-2 border-t">
