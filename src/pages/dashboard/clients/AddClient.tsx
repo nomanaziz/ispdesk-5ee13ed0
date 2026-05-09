@@ -1016,13 +1016,15 @@ export default function AddClient() {
           </div>
           {form.protocol_type === "Static" ? (
             <>
-              <div>
+              <div data-field="static_ip">
                 <Label>Static IP / Subnet *</Label>
                 <Input
                   value={form.static_ip}
                   onChange={e => setField("static_ip", e.target.value)}
                   placeholder="যেমন: 192.168.10.25/24"
+                  className={errClass("static_ip")}
                 />
+                {errors.static_ip && <p className="text-xs text-destructive mt-1">{errors.static_ip}</p>}
               </div>
               <div>
                 <Label>রাউটার MAC Address</Label>
