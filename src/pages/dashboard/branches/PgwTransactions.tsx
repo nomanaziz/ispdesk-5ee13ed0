@@ -163,14 +163,6 @@ export default function PgwTransactions() {
                   <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input className="pl-8" placeholder="খুঁজুন (কোড / নাম / মোবাইল)" value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
-                <Select value={popTypeFilter} onValueChange={setPopTypeFilter}>
-                  <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">সব Type</SelectItem>
-                    <SelectItem value="prepaid">Prepaid</SelectItem>
-                    <SelectItem value="postpaid">Postpaid</SelectItem>
-                  </SelectContent>
-                </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                   <SelectContent>
