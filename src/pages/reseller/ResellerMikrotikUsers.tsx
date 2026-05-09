@@ -138,7 +138,7 @@ export default function ResellerMikrotikUsers() {
       toast.success("ক্লায়েন্ট তৈরি হয়েছে");
       setCreateOpen(false);
     },
-    onError: (e: any) => toast.error("তৈরি ব্যর্থ: " + e.message),
+    onError: (e: any) => { if (!handleBalanceError(e)) toast.error("তৈরি ব্যর্থ: " + e.message); },
   });
 
   return (
