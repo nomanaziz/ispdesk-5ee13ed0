@@ -921,6 +921,7 @@ export type Database = {
           address: string | null
           allow_negative_balance: boolean
           auto_disable_day: number
+          auto_recharge_enabled: boolean
           auto_settle_pgw: boolean
           balance: number
           branch_id: string | null
@@ -967,6 +968,7 @@ export type Database = {
           address?: string | null
           allow_negative_balance?: boolean
           auto_disable_day?: number
+          auto_recharge_enabled?: boolean
           auto_settle_pgw?: boolean
           balance?: number
           branch_id?: string | null
@@ -1013,6 +1015,7 @@ export type Database = {
           address?: string | null
           allow_negative_balance?: boolean
           auto_disable_day?: number
+          auto_recharge_enabled?: boolean
           auto_settle_pgw?: boolean
           balance?: number
           branch_id?: string | null
@@ -11560,6 +11563,14 @@ export type Database = {
       mark_tenant_invoice_paid: {
         Args: { _invoice_id: string; _payment_method?: string }
         Returns: undefined
+      }
+      pop_bulk_recharge_clients: {
+        Args: { p_client_ids: string[]; p_days: number }
+        Returns: Json
+      }
+      pop_recharge_client_days: {
+        Args: { p_client_id: string; p_days: number }
+        Returns: Json
       }
       provision_new_tenant: {
         Args: {

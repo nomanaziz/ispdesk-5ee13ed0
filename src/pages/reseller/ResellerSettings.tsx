@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Save } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { callPortal } from "@/lib/portalApi";
+import { Save, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 const ResellerSettings = () => {
@@ -193,6 +195,8 @@ const ResellerSettings = () => {
         </Card>
       )}
 
+      {!isBw && <AutoRechargeCard />}
+
       <div>
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
           <Save className="h-4 w-4 mr-1" /> {save.isPending ? "Saving..." : "Save Settings"}
@@ -201,5 +205,40 @@ const ResellerSettings = () => {
     </div>
   );
 };
+
+function AutoRechargeCard() {
+  const qc = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ["pop-balance-info"],
+    queryFn: async () => await callPortal<{ pop: any }>("get_pop_balance_info"),
+  });
+  const enabled = !!data?.pop?.auto_recharge_enabled;
+  const m = useMutation({
+    mutationFn: async (next: boolean) => await callPortal("set_pop_auto_recharge", { enabled: next }),
+    onSuccess: () => {
+      toast.success("Auto Recharge সেটিং সংরক্ষিত হয়েছে");
+      qc.invalidateQueries({ queryKey: ["pop-balance-info"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2"><Zap className="h-5 w-5 text-primary" /> Auto Recharge</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-start justify-between gap-3 p-3 border rounded-md">
+          <div className="flex-1">
+            <div className="font-medium">Auto Recharge প্রতিদিন</div>
+            <div className="text-xs text-muted-foreground">
+              সক্রিয় থাকলে রাত ১২:৩০ থেকে যেসব client এর R.Days = 0 এবং MikroTik enabled, তাদের প্রত্যেকের জন্য ১ দিনের balance auto কেটে নেওয়া হবে। MikroTik disable করা থাকলে বা balance না থাকলে recharge হবে না।
+            </div>
+          </div>
+          <Switch checked={enabled} onCheckedChange={(v) => m.mutate(v)} disabled={m.isPending} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default ResellerSettings;

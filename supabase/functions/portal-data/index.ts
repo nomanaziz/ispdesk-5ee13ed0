@@ -2435,6 +2435,62 @@ Deno.serve(async (req) => {
         });
       }
 
+      case "pop_recharge_client": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const clientId = String(payload.client_id || "");
+        const days = parseInt(String(payload.days || 0));
+        if (!clientId || !days) return json({ error: "client_id ও days দরকার" }, 400);
+
+        // Verify the client belongs to this POP's branch
+        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch missing" }, 400);
+        const { data: client } = await sb.from("clients").select("id").eq("id", clientId).eq("branch_id", pop.branch_id).maybeSingle();
+        if (!client) return json({ error: "Client not in this POP" }, 404);
+
+        const { data, error } = await sb.rpc("pop_recharge_client_days", { p_client_id: clientId, p_days: days });
+        if (error) return json({ error: error.message }, 400);
+        return json(data);
+      }
+
+      case "pop_bulk_recharge_clients": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const ids: string[] = Array.isArray(payload.client_ids) ? payload.client_ids : [];
+        const days = parseInt(String(payload.days || 0));
+        if (!ids.length || !days) return json({ error: "client_ids ও days দরকার" }, 400);
+
+        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch missing" }, 400);
+        // Filter to only this POP's clients
+        const { data: owned } = await sb.from("clients").select("id").eq("branch_id", pop.branch_id).in("id", ids);
+        const allowedIds = (owned || []).map((c: any) => c.id);
+        if (!allowedIds.length) return json({ error: "কোনো valid client পাওয়া যায়নি" }, 400);
+
+        const { data, error } = await sb.rpc("pop_bulk_recharge_clients", { p_client_ids: allowedIds, p_days: days });
+        if (error) return json({ error: error.message }, 400);
+        return json(data);
+      }
+
+      case "get_pop_balance_info": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const { data } = await sb
+          .from("branch_managers")
+          .select("id, name, balance, allow_negative_balance, fund_started, auto_recharge_enabled")
+          .eq("id", resellerId)
+          .maybeSingle();
+        return json({ pop: data });
+      }
+
+      case "set_pop_auto_recharge": {
+        if (tok.type !== "reseller") return json({ error: "Only main reseller can change this" }, 403);
+        const enabled = !!payload.enabled;
+        const { error } = await sb.from("branch_managers").update({ auto_recharge_enabled: enabled }).eq("id", tok.sub);
+        if (error) return json({ error: error.message }, 400);
+        return json({ ok: true, enabled });
+      }
+
       default:
         return json({ error: "Unknown action" }, 400);
     }
