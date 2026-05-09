@@ -69,13 +69,16 @@ export default function QuickPayDialog({ open, onOpenChange, client, defaultAmou
     }
     setSubmitting(true);
     try {
-      // 1) Create payment_request row first to get an ID for callback
+      // 1) Create payment_request row first to get an ID for callback (RLS-safe RPC)
       const methodKey = gw.name.toLowerCase().replace(/\s+/g, "_");
-      const { data: pr, error: prErr } = await supabase.from("public_payment_requests").insert({
-        client_id: client.id, amount: amt, method: methodKey, trx_id: `pending-${Date.now()}`,
-        status: "pending", note: `Online checkout via ${gw.name}`,
-      }).select("id").single();
-      if (prErr || !pr) throw new Error(prErr?.message || "Failed to create request");
+      const { data: newId, error: prErr } = await supabase.rpc("create_public_payment_request", {
+        _client_id: client.id,
+        _amount: amt,
+        _method: methodKey,
+        _note: `Online checkout via ${gw.name}`,
+      });
+      if (prErr || !newId) throw new Error(prErr?.message || "Failed to create request");
+      const pr = { id: newId as string };
 
       const projectId = (import.meta as any).env.VITE_SUPABASE_PROJECT_ID;
       const fnBase = `https://${projectId}.functions.supabase.co`;
