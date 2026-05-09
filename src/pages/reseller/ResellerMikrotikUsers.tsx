@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { callPortal } from "@/lib/portalApi";
@@ -19,7 +19,20 @@ import { toast } from "sonner";
 export default function ResellerMikrotikUsers() {
   const { customer } = usePortalAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const popId = customer?.type === "reseller_sub" ? (customer as any)?.parent_reseller_id : customer?.sub;
+
+  const handleBalanceError = (err: any): boolean => {
+    const msg = String(err?.message || err || "");
+    if (msg.includes("INSUFFICIENT_BALANCE")) {
+      toast.error("পর্যাপ্ত balance নেই — আগে recharge করুন", {
+        description: msg.replace(/^.*INSUFFICIENT_BALANCE:\s*/, ""),
+        action: { label: "Recharge", onClick: () => navigate("/pop-admin/fund-history/credit") },
+      });
+      return true;
+    }
+    return false;
+  };
   const branchId = (customer as any)?.branch_id;
   const [activeMt, setActiveMt] = useState<string>("");
   const [search, setSearch] = useState("");
@@ -69,7 +82,7 @@ export default function ResellerMikrotikUsers() {
       qc.invalidateQueries({ queryKey: ["pop_mt_users"] });
       toast.success(next === "disabled" ? "ইউজার ডিজেবল হয়েছে" : "ইউজার এনাবল হয়েছে");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => { if (!handleBalanceError(e)) toast.error(e.message); },
   });
 
   const openCreate = (u: any) => {
@@ -125,7 +138,7 @@ export default function ResellerMikrotikUsers() {
       toast.success("ক্লায়েন্ট তৈরি হয়েছে");
       setCreateOpen(false);
     },
-    onError: (e: any) => toast.error("তৈরি ব্যর্থ: " + e.message),
+    onError: (e: any) => { if (!handleBalanceError(e)) toast.error("তৈরি ব্যর্থ: " + e.message); },
   });
 
   return (

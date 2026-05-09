@@ -6828,6 +6828,45 @@ export type Database = {
           },
         ]
       }
+      pop_balance_ledger: {
+        Row: {
+          amount: number
+          balance_after: number | null
+          balance_before: number | null
+          branch_id: string
+          branch_manager_id: string | null
+          client_id: string | null
+          created_at: string
+          id: string
+          mikrotik_client_id: string | null
+          reason: string | null
+        }
+        Insert: {
+          amount: number
+          balance_after?: number | null
+          balance_before?: number | null
+          branch_id: string
+          branch_manager_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          mikrotik_client_id?: string | null
+          reason?: string | null
+        }
+        Update: {
+          amount?: number
+          balance_after?: number | null
+          balance_before?: number | null
+          branch_id?: string
+          branch_manager_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          mikrotik_client_id?: string | null
+          reason?: string | null
+        }
+        Relationships: []
+      }
       pop_billing_periods: {
         Row: {
           branch_manager_id: string
@@ -11445,6 +11484,10 @@ export type Database = {
           _max_users: number
           _tenant_id: string
         }
+        Returns: undefined
+      }
+      charge_pop_for_client_activation: {
+        Args: { _client_id: string; _mikrotik_client_id?: string }
         Returns: undefined
       }
       create_public_payment_request: {
