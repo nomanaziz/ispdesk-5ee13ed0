@@ -264,6 +264,10 @@ export default function Tickets() {
     if (tab === "mac" && t.source !== "reseller") return false;
     if (tab === "pending" && t.status !== "pending") return false;
     if (tab === "accepted" && (t.source === "bw_reseller" || t.source === "reseller")) return false;
+    if (myOnly && user?.id) {
+      const mine = t.created_by === user.id || allAssignees.some((a: any) => a.ticket_id === t.id && (a.employees as any)?.user_id === user.id);
+      if (!mine) return false;
+    }
     return (
       t.ticket_no?.toLowerCase().includes(search.toLowerCase()) ||
       t.subject?.toLowerCase().includes(search.toLowerCase()) ||
@@ -277,10 +281,15 @@ export default function Tickets() {
     return "default";
   };
 
-  const statusColor = (s: string) => {
-    if (s === "solved") return "default";
-    if (s === "processing") return "secondary";
-    return "outline";
+  const statusClass = (s: string) => {
+    if (s === "solved") return "bg-green-600 text-white hover:bg-green-700";
+    if (s === "processing") return "bg-orange-500 text-white hover:bg-orange-600 cursor-pointer";
+    return "bg-yellow-500 text-white hover:bg-yellow-600";
+  };
+
+  const openSolveDialog = (t: any) => {
+    setSolveTicket(t);
+    setSolveDialogOpen(true);
   };
 
   return (
