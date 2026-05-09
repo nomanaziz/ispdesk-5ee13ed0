@@ -218,12 +218,13 @@ export default function OnlineClientMonitoring() {
     setLoading(true);
     let allClients: any[] = [];
     try {
-      // Show ALL clients on the device — free, paid, enabled, disabled
-      // Disabled clients simply appear as offline (they cannot connect anyway)
+      // Only monitor clients whose MikroTik secret is enabled.
+      // Disabled secrets cannot connect, so they are excluded from the monitoring list.
       const { data } = await supabase
         .from("clients")
         .select("id, client_id, name, contact, username, remote_address, zone:zones(name), sub_zone:sub_zones(name), box:boxes(name), connection_type, profile, status, mikrotik_id, server_name, total_upload, total_download, mac_address, is_online, mikrotik_status, mikrotik_device:mikrotik_devices(name)")
         .neq("status", "left")
+        .neq("mikrotik_status", "disabled")
         .eq("mikrotik_id", filterServer);
       allClients = data || [];
 
