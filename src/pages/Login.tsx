@@ -11,6 +11,7 @@ import { Activity, User, Lock, Eye, EyeOff, MapPin, Phone, Mail, Users, Wifi, Sh
 import { Checkbox } from "@/components/ui/checkbox";
 import { PublicLayout } from "@/components/PublicLayout";
 import { useLanguage } from "@/contexts/LanguageContext";
+import ispDeskLogo from "@/assets/isp-desk-logo.png";
 
 const LoginInner = () => {
   const [identifier, setIdentifier] = useState("");

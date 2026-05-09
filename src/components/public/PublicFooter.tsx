@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import ispDeskLogo from "@/assets/isp-desk-logo.png";
 
 interface MenuRow { title: string; url: string | null; location: string }
 

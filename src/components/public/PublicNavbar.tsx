@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import ispDeskLogo from "@/assets/isp-desk-logo.png";
 
 const fallbackLinksBn = [
   { title: "হোম", url: "/" },
