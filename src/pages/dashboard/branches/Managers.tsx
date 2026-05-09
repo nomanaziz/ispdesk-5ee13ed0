@@ -104,11 +104,10 @@ export default function Managers() {
         ) return false;
       }
       if (filterFundStart !== "all" && String(m.fund_started) !== filterFundStart) return false;
-      if (filterPopType !== "all" && m.pop_type !== filterPopType) return false;
       if (filterStatus !== "all" && m.status !== filterStatus) return false;
       return true;
     });
-  }, [managers, search, filterFundStart, filterPopType, filterStatus]);
+  }, [managers, search, filterFundStart, filterStatus]);
 
   const stats = useMemo(() => {
     const total = managers?.length ?? 0;
