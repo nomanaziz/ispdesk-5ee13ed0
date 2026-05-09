@@ -188,6 +188,17 @@ export default function ClientBillingSettings() {
         </Select>
       </Section>
 
+      </Section>
+
+      <Section title="11. MikroTik PPP Secret Comment Sync" info="ক্লায়েন্ট remarks রাউটারের comment field-এ sync করুন">
+        <div className="flex items-center gap-3">
+          <Switch checked={form.mikrotik_sync_comments} onCheckedChange={(v) => set("mikrotik_sync_comments", v)} />
+          <Label className="text-sm font-normal">
+            চালু থাকলে comment save করার সময় MikroTik secret-এর comment field-ও আপডেট হবে। Empty save করলে router-এ-ও clear হবে।
+          </Label>
+        </div>
+      </Section>
+
       <div className="flex justify-end sticky bottom-2">
         <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg">
           <Save className="h-4 w-4" /> {isSaving ? "সংরক্ষণ হচ্ছে..." : "সব সেটিংস সংরক্ষণ"}
