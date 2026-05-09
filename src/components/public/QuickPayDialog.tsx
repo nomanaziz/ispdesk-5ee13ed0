@@ -32,7 +32,14 @@ interface Props {
 
 export default function QuickPayDialog({ open, onOpenChange, client, defaultAmount }: Props) {
   const { toast } = useToast();
-  const { value: gateways } = useSystemSetting<Gateway[]>("payment_gateways", []);
+  const { data: gateways } = useQuery({
+    queryKey: ["public-payment-gateways"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("public_payment_gateways");
+      if (error) throw error;
+      return (data as Gateway[]) || [];
+    },
+  });
   const [step, setStep] = useState<"choose" | "form" | "done">("choose");
   const [selected, setSelected] = useState<Gateway | null>(null);
   const [amount, setAmount] = useState(String(defaultAmount || 0));
