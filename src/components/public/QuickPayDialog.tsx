@@ -206,6 +206,29 @@ export default function QuickPayDialog({ open, onOpenChange, client, defaultAmou
               {client?.name} — মোট দিতে: <span className="font-bold text-foreground">৳{defaultAmount}</span>
             </p>
 
+            {lastError && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm space-y-2">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <p className="font-semibold text-destructive">
+                      {lastGateway?.name || "পেমেন্ট"} — ব্যর্থ হয়েছে
+                    </p>
+                    <p className="text-xs text-destructive/80 mt-1 break-words">{lastError}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {lastGateway && (
+                    <Button size="sm" variant="destructive" onClick={retryLast} disabled={submitting}>
+                      {submitting ? "আবার চেষ্টা হচ্ছে..." : "আবার চেষ্টা করুন"}
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => { setLastError(null); setLastGateway(null); }}>
+                    বন্ধ করুন
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {visible.length === 0 && (
               <div className="text-center py-8 text-sm text-muted-foreground border rounded-lg">
                 কোনো পেমেন্ট পদ্ধতি কনফিগার করা হয়নি। Admin-এর সাথে যোগাযোগ করুন।
