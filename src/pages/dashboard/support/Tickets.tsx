@@ -333,11 +333,16 @@ export default function Tickets() {
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <CardTitle className="text-base">টিকেট তালিকা</CardTitle>
-            <div className="relative w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="সার্চ করুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-9" />
+            <div className="flex items-center gap-2">
+              <Button variant={myOnly ? "default" : "outline"} size="sm" className="h-9" onClick={() => setMyOnly(!myOnly)}>
+                <Users className="h-4 w-4 mr-1" />My Tickets
+              </Button>
+              <div className="relative w-64">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="সার্চ করুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-9" />
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -347,6 +352,7 @@ export default function Tickets() {
               <TableHeader>
                 <TableRow>
                   <TableHead>টিকেট নং</TableHead>
+                  <TableHead>Created By</TableHead>
                   <TableHead>ক্লায়েন্ট কোড</TableHead>
                   <TableHead>কাস্টমার</TableHead>
                   <TableHead>মোবাইল</TableHead>
@@ -357,20 +363,32 @@ export default function Tickets() {
                   <TableHead>সময়</TableHead>
                   <TableHead>স্ট্যাটাস</TableHead>
                   <TableHead>Assign To</TableHead>
+                  <TableHead>Solved By</TableHead>
                   <TableHead>Duration</TableHead>
                   <TableHead className="w-28">অ্যাকশন</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={13} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={15} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={13} className="text-center py-8">কোনো টিকেট পাওয়া যায়নি</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={15} className="text-center py-8">কোনো টিকেট পাওয়া যায়নি</TableCell></TableRow>
                 ) : filtered.map((t: any) => {
                   const ticketAssignees = allAssignees.filter((a: any) => a.ticket_id === t.id);
+                  const createdByName = t.source === "client"
+                    ? ((t.clients as any)?.name || "Client")
+                    : (profilesMap[t.created_by] || "—");
+                  const createdByLabel = t.source === "client" ? "Client" : "Staff";
+                  const solvedByName = t.solved_by ? (profilesMap[t.solved_by] || "—") : null;
                   return (
                     <TableRow key={t.id}>
                       <TableCell className="font-mono text-xs">{t.ticket_no}</TableCell>
+                      <TableCell className="text-xs">
+                        <div className="flex flex-col">
+                          <span>{createdByName}</span>
+                          <Badge variant="outline" className="w-fit text-[10px] px-1 py-0 mt-0.5">{createdByLabel}</Badge>
+                        </div>
+                      </TableCell>
                       <TableCell>{(t.clients as any)?.client_id || "—"}</TableCell>
                       <TableCell>{(t.clients as any)?.name || "—"}</TableCell>
                       <TableCell>{(t.clients as any)?.contact || "—"}</TableCell>
@@ -379,19 +397,38 @@ export default function Tickets() {
                       <TableCell className="max-w-[150px] truncate">{t.subject}</TableCell>
                       <TableCell><Badge variant={priorityColor(t.priority || "medium")}>{t.priority === "high" ? "High" : t.priority === "low" ? "Low" : "Medium"}</Badge></TableCell>
                       <TableCell className="text-xs">{format(new Date(t.created_at), "dd/MM/yy HH:mm")}</TableCell>
-                      <TableCell><Badge variant={statusColor(t.status)}>{t.status}</Badge></TableCell>
                       <TableCell>
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openAssign(t.id)}>
-                          <Users className="h-3 w-3 mr-1" />
-                          {ticketAssignees.length > 0 ? ticketAssignees.map((a: any) => (a.employees as any)?.name).join(", ") : "Assign"}
-                        </Button>
+                        <Badge
+                          className={statusClass(t.status)}
+                          onClick={t.status === "processing" ? () => openSolveDialog(t) : undefined}
+                        >
+                          {t.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-[180px]">
+                          {ticketAssignees.length > 0 ? ticketAssignees.map((a: any) => (
+                            <Badge key={a.id} variant="secondary" className="text-[10px] px-1.5 py-0">{(a.employees as any)?.name}</Badge>
+                          )) : null}
+                          <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={() => openAssign(t.id)}>
+                            <Users className="h-3 w-3 mr-1" />{ticketAssignees.length > 0 ? "Edit" : "Assign"}
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {solvedByName ? (
+                          <div className="flex flex-col">
+                            <span>{solvedByName}</span>
+                            {t.solved_at && <span className="text-muted-foreground text-[10px]">{format(new Date(t.solved_at), "dd/MM/yy HH:mm")}</span>}
+                          </div>
+                        ) : "—"}
                       </TableCell>
                       <TableCell className="text-xs">{formatDuration(t.created_at, t.solved_at)}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openConversation(t.id)}><MessageSquare className="h-4 w-4" /></Button>
                           {t.status !== "solved" && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => resolveMutation.mutate(t.id)}><CheckCircle2 className="h-4 w-4 text-green-500" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSolveDialog(t)}><CheckCircle2 className="h-4 w-4 text-green-500" /></Button>
                           )}
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteMutation.mutate(t.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
