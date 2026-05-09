@@ -951,7 +951,7 @@ export default function AddClient() {
             {errors.client_id && <p className="text-xs text-destructive mt-1">{errors.client_id}</p>}
             {clientCodeError && <p className="text-xs text-destructive mt-1">{clientCodeError}</p>}
           </div>
-          <div>
+          <div data-field="package_id">
             <Label>প্যাকেজ *</Label>
             <Select value={form.package_id} onValueChange={v => {
               setField("package_id", v);
