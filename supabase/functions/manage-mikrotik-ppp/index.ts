@@ -418,6 +418,15 @@ Deno.serve(async (req) => {
           await insertClientLog(supabase, client_id || null, device.name, `[PPP] ${username} enabled`);
           break;
         }
+        case "set-comment": {
+          const commentValue = (body?.comment ?? "") as string;
+          await mikrotikCommand(conn, "/ppp/secret/set", { ".id": secretId, comment: commentValue });
+          message = commentValue
+            ? `PPP secret '${username}' comment updated`
+            : `PPP secret '${username}' comment cleared`;
+          await insertClientLog(supabase, client_id || null, device.name, `[PPP] ${username} comment "${commentValue}"`);
+          break;
+        }
         case "disconnect": {
           const active = await getActiveSessions(conn, username);
           for (const session of active) {
