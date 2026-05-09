@@ -422,7 +422,7 @@ export default function BillingList() {
                   <TableHead>জোন</TableHead>
                   <TableHead>প্যাকেজ</TableHead>
                   <TableHead>স্পিড</TableHead>
-                  <TableHead>মেয়াদ</TableHead>
+                  <TableHead>Exp Date</TableHead>
                   {isPrepaidPop && <TableHead className="text-center">R.Days</TableHead>}
                   <TableHead>স্ট্যাটাস</TableHead>
                   <TableHead className="text-right">মাসিক বিল</TableHead>

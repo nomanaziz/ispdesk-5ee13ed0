@@ -107,7 +107,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients-list"] });
-      toast.success("মেয়াদ আপডেট হয়েছে");
+      toast.success("Exp date আপডেট হয়েছে");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -375,7 +375,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
               <TableHead className="text-xs">জোন</TableHead>
               <TableHead className="text-xs">প্যাকেজ/স্পিড</TableHead>
               <TableHead className="text-xs">মাসিক বিল</TableHead>
-              <TableHead className="text-xs">মেয়াদ</TableHead>
+              <TableHead className="text-xs">Exp Date</TableHead>
               <TableHead className="text-xs">কানেকশন টাইপ</TableHead>
               <TableHead className="text-xs">কাস্টমার টাইপ</TableHead>
               <TableHead className="text-xs">রিমোট অ্যাড্রেস</TableHead>
