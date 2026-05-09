@@ -1235,7 +1235,7 @@ export default function AddClient() {
       {/* Footer */}
       <div className="flex justify-between items-center py-4">
         <Button variant="outline" onClick={() => navigate(isPopMode ? "/pop-admin/clients" : "/dashboard/clients")}><ArrowLeft className="h-4 w-4 mr-1" /> তালিকায় ফিরুন</Button>
-        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+        <Button onClick={() => { if (runValidate()) saveMutation.mutate(); }} disabled={saveMutation.isPending}>
           <Save className="h-4 w-4 mr-1" /> {saveMutation.isPending ? "সেভ হচ্ছে..." : "সংরক্ষণ ও বের হন"}
         </Button>
       </div>
