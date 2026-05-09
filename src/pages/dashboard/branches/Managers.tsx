@@ -22,7 +22,7 @@ export default function Managers() {
 
   const [search, setSearch] = useState("");
   const [filterFundStart, setFilterFundStart] = useState<string>("all");
-  const [filterPopType, setFilterPopType] = useState<string>("all");
+  
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
   const [fundPop, setFundPop] = useState<any>(null);
