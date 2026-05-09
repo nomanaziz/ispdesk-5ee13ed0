@@ -151,7 +151,7 @@ export default function Managers() {
 
       {/* Filters */}
       <Card>
-        <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input className="pl-8" placeholder="নাম / কোড / ইউজার..." value={search} onChange={(e) => setSearch(e.target.value)} />
