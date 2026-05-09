@@ -103,13 +103,15 @@ export default function RemainingDaysCell({ client, invalidateKey = "billing-lis
           {label}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-3 space-y-3" align="start">
-        <div className="text-xs font-medium text-foreground">Remaining Days সেট করুন</div>
+      <PopoverContent className="w-60 p-3 space-y-3" align="start">
+        <div className="text-xs font-medium text-foreground">
+          {isPopMode ? "Recharge করুন (POP balance থেকে কাটা হবে)" : "Remaining Days সেট করুন"}
+        </div>
         <div>
-          <Label className="text-[10px]">নতুন R.Days (0-365)</Label>
+          <Label className="text-[10px]">{isPopMode ? "Recharge দিন (1-365)" : "নতুন R.Days (0-365)"}</Label>
           <Input
             type="number"
-            min={0}
+            min={isPopMode ? 1 : 0}
             max={365}
             value={days}
             onChange={(e) => setDays(e.target.value)}
@@ -117,7 +119,9 @@ export default function RemainingDaysCell({ client, invalidateKey = "billing-lis
             autoFocus
           />
           <p className="text-[10px] text-muted-foreground mt-1">
-            Expire Date: আজ + {days || 0} দিন
+            {isPopMode
+              ? `বর্তমান R.Days: ${remaining ?? 0} → +${days || 0} দিন যোগ হবে`
+              : `Expire Date: আজ + ${days || 0} দিন`}
           </p>
         </div>
         <div className="flex gap-2 pt-1">
