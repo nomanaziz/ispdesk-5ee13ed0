@@ -1,58 +1,52 @@
-## Support Ticket — Realtime Assign + Department Filter + Start Working
+## লক্ষ্য
 
-### 1. Fix "Assign করলে দেখা যায় না" (Realtime + Cache)
+TopBar-এ WordPress-style একটি "+" (Quick Create) button যোগ করা, যেখান থেকে এক ক্লিকে নতুন client, bill, invoice, ticket, task ইত্যাদি তৈরির shortcut পাওয়া যাবে।
 
-**Problem:** assignMutation invalidates `["ticket_assignees", "support_tickets"]` as a single key (wrong shape) → list never refreshes; even reload sometimes shows stale data because the assignees query has key `["ticket_assignees"]` (no ticket_id).
+## অবস্থান
 
-**Fix in `src/pages/dashboard/support/Tickets.tsx`:**
-- Replace single invalidate with two calls:
-  ```ts
-  qc.invalidateQueries({ queryKey: ["ticket_assignees"] });
-  qc.invalidateQueries({ queryKey: ["support_tickets"] });
-  ```
-- Add Supabase **Realtime subscription** in a `useEffect` for tables `support_tickets` and `support_ticket_assignees` → on any change invalidate both queries. UI will live-update without reload.
-- Migration: `ALTER PUBLICATION supabase_realtime ADD TABLE support_tickets, support_ticket_assignees;` (and `REPLICA IDENTITY FULL`).
+`src/components/TopBar.tsx` — Online Monitoring icon-এর পাশে, Notifications-এর আগে। Desktop ও mobile উভয়েই দৃশ্যমান।
 
-### 2. Redesign Assign Dialog → "Assign Solvers" (matches uploaded screenshot)
+## UI ডিজাইন
 
-Replace current checkbox list with:
-- **Title:** "Assign Solvers"
-- **DEPARTMENT** dropdown — fetches from `departments` table (active, branch-scoped). Selecting a department filters the employee list.
-- **EMPLOYEE** multi-select with searchable input + chip tags (using existing `Command`/`Popover` pattern or a simple search input + tag chips). Shows only employees whose `department_id` matches the selected department; if no department picked, search across all employees.
-- **SMS checkbox** (sends SMS notification — wired to existing SMS infra if present, otherwise a no-op flag stored on the ticket — confirm with user before wiring SMS gateway).
-- Footer: red **No** + green **Yes** buttons.
-- On Yes: insert assignees, set ticket `status = 'processing'`, set new `processing_started_at = now()`. Realtime + invalidate updates the table instantly; chips appear under "Assign To" column.
+- একটি বৃত্তাকার `+` icon button (Lucide `Plus`), primary tint সহ যাতে চোখে পড়ে।
+- Click করলে `DropdownMenu` খুলবে — title "নতুন তৈরি করুন / Create new"।
+- প্রতিটি item-এ ছোট icon + bilingual label। Group separator দিয়ে categorize করা।
 
-### 3. Time Tracking — auto-start on Processing
+## Shortcut তালিকা
 
-**Migration** (new columns on `support_tickets`):
-- `processing_started_at timestamptz` — set when ticket moves to processing
-- `work_started_at timestamptz` — set when assigned employee clicks "Start Working"
-- `work_started_by uuid` — which employee started
+Clients
+- নতুন ক্লায়েন্ট → `/dashboard/clients/new-request`
+- কুইক ক্লায়েন্ট (popup) → বিদ্যমান `QuickCreateClientDialog` খুলবে
 
-**Display:**
-- New "Time Elapsed" indicator in the Status cell (when `processing`): live ticking `Hh:Mm:Ss` since `processing_started_at` (client-side `setInterval`, no extra fetch).
-- When solved, show total `solved_at - processing_started_at` (replaces current Duration calc which uses `created_at`).
+Billing
+- নতুন বিল / Invoice → `/dashboard/billing/invoices/new` (যে route বিদ্যমান, route registry থেকে confirm করে নেব)
+- পেমেন্ট রিসিভ → `/dashboard/billing/payments/new`
 
-### 4. Employee "Start Working" workflow
+Support & Tasks
+- নতুন টিকিট → `/dashboard/support/tickets?new=1` (Tickets পেজ query param দেখে create dialog খুলবে — ছোট patch)
+- নতুন টাস্ক → `/dashboard/hr/tasks?new=1` (একইভাবে)
 
-- The "My Tickets" filter (already added) lets the logged-in employee see their tickets.
-- For each ticket assigned to them where `work_started_by IS NULL`:
-  - Show a **Start Working** button (blue) in the action column.
-  - Click → updates `work_started_at = now()`, `work_started_by = employees.id` (resolved from `employees.user_id = auth.uid()`).
-  - Button changes to a live "Working: 00:12:34" badge.
-- After Start Working, the existing "Solve" confirmation dialog remains; on Yes, sets `solved_at`, `solved_by`, status `solved`.
+Others (যদি route থাকে)
+- নতুন প্যাকেজ → `/dashboard/billing/packages/new`
+- নতুন কর্মী → `/dashboard/hr/employees/new`
+- নতুন নোটিশ → `/dashboard/communication/notices/new`
 
-### 5. Files touched
+(চূড়ান্ত করার আগে `App.tsx` route table পড়ে বিদ্যমান route গুলো verify করব; যেগুলো নেই, সেগুলো বাদ দেব।)
 
-- **Migration** (new): add columns + enable realtime publication + replica identity.
-- **`src/pages/dashboard/support/Tickets.tsx`**:
-  - Realtime hook
-  - Department-filtered Assign Solvers dialog (new design)
-  - Time-elapsed live counter component
-  - Start Working button + mutation
-  - Fix invalidate keys
+## আচরণ
 
-### Open question (will ask before building)
+- Permission-aware: যদি current user-এর কোনো module-এ create permission না থাকে, ওই item hide হবে (`usePermission` hook ব্যবহার করে)।
+- Mobile-এ button থাকবে কিন্তু dropdown একই — touch-friendly width।
+- Bilingual labels (`useLanguage().t`)।
 
-The screenshot shows an "SMS" checkbox. Should clicking Yes actually send SMS to assignees via your existing SMS gateway (if one is configured), or just store the flag for now? I'll ask via questions tool before implementing that part.
+## টেকনিক্যাল বিবরণ
+
+- নতুন component: `src/components/QuickCreateMenu.tsx` — self-contained DropdownMenu trigger + items।
+- TopBar-এ import করে Online Monitoring button-এর পরে বসানো হবে।
+- Tickets ও Tasks পেজে minor patch: mount-এ `useSearchParams` থেকে `new=1` দেখলে create dialog auto-open।
+- কোনো backend/schema change লাগবে না।
+
+## Out of scope
+
+- Permission system বা route structure পরিবর্তন।
+- নতুন create form বানানো — শুধু বিদ্যমান page/dialog-এ navigate করা।

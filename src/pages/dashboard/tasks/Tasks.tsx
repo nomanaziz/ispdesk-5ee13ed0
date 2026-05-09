@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,7 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Plus, Search, Pencil, Trash2, MessageSquare, CheckCircle, ListTodo, Clock, AlertTriangle, FolderOpen } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 const priorityColors: Record<string, string> = {
   high: "bg-red-100 text-red-800 border-red-200",
@@ -41,6 +41,14 @@ export default function Tasks() {
   const [filterPriority, setFilterPriority] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setDialogOpen(true);
+      searchParams.delete("new");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [commentDialogId, setCommentDialogId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");

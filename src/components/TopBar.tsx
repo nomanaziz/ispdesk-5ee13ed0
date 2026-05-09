@@ -17,6 +17,7 @@ import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { toast } from "@/hooks/use-toast";
 import { HeaderClock } from "@/components/HeaderClock";
 import { AdminNotificationBell } from "@/components/notifications/AdminNotificationBell";
+import { QuickCreateMenu } from "@/components/QuickCreateMenu";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -141,6 +142,9 @@ export function TopBar() {
               <Wallet className="h-4 w-4" />
             </Button>
           )}
+
+          {/* Quick Create (+) */}
+          <QuickCreateMenu />
 
           {/* Notifications */}
           <AdminNotificationBell />

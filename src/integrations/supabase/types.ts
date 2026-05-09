@@ -5331,6 +5331,119 @@ export type Database = {
           },
         ]
       }
+      license_activations: {
+        Row: {
+          activated_at: string
+          domain: string | null
+          id: string
+          ip_address: string | null
+          license_id: string
+          message: string | null
+          result: string
+          user_agent: string | null
+        }
+        Insert: {
+          activated_at?: string
+          domain?: string | null
+          id?: string
+          ip_address?: string | null
+          license_id: string
+          message?: string | null
+          result: string
+          user_agent?: string | null
+        }
+        Update: {
+          activated_at?: string
+          domain?: string | null
+          id?: string
+          ip_address?: string | null
+          license_id?: string
+          message?: string | null
+          result?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_activations_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      licenses: {
+        Row: {
+          activated_at: string | null
+          created_at: string
+          customer_id: string | null
+          expires_at: string
+          id: string
+          is_trial: boolean
+          issued_at: string
+          last_validated_at: string | null
+          license_key: string
+          max_users: number | null
+          notes: string | null
+          plan_id: string | null
+          plan_name: string | null
+          status: Database["public"]["Enums"]["license_status"]
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          expires_at: string
+          id?: string
+          is_trial?: boolean
+          issued_at?: string
+          last_validated_at?: string | null
+          license_key: string
+          max_users?: number | null
+          notes?: string | null
+          plan_id?: string | null
+          plan_name?: string | null
+          status?: Database["public"]["Enums"]["license_status"]
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          expires_at?: string
+          id?: string
+          is_trial?: boolean
+          issued_at?: string
+          last_validated_at?: string | null
+          license_key?: string
+          max_users?: number | null
+          notes?: string | null
+          plan_id?: string | null
+          plan_name?: string | null
+          status?: Database["public"]["Enums"]["license_status"]
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "licenses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "licenses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media_servers: {
         Row: {
           active: boolean
@@ -7512,6 +7625,84 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      provisioning_jobs: {
+        Row: {
+          branch_id: string | null
+          customer_id: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          license_id: string | null
+          service_request_id: string | null
+          started_at: string
+          status: Database["public"]["Enums"]["provisioning_status"]
+          steps: Json | null
+          tenant_id: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          customer_id?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          license_id?: string | null
+          service_request_id?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["provisioning_status"]
+          steps?: Json | null
+          tenant_id?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          customer_id?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          license_id?: string | null
+          service_request_id?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["provisioning_status"]
+          steps?: Json | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provisioning_jobs_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provisioning_jobs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provisioning_jobs_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provisioning_jobs_service_request_id_fkey"
+            columns: ["service_request_id"]
+            isOneToOne: false
+            referencedRelation: "service_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provisioning_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       public_payment_requests: {
         Row: {
@@ -11034,6 +11225,7 @@ export type Database = {
         }
         Returns: string
       }
+      generate_license_key: { Args: never; Returns: string }
       get_important_link_password: {
         Args: { _link_id: string }
         Returns: string
@@ -11075,6 +11267,15 @@ export type Database = {
         }
         Returns: string
       }
+      provision_new_tenant: {
+        Args: {
+          _customer_id: string
+          _max_users?: number
+          _service_request_id?: string
+          _trial_days?: number
+        }
+        Returns: Json
+      }
       public_lookup_bills: {
         Args: { _client_id: string }
         Returns: {
@@ -11115,6 +11316,7 @@ export type Database = {
       app_role: "super_admin" | "admin" | "operator"
       connection_type: "telnet" | "ssh"
       device_status: "online" | "offline" | "unknown"
+      license_status: "trial" | "active" | "suspended" | "expired" | "revoked"
       mapping_status: "mapped" | "unmapped"
       olt_vendor:
         | "huawei"
@@ -11131,6 +11333,7 @@ export type Database = {
       onu_status: "online" | "offline"
       pop_device_type: "generator" | "electric"
       power_status: "up" | "down" | "unknown"
+      provisioning_status: "pending" | "running" | "success" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -11263,6 +11466,7 @@ export const Constants = {
       app_role: ["super_admin", "admin", "operator"],
       connection_type: ["telnet", "ssh"],
       device_status: ["online", "offline", "unknown"],
+      license_status: ["trial", "active", "suspended", "expired", "revoked"],
       mapping_status: ["mapped", "unmapped"],
       olt_vendor: [
         "huawei",
@@ -11280,6 +11484,7 @@ export const Constants = {
       onu_status: ["online", "offline"],
       pop_device_type: ["generator", "electric"],
       power_status: ["up", "down", "unknown"],
+      provisioning_status: ["pending", "running", "success", "failed"],
     },
   },
 } as const
