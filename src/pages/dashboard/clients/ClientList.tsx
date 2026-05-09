@@ -82,6 +82,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
   const [dateExtendOpen, setDateExtendOpen] = useState(false);
   const [districtOpen, setDistrictOpen] = useState(false);
   const [thanaOpen, setThanaOpen] = useState(false);
+  const [commentClient, setCommentClient] = useState<any | null>(null);
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ["clients-list", branchId || "all", isPopMode ? "pop" : "admin"],
