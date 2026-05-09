@@ -408,10 +408,12 @@ export default function AddClient() {
         installed_by_ids: form.installed_by_ids && form.installed_by_ids.length > 0 ? form.installed_by_ids : null,
         expire_day: form.billing_status === "Active" ? Number(form.expire_day || 10) : null,
         mikrotik_status: mikrotikStatus,
-        // POP-mode: auto-inject branch + default district/upazila from POP profile
+        photo_url: photoUrl,
+        // Branch + geo: POP-mode uses POP profile; Admin-mode auto-derives district/upazila/division from selected zone
         branch_id: isPopMode ? branchId : (form.branch_id || null),
-        district_id: isPopMode ? (districtId || null) : (form.district_id || null),
-        upazila_id: isPopMode ? (upazilaId || null) : (form.upazila_id || null),
+        district_id: isPopMode ? (districtId || null) : (selectedZone?.district_id || form.district_id || null),
+        upazila_id: isPopMode ? (upazilaId || null) : (selectedZone?.upazila_id || form.upazila_id || null),
+        division_id: isPopMode ? null : (selectedZone?.division_id || null),
         // Corporate-specific (only persisted when client_type='Corporate')
         company_name: form.client_type === "Corporate" ? (form.company_name || null) : null,
         trade_license_no: form.client_type === "Corporate" ? (form.trade_license_no || null) : null,
