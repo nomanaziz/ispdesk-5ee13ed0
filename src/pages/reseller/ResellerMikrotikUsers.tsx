@@ -19,7 +19,20 @@ import { toast } from "sonner";
 export default function ResellerMikrotikUsers() {
   const { customer } = usePortalAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const popId = customer?.type === "reseller_sub" ? (customer as any)?.parent_reseller_id : customer?.sub;
+
+  const handleBalanceError = (err: any): boolean => {
+    const msg = String(err?.message || err || "");
+    if (msg.includes("INSUFFICIENT_BALANCE")) {
+      toast.error("পর্যাপ্ত balance নেই — আগে recharge করুন", {
+        description: msg.replace(/^.*INSUFFICIENT_BALANCE:\s*/, ""),
+        action: { label: "Recharge", onClick: () => navigate("/pop-admin/fund-history/credit") },
+      });
+      return true;
+    }
+    return false;
+  };
   const branchId = (customer as any)?.branch_id;
   const [activeMt, setActiveMt] = useState<string>("");
   const [search, setSearch] = useState("");
