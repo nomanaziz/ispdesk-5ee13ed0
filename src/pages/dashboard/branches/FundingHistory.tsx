@@ -125,7 +125,7 @@ export default function FundingHistory() {
         const isRefund = f.trans_type === "refund";
         all.push({
           id: f.id,
-          reseller_name: f.branches?.name ?? "-",
+          reseller_name: popNameMap[f.branch_id] ?? f.branches?.name ?? "-",
           invoice_number: f.invoice_number,
           receipt_number: f.receipt_number,
           trans_type: f.trans_type ?? "fund",
