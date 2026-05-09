@@ -1,45 +1,40 @@
-# সুন্দর Dynamic 404 Page
+# Plan: Impersonation 404 Fix via Configurable Portal Base URL
 
-## লক্ষ্য
+## Problem
+Admin clicks "Login as POP" from `https://ispdesk.ispsector.com/...`. Code opens new tab at `${window.location.origin}/pop-admin/dashboard#imp=...`. The custom domain `ispdesk.ispsector.com` is hosted somewhere (Vercel) without SPA fallback, so deep link returns `404 NOT_FOUND bom1::...` instead of the React app.
 
-বর্তমান `src/pages/NotFound.tsx` খুবই সাধারণ ("404 / Oops! Page not found / Return to Home")। এটাকে একটা modern, branded, dynamic 404 page দিয়ে replace করব — যেটা hard refresh বা ভুল URL এর সময় সুন্দরভাবে দেখাবে।
+## Solution
+Add a system setting **Portal Base URL** that admin can configure (e.g. `https://ispdesk.lovable.app`). All impersonation/portal-launch URLs will use this base instead of `window.location.origin`. If unset, fall back to current origin (existing behavior).
 
-> **Note:** যে `NOT_FOUND / bom1::...` error screenshot টা আসছে সেটা hosting platform (Vercel-style) এর infrastructure 404, app এর না। Lovable hosting (`*.lovable.app` / custom domain via Lovable) এ SPA fallback automatic — তাই hard refresh এ React Router এর `NotFound` page ই render হবে, infrastructure 404 না। যদি app অন্য কোথাও (যেমন Vercel) deploy করা থাকে, সেখানে আলাদা SPA rewrite config লাগবে — সেটা আলাদা issue, code এর না।
+## Changes
 
-## নতুন 404 Page এর Design
+### 1. New system setting key
+- Key: `portal_base_url`
+- Stored as `{ url: string }` JSON in existing `system_settings` table.
+- No migration needed — table already exists and accepts arbitrary keys.
 
-**Layout:**
-- Full-screen centered card, subtle gradient background (semantic tokens থেকে — `--background`, `--primary`, `--accent`)
-- বড় animated "404" headline (framer-motion দিয়ে subtle float / fade-in)
-- Decorative floating shapes / blur orbs background এ (brand color tone)
-- Company logo উপরে (existing `useCompanyInfo()` hook ব্যবহার করে — uploaded logo থাকলে সেটা, নাহলে default ISP Desk logo)
+### 2. New hook: `src/hooks/usePortalBaseUrl.ts`
+- Wraps `useSystemSetting('portal_base_url', { url: '' })`.
+- Exposes `baseUrl` (trimmed, no trailing slash) and `getPortalUrl(path)` helper that returns `${baseUrl || window.location.origin}${path}`.
 
-**Content (Bangla + English):**
-- Heading: "404"
-- Subheading: "দুঃখিত, পেজটি খুঁজে পাওয়া যায়নি"
-- Description: ছোট লাইন — "যে পেজটি খুঁজছেন সেটি সরিয়ে নেওয়া হয়েছে, নাম বদলেছে, অথবা কখনোই ছিল না।"
-- যে invalid path এ এসেছে সেটা একটা muted code badge এ দেখাবে (debugging সুবিধা)
+### 3. Update `src/lib/impersonate.ts`
+- Read `portal_base_url` from `system_settings` directly (since it's a non-React util) before opening the tab.
+- Build URL as `${baseUrl || window.location.origin}${redirect}#imp=...`.
 
-**Actions (buttons):**
-1. **হোম পেজে যান** (Home icon) — `/` এ navigate
-2. **ড্যাশবোর্ডে যান** (LayoutDashboard icon) — `/dashboard` এ navigate (যদি logged in হয়)
-3. **পিছনে যান** (ArrowLeft icon) — `navigate(-1)` ব্যবহার করে browser back
-4. Optional: **লগইন করুন** — যদি not authenticated
+### 4. Settings UI
+- Add a new card on the existing System Settings / Company setup page (whichever the admin already uses for `company_info`) titled **"পোর্টাল বেস URL"**.
+- Single text input + Save button. Helper text in Bangla: "POP/Client/BW portal-এ login করার সময় এই URL ব্যবহার হবে। খালি রাখলে current domain ব্যবহার হবে। উদাহরণ: `https://ispdesk.lovable.app`"
+- Validates URL format (must start with `http://` or `https://`, no trailing slash).
 
-Auth status check করার জন্য existing Supabase session check pattern ব্যবহার করব যাতে context-aware buttons দেখানো যায়।
+### 5. Branded 404 already exists
+- `src/pages/NotFound.tsx` was redesigned in the previous turn — no further change needed. It will only show when SPA serves the route. The infrastructure-level 404 (Vercel `bom1::...`) cannot be replaced by app code; the Portal Base URL fix bypasses that origin entirely.
 
-**Styling rules:**
-- শুধুই semantic tokens (`bg-background`, `text-foreground`, `text-primary`, `text-muted-foreground`, ইত্যাদি) — কোনো hardcoded color না
-- shadcn `Button` component (variant: `default`, `outline`, `ghost`)
-- framer-motion ইতিমধ্যে project এ আছে — সেটা ব্যবহার করব entrance animation এর জন্য
-- Mobile responsive — buttons stack on small screens
+## Files touched
+- `src/lib/impersonate.ts` (modify)
+- `src/hooks/usePortalBaseUrl.ts` (new)
+- One settings page (TBD during implementation — likely `src/pages/dashboard/CompanySetup.tsx` or wherever `company_info` is edited) — add a new card
+- No DB migration, no edge function change
 
-## Files যেগুলো বদলাবে
-
-- **`src/pages/NotFound.tsx`** — সম্পূর্ণ rewrite নতুন design এ, useCompanyInfo + useNavigate + auth check সহ
-
-## যা পরিবর্তন হবে না
-
-- Routing config (App.tsx এ `*` catch-all already আছে ধরে নিচ্ছি — verify করব implementation এর সময়)
-- কোনো backend / business logic না
-- অন্য কোনো page না
+## Out of scope
+- Fixing the `ispdesk.ispsector.com` DNS / hosting setup (that's an infra change the user does outside Lovable).
+- Changing other places that use `window.location.origin` for non-impersonation purposes.

@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Building2, Save, Mail, Phone, Globe, MapPin, FileText, Image as ImageIcon, Upload, X, Loader2 } from "lucide-react";
+import { Building2, Save, Mail, Phone, Globe, MapPin, FileText, Image as ImageIcon, Upload, X, Loader2, Link2 } from "lucide-react";
 
 interface CompanyInfo {
   name: string;
@@ -35,13 +35,26 @@ const defaults: CompanyInfo = {
 
 export default function Company() {
   const { value, isLoading, save, isSaving } = useSystemSetting<CompanyInfo>("company_info", defaults);
+  const { value: portalBase, save: savePortalBase, isSaving: savingPortal } =
+    useSystemSetting<{ url: string }>("portal_base_url", { url: "" });
   const [form, setForm] = useState<CompanyInfo>(defaults);
+  const [portalUrl, setPortalUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setForm(value); }, [value]);
+  useEffect(() => { setPortalUrl(portalBase?.url || ""); }, [portalBase]);
 
   const set = (k: keyof CompanyInfo, v: any) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleSavePortalBase = () => {
+    const trimmed = portalUrl.trim().replace(/\/+$/, "");
+    if (trimmed && !/^https?:\/\//i.test(trimmed)) {
+      toast.error("URL অবশ্যই http:// বা https:// দিয়ে শুরু হতে হবে");
+      return;
+    }
+    savePortalBase({ url: trimmed });
+  };
 
   const handleUpload = async (file: File) => {
     if (!file) return;
@@ -220,6 +233,36 @@ export default function Company() {
           <div className="flex justify-end pt-2">
             <Button onClick={() => save(form)} disabled={isSaving} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
               <Save className="h-4 w-4" /> {isSaving ? "আপডেট হচ্ছে..." : "আপডেট কোম্পানি তথ্য"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Portal Base URL */}
+      <div className="border rounded-lg overflow-hidden">
+        <div className="bg-primary text-primary-foreground px-4 py-2.5 flex items-center gap-2 text-sm font-medium">
+          <Link2 className="h-4 w-4" /> পোর্টাল বেস URL
+        </div>
+        <div className="p-5 space-y-3 bg-card">
+          <div>
+            <Label className="text-xs mb-1 block">Portal Base URL</Label>
+            <div className="relative">
+              <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={portalUrl}
+                onChange={(e) => setPortalUrl(e.target.value)}
+                className="pl-9"
+                placeholder="https://ispdesk.lovable.app"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+              "Login as POP/Client/BW" থেকে portal-এ login করার সময় এই URL ব্যবহার হবে। খালি রাখলে current domain ব্যবহার হবে।
+              আপনার custom domain (যেমন <code className="px-1 bg-muted rounded">ispdesk.ispsector.com</code>) যদি deep link-এ 404 দেয়, তবে এখানে আপনার Lovable published URL (<code className="px-1 bg-muted rounded">https://ispdesk.lovable.app</code>) বসান।
+            </p>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={handleSavePortalBase} disabled={savingPortal} size="sm" className="gap-2">
+              <Save className="h-4 w-4" /> {savingPortal ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
             </Button>
           </div>
         </div>
