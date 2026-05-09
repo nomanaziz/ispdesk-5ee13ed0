@@ -130,12 +130,6 @@ export default function Managers() {
       toast.error(e.message || "Login failed");
     }
   };
-  const handleTypeChange = (m: any) => {
-    const next = m.pop_type === "prepaid" ? "postpaid" : "prepaid";
-    update.mutate({ id: m.id, patch: { pop_type: next } });
-    toast.success(`POP type → ${next}`);
-  };
-
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
