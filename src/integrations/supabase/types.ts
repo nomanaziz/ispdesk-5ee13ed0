@@ -2041,6 +2041,8 @@ export type Database = {
           active_client_count: number
           activity_status: string
           address: string | null
+          auto_renew: boolean | null
+          billing_cycle: Database["public"]["Enums"]["billing_cycle"] | null
           contact_person: string | null
           created_at: string
           current_tier_id: string | null
@@ -2050,7 +2052,9 @@ export type Database = {
           facebook_url: string | null
           id: string
           ip_addresses: Json | null
+          last_invoice_at: string | null
           mobile: string | null
+          next_invoice_at: string | null
           next_month_estimated_bill: number
           nttn_info: string | null
           own_bkash_number: string | null
@@ -2069,6 +2073,9 @@ export type Database = {
           remarks: string | null
           scr_link_id: string | null
           skype_id: string | null
+          status_changed_at: string | null
+          status_reason: string | null
+          tenant_status: Database["public"]["Enums"]["tenant_status"] | null
           updated_at: string
           username: string | null
           vlan_info: Json | null
@@ -2079,6 +2086,8 @@ export type Database = {
           active_client_count?: number
           activity_status?: string
           address?: string | null
+          auto_renew?: boolean | null
+          billing_cycle?: Database["public"]["Enums"]["billing_cycle"] | null
           contact_person?: string | null
           created_at?: string
           current_tier_id?: string | null
@@ -2088,7 +2097,9 @@ export type Database = {
           facebook_url?: string | null
           id?: string
           ip_addresses?: Json | null
+          last_invoice_at?: string | null
           mobile?: string | null
+          next_invoice_at?: string | null
           next_month_estimated_bill?: number
           nttn_info?: string | null
           own_bkash_number?: string | null
@@ -2107,6 +2118,9 @@ export type Database = {
           remarks?: string | null
           scr_link_id?: string | null
           skype_id?: string | null
+          status_changed_at?: string | null
+          status_reason?: string | null
+          tenant_status?: Database["public"]["Enums"]["tenant_status"] | null
           updated_at?: string
           username?: string | null
           vlan_info?: Json | null
@@ -2117,6 +2131,8 @@ export type Database = {
           active_client_count?: number
           activity_status?: string
           address?: string | null
+          auto_renew?: boolean | null
+          billing_cycle?: Database["public"]["Enums"]["billing_cycle"] | null
           contact_person?: string | null
           created_at?: string
           current_tier_id?: string | null
@@ -2126,7 +2142,9 @@ export type Database = {
           facebook_url?: string | null
           id?: string
           ip_addresses?: Json | null
+          last_invoice_at?: string | null
           mobile?: string | null
+          next_invoice_at?: string | null
           next_month_estimated_bill?: number
           nttn_info?: string | null
           own_bkash_number?: string | null
@@ -2145,6 +2163,9 @@ export type Database = {
           remarks?: string | null
           scr_link_id?: string | null
           skype_id?: string | null
+          status_changed_at?: string | null
+          status_reason?: string | null
+          tenant_status?: Database["public"]["Enums"]["tenant_status"] | null
           updated_at?: string
           username?: string | null
           vlan_info?: Json | null
@@ -10253,6 +10274,127 @@ export type Database = {
           },
         ]
       }
+      tenant_impersonation_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          jti: string
+          super_admin_id: string
+          tenant_id: string
+          used_at: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          ip_address?: string | null
+          jti: string
+          super_admin_id: string
+          tenant_id: string
+          used_at?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          jti?: string
+          super_admin_id?: string
+          tenant_id?: string
+          used_at?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_impersonation_tokens_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_invoices: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          due_date: string | null
+          id: string
+          invoice_no: string | null
+          invoice_type: Database["public"]["Enums"]["tenant_invoice_type"]
+          metadata: Json | null
+          notes: string | null
+          paid_amount: number | null
+          paid_at: string | null
+          payment_method: string | null
+          period_end: string | null
+          period_start: string | null
+          status: Database["public"]["Enums"]["tenant_invoice_status"]
+          tenant_id: string
+          updated_at: string
+          user_count: number | null
+          user_limit: number | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          due_date?: string | null
+          id?: string
+          invoice_no?: string | null
+          invoice_type?: Database["public"]["Enums"]["tenant_invoice_type"]
+          metadata?: Json | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          payment_method?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: Database["public"]["Enums"]["tenant_invoice_status"]
+          tenant_id: string
+          updated_at?: string
+          user_count?: number | null
+          user_limit?: number | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          due_date?: string | null
+          id?: string
+          invoice_no?: string | null
+          invoice_type?: Database["public"]["Enums"]["tenant_invoice_type"]
+          metadata?: Json | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          payment_method?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: Database["public"]["Enums"]["tenant_invoice_status"]
+          tenant_id?: string
+          updated_at?: string
+          user_count?: number | null
+          user_limit?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       upazilas: {
         Row: {
           code: string | null
@@ -11216,6 +11358,14 @@ export type Database = {
           tier_id: string
         }[]
       }
+      change_tenant_plan: {
+        Args: {
+          _billing_cycle?: Database["public"]["Enums"]["billing_cycle"]
+          _max_users: number
+          _tenant_id: string
+        }
+        Returns: undefined
+      }
       create_public_payment_request: {
         Args: {
           _amount: number
@@ -11223,6 +11373,10 @@ export type Database = {
           _method: string
           _note?: string
         }
+        Returns: string
+      }
+      extend_tenant_subscription: {
+        Args: { _days: number; _tenant_id: string }
         Returns: string
       }
       generate_license_key: { Args: never; Returns: string }
@@ -11309,11 +11463,20 @@ export type Database = {
         Args: { _link_id: string; _password: string }
         Returns: undefined
       }
+      set_tenant_status: {
+        Args: {
+          _reason?: string
+          _status: Database["public"]["Enums"]["tenant_status"]
+          _tenant_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       alert_channel: "dashboard" | "telegram"
       alert_type: "warning" | "critical" | "offline"
       app_role: "super_admin" | "admin" | "operator"
+      billing_cycle: "monthly" | "quarterly" | "yearly"
       connection_type: "telnet" | "ssh"
       device_status: "online" | "offline" | "unknown"
       license_status: "trial" | "active" | "suspended" | "expired" | "revoked"
@@ -11334,6 +11497,15 @@ export type Database = {
       pop_device_type: "generator" | "electric"
       power_status: "up" | "down" | "unknown"
       provisioning_status: "pending" | "running" | "success" | "failed"
+      tenant_invoice_status: "pending" | "paid" | "overdue" | "void"
+      tenant_invoice_type: "subscription" | "overage" | "renewal" | "manual"
+      tenant_status:
+        | "trial"
+        | "active"
+        | "frozen"
+        | "locked"
+        | "suspended"
+        | "expired"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -11464,6 +11636,7 @@ export const Constants = {
       alert_channel: ["dashboard", "telegram"],
       alert_type: ["warning", "critical", "offline"],
       app_role: ["super_admin", "admin", "operator"],
+      billing_cycle: ["monthly", "quarterly", "yearly"],
       connection_type: ["telnet", "ssh"],
       device_status: ["online", "offline", "unknown"],
       license_status: ["trial", "active", "suspended", "expired", "revoked"],
@@ -11485,6 +11658,16 @@ export const Constants = {
       pop_device_type: ["generator", "electric"],
       power_status: ["up", "down", "unknown"],
       provisioning_status: ["pending", "running", "success", "failed"],
+      tenant_invoice_status: ["pending", "paid", "overdue", "void"],
+      tenant_invoice_type: ["subscription", "overage", "renewal", "manual"],
+      tenant_status: [
+        "trial",
+        "active",
+        "frozen",
+        "locked",
+        "suspended",
+        "expired",
+      ],
     },
   },
 } as const
