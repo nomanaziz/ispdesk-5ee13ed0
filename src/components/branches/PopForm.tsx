@@ -349,22 +349,7 @@ export default function PopForm({ mode, pop }: Props) {
             </div>
           </div>
 
-          <div>
-            <Label>POP Type <Req /></Label>
-            <Select value={form.pop_type} onValueChange={(v) => upd("pop_type", v)}>
-              <SelectTrigger className={errCls("pop_type")}><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="prepaid">Prepaid (Daily Billing)</SelectItem>
-                <SelectItem value="postpaid">Postpaid (Monthly)</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1 flex items-start gap-1">
-              <Info className="h-3 w-3 mt-0.5" /> {fundNotice}
-            </p>
-            {mode === "edit" && (
-              <p className="text-[11px] text-amber-600 mt-1">⚠ একই দিনে POP type একবারই পরিবর্তন করা যাবে।</p>
-            )}
-          </div>
+          <div className="md:col-span-1" />
 
           <div>
             <Label>Min Rechargeable Amount <Req /></Label>
