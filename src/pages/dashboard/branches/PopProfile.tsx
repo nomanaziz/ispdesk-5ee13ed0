@@ -206,21 +206,13 @@ export default function PopProfile() {
 
               <TabsContent value="info" className="space-y-4 mt-4">
                 <Section title="Service Info">
-                  <Field label="POP Type" value={pop.pop_type} />
                   <Field label="Tariff" value={pop.reseller_tariffs?.name} />
                   <Field label="Selling Rate" value={pop.reseller_tariffs?.selling_rate ? `৳${pop.reseller_tariffs.selling_rate}` : "-"} />
                   <Field label="Activation Days" value={pop.reseller_tariffs?.activation_days} />
                   <Field label="Min Balance" value={`৳${pop.min_balance ?? 0}`} />
                   <Field label="Min Recharge" value={`৳${pop.min_recharge ?? 0}`} />
-                  {pop.pop_type === "prepaid" && (
-                    <Field label="Credit Refund Policy" value={pop.credit_refund_policy ? "Enabled" : "Disabled"} />
-                  )}
-                  {pop.pop_type === "postpaid" && (
-                    <>
-                      <Field label="Allow Negative Balance" value={pop.allow_negative_balance ? "Yes" : "No"} />
-                      <Field label="Auto-disable Day" value={pop.auto_disable_day ?? 10} />
-                    </>
-                  )}
+                  <Field label="Allow Negative Balance" value={pop.allow_negative_balance ? "Yes" : "No"} />
+                  <Field label="Credit Refund Policy" value={pop.credit_refund_policy ? "Enabled" : "Disabled"} />
                 </Section>
                 <Section title="Personal Info">
                   <Field label="Contact Person" value={pop.name} />
