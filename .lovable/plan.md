@@ -1,34 +1,53 @@
-# Public QuickPay-এ "কোনো পেমেন্ট পদ্ধতি কনফিগার করা হয়নি" — কারণ ও সমাধান
+## সমস্যা
 
-## কারণ
+`pemenট পদ্ধতি বাছাই` থেকে **RechargeServer** ক্লিক করলে error:
+> `new row violates row-level security policy for table "public_payment_requests"`
 
-Admin → System → Payment Gateways-এ ৩টি গেটওয়ে (bKash Personal, Nagad Personal, RechargeServer) ইতিমধ্যেই active + `show_on_website=true` হিসেবে saved। কিন্তু QuickPayDialog সেগুলো পাচ্ছে না কারণ `system_settings` table-এর RLS শুধু `authenticated` users কে SELECT করতে দেয়। Public `/quick-pay` page anon key ব্যবহার করে — তাই খালি array পায়, এবং dialog-এ "কোনো পেমেন্ট পদ্ধতি কনফিগার করা হয়নি" দেখায়।
+## Root cause
 
-পুরো `system_settings` anon-কে খুলে দিলে অন্য sensitive setting (SMS gateway secret, internal config ইত্যাদি) leak হতে পারে। তাই sensitive credential strip করা একটা ছোট SECURITY DEFINER RPC তৈরি করব।
+`QuickPayDialog.tsx` insert এর পর `.select("id").single()` করে গেটওয়ে callback URL বানানোর জন্য id লাগে। Anon role-এর জন্য `public_payment_requests` টেবিলে শুধু **INSERT** policy আছে, কোনো **SELECT** policy নেই। তাই `INSERT ... RETURNING` এর returning-row RLS-এ আটকে যায় (Postgres এই কেসে "violates RLS" message দেয়)। যাচাই করলাম — `Prefer: return=minimal` দিয়ে insert সফল হয়, কিন্তু `return=representation` দিয়ে fail করে।
 
-## পরিকল্পনা
+RechargeServer credentials, edge function logic, gateway documentation — সব সঠিক আছে। শুধু এই RLS/return issue blocker।
 
-### 1. Database migration — `public.public_payment_gateways()` RPC
+## Fix plan
 
-- `SECURITY DEFINER`, `STABLE`, `search_path = public`
-- `system_settings` থেকে `payment_gateways` setting পড়ে
-- শুধু সেই gateway রিটার্ন করবে যেগুলোর `active = true` এবং `show_on_website = true`
-- প্রতিটি gateway থেকে **sensitive field বাদ** দিয়ে দেবে: `app_key`, `app_secret`, `password`, `username`, `secret_key`, `api_key`, `store_password`, `private_key`, `public_key`, `merchant_id`
-- safe field রাখবে: `number`, `holder_name`, `instructions`, `bank_name`, `account_name`, `account_number`, `branch`, `routing_number`, `address`, `merchant_number`, `brand_key`, `account`, `sandbox`
-- Return type: JSONB (gateway list)
-- `GRANT EXECUTE TO anon, authenticated`
+**1. Database migration — SECURITY DEFINER RPC**
 
-### 2. Frontend — `src/components/public/QuickPayDialog.tsx`
+`public.create_public_payment_request(_client_id uuid, _amount numeric, _method text, _note text)` যা row insert করে এবং নতুন `id` return করে। `SECURITY DEFINER`, `search_path = public`, `GRANT EXECUTE TO anon, authenticated`। ভেতরে validation:
 
-- `useSystemSetting("payment_gateways", [])`-এর জায়গায় `useQuery` দিয়ে `supabase.rpc("public_payment_gateways")` call করব
-- বাকি rendering / checkout flow অপরিবর্তিত
-- Auto-checkout (bKash Merchant / SSLCommerz) সংক্রান্ত branches edge function-এর মাধ্যমে চলে — সেখানে credentials দরকার, কিন্তু সেগুলো secret থেকে edge function নিজেই পায়, dialog থেকে আসে না, তাই কোনো issue নেই
+- `_client_id` `clients` টেবিলে exists হতে হবে
+- `_amount > 0`
+- status hardcoded `'pending'`, trx_id placeholder `'pending-' || extract(epoch from now())`
 
-### 3. কোনো RLS policy পরিবর্তন নেই
+এতে anon-কে সরাসরি SELECT policy দিতে হবে না, sensitive data leak এর ঝুঁকি থাকে না।
 
-`system_settings`-এর existing policy অপরিবর্তিত থাকবে — শুধু একটা narrow, sanitized RPC যোগ হবে।
+**2. Frontend — `src/components/public/QuickPayDialog.tsx`**
 
-## প্রভাবিত ফাইল
+- `startGatewayCheckout` (line 74) এর `supabase.from("public_payment_requests").insert(...).select("id").single()` কে `supabase.rpc("create_public_payment_request", { _client_id, _amount, _method, _note })` দিয়ে replace করা হবে। Return value = new uuid।
+- `submit` (line 159) এর manual Trx-ID flow-এ user-supplied `trx_id`, `sender_number`, `note` থাকে, তাই সেটার জন্য ভিন্ন path: insert চালু রাখব কিন্তু `.select(...)` সরিয়ে `Prefer: return=minimal` (default after removing select) দিব — id দরকার নেই।
 
-- নতুন migration (`public_payment_gateways` RPC তৈরি)
-- `src/components/public/QuickPayDialog.tsx` — gateway fetch পরিবর্তন
+**3. কোনো edge function বা RechargeServer credential change নেই** — শুধু RLS-bypass করতে server-side RPC ব্যবহার।
+
+## Technical notes
+
+```text
+QuickPayDialog
+  ├─ startGatewayCheckout()
+  │    └─ rpc('create_public_payment_request', {...}) → uuid
+  │         → callback URL = /payment-callback?request_id={uuid}
+  │
+  └─ submit()  (manual Trx-ID for bKash/Nagad personal)
+       └─ insert(...)  // no .select(), id needed না
+```
+
+RPC signature:
+```
+create_public_payment_request(
+  _client_id uuid,
+  _amount numeric,
+  _method text,
+  _note text DEFAULT NULL
+) RETURNS uuid
+```
+
+পরিবর্তনের পর RechargeServer flow পুরোপুরি কাজ করবে: payment_url generate → user redirect → payment-callback verify → bill update → MikroTik auto-enable (আগের loop-এ যোগ করা হয়েছে)।
