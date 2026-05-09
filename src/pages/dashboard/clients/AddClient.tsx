@@ -97,11 +97,18 @@ export default function AddClient() {
     return `${year}-${mm}-${dd}`;
   };
 
-  const setField = (key: string, value: any) => setForm(prev => {
-    const next = { ...prev, [key]: value };
-    if (key === "same_address" && value) next.permanent_address = prev.address;
-    return next;
-  });
+  const setField = (key: string, value: any) => {
+    setForm(prev => {
+      const next = { ...prev, [key]: value };
+      if (key === "same_address" && value) next.permanent_address = prev.address;
+      return next;
+    });
+    setErrors(prev => {
+      if (!prev[key]) return prev;
+      const { [key]: _, ...rest } = prev;
+      return rest;
+    });
+  };
 
   // Prefill from NewRequest convert or MikroTik import
   useEffect(() => {
