@@ -159,7 +159,7 @@ export default function PopForm({ mode, pop }: Props) {
     if (!form.company_name.trim()) e.company_name = "আবশ্যক";
     if (!form.pop_prefix.trim()) e.pop_prefix = "আবশ্যক";
     else if (prefixCheck.available === false) e.pop_prefix = "এই Prefix অন্যজন ব্যবহার করছে";
-    if (!form.pop_type) e.pop_type = "আবশ্যক";
+    
     if (Number(form.min_recharge) < 100) e.min_recharge = "সর্বনিম্ন 100";
     if (mode === "create") {
       if (!form.tariff_id) e.tariff_id = "আবশ্যক";
