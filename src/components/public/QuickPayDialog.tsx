@@ -134,9 +134,19 @@ export default function QuickPayDialog({ open, onOpenChange, client, defaultAmou
       toast({ title: "Gateway-এ নিয়ে যাচ্ছে...", description: gw.name });
       window.location.href = redirectUrl;
     } catch (e: any) {
-      toast({ title: "ব্যর্থ", description: e.message, variant: "destructive" });
+      const msg = e?.message || "অজানা ত্রুটি ঘটেছে";
+      setLastError(msg);
+      toast({
+        title: `${gw.name} — পেমেন্ট শুরু করা যায়নি`,
+        description: msg,
+        variant: "destructive",
+      });
       setSubmitting(false);
     }
+  };
+
+  const retryLast = () => {
+    if (lastGateway) startGatewayCheckout(lastGateway);
   };
 
   const pickGateway = (gw: Gateway) => {
