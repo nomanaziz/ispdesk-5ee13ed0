@@ -179,9 +179,6 @@ export default function PopProfile() {
             <div className="grid grid-cols-2 gap-2 pt-2 border-t">
               <Button size="sm" variant="outline" onClick={() => navigate(`/dashboard/branches/edit-manager/${id}`)}><Edit className="h-3.5 w-3.5" /> Update</Button>
               <Button size="sm" variant="outline" onClick={() => toast.info("Coming soon")}><Mail className="h-3.5 w-3.5" /> Send Email</Button>
-              <Button size="sm" variant="outline" onClick={() => update.mutate({ pop_type: pop.pop_type === "prepaid" ? "postpaid" : "prepaid" })}>
-                <ArrowLeftRight className="h-3.5 w-3.5" /> Type Change
-              </Button>
               <Button size="sm" variant="outline" onClick={() => setPwdOpen(true)}><KeyRound className="h-3.5 w-3.5" /> Password</Button>
               <Button size="sm" variant="outline" onClick={() => loginAsUser("reseller", id!).then(() => toast.success("নতুন ট্যাবে লগইন হচ্ছে")).catch((e) => toast.error(e.message))}><LogIn className="h-3.5 w-3.5" /> Login as POP</Button>
               <Button size="sm" variant="outline" onClick={() => navigate("/dashboard/clients/add-client")}><Plus className="h-3.5 w-3.5" /> Add Client</Button>
