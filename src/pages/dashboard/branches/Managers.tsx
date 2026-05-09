@@ -185,7 +185,7 @@ export default function Managers() {
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>Code</TableHead>
                   <TableHead>POP Name</TableHead>
-                  <TableHead>Type</TableHead>
+                  
                   <TableHead>Contact Person</TableHead>
                   <TableHead>Mobile</TableHead>
                   <TableHead>Tariff</TableHead>
