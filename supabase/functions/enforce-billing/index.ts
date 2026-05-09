@@ -186,7 +186,9 @@ Deno.serve(async (req) => {
     const cutoffTime = settings.cutoff_time ?? "00:00";
     const enforcementDay = settings.enforcement_day ?? "same";
     const graceDays = Math.max(0, Number(settings.grace_days ?? 0));
-    const disableWhenNoBill = settings.disable_when_no_bill !== false; // default true (preserve old behavior)
+    // Default: do NOT disable clients without a billing row (free / not-yet-generated lines).
+    // Admin must explicitly opt-in via system setting.
+    const disableWhenNoBill = settings.disable_when_no_bill === true;
 
     // 2. Calculate current time in Dhaka (UTC+6)
     const now = new Date();
