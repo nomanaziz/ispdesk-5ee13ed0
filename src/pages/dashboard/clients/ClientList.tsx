@@ -33,6 +33,7 @@ import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows 
 import { PageHeader } from "@/components/common/PageHeader";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
+import ExpireCell from "@/components/billing/ExpireCell";
 
 interface ClientListProps {
   /** When set, locks the client_type filter to this value and hides the dropdown.
@@ -446,30 +447,11 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                           <Crown className="h-2.5 w-2.5 mr-0.5" /> VIP
                         </Badge>
                       ) : (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button>
-                              <Badge variant="outline" className={`text-[10px] cursor-pointer hover:opacity-80 ${expireBadge.color}`}>
-                                <CalendarClock className="h-2.5 w-2.5 mr-0.5" />
-                                {expireBadge.label}
-                              </Badge>
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-48 p-2" align="start">
-                            <div className="text-xs font-medium mb-2 text-muted-foreground">মাসের কোন দিন</div>
-                            <Select
-                              value={c.expire_date ? String(parseISO(c.expire_date).getDate()) : ""}
-                              onValueChange={(v) => updateExpireMutation.mutate({ id: c.id, date: buildExpireDateFromDay(Number(v)) })}
-                            >
-                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="দিন (1-31)" /></SelectTrigger>
-                              <SelectContent className="max-h-72">
-                                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                                  <SelectItem key={d} value={String(d)} className="text-xs">প্রতি মাসের {d} তারিখ</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </PopoverContent>
-                        </Popover>
+                        <ExpireCell
+                          client={c}
+                          onSaveRecurring={(day) => updateExpireMutation.mutate({ id: c.id, date: buildExpireDateFromDay(day) })}
+                          onSaveTemp={(date, note) => updateTempExpireMutation.mutate({ id: c.id, date, note })}
+                        />
                       )}
                     </TableCell>
                     <TableCell className="text-xs">{c.connection_type || "-"}</TableCell>
