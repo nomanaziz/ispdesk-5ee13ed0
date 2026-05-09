@@ -47,6 +47,8 @@ export default function QuickPayDialog({ open, onOpenChange, client, defaultAmou
   const [senderNumber, setSenderNumber] = useState("");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [lastGateway, setLastGateway] = useState<Gateway | null>(null);
 
   const visible = useMemo(
     () => (gateways || []).filter(g => g.active && g.show_on_website),
