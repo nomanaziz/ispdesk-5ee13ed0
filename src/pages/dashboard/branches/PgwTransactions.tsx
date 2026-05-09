@@ -19,7 +19,7 @@ export default function PgwTransactions() {
 
   // Tab 1 state
   const [search, setSearch] = useState("");
-  const [popTypeFilter, setPopTypeFilter] = useState("all");
+  
   const [statusFilter, setStatusFilter] = useState("active");
   const [cashOpen, setCashOpen] = useState(false);
   const [fundOpen, setFundOpen] = useState(false);
