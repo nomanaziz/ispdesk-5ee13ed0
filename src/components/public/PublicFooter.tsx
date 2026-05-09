@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import ispDeskLogo from "@/assets/isp-desk-logo.png";
+import { useCompanyInfo } from "@/hooks/useCompanyInfo";
 
 interface MenuRow { title: string; url: string | null; location: string }
 
@@ -58,7 +59,9 @@ export function PublicFooter() {
   const finalQuick = quickLinks.length > 0 ? quickLinks : defaultQuick;
   const finalResource = resourceLinks.length > 0 ? resourceLinks : defaultResource;
 
-  const brandName = footerContent?.brand?.name || "ISP Desk";
+  const { data: company } = useCompanyInfo();
+  const brandName = company?.name || footerContent?.brand?.name || "ISP Desk";
+  const brandLogo = company?.logo_url || ispDeskLogo;
   const brandTagline = footerContent?.brand?.tagline || "ইন্টারনেট সেবা প্রদানকারী";
   const brandDesc = footerContent?.brand?.description || "আপনার বিশ্বস্ত ইন্টারনেট সেবা প্রদানকারী। দ্রুত, নিরাপদ এবং নির্ভরযোগ্য ফাইবার অপটিক ইন্টারনেট সংযোগ।";
   const phone = footerContent?.contact?.phone || "০৯৬৭৮-১২৩৪৫৬";
@@ -71,7 +74,7 @@ export function PublicFooter() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           <div>
             <div className="flex items-center gap-2.5 mb-5 bg-white rounded-lg px-3 py-2 inline-flex">
-              <img src={ispDeskLogo} alt={brandName} className="h-10 w-auto object-contain" />
+              <img src={brandLogo} alt={brandName} className="h-10 w-auto max-w-[160px] object-contain" />
             </div>
             <p className="text-sm text-slate-400 leading-relaxed mb-5">{brandDesc}</p>
             <div className="flex items-center gap-3">

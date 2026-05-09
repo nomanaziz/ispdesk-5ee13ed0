@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import ispDeskLogo from "@/assets/isp-desk-logo.png";
+import { useCompanyInfo } from "@/hooks/useCompanyInfo";
 
 const fallbackLinksBn = [
   { title: "হোম", url: "/" },
@@ -58,6 +59,7 @@ export function PublicNavbar() {
   const { customer, logout: portalLogout } = usePortalAuth();
   const { lang, setLang, t } = useLanguage();
   const navigate = useNavigate();
+  const { data: company } = useCompanyInfo();
 
   const { data: menuRows } = useQuery({
     queryKey: ["website_menu", "header"],
@@ -184,7 +186,11 @@ export function PublicNavbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <NavLink to="/" className="flex items-center gap-2.5">
-            <img src={ispDeskLogo} alt="ISP Desk" className="h-10 w-auto object-contain" />
+            <img
+              src={company?.logo_url || ispDeskLogo}
+              alt={company?.name || "ISP Desk"}
+              className="h-10 w-auto max-w-[180px] object-contain"
+            />
           </NavLink>
 
           <nav className="hidden lg:flex items-center gap-0.5">
