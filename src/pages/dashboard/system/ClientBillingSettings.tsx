@@ -23,6 +23,7 @@ interface CBSettings {
   status_time_disabled: string;
   pop_recharge_pg_approval: boolean;
   expiry_update_on_payment: "payment_date" | "billing_date" | "next_cycle";
+  mikrotik_sync_comments: boolean;
 }
 
 const defaults: CBSettings = {
@@ -41,6 +42,7 @@ const defaults: CBSettings = {
   status_time_disabled: "00:00",
   pop_recharge_pg_approval: true,
   expiry_update_on_payment: "billing_date",
+  mikrotik_sync_comments: false,
 };
 
 function Section({ title, info, children }: { title: string; info: string; children: React.ReactNode }) {
