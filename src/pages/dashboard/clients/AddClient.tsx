@@ -818,7 +818,7 @@ export default function AddClient() {
                   .finally(() => setLoadingProfiles(false));
               }}
             >
-              <SelectTrigger><SelectValue placeholder={isPopMode ? "POP-এর ডিফল্ট সার্ভার" : "নির্বাচন করুন"} /></SelectTrigger>
+              <SelectTrigger className={errClass("mikrotik_id")}><SelectValue placeholder={isPopMode ? "POP-এর ডিফল্ট সার্ভার" : "নির্বাচন করুন"} /></SelectTrigger>
               <SelectContent>
                 {mikrotiks?.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
               </SelectContent>
