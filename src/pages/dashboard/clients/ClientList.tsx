@@ -113,6 +113,21 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updateTempExpireMutation = useMutation({
+    mutationFn: async ({ id, date, note }: { id: string; date: string | null; note: string | null }) => {
+      const { error } = await supabase
+        .from("clients")
+        .update({ temp_expire_date: date, temp_expire_note: note } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+      toast.success("সংরক্ষিত হয়েছে");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const handleSyncOnline = async (silent = false) => {
     if (!silent) setSyncing(true);
     try {
