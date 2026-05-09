@@ -145,7 +145,7 @@ export default function PopForm({ mode, pop }: Props) {
     return () => clearTimeout(t);
   }, [form.pop_prefix, mode, pop?.id]);
 
-  const fundNotice = "Admin fund start না করা পর্যন্ত POP client create করতে পারবে না।";
+  
 
   const validate = (): string | null => {
     const e: Record<string, string> = {};
