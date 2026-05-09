@@ -218,9 +218,8 @@ export default function PopForm({ mode, pop }: Props) {
           username: form.username,
           password: form.password,
           portal_enabled: true,
-          // Postpaid → fund auto-start; prepaid → wait for admin
-          fund_started: form.pop_type === "postpaid",
-          fund_started_at: form.pop_type === "postpaid" ? new Date().toISOString() : null,
+          fund_started: false,
+          fund_started_at: null,
         };
         const { error } = await supabase.from("branch_managers").insert(insertPayload);
         if (error) throw error;
