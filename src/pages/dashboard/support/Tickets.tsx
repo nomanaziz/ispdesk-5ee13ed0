@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,16 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, MessageSquare, Pencil, Trash2, Users, TicketCheck, Clock, CheckCircle2, AlertTriangle, Send, FolderOpen } from "lucide-react";
+import { Plus, Search, MessageSquare, Trash2, Users, TicketCheck, Clock, CheckCircle2, AlertTriangle, Send, FolderOpen, Play, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-function formatDuration(start: string, end: string | null) {
-  if (!end) return "—";
+function formatDuration(start: string | null, end: string | null) {
+  if (!start || !end) return "—";
   const ms = new Date(end).getTime() - new Date(start).getTime();
   const s = Math.floor(ms / 1000);
   const d = Math.floor(s / 86400);
@@ -28,6 +28,21 @@ function formatDuration(start: string, end: string | null) {
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
   return `${d}d:${h}h:${m}m:${sec}s`;
+}
+
+// Live ticking elapsed time since a start timestamp
+function LiveElapsed({ start, className = "" }: { start: string; className?: string }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const i = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(i);
+  }, []);
+  const ms = Date.now() - new Date(start).getTime();
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return <span className={className}>{String(h).padStart(2, "0")}:{String(m).padStart(2, "0")}:{String(sec).padStart(2, "0")}</span>;
 }
 
 export default function Tickets() {
@@ -43,6 +58,9 @@ export default function Tickets() {
   const [myOnly, setMyOnly] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
+  const [assignDept, setAssignDept] = useState<string>("");
+  const [assignSearch, setAssignSearch] = useState("");
+  const [assignSms, setAssignSms] = useState(true);
   const [newComment, setNewComment] = useState("");
 
   // New ticket form
@@ -50,6 +68,21 @@ export default function Tickets() {
     client_id: "", subject: "", description: "", category_id: "", priority: "medium", complain_no: "", source: "admin",
   });
   const [clientSearch, setClientSearch] = useState("");
+
+  // Realtime: invalidate on any change to tickets / assignees
+  useEffect(() => {
+    const channel = supabase
+      .channel("support-tickets-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () => {
+        qc.invalidateQueries({ queryKey: ["support_tickets"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_ticket_assignees" }, () => {
+        qc.invalidateQueries({ queryKey: ["ticket_assignees"] });
+        qc.invalidateQueries({ queryKey: ["support_tickets"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
 
   // Fetch tickets
   const { data: tickets = [], isLoading } = useQuery({
@@ -68,7 +101,7 @@ export default function Tickets() {
   const { data: allAssignees = [] } = useQuery({
     queryKey: ["ticket_assignees"],
     queryFn: async () => {
-      const { data } = await supabase.from("support_ticket_assignees").select("*, employees(id, name, user_id)");
+      const { data } = await supabase.from("support_ticket_assignees").select("*, employees(id, name, sub_user_id)");
       return data || [];
     },
   });
@@ -100,12 +133,36 @@ export default function Tickets() {
     },
   });
 
+  // Employees with department
   const { data: employees = [] } = useQuery({
-    queryKey: ["employees_active"],
+    queryKey: ["employees_active_with_dept"],
     queryFn: async () => {
-      const { data } = await supabase.from("employees").select("id, name").eq("status", "active");
+      const { data } = await supabase
+        .from("employees")
+        .select("id, name, department_id, sub_user_id, departments(name)")
+        .eq("status", "active");
       return data || [];
     },
+  });
+
+  // Departments
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments_active"],
+    queryFn: async () => {
+      const { data } = await supabase.from("departments").select("id, name").eq("status", "active").order("name");
+      return data || [];
+    },
+  });
+
+  // Resolve current employee record (for Start Working)
+  const { data: currentEmployee } = useQuery({
+    queryKey: ["current_employee", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase.from("employees").select("id, sub_user_id").eq("sub_user_id", user.id).maybeSingle();
+      return data;
+    },
+    enabled: !!user?.id,
   });
 
   const { data: zones = [] } = useQuery({
@@ -180,7 +237,7 @@ export default function Tickets() {
     onError: () => toast.error("সমস্যা হয়েছে"),
   });
 
-  // Assign employees
+  // Assign employees → also moves ticket to processing + starts time tracking
   const assignMutation = useMutation({
     mutationFn: async () => {
       if (!selectedTicketId) return;
@@ -190,14 +247,39 @@ export default function Tickets() {
         const { error } = await supabase.from("support_ticket_assignees").insert(rows);
         if (error) throw error;
       }
-      // Update status to processing
-      await supabase.from("support_tickets").update({ status: "processing" }).eq("id", selectedTicketId);
+      const update: any = {
+        status: selectedAssignees.length > 0 ? "processing" : "pending",
+        sms_notified: assignSms,
+      };
+      if (selectedAssignees.length > 0) update.processing_started_at = new Date().toISOString();
+      await supabase.from("support_tickets").update(update).eq("id", selectedTicketId);
     },
     onSuccess: () => {
       toast.success("কর্মী নির্ধারণ হয়েছে");
-      qc.invalidateQueries({ queryKey: ["ticket_assignees", "support_tickets"] });
+      qc.invalidateQueries({ queryKey: ["ticket_assignees"] });
+      qc.invalidateQueries({ queryKey: ["support_tickets"] });
       setAssignDialogOpen(false);
+      setAssignSearch("");
+      setAssignDept("");
     },
+    onError: (e: any) => toast.error(e?.message || "সমস্যা হয়েছে"),
+  });
+
+  // Start working
+  const startWorkingMutation = useMutation({
+    mutationFn: async (ticketId: string) => {
+      if (!currentEmployee?.id) throw new Error("Employee record not found for current user");
+      const { error } = await supabase.from("support_tickets").update({
+        work_started_at: new Date().toISOString(),
+        work_started_by: currentEmployee.id,
+      }).eq("id", ticketId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Work started");
+      qc.invalidateQueries({ queryKey: ["support_tickets"] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Failed"),
   });
 
   // Add comment
@@ -248,6 +330,9 @@ export default function Tickets() {
     setSelectedTicketId(ticketId);
     const current = allAssignees.filter((a: any) => a.ticket_id === ticketId).map((a: any) => a.employee_id);
     setSelectedAssignees(current);
+    setAssignDept("");
+    setAssignSearch("");
+    setAssignSms(true);
     setAssignDialogOpen(true);
   };
 
@@ -267,7 +352,7 @@ export default function Tickets() {
     if (tab === "pending" && t.status !== "pending") return false;
     if (tab === "accepted" && (t.source === "bw_reseller" || t.source === "reseller")) return false;
     if (myOnly && user?.id) {
-      const mine = t.created_by === user.id || allAssignees.some((a: any) => a.ticket_id === t.id && (a.employees as any)?.user_id === user.id);
+      const mine = t.created_by === user.id || allAssignees.some((a: any) => a.ticket_id === t.id && (a.employees as any)?.sub_user_id === user.id);
       if (!mine) return false;
     }
     return (
@@ -292,6 +377,19 @@ export default function Tickets() {
   const openSolveDialog = (t: any) => {
     setSolveTicket(t);
     setSolveDialogOpen(true);
+  };
+
+  // Filtered employee list for assign dialog
+  const filteredEmployees = useMemo(() => {
+    return (employees as any[]).filter((e: any) => {
+      if (assignDept && e.department_id !== assignDept) return false;
+      if (assignSearch && !e.name?.toLowerCase().includes(assignSearch.toLowerCase())) return false;
+      return true;
+    });
+  }, [employees, assignDept, assignSearch]);
+
+  const toggleAssignee = (id: string) => {
+    setSelectedAssignees((prev) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
   return (
@@ -367,7 +465,7 @@ export default function Tickets() {
                   <TableHead>Assign To</TableHead>
                   <TableHead>Solved By</TableHead>
                   <TableHead>Duration</TableHead>
-                  <TableHead className="w-28">অ্যাকশন</TableHead>
+                  <TableHead className="w-32">অ্যাকশন</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -382,6 +480,8 @@ export default function Tickets() {
                     : (profilesMap[t.created_by] || "—");
                   const createdByLabel = t.source === "client" ? "Client" : "Staff";
                   const solvedByName = t.solved_by ? (profilesMap[t.solved_by] || "—") : null;
+                  const isAssignedToMe = !!currentEmployee && ticketAssignees.some((a: any) => a.employee_id === currentEmployee.id);
+                  const canStart = t.status === "processing" && !t.work_started_at && isAssignedToMe;
                   return (
                     <TableRow key={t.id}>
                       <TableCell className="font-mono text-xs">{t.ticket_no}</TableCell>
@@ -400,12 +500,20 @@ export default function Tickets() {
                       <TableCell><Badge variant={priorityColor(t.priority || "medium")}>{t.priority === "high" ? "High" : t.priority === "low" ? "Low" : "Medium"}</Badge></TableCell>
                       <TableCell className="text-xs">{format(new Date(t.created_at), "dd/MM/yy HH:mm")}</TableCell>
                       <TableCell>
-                        <Badge
-                          className={statusClass(t.status)}
-                          onClick={t.status === "processing" ? () => openSolveDialog(t) : undefined}
-                        >
-                          {t.status}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge
+                            className={statusClass(t.status)}
+                            onClick={t.status === "processing" ? () => openSolveDialog(t) : undefined}
+                          >
+                            {t.status}
+                          </Badge>
+                          {t.status === "processing" && t.processing_started_at && (
+                            <LiveElapsed start={t.processing_started_at} className="font-mono text-[10px] text-orange-600" />
+                          )}
+                          {t.status === "solved" && t.processing_started_at && t.solved_at && (
+                            <span className="text-[10px] text-muted-foreground">{formatDuration(t.processing_started_at, t.solved_at)}</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1 max-w-[180px]">
@@ -425,9 +533,18 @@ export default function Tickets() {
                           </div>
                         ) : "—"}
                       </TableCell>
-                      <TableCell className="text-xs">{formatDuration(t.created_at, t.solved_at)}</TableCell>
+                      <TableCell className="text-xs">
+                        {t.work_started_at && t.status !== "solved" ? (
+                          <LiveElapsed start={t.work_started_at} className="font-mono text-blue-600" />
+                        ) : formatDuration(t.created_at, t.solved_at)}
+                      </TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 items-center">
+                          {canStart && (
+                            <Button size="sm" className="h-7 px-2 text-[10px] bg-blue-600 hover:bg-blue-700 text-white" onClick={() => startWorkingMutation.mutate(t.id)}>
+                              <Play className="h-3 w-3 mr-1" />Start
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openConversation(t.id)}><MessageSquare className="h-4 w-4" /></Button>
                           {t.status !== "solved" && (
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSolveDialog(t)}><CheckCircle2 className="h-4 w-4 text-green-500" /></Button>
@@ -520,28 +637,81 @@ export default function Tickets() {
         </DialogContent>
       </Dialog>
 
-      {/* Assign Dialog */}
+      {/* Assign Solvers Dialog */}
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>কর্মী নির্ধারণ করুন</DialogTitle></DialogHeader>
-          <ScrollArea className="max-h-64">
-            <div className="space-y-2">
-              {employees.map((emp: any) => (
-                <label key={emp.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer">
-                  <Checkbox
-                    checked={selectedAssignees.includes(emp.id)}
-                    onCheckedChange={(checked) => {
-                      setSelectedAssignees(checked ? [...selectedAssignees, emp.id] : selectedAssignees.filter((id) => id !== emp.id));
-                    }}
-                  />
-                  <span className="text-sm">{emp.name}</span>
-                </label>
-              ))}
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Assign Solvers</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Department</Label>
+              <Select value={assignDept || "_all"} onValueChange={(v) => setAssignDept(v === "_all" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="All Departments" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">All Departments</SelectItem>
+                  {departments.map((d: any) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </ScrollArea>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>বাতিল</Button>
-            <Button onClick={() => assignMutation.mutate()} disabled={assignMutation.isPending}>সেভ করুন</Button>
+
+            <div>
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Employee</Label>
+              <div className="border rounded-md p-2 min-h-[44px]">
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {selectedAssignees.map((id) => {
+                    const emp: any = (employees as any[]).find((e: any) => e.id === id);
+                    if (!emp) return null;
+                    return (
+                      <Badge key={id} variant="secondary" className="gap-1 pr-1">
+                        <span>{emp.name}</span>
+                        <button onClick={() => toggleAssignee(id)} className="hover:bg-muted-foreground/20 rounded">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+                <Input
+                  value={assignSearch}
+                  onChange={(e) => setAssignSearch(e.target.value)}
+                  placeholder="কর্মী খুঁজুন..."
+                  className="h-8 border-0 focus-visible:ring-0 px-1"
+                />
+              </div>
+              {(assignSearch || assignDept) && (
+                <ScrollArea className="max-h-48 mt-1 border rounded-md">
+                  <div className="p-1">
+                    {filteredEmployees.length === 0 ? (
+                      <div className="text-xs text-center text-muted-foreground py-3">কর্মী পাওয়া যায়নি</div>
+                    ) : filteredEmployees.slice(0, 50).map((emp: any) => {
+                      const isSel = selectedAssignees.includes(emp.id);
+                      return (
+                        <div
+                          key={emp.id}
+                          onClick={() => toggleAssignee(emp.id)}
+                          className={`flex items-center justify-between px-2 py-1.5 rounded cursor-pointer text-sm hover:bg-muted ${isSel ? "bg-muted" : ""}`}
+                        >
+                          <span>{emp.name}</span>
+                          <span className="text-[10px] text-muted-foreground">{(emp.departments as any)?.name || ""}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
+
+            <label className="flex items-center gap-2 justify-end text-sm">
+              <Checkbox checked={assignSms} onCheckedChange={(c) => setAssignSms(!!c)} />
+              <span>SMS</span>
+            </label>
+          </div>
+          <DialogFooter className="flex !justify-end gap-2">
+            <Button variant="destructive" onClick={() => setAssignDialogOpen(false)} className="px-8">No</Button>
+            <Button onClick={() => assignMutation.mutate()} disabled={assignMutation.isPending} className="bg-green-600 hover:bg-green-700 text-white px-8">
+              {assignMutation.isPending ? "..." : "Yes"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -616,7 +786,7 @@ export default function Tickets() {
           <DialogFooter>
             <Button variant="destructive" onClick={() => setSolveDialogOpen(false)}>Cancel</Button>
             <Button
-              className="bg-slate-800 hover:bg-slate-900 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white"
               onClick={() => solveTicket && resolveMutation.mutate(solveTicket.id)}
               disabled={resolveMutation.isPending}
             >
