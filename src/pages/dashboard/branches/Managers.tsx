@@ -255,7 +255,7 @@ export default function Managers() {
                             onLogin={() => handleLoginAs(m)}
                             onPasswordRegen={() => setPwdPop(m)}
                             onFund={() => setFundPop(m)}
-                            onTypeChange={() => handleTypeChange(m)}
+                            
                             onSendMessage={() => toast.info("Coming soon")}
                             onDelete={() => {
                               if (confirm(`"${m.name}" POP মুছবেন?`)) del.mutate(m.id);
