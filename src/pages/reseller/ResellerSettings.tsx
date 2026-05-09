@@ -195,6 +195,8 @@ const ResellerSettings = () => {
         </Card>
       )}
 
+      {!isBw && <AutoRechargeCard />}
+
       <div>
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
           <Save className="h-4 w-4 mr-1" /> {save.isPending ? "Saving..." : "Save Settings"}
