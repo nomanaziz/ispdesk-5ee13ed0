@@ -1,40 +1,62 @@
-# Plan: Impersonation 404 Fix via Configurable Portal Base URL
+## লক্ষ্য
 
-## Problem
-Admin clicks "Login as POP" from `https://ispdesk.ispsector.com/...`. Code opens new tab at `${window.location.origin}/pop-admin/dashboard#imp=...`. The custom domain `ispdesk.ispsector.com` is hosted somewhere (Vercel) without SPA fallback, so deep link returns `404 NOT_FOUND bom1::...` instead of the React app.
+POP/MAC (Reseller) portal, BW Panel (POP-style admin for BW customers), এবং BW Customer portal — তিনটাই এখন আলাদা bespoke layout ব্যবহার করছে। এগুলোকে main admin dashboard-এর সাথে exact same design pattern-এ আনা:
 
-## Solution
-Add a system setting **Portal Base URL** that admin can configure (e.g. `https://ispdesk.lovable.app`). All impersonation/portal-launch URLs will use this base instead of `window.location.origin`. If unset, fall back to current origin (existing behavior).
+- Shadcn `SidebarProvider` + `Sidebar collapsible="icon"` (mini-rail collapse সহ)
+- Same colorful group color tokens (`GROUP_COLORS` map)
+- Same `MenuIconTile` colored icon tiles
+- Same TopBar (logo, search, theme switcher, language toggle, notes, install button, clock, user menu)
+- Theme settings (sidebar collapsed memory, content width) সম্মান করে
+- Mobile-এ existing mobile shells অপরিবর্তিত থাকবে
 
-## Changes
+## Step-by-step plan
 
-### 1. New system setting key
-- Key: `portal_base_url`
-- Stored as `{ url: string }` JSON in existing `system_settings` table.
-- No migration needed — table already exists and accepts arbitrary keys.
+### Step 1 — Shared building blocks
+- `src/components/portal-shell/PortalSidebarBase.tsx` — generic shadcn-sidebar renderer যেটা `MenuGroup[]` নেয় এবং AppSidebar-এর exact look reproduce করে (color groups, scroll area, search, collapsible groups, active-route highlighting, mini-rail icon-only mode)।
+- `src/components/portal-shell/PortalTopBar.tsx` — main `TopBar`-এর portal version: `SidebarTrigger`, search, theme switcher, language toggle, notes, install, clock, customer dropdown (logout)।
+- Reuse existing `GROUP_COLORS` ও `MenuIconTile` (export from `AppSidebar.tsx` যদি না থাকে — বা কপি করে portal-shell-এ রাখা)।
 
-### 2. New hook: `src/hooks/usePortalBaseUrl.ts`
-- Wraps `useSystemSetting('portal_base_url', { url: '' })`.
-- Exposes `baseUrl` (trimmed, no trailing slash) and `getPortalUrl(path)` helper that returns `${baseUrl || window.location.origin}${path}`.
+### Step 2 — POP/MAC Reseller portal
+- New sidebar: `src/components/portal-shell/ResellerSidebar.tsx` — current `groups[]` array থেকে `MenuGroup[]` shape-এ convert; sub-user permission filter + bw_customer guard বহাল।
+- Rewrite `src/components/ResellerLayout.tsx`:
+  - `SidebarProvider defaultOpen={!settings.sidebarCollapsed}` দিয়ে wrap
+  - `<ResellerSidebar/>` + `<PortalTopBar variant="reseller"/>` + `<main>{children}</main>`
+  - Mobile-এ existing `ResellerMobileShell` অপরিবর্তিত
+- কোনো route বা page change করা হবে না — শুধু shell swap।
 
-### 3. Update `src/lib/impersonate.ts`
-- Read `portal_base_url` from `system_settings` directly (since it's a non-React util) before opening the tab.
-- Build URL as `${baseUrl || window.location.origin}${redirect}#imp=...`.
+### Step 3 — BW Panel portal
+- `src/components/portal-shell/BwPanelSidebar.tsx` — `BwPanelLayout` থেকে `groups[]` reuse, MenuGroup-এ convert; "Back to BW Customer" link আলাদা footer item হিসেবে।
+- Rewrite `src/components/BwPanelLayout.tsx` — same `SidebarProvider`+TopBar pattern।
 
-### 4. Settings UI
-- Add a new card on the existing System Settings / Company setup page (whichever the admin already uses for `company_info`) titled **"পোর্টাল বেস URL"**.
-- Single text input + Save button. Helper text in Bangla: "POP/Client/BW portal-এ login করার সময় এই URL ব্যবহার হবে। খালি রাখলে current domain ব্যবহার হবে। উদাহরণ: `https://ispdesk.lovable.app`"
-- Validates URL format (must start with `http://` or `https://`, no trailing slash).
+### Step 4 — BW Customer portal
+- `src/components/portal-shell/BwCustomerSidebar.tsx` — flat `navItems[]` MenuGroup-এ; "POP Admin Open" CTA footer-এ যদি panel active।
+- Rewrite `src/components/BwCustomerLayout.tsx` — same shell।
 
-### 5. Branded 404 already exists
-- `src/pages/NotFound.tsx` was redesigned in the previous turn — no further change needed. It will only show when SPA serves the route. The infrastructure-level 404 (Vercel `bom1::...`) cannot be replaced by app code; the Portal Base URL fix bypasses that origin entirely.
+### Step 5 — QA
+- Light/Dark/colorful theme-এ তিন portal চালিয়ে দেখা
+- Sidebar collapse/expand, mobile drawer, sub-user permission filter, active highlight, group colors verify
+- কোনো page break না হয় তা confirm (route/path অপরিবর্তিত)
 
-## Files touched
-- `src/lib/impersonate.ts` (modify)
-- `src/hooks/usePortalBaseUrl.ts` (new)
-- One settings page (TBD during implementation — likely `src/pages/dashboard/CompanySetup.tsx` or wherever `company_info` is edited) — add a new card
-- No DB migration, no edge function change
+## Technical notes
 
-## Out of scope
-- Fixing the `ispdesk.ispsector.com` DNS / hosting setup (that's an infra change the user does outside Lovable).
-- Changing other places that use `window.location.origin` for non-impersonation purposes.
+- `AppSidebar`-এর core helpers (`GROUP_COLORS`, `getGroupColor`, color-resolved icon tile) `portal-shell/sidebarUtils.ts`-এ extract করে তিন portal sidebar-এ share করা হবে।
+- `ThemeContext` (already imported in DashboardLayout) তিন portal-এ inject করা হবে — `settings.sidebarCollapsed` ও `settings.contentWidth` সম্মান।
+- `usePortalAuth` (customer) ও `useAuth` (admin user) আলাদা — `PortalTopBar`-এ `usePortalAuth` ব্যবহার হবে এবং admin-only বাটন (QuickCreateMenu, AdminNotificationBell, GlobalClientSearch) hide।
+- কোনো route, page বা business logic পরিবর্তন হবে না — শুধু presentational shell।
+- `Icons8Icon` resolver থাকবে — main AppSidebar-এ এটা use হয় নি কিন্তু portal-গুলো ব্যবহার করে; user বললে remove করা যাবে, এই plan-এ রাখা হয়েছে কারণ ফলাফল main dashboard-এর সাথে exact match হলে user আবার বলবে।
+
+## Files affected (no route changes)
+
+```text
+NEW   src/components/portal-shell/sidebarUtils.ts
+NEW   src/components/portal-shell/PortalSidebarBase.tsx
+NEW   src/components/portal-shell/PortalTopBar.tsx
+NEW   src/components/portal-shell/ResellerSidebar.tsx
+NEW   src/components/portal-shell/BwPanelSidebar.tsx
+NEW   src/components/portal-shell/BwCustomerSidebar.tsx
+EDIT  src/components/ResellerLayout.tsx        (rewrite shell only)
+EDIT  src/components/BwPanelLayout.tsx         (rewrite shell only)
+EDIT  src/components/BwCustomerLayout.tsx      (rewrite shell only)
+```
+
+Step 1 → 2 → 3 → 4 → 5 ক্রমে এক এক করে ship করব; প্রতিটার পরে আপনি check করে confirm দিলে পরেরটায় যাব।
