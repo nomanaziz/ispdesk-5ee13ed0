@@ -47,6 +47,8 @@ export default function QuickPayDialog({ open, onOpenChange, client, defaultAmou
   const [senderNumber, setSenderNumber] = useState("");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [lastGateway, setLastGateway] = useState<Gateway | null>(null);
 
   const visible = useMemo(
     () => (gateways || []).filter(g => g.active && g.show_on_website),
@@ -67,6 +69,8 @@ export default function QuickPayDialog({ open, onOpenChange, client, defaultAmou
       toast({ title: "ত্রুটি", description: "পরিমাণ দিন", variant: "destructive" });
       return;
     }
+    setLastGateway(gw);
+    setLastError(null);
     setSubmitting(true);
     try {
       // 1) Create payment_request row first to get an ID for callback (RLS-safe RPC)
@@ -130,9 +134,19 @@ export default function QuickPayDialog({ open, onOpenChange, client, defaultAmou
       toast({ title: "Gateway-এ নিয়ে যাচ্ছে...", description: gw.name });
       window.location.href = redirectUrl;
     } catch (e: any) {
-      toast({ title: "ব্যর্থ", description: e.message, variant: "destructive" });
+      const msg = e?.message || "অজানা ত্রুটি ঘটেছে";
+      setLastError(msg);
+      toast({
+        title: `${gw.name} — পেমেন্ট শুরু করা যায়নি`,
+        description: msg,
+        variant: "destructive",
+      });
       setSubmitting(false);
     }
+  };
+
+  const retryLast = () => {
+    if (lastGateway) startGatewayCheckout(lastGateway);
   };
 
   const pickGateway = (gw: Gateway) => {
@@ -191,6 +205,29 @@ export default function QuickPayDialog({ open, onOpenChange, client, defaultAmou
             <p className="text-sm text-muted-foreground">
               {client?.name} — মোট দিতে: <span className="font-bold text-foreground">৳{defaultAmount}</span>
             </p>
+
+            {lastError && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm space-y-2">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <p className="font-semibold text-destructive">
+                      {lastGateway?.name || "পেমেন্ট"} — ব্যর্থ হয়েছে
+                    </p>
+                    <p className="text-xs text-destructive/80 mt-1 break-words">{lastError}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {lastGateway && (
+                    <Button size="sm" variant="destructive" onClick={retryLast} disabled={submitting}>
+                      {submitting ? "আবার চেষ্টা হচ্ছে..." : "আবার চেষ্টা করুন"}
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => { setLastError(null); setLastGateway(null); }}>
+                    বন্ধ করুন
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {visible.length === 0 && (
               <div className="text-center py-8 text-sm text-muted-foreground border rounded-lg">
