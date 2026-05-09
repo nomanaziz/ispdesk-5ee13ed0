@@ -239,6 +239,8 @@ export default function Tickets() {
     onSuccess: () => {
       toast.success("টিকেট সমাধান হয়েছে");
       qc.invalidateQueries({ queryKey: ["support_tickets"] });
+      setSolveDialogOpen(false);
+      setSolveTicket(null);
     },
   });
 
