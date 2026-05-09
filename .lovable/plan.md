@@ -1,52 +1,20 @@
-## লক্ষ্য
+## Goal
+Trim the uploaded ISP Desk image so only the logo mark (the blue "iD + wifi" icon) remains — drop all surrounding white space and the "ISP DESK" wordmark, then use it across the app.
 
-TopBar-এ WordPress-style একটি "+" (Quick Create) button যোগ করা, যেখান থেকে এক ক্লিকে নতুন client, bill, invoice, ticket, task ইত্যাদি তৈরির shortcut পাওয়া যাবে।
+## Steps
 
-## অবস্থান
+1. **Crop the icon-only logo using ImageMagick**
+   - Take `user-uploads://ISP_Desk_Logo-2.png` (1536×1024, mostly white).
+   - Crop to the icon mark region only (approx left 13%–28%, top 32%–66% of the source).
+   - Run `-trim +repage` to remove any remaining white border, then `-resize` to a clean square (e.g. 512×512) on a transparent background.
+   - Save as `src/assets/isp-desk-logo.png` (overwrite existing) and `public/isp-desk-logo.png`.
 
-`src/components/TopBar.tsx` — Online Monitoring icon-এর পাশে, Notifications-এর আগে। Desktop ও mobile উভয়েই দৃশ্যমান।
+2. **Adjust sidebar sizing**
+   - The existing sidebar uses `h-12 w-auto` for the logo (sized for the wide wordmark version). With the square icon-only mark, switch to `h-10 w-10` (expanded) and `h-9 w-9` (collapsed) so it sits centred without looking oversized.
 
-## UI ডিজাইন
-
-- একটি বৃত্তাকার `+` icon button (Lucide `Plus`), primary tint সহ যাতে চোখে পড়ে।
-- Click করলে `DropdownMenu` খুলবে — title "নতুন তৈরি করুন / Create new"।
-- প্রতিটি item-এ ছোট icon + bilingual label। Group separator দিয়ে categorize করা।
-
-## Shortcut তালিকা
-
-Clients
-- নতুন ক্লায়েন্ট → `/dashboard/clients/new-request`
-- কুইক ক্লায়েন্ট (popup) → বিদ্যমান `QuickCreateClientDialog` খুলবে
-
-Billing
-- নতুন বিল / Invoice → `/dashboard/billing/invoices/new` (যে route বিদ্যমান, route registry থেকে confirm করে নেব)
-- পেমেন্ট রিসিভ → `/dashboard/billing/payments/new`
-
-Support & Tasks
-- নতুন টিকিট → `/dashboard/support/tickets?new=1` (Tickets পেজ query param দেখে create dialog খুলবে — ছোট patch)
-- নতুন টাস্ক → `/dashboard/hr/tasks?new=1` (একইভাবে)
-
-Others (যদি route থাকে)
-- নতুন প্যাকেজ → `/dashboard/billing/packages/new`
-- নতুন কর্মী → `/dashboard/hr/employees/new`
-- নতুন নোটিশ → `/dashboard/communication/notices/new`
-
-(চূড়ান্ত করার আগে `App.tsx` route table পড়ে বিদ্যমান route গুলো verify করব; যেগুলো নেই, সেগুলো বাদ দেব।)
-
-## আচরণ
-
-- Permission-aware: যদি current user-এর কোনো module-এ create permission না থাকে, ওই item hide হবে (`usePermission` hook ব্যবহার করে)।
-- Mobile-এ button থাকবে কিন্তু dropdown একই — touch-friendly width।
-- Bilingual labels (`useLanguage().t`)।
-
-## টেকনিক্যাল বিবরণ
-
-- নতুন component: `src/components/QuickCreateMenu.tsx` — self-contained DropdownMenu trigger + items।
-- TopBar-এ import করে Online Monitoring button-এর পরে বসানো হবে।
-- Tickets ও Tasks পেজে minor patch: mount-এ `useSearchParams` থেকে `new=1` দেখলে create dialog auto-open।
-- কোনো backend/schema change লাগবে না।
+3. **Other surfaces — no code change needed**
+   - `Login.tsx`, `PublicNavbar.tsx`, `PublicFooter.tsx` already point to the same `@/assets/isp-desk-logo.png`. Replacing the file automatically updates them. Will visually QA each after the swap.
 
 ## Out of scope
-
-- Permission system বা route structure পরিবর্তন।
-- নতুন create form বানানো — শুধু বিদ্যমান page/dialog-এ navigate করা।
+- Favicon / `index.html` icons (current request is about the in-app logo only).
+- Re-adding "ISP Desk / ERP System" text next to the sidebar logo (already removed per previous instruction).
