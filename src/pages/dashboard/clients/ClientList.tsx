@@ -10,8 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, CalendarClock, Crown, Wifi, ChevronLeft, ChevronRight, Plus, MessageSquare, X } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
+import { Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, CalendarClock, Crown, Wifi, ChevronLeft, ChevronRight, Plus, Info } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -34,6 +33,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
 import ExpireCell from "@/components/billing/ExpireCell";
+import ClientCommentDialog from "@/components/clients/ClientCommentDialog";
 
 interface ClientListProps {
   /** When set, locks the client_type filter to this value and hides the dropdown.
