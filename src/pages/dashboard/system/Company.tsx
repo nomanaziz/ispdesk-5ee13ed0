@@ -35,13 +35,26 @@ const defaults: CompanyInfo = {
 
 export default function Company() {
   const { value, isLoading, save, isSaving } = useSystemSetting<CompanyInfo>("company_info", defaults);
+  const { value: portalBase, save: savePortalBase, isSaving: savingPortal } =
+    useSystemSetting<{ url: string }>("portal_base_url", { url: "" });
   const [form, setForm] = useState<CompanyInfo>(defaults);
+  const [portalUrl, setPortalUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setForm(value); }, [value]);
+  useEffect(() => { setPortalUrl(portalBase?.url || ""); }, [portalBase]);
 
   const set = (k: keyof CompanyInfo, v: any) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleSavePortalBase = () => {
+    const trimmed = portalUrl.trim().replace(/\/+$/, "");
+    if (trimmed && !/^https?:\/\//i.test(trimmed)) {
+      toast.error("URL অবশ্যই http:// বা https:// দিয়ে শুরু হতে হবে");
+      return;
+    }
+    savePortalBase({ url: trimmed });
+  };
 
   const handleUpload = async (file: File) => {
     if (!file) return;
