@@ -678,9 +678,10 @@ export default function AddClient() {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div data-field="nid_number">
             <Label>NID/জন্ম সনদ নম্বর *</Label>
-            <Input value={form.nid_number} onChange={e => setField("nid_number", e.target.value)} />
+            <Input value={form.nid_number} onChange={e => setField("nid_number", e.target.value)} className={errClass("nid_number")} />
+            {errors.nid_number && <p className="text-xs text-destructive mt-1">{errors.nid_number}</p>}
           </div>
           <div>
             <Label>লিঙ্গ</Label>
