@@ -1078,20 +1078,31 @@ export type Database = {
           id: string
           location: string | null
           name: string
+          tenant_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           location?: string | null
           name: string
+          tenant_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           location?: string | null
           name?: string
+          tenant_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "branches_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bw_bill_items: {
         Row: {
@@ -11347,6 +11358,15 @@ export type Database = {
       }
     }
     Functions: {
+      assign_tenant_package: {
+        Args: {
+          _activate_days?: number
+          _slab_id: string
+          _tenant_id: string
+          _user_limit_override?: number
+        }
+        Returns: undefined
+      }
       bw_panel_recalc_customer_usage: {
         Args: { _customer_id: string }
         Returns: undefined

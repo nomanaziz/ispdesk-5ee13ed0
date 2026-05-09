@@ -27,6 +27,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
 import ispDeskLogo from "@/assets/isp-desk-logo.png";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
 interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
@@ -855,6 +857,20 @@ export function AppSidebar() {
   const [search, setSearch] = useState("");
   const [reorderOpen, setReorderOpen] = useState(false);
   const [savedOrder, setSavedOrder] = useState<string[]>(() => loadSavedOrder());
+  const { data: company } = useQuery({
+    queryKey: ["sidebar-company-info"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("system_settings")
+        .select("setting_value")
+        .eq("setting_key", "company_info")
+        .maybeSingle();
+      return (data?.setting_value as any) || null;
+    },
+    staleTime: 60_000,
+  });
+  const companyLogo = company?.logo_url as string | undefined;
+  const companyName = company?.name as string | undefined;
   const location = useLocation();
 
   // Determine which group contains the active route
@@ -924,17 +940,18 @@ export function AppSidebar() {
         isLight ? "bg-card text-foreground border-r border-sidebar-border" : "bg-sidebar text-sidebar-foreground"
       )}>
         <div className={cn(
-          "flex items-center gap-2.5 px-4 py-4 shrink-0",
-          collapsed && "justify-center px-2",
+          "flex items-center justify-center px-4 py-4 shrink-0",
+          collapsed && "px-2",
           isLight ? "border-b border-sidebar-border" : "border-b border-white/10"
         )}>
-          <img src={ispDeskLogo} alt="ISP Desk" className={cn("object-contain shrink-0", collapsed ? "h-8 w-8" : "h-9 w-9")} />
-          {!collapsed && (
-            <div>
-              <h1 className="text-base font-bold leading-tight">ISP Desk</h1>
-              <p className={cn("text-[10px] leading-tight", isLight ? "text-muted-foreground" : "text-slate-400")}>ERP System</p>
-            </div>
-          )}
+          <img
+            src={companyLogo || ispDeskLogo}
+            alt={companyName || "ISP Desk"}
+            className={cn(
+              "object-contain shrink-0",
+              collapsed ? "h-9 w-9" : "h-12 w-auto max-w-full"
+            )}
+          />
         </div>
 
         {!collapsed && (
