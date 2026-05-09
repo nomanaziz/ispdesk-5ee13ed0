@@ -71,7 +71,7 @@ export default function PopForm({ mode, pop }: Props) {
     pop_code: pop?.pop_code || "",
     pop_prefix: pop?.pop_prefix || "",
     set_prefix_mikrotik: pop?.set_prefix_mikrotik ?? false,
-    pop_type: (pop?.pop_type || "prepaid") as "prepaid" | "postpaid",
+    pop_type: pop?.pop_type || null,
     min_recharge: pop?.min_recharge ?? 100,
     address: pop?.address || "",
     company_name: pop?.company_name || "",
