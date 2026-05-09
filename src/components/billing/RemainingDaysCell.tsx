@@ -26,35 +26,52 @@ function calcRemaining(expire?: string | null): number | null {
 
 export default function RemainingDaysCell({ client, invalidateKey = "billing-list" }: Props) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { isPopMode } = usePopScope();
   const [open, setOpen] = useState(false);
   const remaining = calcRemaining(client.expire_date);
-  const [days, setDays] = useState(String(remaining ?? 0));
+  const [days, setDays] = useState("1");
   const [saving, setSaving] = useState(false);
 
   const handleOpen = (isOpen: boolean) => {
-    if (isOpen) setDays(String(Math.max(0, remaining ?? 0)));
+    if (isOpen) setDays(isPopMode ? "1" : String(Math.max(0, remaining ?? 0)));
     setOpen(isOpen);
   };
 
   const handleSave = async () => {
     const n = parseInt(days);
-    if (isNaN(n) || n < 0 || n > 365) {
-      toast.error("দিনের সংখ্যা ০-৩৬৫ এর মধ্যে হতে হবে");
+    if (isNaN(n) || n < (isPopMode ? 1 : 0) || n > 365) {
+      toast.error(isPopMode ? "১-৩৬৫ দিনের মধ্যে দিন" : "দিনের সংখ্যা ০-৩৬৫ এর মধ্যে হতে হবে");
       return;
     }
     setSaving(true);
     try {
-      const target = new Date();
-      target.setHours(0, 0, 0, 0);
-      target.setDate(target.getDate() + n);
-      const iso = target.toISOString().slice(0, 10);
-      const { error } = await supabase.from("clients").update({ expire_date: iso }).eq("id", client.id);
-      if (error) throw error;
-      toast.success("R.Days আপডেট হয়েছে");
+      if (isPopMode) {
+        // Reseller mode: recharge through RPC so balance is debited
+        const res: any = await callPortal("pop_recharge_client", { client_id: client.id, days: n });
+        toast.success(`Recharge হয়েছে — ৳${Number(res?.charged || 0).toFixed(2)} কাটা হয়েছে`);
+      } else {
+        const target = new Date();
+        target.setHours(0, 0, 0, 0);
+        target.setDate(target.getDate() + n);
+        const iso = target.toISOString().slice(0, 10);
+        const { error } = await supabase.from("clients").update({ expire_date: iso }).eq("id", client.id);
+        if (error) throw error;
+        toast.success("R.Days আপডেট হয়েছে");
+      }
       queryClient.invalidateQueries({ queryKey: [invalidateKey] });
+      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+      queryClient.invalidateQueries({ queryKey: ["pop-billing-clients"] });
       setOpen(false);
     } catch (e: any) {
-      toast.error(e.message || "আপডেট ব্যর্থ");
+      const msg = String(e?.message || e || "");
+      if (msg.includes("INSUFFICIENT_BALANCE")) {
+        toast.error("পর্যাপ্ত balance নেই — recharge করুন", {
+          action: { label: "Recharge", onClick: () => navigate("/pop-admin/fund-history/credit") },
+        });
+      } else {
+        toast.error(msg || "আপডেট ব্যর্থ");
+      }
     } finally {
       setSaving(false);
     }
