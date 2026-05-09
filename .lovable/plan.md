@@ -1,67 +1,46 @@
-## সমস্যা
+## Support Ticket Section — Improvements Plan
 
-`/dashboard/clients/add` পেজে তিনটি বাগ:
+**File:** `src/pages/dashboard/support/Tickets.tsx` (only frontend change; DB already supports it)
 
-1. **Required validation দুর্বল** — শুধু `name` আর `client_id` চেক হয়, তাই mobile, NID, zone ইত্যাদি `*` দেওয়া field খালি রেখেই client active হয়ে যাচ্ছে।
-2. **District / Upazila admin mode-এ অদৃশ্য** — input disabled আর placeholder "জোন থেকে" থাকলেও zone থেকে value পাঠানো হচ্ছে না, তাই BTRC report-এর জন্য দরকারি জেলা/উপজেলা কোথাও দেখা যায় না।
-3. **প্রোফাইল ছবি বাটন কাজ করে না** — শুধু একটা স্ট্যাটিক 👤 placeholder, কোনো file picker / upload নেই। DB-তে `clients.photo_url` কলাম আছে কিন্তু UI নেই।
+### 1. "Created By" column + display
+- Tickets query: also join `profiles!support_tickets_created_by_fkey(full_name)` and `clients(name)` (already joined).
+- Add new "Created By" column in the table after "টিকেট নং".
+  - If `source === 'client'` → show client name with badge "Client"
+  - Otherwise → show employee/user `full_name` with badge "Staff"
+- Show same info in the Conversation dialog header.
 
-## ফিক্স প্ল্যান
+### 2. Show all assignees (already partly done) + readability
+- "Assign To" cell: if multiple, render each name as a small chip (wrap), not comma string.
+- Inside Conversation dialog add an "Assigned to" section listing all assignees with assigned date.
 
-### File: `src/pages/dashboard/clients/AddClient.tsx`
+### 3. Solve action — confirmation popup (matches uploaded screenshot)
+- Replace direct `resolveMutation.mutate(t.id)` on the green check button with opening a new `<Dialog>` "Press Yes if solved".
+- Dialog fields (read-only inputs prefilled from ticket/client):
+  - **Connectivity Status** (Disconnected/Connected — from client's last status)
+  - **Offline / Online** badge
+  - **Uptime**
+  - **Last Logout Time** (`format` now)
+  - **MAC Address / Caller ID** (from `clients.mac_address`)
+  - **IP Address** (from `clients.remote_address`)
+- Footer: `Cancel` (orange) + `Yes, Solved` (dark). Only `Yes, Solved` triggers `resolveMutation`.
+- Same confirmation also reachable by clicking the **Processing** status badge (per request).
 
-**A. Required-field validation (admin + POP দুই মোডেই):**
+### 4. Status badge colors (fix cream → proper colors)
+- Replace `statusColor` shadcn variants with explicit className:
+  - `pending` → yellow (`bg-yellow-500 text-white`)
+  - `processing` → orange (`bg-orange-500 text-white`)
+  - `solved` → **green** (`bg-green-600 text-white`) — never cream
+- Make Processing badge clickable (cursor-pointer) → opens the Solve confirmation dialog.
 
-`saveMutation.mutationFn` শুরুতে একটা `validate()` step যোগ:
+### 5. "Solved By" tracking + display
+- Already saving `solved_by` + `solved_at` in DB. Add to query: `solved_by_profile:profiles!support_tickets_solved_by_fkey(full_name)`.
+- New "Solved By" column (visible only in Solved tab, or always with "—") showing name + solved time.
+- Show in Conversation dialog footer when status is solved.
 
-Required fields list:
-- `name`, `client_id`, `contact` (11-digit, 01 দিয়ে শুরু), `nid_number`
-- `zone_id`
-- `mikrotik_id` (admin মোডে; POP-এ auto)
-- `protocol_type`, `connection_type`, `client_type`, `package_id`
-- PPPoE হলে `username`, `password`
-- Static / Corporate static হলে `static_ip`
+### 6. Assigned employee sees ticket in their portal
+- This is already supported via `support_ticket_assignees`. Add a small "My Tickets" filter chip at top-right that filters list to tickets where the current `user.id` matches an `employees.user_id` of an assignee, OR `created_by = user.id`.
+- (No new page; just a frontend filter on existing Tickets page.)
 
-Behaviour:
-- প্রতিটি field-এ `data-field` attribute যোগ করে একটা `errors: Record<string, string>` state রাখা।
-- ভ্যালিডেশন fail হলে — ক্ষেত্রভেদে toast + প্রথম invalid field-কে `scrollIntoView({ behavior: "smooth", block: "center" })` + focus।
-- Invalid field-এর `Input/SelectTrigger/Textarea`-এ conditionally `border-destructive ring-1 ring-destructive` ক্লাস যোগ; `<Label>`-এর পাশে ছোট লাল error text।
-- টাইপ করলে সেই field-এর error সাফ — `setField`-এর সাথে `clearError(name)`।
-- Submit বাটন থেকে কিছু সরানো হবে না; ব্যবহারকারী ক্লিক করলেই validate চলবে।
-
-**B. Zone → District / Upazila auto-derive (admin মোডে):**
-
-- `zonesAdmin` query update — `select("id, name, division_id, district_id, upazila_id")` আর সাথে join করে district/upazila/division-এর নাম তোলা (`districts(id,name), upazilas(id,name), divisions(id,name)`)।
-- নতুন `useMemo` `selectedZone` — `form.zone_id` থেকে।
-- "জেলা" / "উপজেলা" input দু'টি admin মোডে `selectedZone?.districts?.name` / `selectedZone?.upazilas?.name` দেখাবে (disabled, read-only)।
-- "বিভাগ" দেখানোর জন্য একটা ছোট inline note: *"বিভাগ: X · জেলা: Y · উপজেলা: Z"* জোন সিলেক্টরের নিচে — যাতে BTRC-এর তিনটা hierarchy এক জায়গায় দেখা যায়।
-- Save payload-এ admin মোডেও `division_id / district_id / upazila_id` জোন থেকে পাঠানো হবে (যদি ইতিমধ্যে form.district_id সেট না থাকে)।
-
-POP মোডে কোনো পরিবর্তন নেই — `popMeta` থেকে আগের মতই আসবে।
-
-**C. প্রোফাইল ছবি আপলোড:**
-
-বর্তমান placeholder div-কে clickable file input-এ রূপান্তর:
-- Hidden `<input type="file" accept="image/*">` + লেবেল হিসেবে বৃত্তাকার preview area (camera আইকন overlay)।
-- ফাইল সিলেক্ট হলে — local preview দেখানো হবে, `clients.photo_url` ফাঁকা থাকলে save-এর সময় Supabase Storage-এ upload (নতুন public bucket `client-photos`, path `{client_id}/{timestamp}.{ext}`), public URL `payload.photo_url`-এ যাবে।
-- Edit মোডে existing `photo_url` থাকলে preview দেখাবে; নতুন ছবি দিলে replace।
-- POP মোডে একই flow (upload anon ক্লায়েন্ট দিয়ে, bucket public বলে রিড-এ সমস্যা নেই; insert path `callPortal` এর মতই — শুধু URL string)।
-- Max 2MB ও image MIME ভ্যালিডেশন।
-
-### Database migration (alada স্টেপে অনুমোদন)
-
-`client-photos` নামে নতুন public storage bucket + RLS:
-- `INSERT/UPDATE/DELETE`: শুধু authenticated users (admin staff)। POP-mode-এ `callPortal` ব্যবহার হলে service-role দিয়ে কাজ চলবে, তাই client-side anon insert-এর policy পরে দরকার পড়লে যোগ হবে।
-- `SELECT`: public (bucket public)।
-
-### বাইরে রাখা হচ্ছে
-
-- বাকি ৭০+ field-এর copy/layout পরিবর্তন।
-- POP মোডের district/upazila ফ্লো (ইতিমধ্যে `popMeta` থেকে আসছে)।
-- Edge function বা billing logic-এ কোনো পরিবর্তন।
-
-## Acceptance
-
-- Required field খালি রেখে Save করলে প্রথম খালি field লাল হয়ে scroll হবে, toast দেখাবে, submit হবে না।
-- Admin জোন সিলেক্ট করার সাথে সাথে জেলা/উপজেলা ফিল্ডে নাম এসে যাবে এবং DB-তে ID হিসেবে সেভ হবে।
-- প্রোফাইল ছবি বৃত্তে ক্লিক করলে file picker খুলবে, preview আসবে, save করলে `clients.photo_url`-এ public URL সেভ হবে।
+### Notes
+- All changes are presentation/state only. No DB migration needed (`created_by`, `solved_by`, `solved_at`, `support_ticket_assignees`, `support_ticket_comments` already exist).
+- Foreign-key embeds need PostgREST relationship names; if `profiles!support_tickets_created_by_fkey` does not resolve, fallback to a separate `profiles` query keyed by user IDs.
