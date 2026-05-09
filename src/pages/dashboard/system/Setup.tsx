@@ -171,6 +171,7 @@ export default function Setup() {
                 </div>
                 <Switch checked={!!enfForm.disable_when_no_bill} onCheckedChange={(v) => setEnf("disable_when_no_bill", v)} />
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label className="text-xs mb-1 block">কাটঅফ সময়</Label>
                   <div className="relative">
