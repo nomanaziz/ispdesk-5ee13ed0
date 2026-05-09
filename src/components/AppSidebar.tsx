@@ -949,7 +949,7 @@ export function AppSidebar() {
             alt={companyName || "ISP Desk"}
             className={cn(
               "object-contain shrink-0",
-              collapsed ? "h-9 w-9" : "h-10 w-10"
+              collapsed ? "h-8 w-8" : "h-10 w-auto max-w-[180px]"
             )}
           />
         </div>
