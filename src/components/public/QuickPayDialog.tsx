@@ -37,7 +37,7 @@ export default function QuickPayDialog({ open, onOpenChange, client, defaultAmou
     queryFn: async () => {
       const { data, error } = await supabase.rpc("public_payment_gateways");
       if (error) throw error;
-      return (data as Gateway[]) || [];
+      return ((data as unknown) as Gateway[]) || [];
     },
   });
   const [step, setStep] = useState<"choose" | "form" | "done">("choose");
