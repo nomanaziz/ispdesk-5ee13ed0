@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Mail, KeyRound, LogIn, Plus, ArrowLeftRight, Edit, MapPin, Phone,
+  ArrowLeft, Mail, KeyRound, LogIn, Plus, Edit, MapPin, Phone,
 } from "lucide-react";
 import FundDeductionDialog from "@/components/branches/FundDeductionDialog";
 import PasswordRegenerateDialog from "@/components/branches/PasswordRegenerateDialog";
