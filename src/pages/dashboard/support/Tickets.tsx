@@ -51,6 +51,14 @@ export default function Tickets() {
   const [tab, setTab] = useState("accepted");
   const [search, setSearch] = useState("");
   const [newTicketOpen, setNewTicketOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setNewTicketOpen(true);
+      searchParams.delete("new");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [conversationOpen, setConversationOpen] = useState(false);
   const [solveDialogOpen, setSolveDialogOpen] = useState(false);
