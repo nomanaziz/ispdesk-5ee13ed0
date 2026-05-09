@@ -530,6 +530,12 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
       <BulkDateExtendDialog open={dateExtendOpen} onOpenChange={setDateExtendOpen} selectedClients={selectedClients} invalidateKey="clients-list" />
       <BulkDistrictChangeDialog open={districtOpen} onOpenChange={setDistrictOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
       <BulkThanaChangeDialog open={thanaOpen} onOpenChange={setThanaOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
+      <ClientCommentDialog
+        open={!!commentClient}
+        onOpenChange={(o) => { if (!o) setCommentClient(null); }}
+        client={commentClient}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ["clients-list"] })}
+      />
     </div>
   );
 }
