@@ -1,81 +1,74 @@
-# Reseller Balance Enforcement on MikroTik User Activation
+# Remove Prepaid/Postpaid POP Type Distinction
 
-## Problem
+## Goal
 
-বর্তমানে reseller portal-এ MikroTik client enable/activate করলে reseller-এর `branch_managers.balance` থেকে কোনো টাকা কাটে না, এবং balance শূন্য/অপর্যাপ্ত হলেও activation আটকায় না। ফলে reseller (e.g. Naeema, code 0019, balance ৳10) যত খুশি ID active করতে পারছে।
+POP-এর `prepaid` vs `postpaid` দ্বিধা সম্পূর্ণ সরিয়ে দেওয়া। সব POP একই ধরনের — শুধু balance-ভিত্তিক একটা unified flow থাকবে। (নতুন logic পরে user দেবেন; এই plan শুধু পুরোনো logic clean করবে।)
 
-প্রয়োজন: prepaid POP/reseller-এর জন্য activation-এর আগে balance check হবে; insufficient হলে block + "Recharge first" message + Fund/Recharge page-এ redirect; পর্যাপ্ত হলে package rate balance থেকে কেটে নেবে। `allow_negative_balance = true` হলে এই rule বাইপাস হবে।
+**Note:** `branch_managers.pop_type` কলামটা `'bandwidth'` এবং `'reseller_sub'` value-এর জন্যও ব্যবহৃত হয় — এই দুটো ভিন্ন concept, তাই কলাম রাখা থাকবে; শুধু `'prepaid'` / `'postpaid'` value ও তার চারপাশের branching সরবে।
 
-## Scope of changes
+## Changes
 
-### 1. Database (migration + trigger)
+### 1. UI — POP create/edit form
+**`src/components/branches/PopForm.tsx`**
+- POP Type dropdown (Prepaid Daily / Postpaid Monthly) সরিয়ে দাও।
+- `form.pop_type`, related validation, conditional `min_balance`/`auto_disable_day`/`fund_started` branching সব সরাও।
+- Insert payload থেকে `pop_type`, `allow_negative_balance` (postpaid-derived), `auto_disable_day` (conditional) সরাও — অথবা সব POP-এর জন্য neutral default রাখো (`pop_type: null`, `allow_negative_balance: false`, `auto_disable_day: 10`)।
 
-- নতুন SECURITY DEFINER function `public.charge_pop_for_client_activation(_client_id uuid)`:
-  - Client-এর `branch_id` থেকে `branch_managers` row লোড।
-  - `pop_type='prepaid'` না হলে কিছু না করে রিটার্ন (postpaid POP exempt)।
-  - `allow_negative_balance = true` হলে deduction skip (admin negative credit দিয়েছে)।
-  - Charge amount = `pop_package_pricing.pop_selling_rate` (POP-specific) → fallback `reseller_tariff_packages.selling_rate` → fallback `clients.monthly_bill`।
-  - Insufficient (`balance < amount` এবং `allow_negative_balance = false`) → `RAISE EXCEPTION 'INSUFFICIENT_BALANCE: ...'`।
-  - Sufficient → `branch_managers.balance -= amount` এবং `branch_funding`-এ একটা `trans_type='charge'` (negative-effect) row insert করে audit trail (যাতে FundingHistory-তে দেখা যায়)। Alternative: নতুন `pop_balance_ledger` table — but reuse `branch_funding` simpler।
+### 2. Admin POP listings & profile
+**`src/pages/dashboard/branches/Managers.tsx`**
+- `filterPopType` (Prepaid/Postpaid select) সরাও।
+- Toggle button "switch prepaid↔postpaid" সরাও।
+- Badge column থেকে `pop_type` display সরাও।
 
-- নতুন trigger `trg_charge_pop_on_client_activation` on `public.clients`:
-  - **AFTER INSERT** যখন `NEW.status='active'` এবং `owner_scope='pop'`।
-  - **AFTER UPDATE** যখন `OLD.status` non-active → `NEW.status='active'`।
-  - উপরের function কল করবে।
+**`src/pages/dashboard/branches/PopProfile.tsx`**
+- Prepaid/Postpaid badge ও related conditional sections (lines 129, 171, 193, 205, 235, 241, 244) সরাও।
 
-- নতুন trigger `trg_charge_pop_on_mt_enable` on `public.mikrotik_clients`:
-  - **BEFORE UPDATE** যখন `OLD.status='disabled'` → `NEW.status='active'` (বা যেকোনো non-disabled)।
-  - যদি `linked_client_id` থাকে, function কল; insufficient হলে exception → enable আটকে যায়।
+**`src/pages/dashboard/branches/PgwTransactions.tsx`**
+- Prepaid/Postpaid filter ও badge column সরাও।
 
-- Refund logic (optional, এই plan-এর scope-এ): client `disabled` হলে কিছু refund না (admin চাইলে পরে)।
+### 3. Dashboard widgets
+**`src/pages/Dashboard.tsx`** — `pop_type` reference গুলো রাখো শুধু `'bandwidth'` filter-এর জন্য; prepaid/postpaid grouping সরাও।
 
-### 2. Frontend — `src/pages/reseller/ResellerMikrotikUsers.tsx`
+### 4. Billing & client lists
+**`src/pages/dashboard/billing/BillingList.tsx`** — `isPrepaidPop` branch ও R.Days column সবার জন্য default করে দাও (অথবা সবসময় hide); prepaid-only display সরাও।
 
-- `toggleStatus.mutationFn` (line 61-66) এবং `createClient.mutationFn` (line 88-122)-এ try/catch:
-  - DB error message-এ `INSUFFICIENT_BALANCE` থাকলে:
-    - `toast.error("পর্যাপ্ত balance নেই — আগে recharge করুন")`
-    - `navigate('/pop-admin/funding-history')` (বা যে recharge page exist করে — confirm needed; আপাতত FundingHistory)।
-  - অন্য error হলে existing toast।
+**`src/components/branches/PopLeftClientsTab.tsx`** — "prepaid POP হলে refund হবে" hint থেকে "prepaid" শব্দ সরাও (সব POP-এর জন্য একই behaviour assume করো)।
 
-- `ResellerDashboard`-এ একটা ছোট banner: balance < ১ মাসের estimated bill হলে "Low balance — recharge soon" warning।
+**`src/components/branches/FundDeductionDialog.tsx`** — type থেকে `pop_type` সরাও।
 
-### 3. Edge function (none needed)
+**`src/components/mikrotik/TransferToPopDialog.tsx`** — `selectedPop.pop_type === "prepaid"` based balance-check guard সরিয়ে সবসময় balance check করো।
 
-DB trigger-ই enforcement; frontend-এ শুধু error → redirect handling।
+### 5. Reseller portal mobile
+**`src/components/reseller/mobile/ResellerMobileShell.tsx`** — `popType.toLowerCase() === "prepaid"` based UI branch সরাও।
 
-## Technical details
+### 6. Notice & overview
+**`src/pages/dashboard/support/Notices.tsx`** — `regularPops`/`bwPops` split-এ `pop_type !== "bandwidth"` যথাযথ; কোনো prepaid/postpaid filter থাকলে সরাও।
+**`src/pages/dashboard/CompanyOverview.tsx`** — `eq("pop_type", "bandwidth")` রাখো (bandwidth POP আলাদা); prepaid/postpaid কিছু থাকলে সরাও।
 
-```text
-clients.INSERT(status=active, owner_scope=pop)
-        │
-        ▼
-trg_charge_pop_on_client_activation
-        │
-        ▼
-charge_pop_for_client_activation(client_id)
-   ├── load branch_managers (pop_type, balance, allow_negative_balance)
-   ├── if pop_type != 'prepaid' OR allow_negative_balance → return
-   ├── resolve charge = pop_package_pricing.pop_selling_rate
-   ├── if balance < charge → RAISE 'INSUFFICIENT_BALANCE'
-   └── balance -= charge ; insert audit row in branch_funding
-```
+### 7. Edge functions
+**`supabase/functions/enforce-billing/index.ts`** — postpaid-specific block (lines 257-315: `auto_disable_day` window, "skipped_postpaid_*") সরিয়ে সব POP-এর জন্য একই enforcement রাখো।
 
-- Audit row in `branch_funding`: `trans_type='charge'`, `amount = -charge`, `note='Client activation: <username>'`, `branch_id=<pop branch>`. Existing `apply_branch_funding_to_balance` trigger uses `+amount` for fund and `-amount` for refund — for `charge` we'll set `trans_type='refund'` semantically OR add new branch in trigger. Cleaner: do the balance UPDATE directly inside `charge_pop_for_client_activation` and only insert ledger row WITHOUT triggering the funding-balance trigger. We'll use a new dedicated table `pop_balance_ledger(id, branch_id, client_id, amount, reason, created_at)` to avoid coupling — simpler and clearer.
+**`supabase/functions/apply-pop-daily-charges/index.ts`** — `.eq("pop_type", "prepaid")` filter সরাও; সব POP-এ daily charges apply হোক (অথবা পুরো function disable করার সিদ্ধান্ত পরে নেওয়া হবে — এখন filter শুধু সরাচ্ছি)।
 
-- New `pop_balance_ledger` columns: `amount` (negative for charge), `reason text`, indexed on `branch_id, created_at`.
+**`supabase/functions/portal-auth/index.ts` & `portal-data/index.ts`** — `pop_type` field pass করা থামানোর দরকার নেই (sub-user identification-এ ব্যবহৃত), শুধু prepaid/postpaid value আসছে এমন assumption যেখানে আছে সেখান থেকে সরাও — UI consumer-এ already হ্যান্ডেল হবে।
 
-## Out of scope (confirm if needed)
+### 8. Recent migration cleanup
+**নতুন migration:**
+- `public.charge_pop_for_client_activation` function update: `IF COALESCE(v_pop.pop_type, 'prepaid') <> 'prepaid' THEN RETURN` চেক সরাও — সব POP-এ balance check + deduction প্রযোজ্য হবে। `allow_negative_balance` exemption থাকবে।
+- `public.process_credit_refund_on_client_left` function update: `v_pop.pop_type <> 'prepaid'` চেক সরাও।
+- `public.enforce_pop_type_daily_limit` trigger ও function drop করো (একই দিনে pop_type পরিবর্তনের নিয়ম আর লাগবে না)।
 
-- Postpaid POP billing cycle changes
-- Auto-disable on insufficient balance for already-active clients (monthly recurring deduction) — current plan only deducts at activation moment, not recurring monthly.
-- Refund on deactivation (separate from existing `process_credit_refund_on_client_left`).
+### 9. Types
+`src/integrations/supabase/types.ts` auto-generated — touch করব না।
 
-## Files touched
+## Out of scope
 
-- `supabase/migrations/<new>.sql` — function + 2 triggers + ledger table + RLS
-- `src/pages/reseller/ResellerMikrotikUsers.tsx` — error handling + redirect
-- `src/pages/reseller/ResellerDashboard.tsx` — low-balance banner (small addition)
+- `pop_type` কলাম drop করা হবে না (`'bandwidth'`, `'reseller_sub'` value এখনও ব্যবহৃত)।
+- নতুন billing logic — user পরে দেবে।
+- Database থেকে existing 'prepaid'/'postpaid' value clear করা: optional one-shot UPDATE (`SET pop_type = NULL WHERE pop_type IN ('prepaid','postpaid')`) — confirmation চাইব implementation-এর সময়।
 
-## Open question
+## Files touched (summary)
 
-Recharge page route-টা `/pop-admin/funding-history` ব্যবহার করব, না আলাদা "Recharge Request" page আছে? Confirm করলে redirect target ঠিক করব।
+- 1 new migration
+- 13 frontend files (form, list, profile, dashboard, billing, dialogs, notices, mobile shell)
+- 3 edge functions (enforce-billing, apply-pop-daily-charges, portal-auth/data — minimal)
