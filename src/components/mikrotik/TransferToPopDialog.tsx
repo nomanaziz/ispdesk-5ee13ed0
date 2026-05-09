@@ -107,7 +107,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
       if (isMixed) throw new Error("Mixed profile — single profile-এর user select করুন");
       if (profileMismatch) throw new Error(`Profile mismatch — User profile "${uniqueProfile}" ≠ Package profile "${selectedPkg.mikrotik_profile}"`);
 
-      if (selectedPop.pop_type === "prepaid" && selectedPop.fund_started && Number(selectedPop.balance || 0) < creditable) {
+      if (selectedPop.fund_started && Number(selectedPop.balance || 0) < creditable && !selectedPop.allow_negative_balance) {
         throw new Error(`POP-এর balance অপ্রতুল (${selectedPop.balance} < ${creditable})`);
       }
 
