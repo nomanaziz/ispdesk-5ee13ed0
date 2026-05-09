@@ -82,6 +82,21 @@ export default function FundingHistory() {
       const { data: funds, error } = await q;
       if (error) throw error;
 
+      // Map branch_id -> POP manager name (branches.name may be stale)
+      const branchIds = Array.from(
+        new Set((funds ?? []).map((f: any) => f.branch_id).filter(Boolean))
+      ) as string[];
+      let popNameMap: Record<string, string> = {};
+      if (branchIds.length) {
+        const { data: bms } = await supabase
+          .from("branch_managers")
+          .select("name, branch_id")
+          .in("branch_id", branchIds);
+        popNameMap = Object.fromEntries(
+          (bms ?? []).map((b: any) => [b.branch_id, b.name])
+        );
+      }
+
       // 2. credit_refund_logs (treat as refund-style credit on POP balance)
       let cr = supabase
         .from("credit_refund_logs")
