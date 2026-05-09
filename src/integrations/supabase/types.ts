@@ -2056,6 +2056,8 @@ export type Database = {
           billing_cycle: Database["public"]["Enums"]["billing_cycle"] | null
           contact_person: string | null
           created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
           current_tier_id: string | null
           customer_code: string | null
           customer_name: string
@@ -2069,6 +2071,7 @@ export type Database = {
           next_month_estimated_bill: number
           nttn_info: string | null
           own_bkash_number: string | null
+          package_id: string | null
           panel_access_enabled: boolean
           panel_branch_id: string | null
           panel_demo_used: boolean
@@ -2101,6 +2104,8 @@ export type Database = {
           billing_cycle?: Database["public"]["Enums"]["billing_cycle"] | null
           contact_person?: string | null
           created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
           current_tier_id?: string | null
           customer_code?: string | null
           customer_name: string
@@ -2114,6 +2119,7 @@ export type Database = {
           next_month_estimated_bill?: number
           nttn_info?: string | null
           own_bkash_number?: string | null
+          package_id?: string | null
           panel_access_enabled?: boolean
           panel_branch_id?: string | null
           panel_demo_used?: boolean
@@ -2146,6 +2152,8 @@ export type Database = {
           billing_cycle?: Database["public"]["Enums"]["billing_cycle"] | null
           contact_person?: string | null
           created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
           current_tier_id?: string | null
           customer_code?: string | null
           customer_name?: string
@@ -2159,6 +2167,7 @@ export type Database = {
           next_month_estimated_bill?: number
           nttn_info?: string | null
           own_bkash_number?: string | null
+          package_id?: string | null
           panel_access_enabled?: boolean
           panel_branch_id?: string | null
           panel_demo_used?: boolean
@@ -2188,6 +2197,13 @@ export type Database = {
             columns: ["current_tier_id"]
             isOneToOne: false
             referencedRelation: "bw_panel_pricing_slabs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bw_sale_customers_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
             referencedColumns: ["id"]
           },
           {
@@ -8633,39 +8649,62 @@ export type Database = {
       }
       service_requests: {
         Row: {
+          address: string | null
+          billing_cycle: string | null
           contact_name: string
           created_at: string | null
           district: string
+          email: string | null
+          hosting_type: string | null
           id: string
           isp_name: string
           notes: string | null
+          package_id: string | null
           phone: string
           service_needed: string
           status: string | null
         }
         Insert: {
+          address?: string | null
+          billing_cycle?: string | null
           contact_name: string
           created_at?: string | null
           district: string
+          email?: string | null
+          hosting_type?: string | null
           id?: string
           isp_name: string
           notes?: string | null
+          package_id?: string | null
           phone: string
           service_needed: string
           status?: string | null
         }
         Update: {
+          address?: string | null
+          billing_cycle?: string | null
           contact_name?: string
           created_at?: string | null
           district?: string
+          email?: string | null
+          hosting_type?: string | null
           id?: string
           isp_name?: string
           notes?: string | null
+          package_id?: string | null
           phone?: string
           service_needed?: string
           status?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "service_requests_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_types: {
         Row: {
@@ -10332,6 +10371,7 @@ export type Database = {
       tenant_invoices: {
         Row: {
           amount: number
+          billing_cycle: Database["public"]["Enums"]["billing_cycle"] | null
           created_at: string
           created_by: string | null
           currency: string
@@ -10341,6 +10381,7 @@ export type Database = {
           invoice_type: Database["public"]["Enums"]["tenant_invoice_type"]
           metadata: Json | null
           notes: string | null
+          package_id: string | null
           paid_amount: number | null
           paid_at: string | null
           payment_method: string | null
@@ -10354,6 +10395,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          billing_cycle?: Database["public"]["Enums"]["billing_cycle"] | null
           created_at?: string
           created_by?: string | null
           currency?: string
@@ -10363,6 +10405,7 @@ export type Database = {
           invoice_type?: Database["public"]["Enums"]["tenant_invoice_type"]
           metadata?: Json | null
           notes?: string | null
+          package_id?: string | null
           paid_amount?: number | null
           paid_at?: string | null
           payment_method?: string | null
@@ -10376,6 +10419,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          billing_cycle?: Database["public"]["Enums"]["billing_cycle"] | null
           created_at?: string
           created_by?: string | null
           currency?: string
@@ -10385,6 +10429,7 @@ export type Database = {
           invoice_type?: Database["public"]["Enums"]["tenant_invoice_type"]
           metadata?: Json | null
           notes?: string | null
+          package_id?: string | null
           paid_amount?: number | null
           paid_at?: string | null
           payment_method?: string | null
@@ -10397,6 +10442,13 @@ export type Database = {
           user_limit?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tenant_invoices_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tenant_invoices_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -11358,6 +11410,15 @@ export type Database = {
       }
     }
     Functions: {
+      apply_tenant_package: {
+        Args: {
+          _amount_override?: number
+          _billing_cycle: Database["public"]["Enums"]["billing_cycle"]
+          _package_id: string
+          _tenant_id: string
+        }
+        Returns: string
+      }
       assign_tenant_package: {
         Args: {
           _activate_days?: number
@@ -11394,6 +11455,18 @@ export type Database = {
           _note?: string
         }
         Returns: string
+      }
+      create_tenant_with_package: {
+        Args: {
+          _address: string
+          _billing_cycle?: Database["public"]["Enums"]["billing_cycle"]
+          _email: string
+          _isp_name: string
+          _mobile: string
+          _owner_name: string
+          _package_id: string
+        }
+        Returns: Json
       }
       extend_tenant_subscription: {
         Args: { _days: number; _tenant_id: string }
@@ -11440,6 +11513,10 @@ export type Database = {
           _severity?: string
         }
         Returns: string
+      }
+      mark_tenant_invoice_paid: {
+        Args: { _invoice_id: string; _payment_method?: string }
+        Returns: undefined
       }
       provision_new_tenant: {
         Args: {
