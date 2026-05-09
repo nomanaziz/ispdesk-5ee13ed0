@@ -170,14 +170,6 @@ export default function Managers() {
               <SelectItem value="false">Fund Off</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={filterPopType} onValueChange={setFilterPopType}>
-            <SelectTrigger><SelectValue placeholder="POP Type" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="prepaid">Prepaid</SelectItem>
-              <SelectItem value="postpaid">Postpaid</SelectItem>
-            </SelectContent>
-          </Select>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
