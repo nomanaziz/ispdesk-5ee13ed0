@@ -44,7 +44,6 @@ export default function PopActionMenu(p: Props) {
         <DropdownMenuItem onClick={p.onLogin}><LogIn className="mr-2 h-4 w-4" /> Login as POP</DropdownMenuItem>
         <DropdownMenuItem onClick={p.onPasswordRegen}><KeyRound className="mr-2 h-4 w-4" /> Password Regenerate</DropdownMenuItem>
         <DropdownMenuItem onClick={p.onFund}><Wallet className="mr-2 h-4 w-4" /> Fund Deduction / Add</DropdownMenuItem>
-        <DropdownMenuItem onClick={p.onFund}><Wallet className="mr-2 h-4 w-4" /> Fund Deduction / Add</DropdownMenuItem>
         <DropdownMenuItem onClick={p.onSendMessage}><Mail className="mr-2 h-4 w-4" /> Send Email/SMS</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={p.onDelete} className="text-destructive focus:text-destructive">
