@@ -324,7 +324,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
             </p>
           )}
 
-          {selectedPop?.pop_type === "prepaid" && selectedPop?.fund_started && creditable > Number(selectedPop?.balance || 0) && (
+          {selectedPop?.fund_started && !selectedPop?.allow_negative_balance && creditable > Number(selectedPop?.balance || 0) && (
             <p className="text-xs text-destructive">
               ⚠️ POP balance ৳{Number(selectedPop.balance || 0).toFixed(2)} — creditable ৳{creditable.toFixed(2)} এর চেয়ে কম। Export blocked।
             </p>
@@ -336,7 +336,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
           <Button
             onClick={() => transfer.mutate()}
             disabled={!popId || !packageId || !targetMikrotik?.id || transfer.isPending || isMixed || profileMismatch ||
-              (selectedPop?.pop_type === "prepaid" && selectedPop?.fund_started && creditable > Number(selectedPop?.balance || 0))}
+              (selectedPop?.fund_started && !selectedPop?.allow_negative_balance && creditable > Number(selectedPop?.balance || 0))}
           >
             {transfer.isPending ? "Exporting..." : `Export ✓ (${selectedIds.length})`}
           </Button>
