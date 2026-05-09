@@ -966,11 +966,12 @@ export default function AddClient() {
                 });
               }
             }}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+              <SelectTrigger className={errClass("package_id")}><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
-                {packages?.map(p => <SelectItem key={p.id} value={p.id}>{p.name} - ৳{p.price}</SelectItem>)}
+                {packages?.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name} - ৳{p.price}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.package_id && <p className="text-xs text-destructive mt-1">{errors.package_id}</p>}
           </div>
           <div>
             <Label>প্রোফাইল</Label>
