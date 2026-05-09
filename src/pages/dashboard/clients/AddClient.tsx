@@ -318,11 +318,67 @@ export default function AddClient() {
   const filteredSubZones = useMemo(() => form.zone_id ? subZones?.filter((s: any) => s.zone_id === form.zone_id) : subZones, [form.zone_id, subZones]);
   const filteredBoxes = useMemo(() => form.zone_id ? boxes?.filter((b: any) => b.zone_id === form.zone_id) : boxes, [form.zone_id, boxes]);
 
+  const selectedZone: any = useMemo(
+    () => zones?.find((z: any) => z.id === form.zone_id) || null,
+    [zones, form.zone_id],
+  );
+
+  const runValidate = (): boolean => {
+    const e: Record<string, string> = {};
+    const req = (k: string, msg: string) => { if (!String(form[k] ?? "").trim()) e[k] = msg; };
+    req("name", "নাম আবশ্যক");
+    req("client_id", "ক্লায়েন্ট কোড আবশ্যক");
+    req("contact", "মোবাইল নম্বর আবশ্যক");
+    if (form.contact && !/^01\d{9}$/.test(String(form.contact).trim())) {
+      e.contact = "১১ সংখ্যার বৈধ নম্বর দিন (01... দিয়ে শুরু)";
+    }
+    req("nid_number", "NID/জন্ম সনদ নম্বর আবশ্যক");
+    req("zone_id", "জোন নির্বাচন করুন");
+    if (!isPopMode) req("mikrotik_id", "সার্ভার নির্বাচন করুন");
+    req("protocol_type", "প্রোটোকল টাইপ আবশ্যক");
+    req("connection_type", "কানেকশন টাইপ আবশ্যক");
+    req("client_type", "ক্লায়েন্ট টাইপ আবশ্যক");
+    req("package_id", "প্যাকেজ নির্বাচন করুন");
+    if (form.protocol_type === "Static") {
+      req("static_ip", "Static IP আবশ্যক");
+    } else {
+      req("username", "ইউজারনেম আবশ্যক");
+      req("password", "পাসওয়ার্ড আবশ্যক");
+    }
+    setErrors(e);
+    if (Object.keys(e).length === 0) return true;
+    const firstKey = Object.keys(e)[0];
+    toast.error(`অসম্পূর্ণ তথ্য: ${e[firstKey]}`);
+    setTimeout(() => {
+      const el = document.querySelector(`[data-field="${firstKey}"]`) as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        const focusable = el.querySelector("input, textarea, button, [role='combobox']") as HTMLElement | null;
+        focusable?.focus?.();
+      }
+    }, 80);
+    return false;
+  };
+
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!form.name || !form.client_id) throw new Error("নাম ও ক্লায়েন্ট কোড আবশ্যক");
       const shouldSyncMikrotik = Boolean(form.mikrotik_id && form.username);
       let mikrotikStatus = shouldSyncMikrotik ? "unknown" : null;
+
+      // Upload photo if a new file was picked
+      let photoUrl: string | null = prefill?.photo_url || null;
+      if (photoFile) {
+        const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
+        const safeCode = (form.client_id || crypto.randomUUID()).replace(/[^a-zA-Z0-9-_]/g, "_");
+        const path = `${safeCode}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("client-photos")
+          .upload(path, photoFile, { upsert: true, contentType: photoFile.type });
+        if (upErr) throw new Error(`প্রোফাইল ছবি আপলোড ব্যর্থ: ${upErr.message}`);
+        const { data: pub } = supabase.storage.from("client-photos").getPublicUrl(path);
+        photoUrl = pub.publicUrl;
+      }
+
       const payload: any = {
         name: form.name, client_id: form.client_id, contact: form.contact, email: form.email,
         address: form.address, zone_id: form.zone_id || null, sub_zone_id: form.sub_zone_id || null,
