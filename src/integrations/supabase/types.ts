@@ -9398,7 +9398,9 @@ export type Database = {
           description: string | null
           id: string
           priority: string | null
+          processing_started_at: string | null
           resolved_at: string | null
+          sms_notified: boolean | null
           solved_at: string | null
           solved_by: string | null
           source: string
@@ -9406,6 +9408,8 @@ export type Database = {
           subject: string
           subzone: string | null
           ticket_no: string
+          work_started_at: string | null
+          work_started_by: string | null
           zone_id: string | null
         }
         Insert: {
@@ -9420,7 +9424,9 @@ export type Database = {
           description?: string | null
           id?: string
           priority?: string | null
+          processing_started_at?: string | null
           resolved_at?: string | null
+          sms_notified?: boolean | null
           solved_at?: string | null
           solved_by?: string | null
           source?: string
@@ -9428,6 +9434,8 @@ export type Database = {
           subject: string
           subzone?: string | null
           ticket_no: string
+          work_started_at?: string | null
+          work_started_by?: string | null
           zone_id?: string | null
         }
         Update: {
@@ -9442,7 +9450,9 @@ export type Database = {
           description?: string | null
           id?: string
           priority?: string | null
+          processing_started_at?: string | null
           resolved_at?: string | null
+          sms_notified?: boolean | null
           solved_at?: string | null
           solved_by?: string | null
           source?: string
@@ -9450,6 +9460,8 @@ export type Database = {
           subject?: string
           subzone?: string | null
           ticket_no?: string
+          work_started_at?: string | null
+          work_started_by?: string | null
           zone_id?: string | null
         }
         Relationships: [
