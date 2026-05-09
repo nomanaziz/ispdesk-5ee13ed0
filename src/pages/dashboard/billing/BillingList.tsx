@@ -120,14 +120,26 @@ export default function BillingList() {
 
       const monthKey = filters.month; // YYYY-MM
       return (data || []).map((c: any) => {
-        const bill = (c.billing || []).find((b: any) => {
+        const allBills = c.billing || [];
+        const bill = allBills.find((b: any) => {
           if (!b?.month) return false;
-          const m = String(b.month).slice(0, 7); // normalize YYYY-MM-01 -> YYYY-MM
+          const m = String(b.month).slice(0, 7);
           return m === monthKey;
         });
+        const totalDue = allBills.reduce((s: number, b: any) => s + Number(b.due || 0), 0);
+        const totalPaid = allBills.reduce((s: number, b: any) => s + Number(b.paid || 0), 0);
+        const unpaidMonths = allBills.filter((b: any) => Number(b.due || 0) > 0).length;
+        const monthly = Number(c.monthly_bill || 0);
+        const overdueMonths = monthly > 0 ? Math.floor(totalDue / monthly) : 0;
+        const isOverdue = totalDue >= 1 && totalDue > monthly;
         return {
           ...c,
           currentBill: bill || null,
+          totalDue,
+          totalPaid,
+          unpaidMonths,
+          overdueMonths,
+          isOverdue,
           isOnlineLive: Boolean(c.is_online),
         };
       });
