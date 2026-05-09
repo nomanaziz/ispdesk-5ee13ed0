@@ -266,6 +266,12 @@ Deno.serve(async (req) => {
 
     const clientsToDisable: typeof expiredClients = [];
     for (const c of expiredClients) {
+      // Skip free / complimentary lines (no monthly bill expected)
+      if (!c.monthly_bill || Number(c.monthly_bill) <= 0) {
+        totalSkippedNoBill++;
+        details.push({ client_id: c.client_id, name: c.name, action: "skipped_free_line" });
+        continue;
+      }
       const b = billingByClient.get(c.id);
       const paid = Number(b?.paid || 0);
       const amount = Number(b?.amount || 0);
