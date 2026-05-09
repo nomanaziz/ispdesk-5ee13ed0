@@ -1,45 +1,34 @@
-# বিলিং লিস্ট: মোট বকেয়া + ওভারডিউ ফিল্টার
+# Public QuickPay-এ "কোনো পেমেন্ট পদ্ধতি কনফিগার করা হয়নি" — কারণ ও সমাধান
 
-## সমস্যা
+## কারণ
 
-1. **ভুল বকেয়া**: লিস্টে nafisa-এর বকেয়া দেখাচ্ছে ৳1,500 (শুধু চলতি মাস May), কিন্তু client detail-এ মোট ৳3,000 (April + May)। আগের মাসের বাকি লিস্টে আসছে না।
-2. **ওভারডিউ ফিল্টার নেই**: বর্তমান "overdue" ফিল্টার শুধু `expire_date < today` দেখে — পূর্বের বাকি দিয়ে ফিল্টার করা যায় না।
+Admin → System → Payment Gateways-এ ৩টি গেটওয়ে (bKash Personal, Nagad Personal, RechargeServer) ইতিমধ্যেই active + `show_on_website=true` হিসেবে saved। কিন্তু QuickPayDialog সেগুলো পাচ্ছে না কারণ `system_settings` table-এর RLS শুধু `authenticated` users কে SELECT করতে দেয়। Public `/quick-pay` page anon key ব্যবহার করে — তাই খালি array পায়, এবং dialog-এ "কোনো পেমেন্ট পদ্ধতি কনফিগার করা হয়নি" দেখায়।
 
-## সংজ্ঞা (user-confirmed)
-
-- **Overdue**: `total_due ≥ 1` AND `total_due > monthly_bill` (অর্থাৎ চলতি মাসের চেয়ে কমপক্ষে ১ টাকা বেশি বাকি = পূর্বের কোনো মাসের বাকি জমে আছে)
-- **Overdue months** = `floor(total_due / monthly_bill)` যখন `monthly_bill > 0`
+পুরো `system_settings` anon-কে খুলে দিলে অন্য sensitive setting (SMS gateway secret, internal config ইত্যাদি) leak হতে পারে। তাই sensitive credential strip করা একটা ছোট SECURITY DEFINER RPC তৈরি করব।
 
 ## পরিকল্পনা
 
-### 1. `src/pages/dashboard/billing/BillingList.tsx`
+### 1. Database migration — `public.public_payment_gateways()` RPC
 
-- ক্লায়েন্ট fetch-এর সময়ে ইতিমধ্যে সব `billing` rows আসছে (`billing!billing_client_id_fkey(...)`)। ক্লায়েন্ট mapping-এ যোগ করব:
-  - `totalDue` = `sum(b.due)` সব billing rows-এর
-  - `totalPaid` = `sum(b.paid)` সব billing rows
-  - `unpaidMonths` = `count(b where b.due > 0)`
-  - `overdueMonths` = `monthly_bill > 0 ? floor(totalDue / monthly_bill) : 0`
-  - `isOverdue` = `totalDue > monthly_bill && totalDue >= 1`
-- "বকেয়া" কলামে দেখাব **মোট বকেয়া** (`totalDue`), নিচে ছোট করে যত মাসের overdue (যেমন `2 মাস`) badge। Tooltip-এ চলতি মাসের আলাদা ভাঙন।
-- "পেজ মোট" footer-এ `due` → `totalDue` দিয়ে যোগ।
-- Summary card "ওভারডিউ" — নতুন সংজ্ঞা অনুযায়ী count (`isOverdue` true).
-- `paymentStatus === "overdue"` ফিল্টারের শর্ত পরিবর্তন: `c.isOverdue`.
+- `SECURITY DEFINER`, `STABLE`, `search_path = public`
+- `system_settings` থেকে `payment_gateways` setting পড়ে
+- শুধু সেই gateway রিটার্ন করবে যেগুলোর `active = true` এবং `show_on_website = true`
+- প্রতিটি gateway থেকে **sensitive field বাদ** দিয়ে দেবে: `app_key`, `app_secret`, `password`, `username`, `secret_key`, `api_key`, `store_password`, `private_key`, `public_key`, `merchant_id`
+- safe field রাখবে: `number`, `holder_name`, `instructions`, `bank_name`, `account_name`, `account_number`, `branch`, `routing_number`, `address`, `merchant_number`, `brand_key`, `account`, `sandbox`
+- Return type: JSONB (gateway list)
+- `GRANT EXECUTE TO anon, authenticated`
 
-### 2. `src/components/billing/BillingFilterPanel.tsx`
+### 2. Frontend — `src/components/public/QuickPayDialog.tsx`
 
-- পেমেন্ট স্ট্যাটাস select-এ option যোগ:
-  - `overdue_1` — ১+ মাস overdue (যেকোনো overdue)
-  - `overdue_2` — ২+ মাস overdue
-  - `overdue_3` — ৩+ মাস overdue
-  - `overdue_3plus` — ৩ মাসের বেশি
-- পুরোনো `overdue` রাখব backward-compat হিসেবে।
-- BillingList ফিল্টারিং অনুযায়ী match: `c.overdueMonths >= N`.
+- `useSystemSetting("payment_gateways", [])`-এর জায়গায় `useQuery` দিয়ে `supabase.rpc("public_payment_gateways")` call করব
+- বাকি rendering / checkout flow অপরিবর্তিত
+- Auto-checkout (bKash Merchant / SSLCommerz) সংক্রান্ত branches edge function-এর মাধ্যমে চলে — সেখানে credentials দরকার, কিন্তু সেগুলো secret থেকে edge function নিজেই পায়, dialog থেকে আসে না, তাই কোনো issue নেই
 
-### 3. কোন backend/RLS পরিবর্তন নেই
+### 3. কোনো RLS policy পরিবর্তন নেই
 
-`billing` table থেকে সব row আসছেই — শুধু ফ্রন্টএন্ডে aggregation।
+`system_settings`-এর existing policy অপরিবর্তিত থাকবে — শুধু একটা narrow, sanitized RPC যোগ হবে।
 
 ## প্রভাবিত ফাইল
 
-- `src/pages/dashboard/billing/BillingList.tsx`
-- `src/components/billing/BillingFilterPanel.tsx`
+- নতুন migration (`public_payment_gateways` RPC তৈরি)
+- `src/components/public/QuickPayDialog.tsx` — gateway fetch পরিবর্তন
