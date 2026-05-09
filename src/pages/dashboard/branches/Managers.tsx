@@ -217,9 +217,6 @@ export default function Managers() {
                             {m.company_name || m.name}
                           </button>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant={m.pop_type === "prepaid" ? "default" : "secondary"}>{m.pop_type}</Badge>
-                        </TableCell>
                         <TableCell>{m.name}</TableCell>
                         <TableCell>{m.contact || "-"}</TableCell>
                         <TableCell className="text-xs">{m.reseller_tariffs?.name || "-"}</TableCell>
