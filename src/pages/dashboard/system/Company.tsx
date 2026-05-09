@@ -237,6 +237,36 @@ export default function Company() {
           </div>
         </div>
       </div>
+
+      {/* Portal Base URL */}
+      <div className="border rounded-lg overflow-hidden">
+        <div className="bg-primary text-primary-foreground px-4 py-2.5 flex items-center gap-2 text-sm font-medium">
+          <Link2 className="h-4 w-4" /> পোর্টাল বেস URL
+        </div>
+        <div className="p-5 space-y-3 bg-card">
+          <div>
+            <Label className="text-xs mb-1 block">Portal Base URL</Label>
+            <div className="relative">
+              <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={portalUrl}
+                onChange={(e) => setPortalUrl(e.target.value)}
+                className="pl-9"
+                placeholder="https://ispdesk.lovable.app"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+              "Login as POP/Client/BW" থেকে portal-এ login করার সময় এই URL ব্যবহার হবে। খালি রাখলে current domain ব্যবহার হবে।
+              আপনার custom domain (যেমন <code className="px-1 bg-muted rounded">ispdesk.ispsector.com</code>) যদি deep link-এ 404 দেয়, তবে এখানে আপনার Lovable published URL (<code className="px-1 bg-muted rounded">https://ispdesk.lovable.app</code>) বসান।
+            </p>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={handleSavePortalBase} disabled={savingPortal} size="sm" className="gap-2">
+              <Save className="h-4 w-4" /> {savingPortal ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
