@@ -442,8 +442,8 @@ export default function BillingList() {
                   <TableRow><TableCell colSpan={isPrepaidPop ? 20 : 19} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
                 ) : paginated.map((c: any, i: number) => {
                   const b = c.currentBill;
-                  const paidAmt = Number(b?.paid || 0);
-                  const dueAmt = Number(b?.due || 0);
+                  const paidAmt = Number(c.totalPaid || 0);
+                  const dueAmt = Number(c.totalDue || 0);
                   const derived = getBillStatus(b);
                   const isPaid = derived === "paid";
                   const isPartial = derived === "partial";
