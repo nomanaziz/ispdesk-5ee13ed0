@@ -167,10 +167,14 @@ export default function BillingList() {
       if (f.paymentStatus !== "all") {
         const b = c.currentBill;
         const derived = getBillStatus(b);
-        const now = new Date();
-        const expDate = c.expire_date ? new Date(c.expire_date) : null;
-        if (f.paymentStatus === "overdue") {
-          if (!expDate || expDate >= now || derived === "paid") return false;
+        if (f.paymentStatus === "overdue" || f.paymentStatus === "overdue_1") {
+          if (!c.isOverdue) return false;
+        } else if (f.paymentStatus === "overdue_2") {
+          if ((c.overdueMonths || 0) < 2) return false;
+        } else if (f.paymentStatus === "overdue_3") {
+          if ((c.overdueMonths || 0) < 3) return false;
+        } else if (f.paymentStatus === "overdue_3plus") {
+          if ((c.overdueMonths || 0) <= 3) return false;
         } else if (f.paymentStatus !== derived) return false;
       }
       if (f.billingStatus !== "all" && c.billing_status !== f.billingStatus) return false;
