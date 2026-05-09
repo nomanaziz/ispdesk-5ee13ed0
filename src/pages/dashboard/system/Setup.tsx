@@ -164,7 +164,13 @@ export default function Setup() {
                 </div>
                 <Switch checked={enfForm.enabled} onCheckedChange={(v) => setEnf("enabled", v)} />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                <div>
+                  <div className="font-medium text-sm">বিল না থাকা ক্লায়েন্টদেরও বন্ধ করব</div>
+                  <div className="text-xs text-muted-foreground">যাদের চলতি মাসের বিল generate হয়নি (free / complimentary line সহ) তাদেরও disable হবে। সাধারণত বন্ধ রাখুন।</div>
+                </div>
+                <Switch checked={!!enfForm.disable_when_no_bill} onCheckedChange={(v) => setEnf("disable_when_no_bill", v)} />
+              </div>
                 <div>
                   <Label className="text-xs mb-1 block">কাটঅফ সময়</Label>
                   <div className="relative">
