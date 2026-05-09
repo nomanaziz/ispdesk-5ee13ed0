@@ -11070,6 +11070,7 @@ export type Database = {
           status: string
         }[]
       }
+      public_payment_gateways: { Args: never; Returns: Json }
       revert_mikrotik_client: { Args: { _mt_id: string }; Returns: Json }
       seed_default_pop_hierarchy_for_branch: {
         Args: { _branch_id: string }

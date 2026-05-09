@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useSystemSetting } from "@/hooks/useSystemSetting";
 import { Building2, Smartphone, ArrowLeft, CheckCircle2, Copy, CreditCard } from "lucide-react";
 
 type Category = "mobile_personal" | "mobile_merchant" | "bank" | "gateway";
@@ -32,7 +32,14 @@ interface Props {
 
 export default function QuickPayDialog({ open, onOpenChange, client, defaultAmount }: Props) {
   const { toast } = useToast();
-  const { value: gateways } = useSystemSetting<Gateway[]>("payment_gateways", []);
+  const { data: gateways } = useQuery({
+    queryKey: ["public-payment-gateways"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("public_payment_gateways");
+      if (error) throw error;
+      return ((data as unknown) as Gateway[]) || [];
+    },
+  });
   const [step, setStep] = useState<"choose" | "form" | "done">("choose");
   const [selected, setSelected] = useState<Gateway | null>(null);
   const [amount, setAmount] = useState(String(defaultAmount || 0));
