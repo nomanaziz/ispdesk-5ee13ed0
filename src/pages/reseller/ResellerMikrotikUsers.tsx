@@ -82,7 +82,7 @@ export default function ResellerMikrotikUsers() {
       qc.invalidateQueries({ queryKey: ["pop_mt_users"] });
       toast.success(next === "disabled" ? "ইউজার ডিজেবল হয়েছে" : "ইউজার এনাবল হয়েছে");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => { if (!handleBalanceError(e)) toast.error(e.message); },
   });
 
   const openCreate = (u: any) => {
