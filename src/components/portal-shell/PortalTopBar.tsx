@@ -25,9 +25,11 @@ import {
   DropdownMenuSubContent, DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 
+type PortalNotesOwner = "admin" | "pop" | "client";
+
 interface PortalTopBarProps {
   /** Notes owner (matches NotesButton ownerType) */
-  notesOwner?: "reseller" | "bw_customer" | "admin";
+  notesOwner?: PortalNotesOwner;
   /** Path to navigate to for "Profile / Settings" link */
   profilePath?: string;
   /** Optional extra slot rendered before the user dropdown */
