@@ -28,6 +28,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
 import ispDeskLogo from "@/assets/isp-desk-logo.png";
 import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
 interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
@@ -856,6 +857,20 @@ export function AppSidebar() {
   const [search, setSearch] = useState("");
   const [reorderOpen, setReorderOpen] = useState(false);
   const [savedOrder, setSavedOrder] = useState<string[]>(() => loadSavedOrder());
+  const { data: company } = useQuery({
+    queryKey: ["sidebar-company-info"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("system_settings")
+        .select("setting_value")
+        .eq("setting_key", "company_info")
+        .maybeSingle();
+      return (data?.setting_value as any) || null;
+    },
+    staleTime: 60_000,
+  });
+  const companyLogo = company?.logo_url as string | undefined;
+  const companyName = company?.name as string | undefined;
   const location = useLocation();
 
   // Determine which group contains the active route
