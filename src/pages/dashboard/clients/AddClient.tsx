@@ -874,14 +874,15 @@ export default function AddClient() {
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div data-field="connection_type">
             <Label>কানেকশন টাইপ *</Label>
             <Select value={form.connection_type} onValueChange={v => setField("connection_type", v)}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+              <SelectTrigger className={errClass("connection_type")}><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
-                {connectionTypes?.map(ct => <SelectItem key={ct.id} value={ct.name}>{ct.name}</SelectItem>)}
+                {connectionTypes?.map((ct: any) => <SelectItem key={ct.id} value={ct.name}>{ct.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.connection_type && <p className="text-xs text-destructive mt-1">{errors.connection_type}</p>}
           </div>
           <div>
             <Label>ক্যাবল প্রয়োজন (মিটার)</Label>
