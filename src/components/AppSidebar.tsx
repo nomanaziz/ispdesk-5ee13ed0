@@ -927,9 +927,7 @@ export function AppSidebar() {
           collapsed && "justify-center px-2",
           isLight ? "border-b border-sidebar-border" : "border-b border-white/10"
         )}>
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <Activity className="h-4 w-4 text-primary-foreground" />
-          </div>
+          <img src={ispDeskLogo} alt="ISP Desk" className={cn("object-contain shrink-0", collapsed ? "h-8 w-8" : "h-9 w-9")} />
           {!collapsed && (
             <div>
               <h1 className="text-base font-bold leading-tight">ISP Desk</h1>

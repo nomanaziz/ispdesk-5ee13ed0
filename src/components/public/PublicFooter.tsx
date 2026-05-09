@@ -69,14 +69,8 @@ export function PublicFooter() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           <div>
-            <div className="flex items-center gap-2.5 mb-5">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center">
-                <Wifi className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <span className="text-lg font-bold text-white block">{brandName}</span>
-                <span className="text-[10px] text-slate-500 block">{brandTagline}</span>
-              </div>
+            <div className="flex items-center gap-2.5 mb-5 bg-white rounded-lg px-3 py-2 inline-flex">
+              <img src={ispDeskLogo} alt={brandName} className="h-10 w-auto object-contain" />
             </div>
             <p className="text-sm text-slate-400 leading-relaxed mb-5">{brandDesc}</p>
             <div className="flex items-center gap-3">
