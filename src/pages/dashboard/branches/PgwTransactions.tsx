@@ -183,7 +183,6 @@ export default function PgwTransactions() {
                       <TableRow>
                         <TableHead>Code</TableHead>
                         <TableHead>POP Name</TableHead>
-                        <TableHead>Type</TableHead>
                         <TableHead>Mobile</TableHead>
                         <TableHead className="text-right">Total Received</TableHead>
                         <TableHead className="text-right">Settled</TableHead>
@@ -201,11 +200,6 @@ export default function PgwTransactions() {
                             <TableCell className="font-medium">
                               {r.name}
                               {r.company_name && <div className="text-xs text-muted-foreground">{r.company_name}</div>}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={r.pop_type === "postpaid" ? "secondary" : "outline"}>
-                                {r.pop_type === "postpaid" ? "Postpaid" : "Prepaid"}
-                              </Badge>
                             </TableCell>
                             <TableCell>{r.phone || r.contact || "-"}</TableCell>
                             <TableCell className="text-right font-mono">{fmt(r.received)}</TableCell>
