@@ -823,30 +823,38 @@ export default function AddClient() {
                 {mikrotiks?.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.mikrotik_id && <p className="text-xs text-destructive mt-1">{errors.mikrotik_id}</p>}
             {isPopMode && (
               <p className="text-xs text-muted-foreground mt-1">POP প্রোফাইল থেকে স্বয়ংক্রিয়</p>
             )}
           </div>
-          <div>
+          <div data-field="protocol_type">
             <Label>প্রোটোকল টাইপ *</Label>
             <Select value={form.protocol_type} onValueChange={v => setField("protocol_type", v)} disabled={isPopMode}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+              <SelectTrigger className={errClass("protocol_type")}><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
                 {(protocolTypes as any[])?.map((p: any) => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.protocol_type && <p className="text-xs text-destructive mt-1">{errors.protocol_type}</p>}
             {isPopMode && (
               <p className="text-xs text-muted-foreground mt-1">POP-এর জন্য PPPoE লক করা</p>
             )}
           </div>
-          <div>
+          <div data-field="zone_id">
             <Label>জোন *</Label>
             <Select value={form.zone_id} onValueChange={v => { setField("zone_id", v); setField("sub_zone_id", ""); setField("box_id", ""); }}>
-              <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+              <SelectTrigger className={errClass("zone_id")}><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
               <SelectContent>
-                {zones?.map(z => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
+                {zones?.map((z: any) => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.zone_id && <p className="text-xs text-destructive mt-1">{errors.zone_id}</p>}
+            {!isPopMode && selectedZone && (selectedZone.districts?.name || selectedZone.upazilas?.name) && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {[selectedZone.divisions?.name, selectedZone.districts?.name, selectedZone.upazilas?.name].filter(Boolean).join(" · ")}
+              </p>
+            )}
           </div>
           <div>
             <Label>সাব জোন</Label>
