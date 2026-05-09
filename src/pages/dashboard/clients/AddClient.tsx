@@ -617,12 +617,43 @@ export default function AddClient() {
         <SectionHeader icon="👤" title="ব্যক্তিগত তথ্য" />
         <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-1 md:row-span-3 flex flex-col items-center gap-2">
-            <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center text-4xl text-muted-foreground">👤</div>
-            <span className="text-xs text-muted-foreground">প্রোফাইল ছবি</span>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => onPickPhoto(e.target.files?.[0])}
+            />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              className="relative w-32 h-32 rounded-full bg-muted overflow-hidden flex items-center justify-center text-muted-foreground hover:ring-2 hover:ring-primary transition group"
+              title="প্রোফাইল ছবি যোগ করতে ক্লিক করুন"
+            >
+              {photoPreview ? (
+                <img src={photoPreview} alt="profile" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-4xl">👤</span>
+              )}
+              <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                <Camera className="h-6 w-6 text-white" />
+              </span>
+            </button>
+            <span className="text-xs text-muted-foreground">প্রোফাইল ছবি (ক্লিক করুন)</span>
+            {photoPreview && (
+              <button
+                type="button"
+                onClick={() => { setPhotoFile(null); setPhotoPreview(""); if (photoInputRef.current) photoInputRef.current.value = ""; }}
+                className="text-xs text-destructive hover:underline"
+              >
+                সরান
+              </button>
+            )}
           </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-2" data-field="name">
             <Label>কাস্টমার নাম *</Label>
-            <Input value={form.name} onChange={e => setField("name", e.target.value)} />
+            <Input value={form.name} onChange={e => setField("name", e.target.value)} className={errClass("name")} />
+            {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
           </div>
           <div>
             <Label>মন্তব্য/বিশেষ নোট</Label>
