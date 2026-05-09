@@ -112,21 +112,30 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
     onError: (e: any) => toast.error(e.message),
   });
 
-  const handleSyncOnline = async () => {
-    setSyncing(true);
+  const handleSyncOnline = async (silent = false) => {
+    if (!silent) setSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke("fetch-mikrotik-ppp", {
         body: { action: "sync-online" },
       });
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["clients-list"] });
-      toast.success(`সিঙ্ক সম্পন্ন — Online: ${data?.online || 0}, Offline: ${data?.offline || 0}`);
+      if (!silent) toast.success(`সিঙ্ক সম্পন্ন — Online: ${data?.online || 0}, Offline: ${data?.offline || 0}`);
     } catch (e: any) {
-      toast.error(`সিঙ্ক ব্যর্থ: ${e.message}`);
+      if (!silent) toast.error(`সিঙ্ক ব্যর্থ: ${e.message}`);
     } finally {
-      setSyncing(false);
+      if (!silent) setSyncing(false);
     }
   };
+
+  // Auto-sync MikroTik status on mount + every 60s while page is open
+  useEffect(() => {
+    if (isPopMode) return;
+    handleSyncOnline(true);
+    const t = setInterval(() => handleSyncOnline(true), 60_000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPopMode]);
 
   const handleToggleMikrotik = async (client: any) => {
     if (!client.mikrotik_id || !client.username) {
