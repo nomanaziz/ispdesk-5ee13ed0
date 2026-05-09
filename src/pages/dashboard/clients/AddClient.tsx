@@ -1045,17 +1045,19 @@ export default function AddClient() {
             </>
           ) : (
             <>
-              <div>
+              <div data-field="username">
                 <Label>ইউজারনেম *</Label>
-                <Input value={form.username} onChange={e => setField("username", e.target.value)} />
+                <Input value={form.username} onChange={e => setField("username", e.target.value)} className={errClass("username")} />
+                {errors.username && <p className="text-xs text-destructive mt-1">{errors.username}</p>}
               </div>
               <div>
                 <Label>রিমোট অ্যাড্রেস</Label>
                 <Input value={form.remote_address} onChange={e => setField("remote_address", e.target.value)} />
               </div>
-              <div>
+              <div data-field="password">
                 <Label>পাসওয়ার্ড *</Label>
-                <Input value={form.password} onChange={e => setField("password", e.target.value)} />
+                <Input value={form.password} onChange={e => setField("password", e.target.value)} className={errClass("password")} />
+                {errors.password && <p className="text-xs text-destructive mt-1">{errors.password}</p>}
               </div>
             </>
           )}
