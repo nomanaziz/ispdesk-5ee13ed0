@@ -23,6 +23,7 @@ interface CBSettings {
   status_time_disabled: string;
   pop_recharge_pg_approval: boolean;
   expiry_update_on_payment: "payment_date" | "billing_date" | "next_cycle";
+  mikrotik_sync_comments: boolean;
 }
 
 const defaults: CBSettings = {
@@ -41,6 +42,7 @@ const defaults: CBSettings = {
   status_time_disabled: "00:00",
   pop_recharge_pg_approval: true,
   expiry_update_on_payment: "billing_date",
+  mikrotik_sync_comments: false,
 };
 
 function Section({ title, info, children }: { title: string; info: string; children: React.ReactNode }) {
@@ -184,6 +186,15 @@ export default function ClientBillingSettings() {
             <SelectItem value="next_cycle">পরবর্তী সাইকেলের শুরু থেকে</SelectItem>
           </SelectContent>
         </Select>
+      </Section>
+
+      <Section title="11. MikroTik PPP Secret Comment Sync" info="ক্লায়েন্ট remarks রাউটারের comment field-এ sync করুন">
+        <div className="flex items-center gap-3">
+          <Switch checked={form.mikrotik_sync_comments} onCheckedChange={(v) => set("mikrotik_sync_comments", v)} />
+          <Label className="text-sm font-normal">
+            চালু থাকলে comment save করার সময় MikroTik secret-এর comment field-ও আপডেট হবে। Empty save করলে router-এ-ও clear হবে।
+          </Label>
+        </div>
       </Section>
 
       <div className="flex justify-end sticky bottom-2">

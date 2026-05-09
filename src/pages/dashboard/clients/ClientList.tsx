@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, CalendarClock, Crown, Wifi, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, CalendarClock, Crown, Wifi, ChevronLeft, ChevronRight, Plus, Info } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -32,6 +32,8 @@ import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows 
 import { PageHeader } from "@/components/common/PageHeader";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
+import ExpireCell from "@/components/billing/ExpireCell";
+import ClientCommentDialog from "@/components/clients/ClientCommentDialog";
 
 interface ClientListProps {
   /** When set, locks the client_type filter to this value and hides the dropdown.
@@ -80,6 +82,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
   const [dateExtendOpen, setDateExtendOpen] = useState(false);
   const [districtOpen, setDistrictOpen] = useState(false);
   const [thanaOpen, setThanaOpen] = useState(false);
+  const [commentClient, setCommentClient] = useState<any | null>(null);
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ["clients-list", branchId || "all", isPopMode ? "pop" : "admin"],
@@ -108,6 +111,21 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients-list"] });
       toast.success("Exp date আপডেট হয়েছে");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const updateTempExpireMutation = useMutation({
+    mutationFn: async ({ id, date, note }: { id: string; date: string | null; note: string | null }) => {
+      const { error } = await supabase
+        .from("clients")
+        .update({ temp_expire_date: date, temp_expire_note: note } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+      toast.success("সংরক্ষিত হয়েছে");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -397,7 +415,23 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                 return (
                   <TableRow key={c.id} data-state={selectedIds.has(c.id) ? "selected" : undefined}>
                     <TableCell><Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} /></TableCell>
-                    <TableCell className="text-xs font-medium">{c.client_id}</TableCell>
+                    <TableCell className="text-xs font-medium">
+                      <div className="flex items-center gap-1">
+                        <span>{c.client_id}</span>
+                        <button
+                          onClick={() => setCommentClient(c)}
+                          className={cn(
+                            "inline-flex items-center justify-center h-4 w-4 rounded-full border transition-colors",
+                            c.remarks
+                              ? "bg-blue-500/15 text-blue-600 border-blue-500/40 hover:bg-blue-500/25"
+                              : "text-muted-foreground border-muted-foreground/30 hover:text-foreground hover:border-foreground/50"
+                          )}
+                          title={c.remarks ? `Note: ${c.remarks}` : "Add comment / note"}
+                        >
+                          <Info className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-xs">
                       <div className="flex items-center gap-1.5">
                         <div className={cn("h-2 w-2 rounded-full shrink-0", c.is_online ? "bg-green-500" : "bg-gray-400")} />
@@ -430,30 +464,11 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                           <Crown className="h-2.5 w-2.5 mr-0.5" /> VIP
                         </Badge>
                       ) : (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button>
-                              <Badge variant="outline" className={`text-[10px] cursor-pointer hover:opacity-80 ${expireBadge.color}`}>
-                                <CalendarClock className="h-2.5 w-2.5 mr-0.5" />
-                                {expireBadge.label}
-                              </Badge>
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-48 p-2" align="start">
-                            <div className="text-xs font-medium mb-2 text-muted-foreground">মাসের কোন দিন</div>
-                            <Select
-                              value={c.expire_date ? String(parseISO(c.expire_date).getDate()) : ""}
-                              onValueChange={(v) => updateExpireMutation.mutate({ id: c.id, date: buildExpireDateFromDay(Number(v)) })}
-                            >
-                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="দিন (1-31)" /></SelectTrigger>
-                              <SelectContent className="max-h-72">
-                                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                                  <SelectItem key={d} value={String(d)} className="text-xs">প্রতি মাসের {d} তারিখ</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </PopoverContent>
-                        </Popover>
+                        <ExpireCell
+                          client={c}
+                          onSaveRecurring={(day) => updateExpireMutation.mutate({ id: c.id, date: buildExpireDateFromDay(day) })}
+                          onSaveTemp={(date, note) => updateTempExpireMutation.mutate({ id: c.id, date, note })}
+                        />
                       )}
                     </TableCell>
                     <TableCell className="text-xs">{c.connection_type || "-"}</TableCell>
@@ -515,6 +530,12 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
       <BulkDateExtendDialog open={dateExtendOpen} onOpenChange={setDateExtendOpen} selectedClients={selectedClients} invalidateKey="clients-list" />
       <BulkDistrictChangeDialog open={districtOpen} onOpenChange={setDistrictOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
       <BulkThanaChangeDialog open={thanaOpen} onOpenChange={setThanaOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
+      <ClientCommentDialog
+        open={!!commentClient}
+        onOpenChange={(o) => { if (!o) setCommentClient(null); }}
+        client={commentClient}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ["clients-list"] })}
+      />
     </div>
   );
 }

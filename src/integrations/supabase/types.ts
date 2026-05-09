@@ -3237,6 +3237,8 @@ export type Database = {
           static_ip: string | null
           status: string
           sub_zone_id: string | null
+          temp_expire_date: string | null
+          temp_expire_note: string | null
           total_download: number
           total_upload: number
           trade_license_no: string | null
@@ -3331,6 +3333,8 @@ export type Database = {
           static_ip?: string | null
           status?: string
           sub_zone_id?: string | null
+          temp_expire_date?: string | null
+          temp_expire_note?: string | null
           total_download?: number
           total_upload?: number
           trade_license_no?: string | null
@@ -3425,6 +3429,8 @@ export type Database = {
           static_ip?: string | null
           status?: string
           sub_zone_id?: string | null
+          temp_expire_date?: string | null
+          temp_expire_note?: string | null
           total_download?: number
           total_upload?: number
           trade_license_no?: string | null

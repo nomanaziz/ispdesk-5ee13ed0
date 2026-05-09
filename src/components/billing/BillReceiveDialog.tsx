@@ -200,7 +200,7 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
             const day = Math.min(bd, lastDay);
             newExpire = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
           }
-          await supabase.from("clients").update({ expire_date: newExpire }).eq("id", client.id);
+          await supabase.from("clients").update({ expire_date: newExpire, temp_expire_date: null, temp_expire_note: null } as any).eq("id", client.id);
         }
 
         if (newDue <= 0 && client.mikrotik_id && client.username) {
