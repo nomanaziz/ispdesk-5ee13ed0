@@ -101,7 +101,7 @@ export default function Tickets() {
   const { data: allAssignees = [] } = useQuery({
     queryKey: ["ticket_assignees"],
     queryFn: async () => {
-      const { data } = await supabase.from("support_ticket_assignees").select("*, employees(id, name, user_id)");
+      const { data } = await supabase.from("support_ticket_assignees").select("*, employees(id, name, sub_user_id)");
       return data || [];
     },
   });
@@ -139,7 +139,7 @@ export default function Tickets() {
     queryFn: async () => {
       const { data } = await supabase
         .from("employees")
-        .select("id, name, department_id, user_id, departments(name)")
+        .select("id, name, department_id, sub_user_id, departments(name)")
         .eq("status", "active");
       return data || [];
     },
@@ -159,7 +159,7 @@ export default function Tickets() {
     queryKey: ["current_employee", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const { data } = await supabase.from("employees").select("id, user_id").eq("user_id", user.id).maybeSingle();
+      const { data } = await supabase.from("employees").select("id, sub_user_id").eq("sub_user_id", user.id).maybeSingle();
       return data;
     },
     enabled: !!user?.id,
@@ -352,7 +352,7 @@ export default function Tickets() {
     if (tab === "pending" && t.status !== "pending") return false;
     if (tab === "accepted" && (t.source === "bw_reseller" || t.source === "reseller")) return false;
     if (myOnly && user?.id) {
-      const mine = t.created_by === user.id || allAssignees.some((a: any) => a.ticket_id === t.id && (a.employees as any)?.user_id === user.id);
+      const mine = t.created_by === user.id || allAssignees.some((a: any) => a.ticket_id === t.id && (a.employees as any)?.sub_user_id === user.id);
       if (!mine) return false;
     }
     return (
