@@ -41,6 +41,14 @@ export default function Tasks() {
   const [filterPriority, setFilterPriority] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setDialogOpen(true);
+      searchParams.delete("new");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [commentDialogId, setCommentDialogId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
