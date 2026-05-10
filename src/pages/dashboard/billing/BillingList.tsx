@@ -245,6 +245,22 @@ export default function BillingList() {
     queryClient.invalidateQueries({ queryKey: ["billing-list"] });
   };
 
+  const handleBulkAutoRecharge = async (enabled: boolean) => {
+    if (selectedIds.size === 0) { toast.error("কোনো ক্লায়েন্ট সিলেক্ট করা হয়নি"); return; }
+    try {
+      if (isPopMode) {
+        await callPortal("set_client_auto_recharge", { client_ids: [...selectedIds], enabled });
+      } else {
+        await supabase.from("clients").update({ auto_recharge_enabled: enabled }).in("id", [...selectedIds]);
+      }
+      toast.success(`${selectedIds.size} জন ক্লায়েন্টের Auto Recharge ${enabled ? "ON" : "OFF"} হয়েছে`);
+      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+      queryClient.invalidateQueries({ queryKey: ["pop-billing-clients"] });
+    } catch (e: any) {
+      toast.error(e.message || "Auto Recharge পরিবর্তন ব্যর্থ");
+    }
+  };
+
   const requireSelection = () => {
     if (selectedClients.length === 0) {
       toast.error("কোনো ক্লায়েন্ট সিলেক্ট করা হয়নি");
@@ -396,6 +412,9 @@ export default function BillingList() {
         onBulkProfileChange={() => setProfileChangeOpen(true)}
         onRegenerateInvoice={() => regenerateMut.mutate()}
         showMigrate={!isPopMode}
+        showAutoRecharge={isPopMode}
+        onBulkAutoRechargeOn={() => handleBulkAutoRecharge(true)}
+        onBulkAutoRechargeOff={() => handleBulkAutoRecharge(false)}
       />
 
       <BulkSmsDialog open={smsOpen} onOpenChange={setSmsOpen} selectedClients={selectedClients} />

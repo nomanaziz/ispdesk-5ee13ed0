@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import {
   FileSpreadsheet, FileText, RefreshCw, Download, Ban, CheckCircle,
   MapPin, Building, ArrowRightLeft, Star, StarOff, Settings,
-  MessageSquare, Mail, CalendarPlus, Zap, FilePlus
+  MessageSquare, Mail, CalendarPlus, Zap, FilePlus, Repeat, RepeatIcon
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -26,7 +26,10 @@ interface Props {
   onBulkRemoveVip: () => void;
   onBulkProfileChange: () => void;
   onRegenerateInvoice?: () => void;
+  onBulkAutoRechargeOn?: () => void;
+  onBulkAutoRechargeOff?: () => void;
   showMigrate?: boolean;
+  showAutoRecharge?: boolean;
 }
 
 export default function BulkActionButtons({
@@ -49,7 +52,10 @@ export default function BulkActionButtons({
   onBulkRemoveVip,
   onBulkProfileChange,
   onRegenerateInvoice,
+  onBulkAutoRechargeOn,
+  onBulkAutoRechargeOff,
   showMigrate = true,
+  showAutoRecharge = false,
 }: Props) {
   const requireSelection = (fn: () => void) => {
     if (selectedCount === 0) {
@@ -87,6 +93,12 @@ export default function BulkActionButtons({
         <ActionBtn icon={Settings} label="প্রোফাইল পরিবর্তন" onClick={() => requireSelection(onBulkProfileChange)} />
         {onRegenerateInvoice && (
           <ActionBtn icon={FilePlus} label="ইনভয়েস পুনরায় তৈরি" onClick={() => requireSelection(onRegenerateInvoice)} color="bg-violet-600 hover:bg-violet-700 text-white" />
+        )}
+        {showAutoRecharge && onBulkAutoRechargeOn && (
+          <ActionBtn icon={Repeat} label="Auto Recharge ON" onClick={() => requireSelection(onBulkAutoRechargeOn)} color="bg-emerald-600 hover:bg-emerald-700 text-white" />
+        )}
+        {showAutoRecharge && onBulkAutoRechargeOff && (
+          <ActionBtn icon={RepeatIcon} label="Auto Recharge OFF" onClick={() => requireSelection(onBulkAutoRechargeOff)} color="bg-slate-600 hover:bg-slate-700 text-white" />
         )}
       </div>
       {selectedCount > 0 && (

@@ -838,7 +838,7 @@ Deno.serve(async (req) => {
           tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
         const { data: pop } = await sb
           .from("branch_managers")
-          .select("branch_id, district_id, upazila_id")
+          .select("id, branch_id, district_id, upazila_id, balance, tariff_id")
           .eq("id", resellerId)
           .maybeSingle();
         if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
@@ -847,7 +847,40 @@ Deno.serve(async (req) => {
         const { mobile: legacyMobile, ...safePayload } = p;
         if (!p.name || !p.client_id) return json({ error: "নাম ও ক্লায়েন্ট কোড আবশ্যক" }, 400);
 
-        // Force scope to this POP's branch
+        // Resolve package buying price + validity (prepaid wallet check)
+        let buyPrice = 0;
+        let validityDays = 30;
+        if (p.package_id && pop.tariff_id) {
+          const { data: tpkg } = await sb
+            .from("reseller_tariff_packages")
+            .select("selling_rate, validity_days")
+            .eq("tariff_id", pop.tariff_id)
+            .eq("package_id", p.package_id)
+            .maybeSingle();
+          if (tpkg) {
+            buyPrice = Number(tpkg.selling_rate || 0);
+            validityDays = Number(tpkg.validity_days || 30) || 30;
+          }
+        }
+        if (!buyPrice && Number(p.monthly_bill) > 0) {
+          buyPrice = Number(p.monthly_bill);
+        }
+
+        const isActiveBilling = String(p.billing_status || "Active").toLowerCase() === "active";
+        const walletBalance = Number(pop.balance || 0);
+        if (isActiveBilling && buyPrice > 0 && walletBalance < buyPrice) {
+          return json({
+            error: `INSUFFICIENT_BALANCE: প্যাকেজ ৳${buyPrice} — wallet balance ৳${walletBalance.toFixed(2)}। আগে recharge করুন।`,
+          }, 400);
+        }
+
+        // Force scope to this POP's branch + set prepaid expire_date
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const exp = new Date(today);
+        exp.setDate(exp.getDate() + validityDays);
+        const expIso = exp.toISOString().slice(0, 10);
+
         const insertRow: any = {
           ...safePayload,
           contact: p.contact ?? legacyMobile ?? null,
@@ -855,6 +888,7 @@ Deno.serve(async (req) => {
           district_id: pop.district_id || null,
           upazila_id: pop.upazila_id || null,
           owner_scope: "pop",
+          expire_date: isActiveBilling ? expIso : (p.expire_date ?? null),
         };
 
         const { data: inserted, error } = await sb
@@ -864,8 +898,21 @@ Deno.serve(async (req) => {
           .single();
         if (error) return json({ error: error.message }, 500);
 
-        // Auto-generate first billing row (prorated)
-        if (inserted?.id && p.billing_status === "Active" && Number(p.monthly_bill) > 0) {
+        // Deduct wallet for the activation cycle (idempotent ledger via pop_daily_charges)
+        if (isActiveBilling && inserted?.id && buyPrice > 0) {
+          const { error: rpcErr } = await sb.rpc("pop_recharge_client_days", {
+            p_client_id: inserted.id,
+            p_days: validityDays,
+          });
+          if (rpcErr) {
+            // Roll back client insert if wallet deduction fails (race condition)
+            await sb.from("clients").delete().eq("id", inserted.id);
+            return json({ error: rpcErr.message }, 400);
+          }
+        }
+
+        // Auto-generate first billing row (prorated) — admin-side bookkeeping only
+        if (inserted?.id && isActiveBilling && Number(p.monthly_bill) > 0) {
           const joinStr = p.joining_date || new Date().toISOString().slice(0, 10);
           const join = new Date(joinStr + "T00:00:00");
           const y = join.getFullYear();

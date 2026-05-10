@@ -33,6 +33,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
 import ExpireCell from "@/components/billing/ExpireCell";
+import RemainingDaysCell from "@/components/billing/RemainingDaysCell";
 import ClientCommentDialog from "@/components/clients/ClientCommentDialog";
 
 interface ClientListProps {
@@ -264,6 +265,21 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
     queryClient.invalidateQueries({ queryKey: ["clients-list"] });
   };
 
+  const handleBulkAutoRecharge = async (enabled: boolean) => {
+    if (selectedIds.size === 0) { toast.error("কোনো ক্লায়েন্ট সিলেক্ট করা হয়নি"); return; }
+    try {
+      if (isPopMode) {
+        await callPortal("set_client_auto_recharge", { client_ids: [...selectedIds], enabled });
+      } else {
+        await supabase.from("clients").update({ auto_recharge_enabled: enabled }).in("id", [...selectedIds]);
+      }
+      toast.success(`${selectedIds.size} জন ক্লায়েন্টের Auto Recharge ${enabled ? "ON" : "OFF"} হয়েছে`);
+      queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+    } catch (e: any) {
+      toast.error(e.message || "Auto Recharge পরিবর্তন ব্যর্থ");
+    }
+  };
+
   const requireSel = () => { if (selectedClients.length === 0) { toast.error("কোনো ক্লায়েন্ট সিলেক্ট করা হয়নি"); return false; } return true; };
   const handleExcel = () => { if (!requireSel()) return; exportClientsExcel(clientsToRows(selectedClients), "clients"); toast.success("Excel ডাউনলোড হয়েছে"); };
   const handlePdf = () => { if (!requireSel()) return; exportClientsPdf(clientsToRows(selectedClients), "clients", "Client List"); toast.success("PDF ডাউনলোড হয়েছে"); };
@@ -364,6 +380,9 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
         onBulkRemoveVip={() => handleBulkVip(false)}
         onBulkProfileChange={() => setProfileChangeOpen(true)}
         showMigrate={!isPopMode}
+        showAutoRecharge={isPopMode}
+        onBulkAutoRechargeOn={() => handleBulkAutoRecharge(true)}
+        onBulkAutoRechargeOff={() => handleBulkAutoRecharge(false)}
       />
 
       {/* Entries + Total */}
@@ -394,6 +413,8 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
               <TableHead className="text-xs">প্যাকেজ/স্পিড</TableHead>
               <TableHead className="text-xs">মাসিক বিল</TableHead>
               <TableHead className="text-xs">Exp Date</TableHead>
+              {isPopMode && <TableHead className="text-xs text-center">R.Days</TableHead>}
+              {isPopMode && <TableHead className="text-xs text-center">Auto R.</TableHead>}
               <TableHead className="text-xs">কানেকশন টাইপ</TableHead>
               <TableHead className="text-xs">কাস্টমার টাইপ</TableHead>
               <TableHead className="text-xs">রিমোট অ্যাড্রেস</TableHead>
@@ -472,6 +493,25 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                       )}
                     </TableCell>
                     <TableCell className="text-xs">{c.connection_type || "-"}</TableCell>
+                    {isPopMode && (
+                      <TableCell className="text-center">
+                        <RemainingDaysCell client={c} invalidateKey="clients-list" />
+                      </TableCell>
+                    )}
+                    {isPopMode && (
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={!!c.auto_recharge_enabled}
+                          onCheckedChange={async (v) => {
+                            try {
+                              await callPortal("set_client_auto_recharge", { client_ids: [c.id], enabled: !!v });
+                              queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+                            } catch (e: any) { toast.error(e.message); }
+                          }}
+                          className="scale-75"
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="text-xs">{c.client_type || "-"}</TableCell>
                     <TableCell className="text-xs">{c.remote_address || "-"}</TableCell>
                     <TableCell className="text-xs font-mono text-[10px]">{c.mac_address || "-"}</TableCell>

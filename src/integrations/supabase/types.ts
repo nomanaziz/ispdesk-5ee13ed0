@@ -11567,6 +11567,7 @@ export type Database = {
         Args: { _invoice_id: string; _payment_method?: string }
         Returns: undefined
       }
+      pop_auto_renew_client: { Args: { p_client_id: string }; Returns: Json }
       pop_bulk_recharge_clients: {
         Args: { p_client_ids: string[]; p_days: number }
         Returns: Json
@@ -11574,6 +11575,13 @@ export type Database = {
       pop_recharge_client_days: {
         Args: { p_client_id: string; p_days: number }
         Returns: Json
+      }
+      pop_resolve_client_package_cost: {
+        Args: { p_client_id: string }
+        Returns: {
+          buy_price: number
+          validity_days: number
+        }[]
       }
       provision_new_tenant: {
         Args: {
