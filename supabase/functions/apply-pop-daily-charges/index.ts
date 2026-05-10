@@ -59,9 +59,9 @@ Deno.serve(async (req) => {
         const daily = Math.round((monthly / 30) * 100) / 100;
         if (daily <= 0) continue;
 
-        // Expired client সর্বদা disable (auto on/off নির্বিশেষে)। Recharge হলে expire_date push হয়, তখন আর expired থাকবে না।
+        // Expired client সর্বদা disable। remaining=0 (expire_date == today) হলে cron touch করবে না — POP manually on/off করতে পারবে।
         const expDate = (c as any).expire_date as string | null;
-        const expired = expDate ? expDate <= today : false;
+        const expired = expDate ? expDate < today : false;
         if (expired) {
           toDisable.push((c as any).id);
           continue;
@@ -82,11 +82,11 @@ Deno.serve(async (req) => {
         const subZone: any = (c as any).sub_zones;
 
         let serverName: string | null = null;
-        if (pkg?.mikrotik_server_id) {
+        if (pkg?.mikrotik_id) {
           const { data: srv } = await sb
             .from("mikrotik_devices")
             .select("name")
-            .eq("id", pkg.mikrotik_server_id)
+            .eq("id", pkg.mikrotik_id)
             .maybeSingle();
           serverName = srv?.name ?? null;
         }
@@ -100,8 +100,8 @@ Deno.serve(async (req) => {
           package_id: (c as any).package_id,
           package_name: pkg?.name ?? null,
           profile: pkg?.mikrotik_profile ?? null,
-          protocol_type: pkg?.protocol_type ?? null,
-          server_id: pkg?.mikrotik_server_id ?? null,
+          protocol_type: pkg?.protocol ?? null,
+          server_id: pkg?.mikrotik_id ?? null,
           server_name: serverName,
           zone_id: zone?.id ?? null,
           zone_name: zone?.name ?? null,
