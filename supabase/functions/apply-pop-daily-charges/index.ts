@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
       let runningBalance = Number(pop.balance) || 0;
       const inserts: any[] = [];
       const toDisable: string[] = [];
+      let autoRenewed = 0;
 
       for (const c of clients ?? []) {
         const monthly = Number((c as any).monthly_bill) || 0;
@@ -59,9 +60,26 @@ Deno.serve(async (req) => {
         const daily = Math.round((monthly / 30) * 100) / 100;
         if (daily <= 0) continue;
 
-        // Expired client সর্বদা disable। remaining=0 (expire_date == today) হলে cron touch করবে না — POP manually on/off করতে পারবে।
         const expDate = (c as any).expire_date as string | null;
         const expired = expDate ? expDate < today : false;
+        const autoOn = !!(c as any).auto_recharge_enabled;
+
+        // Auto recharge ON + expired → try to renew one full package cycle.
+        // Successful renewal pushes a new expire date and keeps the user enabled.
+        // Failure (insufficient balance / no rate) → disable.
+        if (expired && autoOn) {
+          const { data: rpcRes, error: rpcErr } = await sb.rpc("pop_auto_renew_client", { p_client_id: (c as any).id });
+          if (rpcErr) {
+            toDisable.push((c as any).id);
+          } else {
+            autoRenewed++;
+            const after = Number((rpcRes as any)?.wallet_balance_after);
+            if (!isNaN(after)) runningBalance = after;
+          }
+          continue;
+        }
+
+        // Expired without auto recharge → disable, no daily charge.
         if (expired) {
           toDisable.push((c as any).id);
           continue;
