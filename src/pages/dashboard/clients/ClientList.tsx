@@ -379,6 +379,9 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
         onBulkRemoveVip={() => handleBulkVip(false)}
         onBulkProfileChange={() => setProfileChangeOpen(true)}
         showMigrate={!isPopMode}
+        showAutoRecharge={isPopMode}
+        onBulkAutoRechargeOn={() => handleBulkAutoRecharge(true)}
+        onBulkAutoRechargeOff={() => handleBulkAutoRecharge(false)}
       />
 
       {/* Entries + Total */}
