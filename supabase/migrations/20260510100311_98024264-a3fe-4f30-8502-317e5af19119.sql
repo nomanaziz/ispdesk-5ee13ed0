@@ -1,0 +1,1 @@
+ALTER TABLE public.pop_fund_recharges ADD COLUMN IF NOT EXISTS return_origin TEXT;
