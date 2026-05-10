@@ -456,9 +456,9 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={18} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={17} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
             ) : paginated.length === 0 ? (
-              <TableRow><TableCell colSpan={18} className="text-center py-8">কোনো ক্লায়েন্ট পাওয়া যায়নি</TableCell></TableRow>
+              <TableRow><TableCell colSpan={17} className="text-center py-8">কোনো ক্লায়েন্ট পাওয়া যায়নি</TableCell></TableRow>
             ) : (
               paginated.map((c: any) => {
                 const expireBadge = getExpireBadge(c.expire_date, c.is_vip);
