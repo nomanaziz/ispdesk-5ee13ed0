@@ -285,6 +285,61 @@ export default function BulkImport() {
     });
 
   const invalidCount = useMemo(() => rows.filter((r) => !isRowValid(r)).length, [rows]);
+  const selectedCount = useMemo(() => rows.filter((r) => r._selected).length, [rows]);
+  const allSelected = rows.length > 0 && selectedCount === rows.length;
+
+  const toggleRow = (idx: number, checked: boolean) =>
+    setRows((prev) => prev.map((r) => (r._idx === idx ? { ...r, _selected: checked } : r)));
+  const toggleAll = (checked: boolean) =>
+    setRows((prev) => prev.map((r) => ({ ...r, _selected: checked })));
+
+  const BULK_FIELDS: { key: string; label: string; type: "select" | "text" | "month" | "date" | "number" }[] = [
+    { key: "Zone", label: "Zone", type: "select" },
+    { key: "Conn.Type", label: "Conn.Type", type: "select" },
+    { key: "Prot.Type", label: "Prot.Type", type: "select" },
+    { key: "Package", label: "Package", type: "select" },
+    { key: "C.Type", label: "C.Type", type: "select" },
+    { key: "B.Status", label: "B.Status", type: "select" },
+    { key: "Bill.Month", label: "Bill.Month (MM-YYYY)", type: "month" },
+    { key: "Join.Date", label: "Join.Date", type: "date" },
+    { key: "Exp.Date", label: "Exp.Date (Day 1-31)", type: "number" },
+  ];
+
+  const setBulkValue = (key: string, value: string) =>
+    setBulkValues((prev) => ({ ...prev, [key]: value }));
+
+  const clearBulk = () => setBulkValues({});
+
+  const applyBulk = () => {
+    if (selectedCount === 0) {
+      toast.error("আগে রো select করুন");
+      return;
+    }
+    const filled = Object.entries(bulkValues).filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "");
+    if (filled.length === 0) {
+      toast.error("কমপক্ষে একটি ফিল্ড পূরণ করুন");
+      return;
+    }
+    setRows((prev) =>
+      prev.map((r) => {
+        if (!r._selected) return r;
+        const updated: ImportRow = { ...r, _autoFilled: { ...(r._autoFilled || {}) } };
+        for (const [k, v] of filled) {
+          updated[k] = v;
+          updated._autoFilled![k] = false;
+          if (k === "Package") {
+            const pkg = packages.find((p) => p.name === v);
+            if (pkg) {
+              updated["M.Bill"] = pkg.price || 0;
+              updated._autoFilled!["M.Bill"] = false;
+            }
+          }
+        }
+        return updated;
+      })
+    );
+    toast.success(`${selectedCount} টি রো আপডেট হয়েছে`);
+  };
 
   const updateCell = (idx: number, key: string, value: string) => {
     setRows((prev) =>
