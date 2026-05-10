@@ -920,7 +920,7 @@ Deno.serve(async (req) => {
         }
 
         // Auto-generate first billing row (prorated) — admin-side bookkeeping only
-        if (inserted?.id && isActiveBilling && Number(p.monthly_bill) > 0) {
+        if (inserted?.id && isActiveBilling && buyPrice > 0) {
           const joinStr = p.joining_date || new Date().toISOString().slice(0, 10);
           const join = new Date(joinStr + "T00:00:00");
           const y = join.getFullYear();
@@ -928,7 +928,7 @@ Deno.serve(async (req) => {
           const totalDays = new Date(y, m, 0).getDate();
           const joinDay = join.getDate();
           const daysRemaining = totalDays - joinDay + 1;
-          const monthly = Number(p.monthly_bill || 0);
+          const monthly = buyPrice;
           const isProrated = joinDay > 1;
           const amount = isProrated
             ? Math.round((monthly / totalDays) * daysRemaining * 100) / 100
