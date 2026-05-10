@@ -214,6 +214,9 @@ export function PortalTopBar({
 
       <ThemeCustomizer open={themeOpen} onOpenChange={setThemeOpen} />
       <QuickSettings open={quickOpen} onOpenChange={setQuickOpen} />
+      {isReseller && (
+        <FundRechargeDialog open={fundOpen} onOpenChange={setFundOpen} popId={popId} popName={popName} />
+      )}
 
       <Dialog open={iosHelpOpen} onOpenChange={setIosHelpOpen}>
         <DialogContent className="max-w-md">
