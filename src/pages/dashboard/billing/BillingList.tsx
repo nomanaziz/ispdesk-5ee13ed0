@@ -544,7 +544,7 @@ export default function BillingList() {
                     <TableCell className="text-right">{pageTotals.paid.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{pageTotals.due.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{pageTotals.advance.toLocaleString()}</TableCell>
-                    <TableCell colSpan={4} />
+                    <TableCell colSpan={isPopMode ? 5 : 4} />
                   </TableRow>
                 </TableFooter>
               )}
@@ -588,6 +588,13 @@ export default function BillingList() {
         billing={payBilling}
         invalidateKey="billing-list"
       />
+      {isPopMode && (
+        <BulkClientRechargeDialog
+          open={bulkRechargeOpen}
+          onOpenChange={setBulkRechargeOpen}
+          clients={selectedClients.map((c: any) => ({ id: c.id, name: c.name, monthly_bill: Number(c.monthly_bill || 0) }))}
+        />
+      )}
     </div>
   );
 }
