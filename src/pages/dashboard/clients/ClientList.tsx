@@ -23,6 +23,7 @@ import ServerMigrationDialog from "@/components/billing/ServerMigrationDialog";
 import BulkStatusChangeDialog from "@/components/billing/BulkStatusChangeDialog";
 import BulkZoneChangeDialog from "@/components/billing/BulkZoneChangeDialog";
 import BulkProfileChangeDialog from "@/components/billing/BulkProfileChangeDialog";
+import BulkPackageChangeDialog from "@/components/billing/BulkPackageChangeDialog";
 import BulkSmsDialog from "@/components/billing/BulkSmsDialog";
 import BulkEmailDialog from "@/components/billing/BulkEmailDialog";
 import BulkDateExtendDialog from "@/components/billing/BulkDateExtendDialog";
