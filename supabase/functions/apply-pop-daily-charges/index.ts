@@ -50,12 +50,19 @@ Deno.serve(async (req) => {
 
       let runningBalance = Number(pop.balance) || 0;
       const inserts: any[] = [];
+      const toDisable: string[] = [];
 
       for (const c of clients ?? []) {
         const monthly = Number((c as any).monthly_bill) || 0;
         if (monthly <= 0) continue;
         const daily = Math.round((monthly / 30) * 100) / 100;
         if (daily <= 0) continue;
+
+        // Strict prepaid: stop and disable when wallet can't cover today's daily cost
+        if (runningBalance < daily) {
+          toDisable.push((c as any).id);
+          continue;
+        }
 
         const before = runningBalance;
         const after = before - daily;
@@ -65,7 +72,6 @@ Deno.serve(async (req) => {
         const zone: any = (c as any).zones;
         const subZone: any = (c as any).sub_zones;
 
-        // Look up server name (best-effort)
         let serverName: string | null = null;
         if (pkg?.mikrotik_server_id) {
           const { data: srv } = await sb
@@ -102,12 +108,16 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Suspend clients we couldn't charge today (insufficient wallet)
+      if (toDisable.length > 0) {
+        await sb.from("clients").update({ mikrotik_status: "disabled" }).in("id", toDisable);
+      }
+
       if (inserts.length === 0) {
-        popResults.push({ pop: pop.name, charged: 0, users: 0 });
+        popResults.push({ pop: pop.name, charged: 0, users: 0, suspended: toDisable.length });
         continue;
       }
 
-      // Idempotent insert (unique on pop_id+client_id+charge_date)
       const { data: inserted, error: insErr } = await sb
         .from("pop_daily_charges")
         .upsert(inserts, { onConflict: "pop_id,client_id,charge_date", ignoreDuplicates: true })
@@ -127,7 +137,7 @@ Deno.serve(async (req) => {
 
       totalCharged += popCharged;
       totalRows += inserted?.length ?? 0;
-      popResults.push({ pop: pop.name, charged: popCharged, users: inserted?.length ?? 0 });
+      popResults.push({ pop: pop.name, charged: popCharged, users: inserted?.length ?? 0, suspended: toDisable.length });
     }
 
     return new Response(
