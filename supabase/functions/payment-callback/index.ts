@@ -194,6 +194,19 @@ Deno.serve(async (req) => {
     approved_at: new Date().toISOString(),
   }).eq("id", pr.id);
 
+  // Client self-recharge flow
+  if (pr.purpose === "client_recharge" && pr.client_id && pr.recharge_days) {
+    try {
+      await supabase.rpc("pop_recharge_client_days", {
+        p_client_id: pr.client_id,
+        p_days: Number(pr.recharge_days),
+      });
+    } catch (e) {
+      console.error("client_recharge rpc failed", e);
+    }
+    return redirect(portalUrl("success"));
+  }
+
   if (pr.billing_id) {
     const { data: bill } = await supabase.from("billing").select("*").eq("id", pr.billing_id).maybeSingle();
     if (bill) {
