@@ -36,6 +36,7 @@ import ExpireCell from "@/components/billing/ExpireCell";
 import RemainingDaysCell from "@/components/billing/RemainingDaysCell";
 import ClientCommentDialog from "@/components/clients/ClientCommentDialog";
 import BulkClientRechargeDialog from "@/components/reseller/BulkClientRechargeDialog";
+import TransferClientsToPopDialog from "@/components/clients/TransferClientsToPopDialog";
 
 interface ClientListProps {
   /** When set, locks the client_type filter to this value and hides the dropdown.
