@@ -625,13 +625,51 @@ export default function BulkImport() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold flex items-center gap-2"><FileSpreadsheet className="h-6 w-6" /> বাল্ক ক্লায়েন্ট ইমপোর্ট</h1>
-        <Button variant="outline" onClick={loadUnmatchedUsers} disabled={autoLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${autoLoading ? "animate-spin" : ""}`} />
-          {autoLoading ? "লোড হচ্ছে..." : "MikroTik থেকে রিফ্রেশ"}
-        </Button>
       </div>
+
+      {/* Source toolbar — pick MikroTik server + profile filter, then sync/reload */}
+      <Card>
+        <CardContent className="pt-4 flex flex-wrap items-end gap-3">
+          <div className="space-y-1 min-w-[220px]">
+            <Label className="text-xs">MikroTik সার্ভার</Label>
+            <Select value={selectedDevice} onValueChange={(v) => { setSelectedDevice(v); setSelectedProfile("all"); }}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="সার্ভার বাছাই করুন" /></SelectTrigger>
+              <SelectContent>
+                {mikrotikDevices.map((d: any) => (
+                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 min-w-[200px]">
+            <Label className="text-xs">প্রোফাইল ফিল্টার</Label>
+            <Select value={selectedProfile} onValueChange={setSelectedProfile} disabled={!selectedDevice}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">সব প্রোফাইল</SelectItem>
+                {deviceProfiles.map((p: string) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={syncFromMikroTik} disabled={!selectedDevice || isSyncing} className="h-9">
+            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+            {isSyncing ? "সিঙ্ক হচ্ছে..." : "MikroTik থেকে সিঙ্ক"}
+          </Button>
+          <Button variant="outline" onClick={loadUnmatchedUsers} disabled={!selectedDevice || autoLoading} className="h-9">
+            <RefreshCw className={`h-4 w-4 mr-2 ${autoLoading ? "animate-spin" : ""}`} />
+            {autoLoading ? "লোড হচ্ছে..." : "আনম্যাচড রিলোড"}
+          </Button>
+          {selectedDevice && rows.length === 0 && !autoLoading && (
+            <p className="text-xs text-muted-foreground basis-full">
+              এই সার্ভারে কোনো নতুন আনম্যাচড PPP ইউজার নেই। নতুন ইউজার থাকলে উপরে <b>"MikroTik থেকে সিঙ্ক"</b> চাপুন।
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <Collapsible open={instructionOpen} onOpenChange={setInstructionOpen}>
         <Card>
