@@ -18,6 +18,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             "flex-1 p-3 sm:p-5 overflow-auto",
             settings.contentWidth === "compact" && "max-w-6xl mx-auto w-full"
           )}>
+            <Breadcrumbs />
             {children}
           </main>
         </div>
