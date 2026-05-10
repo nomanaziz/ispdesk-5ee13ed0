@@ -24,11 +24,16 @@ export default function Btrc() {
     user_type: "all", client_type: "all", connection_type: "all",
     b_status: "all", zone_id: "all", allocated_ip_type: "user_id",
     distributed_point_type: "all",
+    reseller_id: "all",
     from: init.from, to: init.to,
   });
   const [a, setA] = useState(f);
 
   const { data: zones } = useQuery({ queryKey: ["btrc-zones"], queryFn: async () => (await supabase.from("zones").select("id,name").eq("status", "active")).data || [] });
+  const { data: resellers } = useQuery({
+    queryKey: ["btrc-resellers"],
+    queryFn: async () => (await supabase.from("branch_managers").select("id, name, branch_id").eq("status", "active").order("name")).data || [],
+  });
 
   const { data: rows = [], isLoading, refetch } = useQuery({
     queryKey: ["rpt-btrc", a],
