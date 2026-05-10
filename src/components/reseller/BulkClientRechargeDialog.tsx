@@ -31,7 +31,7 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
   const { data: costInfo } = useQuery({
     queryKey: ["clients-recharge-cost", clients.map((c) => c.id).sort().join(",")],
     queryFn: async () =>
-      await callPortal<{ items: Array<{ client_id: string; buy_rate?: number; min_activation_days?: number; daily_rate?: number; error?: string }> }>(
+      await callPortal<{ items: Array<{ client_id: string; buy_rate?: number; validity_days?: number; min_activation_days?: number; daily_rate?: number; error?: string }> }>(
         "get_clients_recharge_cost",
         { client_ids: clients.map((c) => c.id) },
       ),
@@ -39,11 +39,12 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
   });
 
   const costMap = useMemo(() => {
-    const m = new Map<string, { daily: number; days: number; buy: number; error?: string }>();
+    const m = new Map<string, { daily: number; validity: number; min: number; buy: number; error?: string }>();
     for (const it of costInfo?.items || []) {
       m.set(it.client_id, {
         daily: Number(it.daily_rate || 0),
-        days: Number(it.min_activation_days || 0),
+        validity: Number(it.validity_days || 0),
+        min: Number(it.min_activation_days || 0),
         buy: Number(it.buy_rate || 0),
         error: it.error,
       });
@@ -57,16 +58,18 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
       const info = costMap.get(c.id);
       const daily = info?.daily ?? 0;
       const ok = !info?.error && daily > 0;
-      return { ...c, daily, lineTotal: daily * n, ok, error: info?.error };
+      return { ...c, daily, lineTotal: daily * n, ok, error: info?.error, min: info?.min ?? 1 };
     });
     const valid = lines.filter((l) => l.ok);
     const total = valid.reduce((s, l) => s + l.lineTotal, 0);
     const avgDaily = valid.length ? valid.reduce((s, l) => s + l.daily, 0) / valid.length : 0;
     const invalidCount = lines.length - valid.length;
-    return { lines, valid, total, avgDaily, n, invalidCount };
+    const effectiveMin = valid.length ? Math.max(...valid.map((l) => l.min || 1)) : 1;
+    return { lines, valid, total, avgDaily, n, invalidCount, effectiveMin };
   }, [days, clients, costMap]);
 
   const exceeds = !allowNeg && calc.total > popBalance;
+  const belowMin = calc.n > 0 && calc.n < calc.effectiveMin;
 
   const mutate = useMutation({
     mutationFn: async () => {
