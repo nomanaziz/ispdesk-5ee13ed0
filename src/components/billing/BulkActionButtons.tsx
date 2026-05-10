@@ -25,6 +25,7 @@ interface Props {
   onBulkVip: () => void;
   onBulkRemoveVip: () => void;
   onBulkProfileChange: () => void;
+  onBulkPackageChange?: () => void;
   onRegenerateInvoice?: () => void;
   onBulkAutoRechargeOn?: () => void;
   onBulkAutoRechargeOff?: () => void;
