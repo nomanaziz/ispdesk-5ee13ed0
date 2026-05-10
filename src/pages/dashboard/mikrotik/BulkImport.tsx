@@ -524,7 +524,8 @@ export default function BulkImport() {
     const value = r[col.key] ?? "";
     const auto = r._autoFilled?.[col.key];
     const missing = MANDATORY.includes(col.key) && (col.key === "M.Bill" ? !(Number(value) > 0) : String(value).trim() === "");
-    const cls = `h-7 text-xs min-w-[100px] ${auto ? "bg-muted/40" : ""} ${missing ? "border-destructive" : ""}`;
+    const conflict = col.key === "C.Code" && r._codeConflict;
+    const cls = `h-7 text-xs min-w-[100px] ${auto ? "bg-muted/40" : ""} ${missing || conflict ? "border-destructive" : ""}`;
 
     if (col.type === "select") {
       const opts = optionsFor(col.key);
@@ -538,7 +539,7 @@ export default function BulkImport() {
       );
     }
 
-    return (
+    const input = (
       <Input
         type={col.type === "number" ? "number" : "text"}
         className={cls}
@@ -546,6 +547,26 @@ export default function BulkImport() {
         onChange={(e) => updateCell(r._idx, col.key, e.target.value)}
       />
     );
+
+    if (conflict) {
+      return (
+        <TooltipProvider delayDuration={150}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1">
+                {input}
+                <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              এই কোড ইতোমধ্যে ব্যবহৃত: <strong>{r._codeConflict?.existingName}</strong>। অন্য কোড দিন।
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return input;
   };
 
   return (
