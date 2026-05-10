@@ -59,21 +59,8 @@ export default function BillingList() {
   const [perPage, setPerPage] = useState(25);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Fetch POP type for prepaid-only column (R.Days)
-  const { data: popInfo } = useQuery({
-    queryKey: ["pop-info-billing", branchId],
-    queryFn: async () => {
-      if (!branchId) return null;
-      const { data } = await supabase
-        .from("branch_managers")
-        .select("pop_type")
-        .eq("branch_id", branchId)
-        .maybeSingle();
-      return data;
-    },
-    enabled: isPopMode && !!branchId,
-  });
-  const isPrepaidPop = isPopMode && popInfo?.pop_type === "prepaid";
+  // R.Days column shows for any reseller (POP) mode
+  const isPrepaidPop = isPopMode;
 
   // Dialogs
   const [migrateOpen, setMigrateOpen] = useState(false);
