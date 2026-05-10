@@ -94,6 +94,12 @@ export default function BulkActionButtons({
         {onRegenerateInvoice && (
           <ActionBtn icon={FilePlus} label="ইনভয়েস পুনরায় তৈরি" onClick={() => requireSelection(onRegenerateInvoice)} color="bg-violet-600 hover:bg-violet-700 text-white" />
         )}
+        {showAutoRecharge && onBulkAutoRechargeOn && (
+          <ActionBtn icon={Repeat} label="Auto Recharge ON" onClick={() => requireSelection(onBulkAutoRechargeOn)} color="bg-emerald-600 hover:bg-emerald-700 text-white" />
+        )}
+        {showAutoRecharge && onBulkAutoRechargeOff && (
+          <ActionBtn icon={RepeatIcon} label="Auto Recharge OFF" onClick={() => requireSelection(onBulkAutoRechargeOff)} color="bg-slate-600 hover:bg-slate-700 text-white" />
+        )}
       </div>
       {selectedCount > 0 && (
         <p className="text-xs text-muted-foreground">{selectedCount} জন ক্লায়েন্ট সিলেক্ট করা হয়েছে</p>
