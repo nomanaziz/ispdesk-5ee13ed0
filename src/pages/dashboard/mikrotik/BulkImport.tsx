@@ -481,7 +481,7 @@ export default function BulkImport() {
           monthly_bill: r["M.Bill"] ? Number(r["M.Bill"]) : 0,
           billing_start_month: r["Bill.Month"] || null,
           joining_date: parseDDMMYYYY(r["Join.Date"]),
-          expire_date: r["Exp.Date"] || null,
+          expire_date: computeExpireDate(r["Bill.Month"], r["Exp.Date"]),
           date_of_birth: parseDDMMYYYY(r.DateOfBirth) || null,
           father_name: r.FatherName || null,
           mother_name: r.MotherName || null,
