@@ -36,6 +36,7 @@ import ExpireCell from "@/components/billing/ExpireCell";
 import RemainingDaysCell from "@/components/billing/RemainingDaysCell";
 import ClientCommentDialog from "@/components/clients/ClientCommentDialog";
 import BulkClientRechargeDialog from "@/components/reseller/BulkClientRechargeDialog";
+import TransferClientsToPopDialog from "@/components/clients/TransferClientsToPopDialog";
 
 interface ClientListProps {
   /** When set, locks the client_type filter to this value and hides the dropdown.
@@ -85,6 +86,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
   const [districtOpen, setDistrictOpen] = useState(false);
   const [thanaOpen, setThanaOpen] = useState(false);
   const [bulkRechargeOpen, setBulkRechargeOpen] = useState(false);
+  const [transferToPopOpen, setTransferToPopOpen] = useState(false);
   const [commentClient, setCommentClient] = useState<any | null>(null);
 
   const { data: clients, isLoading } = useQuery({
@@ -415,6 +417,8 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
         showMigrate={!isPopMode}
         showAutoRecharge={isPopMode}
         showBulkRecharge={isPopMode}
+        showTransferToPop={!isPopMode}
+        onTransferToPop={() => setTransferToPopOpen(true)}
         onBulkAutoRechargeOn={() => handleBulkAutoRecharge(true)}
         onBulkAutoRechargeOff={() => handleBulkAutoRecharge(false)}
         onBulkClientRecharge={() => {
@@ -626,6 +630,12 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
       <BulkDateExtendDialog open={dateExtendOpen} onOpenChange={setDateExtendOpen} selectedClients={selectedClients} invalidateKey="clients-list" />
       <BulkDistrictChangeDialog open={districtOpen} onOpenChange={setDistrictOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
       <BulkThanaChangeDialog open={thanaOpen} onOpenChange={setThanaOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
+      <TransferClientsToPopDialog
+        open={transferToPopOpen}
+        onOpenChange={setTransferToPopOpen}
+        selectedClients={selectedClients}
+        onTransferred={() => { setSelectedIds(new Set()); }}
+      />
       <BulkClientRechargeDialog
         open={bulkRechargeOpen}
         onOpenChange={setBulkRechargeOpen}

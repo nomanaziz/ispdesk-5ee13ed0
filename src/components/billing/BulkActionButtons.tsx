@@ -29,9 +29,11 @@ interface Props {
   onBulkAutoRechargeOn?: () => void;
   onBulkAutoRechargeOff?: () => void;
   onBulkClientRecharge?: () => void;
+  onTransferToPop?: () => void;
   showMigrate?: boolean;
   showAutoRecharge?: boolean;
   showBulkRecharge?: boolean;
+  showTransferToPop?: boolean;
 }
 
 export default function BulkActionButtons({
@@ -57,9 +59,11 @@ export default function BulkActionButtons({
   onBulkAutoRechargeOn,
   onBulkAutoRechargeOff,
   onBulkClientRecharge,
+  onTransferToPop,
   showMigrate = true,
   showAutoRecharge = false,
   showBulkRecharge = false,
+  showTransferToPop = false,
 }: Props) {
   const requireSelection = (fn: () => void) => {
     if (selectedCount === 0) {
@@ -106,6 +110,9 @@ export default function BulkActionButtons({
         )}
         {showBulkRecharge && onBulkClientRecharge && (
           <ActionBtn icon={DollarSign} label="Bulk Client Recharge" onClick={() => requireSelection(onBulkClientRecharge)} color="bg-emerald-600 hover:bg-emerald-700 text-white" />
+        )}
+        {showTransferToPop && onTransferToPop && (
+          <ActionBtn icon={ArrowRightLeft} label="রিসেলারে ট্রান্সফার" onClick={() => requireSelection(onTransferToPop)} color="bg-indigo-600 hover:bg-indigo-700 text-white" />
         )}
       </div>
       {selectedCount > 0 && (
