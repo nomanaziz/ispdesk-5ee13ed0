@@ -52,7 +52,10 @@ export default function BulkActionButtons({
   onBulkRemoveVip,
   onBulkProfileChange,
   onRegenerateInvoice,
+  onBulkAutoRechargeOn,
+  onBulkAutoRechargeOff,
   showMigrate = true,
+  showAutoRecharge = false,
 }: Props) {
   const requireSelection = (fn: () => void) => {
     if (selectedCount === 0) {
