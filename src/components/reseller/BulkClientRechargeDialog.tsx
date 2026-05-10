@@ -51,20 +51,21 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
       return res;
     },
     onSuccess: (res: any) => {
-      toast.success(`Recharge: ${res.succeeded} সফল, ${res.failed} ব্যর্থ — মোট ৳${Number(res.total_charged || 0).toFixed(2)} কাটা হয়েছে`);
+      const succeeded = Number(res?.succeeded || 0);
+      const failed = Number(res?.failed || 0);
+      const total = Number(res?.total_charged || 0);
+      if (succeeded > 0) {
+        toast.success(`Recharge: ${succeeded} সফল, ${failed} ব্যর্থ — মোট ৳${total.toFixed(2)} কাটা হয়েছে`);
+      }
+      if (failed > 0) {
+        const errs: any[] = Array.isArray(res?.errors) ? res.errors : [];
+        const firstMsg = errs[0]?.error || "Unknown error";
+        toast.error(`${failed} client ব্যর্থ: ${firstMsg}`);
+      }
+      qc.invalidateQueries({ queryKey: ["clients-list"] });
       qc.invalidateQueries({ queryKey: ["pop-billing-clients"] });
       qc.invalidateQueries({ queryKey: ["pop-balance-info"] });
-      onOpenChange(false);
-    },
-    onError: (e: any) => {
-      const msg = String(e?.message || e);
-      if (msg.includes("INSUFFICIENT_BALANCE")) {
-        toast.error("পর্যাপ্ত balance নেই — recharge করুন", {
-          action: { label: "Recharge", onClick: () => navigate("/pop-admin/fund-history/credit") },
-        });
-      } else {
-        toast.error(msg);
-      }
+      if (succeeded > 0 && failed === 0) onOpenChange(false);
     },
   });
 
