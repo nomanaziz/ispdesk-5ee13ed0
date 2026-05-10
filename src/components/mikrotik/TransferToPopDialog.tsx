@@ -494,7 +494,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
           <Button
             onClick={() => transfer.mutate()}
-            disabled={!popId || !selectedPop?.tariff_id || transfer.isPending || unmatchedCount > 0 || balanceShort}
+            disabled={!popId || !selectedPop?.tariff_id || transfer.isPending || blockedByIssues || balanceShort}
           >
             {transfer.isPending ? "Exporting..." : `Export ✓ (${selectedIds.length})`}
           </Button>
