@@ -17,11 +17,11 @@ Deno.serve(async (req) => {
 
     const today = new Date().toISOString().slice(0, 10);
 
-    // Expired + currently enabled in DB
+    // Strictly past expire only — remaining=0 (expire_date == today) থাকলে POP manually on/off করতে পারবে
     const { data: rows, error } = await sb
       .from("clients")
       .select("id, mikrotik_id, username, expire_date, mikrotik_status")
-      .lte("expire_date", today)
+      .lt("expire_date", today)
       .eq("mikrotik_status", "enabled")
       .not("mikrotik_id", "is", null);
     if (error) throw error;
