@@ -435,6 +435,7 @@ export default function BillingList() {
                   <TableHead>পরিশোধের তারিখ</TableHead>
                   <TableHead>বিল স্ট্যাটাস</TableHead>
                   <TableHead>MikroTik স্ট্যাটাস</TableHead>
+                  {isPopMode && <TableHead className="text-center">Auto Recharge</TableHead>}
                   <TableHead>অ্যাকশন</TableHead>
                 </TableRow>
               </TableHeader>
@@ -523,6 +524,11 @@ export default function BillingList() {
                       <TableCell>
                         <MikrotikToggle client={c} queryClient={queryClient} />
                       </TableCell>
+                      {isPopMode && (
+                        <TableCell className="text-center">
+                          <AutoRechargeToggle client={c} queryClient={queryClient} />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <ClientActionButtons client={c} mode="billing" invalidateKey="billing-list" />
                       </TableCell>
