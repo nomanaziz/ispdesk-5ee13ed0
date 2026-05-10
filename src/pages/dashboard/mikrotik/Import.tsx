@@ -221,12 +221,24 @@ export default function Import() {
     toast.success("Excel ডাউনলোড হয়েছে");
   };
 
+  const isClean =
+    selectedServer === "all" &&
+    protocolFilter === "all" &&
+    profileFilter === "all" &&
+    userTypeFilter === "all" &&
+    !search &&
+    transferStatus === "pending" &&
+    selectedIds.size === 0;
+
   const clearFilters = () => {
     setSelectedServer("all");
     setProtocolFilter("all");
     setProfileFilter("all");
     setUserTypeFilter("all");
     setSearch("");
+    setTransferStatus("pending");
+    setSelectedIds(new Set());
+    toast.success("সব filter, search ও selection clear হয়েছে");
   };
 
   const toggleAll = () => {
