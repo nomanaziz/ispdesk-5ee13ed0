@@ -365,11 +365,103 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
                   </TableBody>
                 </Table>
               </div>
-              {unmatchedCount > 0 && (
-                <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded px-2 py-1.5 flex gap-1.5 items-start">
-                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  {unmatchedCount} জন user-এর profile POP-এর tariff-এ নেই। আগে MikroTik-এ profile change করুন অথবা admin থেকে POP-এর tariff-এ এই package add করুন।
-                </p>
+              {blockedByIssues && (
+                <div className="space-y-2">
+                  <div className="flex items-start gap-1.5 text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded px-2 py-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      {unmatchedCount > 0 && <>{unmatchedCount} জন user-এর <b>profile mismatch</b>। </>}
+                      {protocolMismatchCount > 0 && <>{protocolMismatchCount} জন user <b>PPPoE নয়</b> (শুধু PPPoE allowed)। </>}
+                      নিচে details দেখুন — MikroTik-এ ঠিক করুন বা admin থেকে POP-এর tariff-এ এই package add করুন।
+                    </span>
+                  </div>
+
+                  <div className="rounded-md border divide-y">
+                    {protocolMismatchCount > 0 && (
+                      <Collapsible open={openProtocol} onOpenChange={setOpenProtocol}>
+                        <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 text-sm">
+                          <span className="flex items-center gap-2">
+                            <ChevronRight className={cn("h-4 w-4 transition-transform", openProtocol && "rotate-90")} />
+                            <XCircle className="h-4 w-4 text-destructive" />
+                            <span className="font-medium">Protocol mismatch (PPPoE নয়)</span>
+                          </span>
+                          <Badge variant="destructive">{protocolMismatchCount} user</Badge>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="bg-muted/30">
+                          {groupUsersBy(protocolMismatchUsers, "service").map((g) => {
+                            const k = `proto:${g.value}`;
+                            return (
+                              <div key={k} className="border-t">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSub(k)}
+                                  className="w-full flex items-center justify-between px-8 py-1.5 hover:bg-muted/50 text-xs"
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <ChevronRight className={cn("h-3 w-3 transition-transform", openSubGroups[k] && "rotate-90")} />
+                                    <span className="font-mono">{g.value}</span>
+                                  </span>
+                                  <span className="text-muted-foreground">{g.users.length} user</span>
+                                </button>
+                                {openSubGroups[k] && (
+                                  <ul className="px-12 py-1.5 text-xs space-y-0.5 bg-background/50">
+                                    {g.users.map((u: any) => (
+                                      <li key={u.id} className="font-mono text-muted-foreground">
+                                        {u.name} <span className="text-[10px]">({u.profile || "—"})</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {unmatchedCount > 0 && (
+                      <Collapsible open={openProfile} onOpenChange={setOpenProfile}>
+                        <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 text-sm">
+                          <span className="flex items-center gap-2">
+                            <ChevronRight className={cn("h-4 w-4 transition-transform", openProfile && "rotate-90")} />
+                            <XCircle className="h-4 w-4 text-destructive" />
+                            <span className="font-medium">Profile mismatch</span>
+                          </span>
+                          <Badge variant="destructive">{unmatchedCount} user</Badge>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="bg-muted/30">
+                          {groupUsersBy(profileMismatchUsers, "profile").map((g) => {
+                            const k = `prof:${g.value}`;
+                            return (
+                              <div key={k} className="border-t">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSub(k)}
+                                  className="w-full flex items-center justify-between px-8 py-1.5 hover:bg-muted/50 text-xs"
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <ChevronRight className={cn("h-3 w-3 transition-transform", openSubGroups[k] && "rotate-90")} />
+                                    <span className="font-mono">{g.value}</span>
+                                  </span>
+                                  <span className="text-muted-foreground">{g.users.length} user</span>
+                                </button>
+                                {openSubGroups[k] && (
+                                  <ul className="px-12 py-1.5 text-xs space-y-0.5 bg-background/50">
+                                    {g.users.map((u: any) => (
+                                      <li key={u.id} className="font-mono text-muted-foreground">
+                                        {u.name} <span className="text-[10px]">(service: {u.service || "—"})</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+                  </div>
+                </div>
               )}
 
               <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
