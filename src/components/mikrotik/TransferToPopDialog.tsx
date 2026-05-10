@@ -3,14 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowRightLeft, Check, ChevronsUpDown, AlertTriangle } from "lucide-react";
+import { ArrowRightLeft, Check, ChevronsUpDown, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -23,12 +22,9 @@ interface Props {
 export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransferred }: Props) {
   const qc = useQueryClient();
   const [popId, setPopId] = useState<string>("");
-  const [packageId, setPackageId] = useState<string>("");
   const [popPickerOpen, setPopPickerOpen] = useState(false);
 
-  useEffect(() => {
-    if (!open) { setPopId(""); setPackageId(""); }
-  }, [open]);
+  useEffect(() => { if (!open) { setPopId(""); } }, [open]);
 
   const { data: pops = [] } = useQuery({
     queryKey: ["pops_for_transfer"],
@@ -38,7 +34,6 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
         .select("id, name, pop_code, branch_id, tariff_id, pop_type, balance, status, fund_started, allow_negative_balance")
         .order("name");
       if (error) throw error;
-      // case-insensitive active filter — DB has mix of "Active" & "active"
       return (data || []).filter((p: any) => (p.status || "").toLowerCase() === "active");
     },
     enabled: open,
@@ -57,21 +52,21 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     enabled: open && selectedIds.length > 0,
   });
 
+  // Group selected users by profile
   const profileGroups = useMemo(() => {
     const map = new Map<string, number>();
     (selectedRows as any[]).forEach((r) => {
       const k = r.profile || "(no profile)";
       map.set(k, (map.get(k) || 0) + 1);
     });
-    return Array.from(map.entries());
+    return Array.from(map.entries()).map(([profile, count]) => ({ profile, count }));
   }, [selectedRows]);
-  const isMixed = profileGroups.length > 1;
-  const uniqueProfile = profileGroups.length === 1 ? profileGroups[0][0] : null;
 
   const selectedPop = pops.find((p: any) => p.id === popId);
 
-  const { data: packages = [] } = useQuery({
-    queryKey: ["pop_tariff_packages", selectedPop?.tariff_id],
+  // Load all packages in POP's tariff
+  const { data: tariffPackages = [] } = useQuery({
+    queryKey: ["pop_tariff_packages_all", selectedPop?.tariff_id],
     queryFn: async () => {
       if (!selectedPop?.tariff_id) return [];
       const { data, error } = await supabase
@@ -85,31 +80,35 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     enabled: !!selectedPop?.tariff_id,
   });
 
-  const selectedPkg: any = packages.find((p: any) => p.id === packageId);
-  const targetMikrotik = selectedPkg?.mikrotik_devices;
-  const perDay = useMemo(() => {
-    if (!selectedPkg) return 0;
-    const days = Number(selectedPkg.validity_days) || 30;
-    const rate = Number(selectedPkg.selling_rate) || 0;
-    return days > 0 ? rate / days : 0;
-  }, [selectedPkg]);
-  const creditable = useMemo(() => +(perDay * selectedIds.length).toFixed(2), [perDay, selectedIds.length]);
-  const monthlyPerUser = useMemo(() => Number(selectedPkg?.selling_rate) || 0, [selectedPkg]);
-  const totalMonthly = useMemo(() => +(monthlyPerUser * selectedIds.length).toFixed(2), [monthlyPerUser, selectedIds.length]);
-  const profileMismatch = !!(selectedPkg?.mikrotik_profile && uniqueProfile && uniqueProfile !== selectedPkg.mikrotik_profile);
+  // Per-profile match: for each user profile, pick cheapest matching package in tariff
+  const matched = useMemo(() => {
+    return profileGroups.map((g) => {
+      const candidates = (tariffPackages as any[]).filter(
+        (p) => (p.mikrotik_profile || "").toLowerCase() === (g.profile || "").toLowerCase()
+      );
+      candidates.sort((a, b) => Number(a.selling_rate || 0) - Number(b.selling_rate || 0));
+      const pkg = candidates[0] || null;
+      const perDay = pkg ? (Number(pkg.selling_rate || 0) / Math.max(Number(pkg.validity_days || 30), 1)) : 0;
+      return { ...g, pkg, perDay, dayDebit: +(perDay * g.count).toFixed(2) };
+    });
+  }, [profileGroups, tariffPackages]);
+
+  const unmatchedCount = matched.filter((m) => !m.pkg).reduce((s, m) => s + m.count, 0);
+  const totalCreditable = +matched.reduce((s, m) => s + m.dayDebit, 0).toFixed(2);
+  const totalMonthly = +matched.reduce((s, m) => s + (m.pkg ? Number(m.pkg.selling_rate || 0) * m.count : 0), 0).toFixed(2);
+
+  const balanceShort =
+    !!selectedPop?.fund_started &&
+    !selectedPop?.allow_negative_balance &&
+    totalCreditable > Number(selectedPop?.balance || 0);
 
   const transfer = useMutation({
     mutationFn: async () => {
-      if (!popId) throw new Error("POP সিলেক্ট করুন");
-      if (!packageId || !selectedPkg) throw new Error("Package সিলেক্ট করুন");
-      if (!targetMikrotik?.id) throw new Error("এই Package-এ MikroTik server assigned নাই");
+      if (!popId || !selectedPop) throw new Error("POP সিলেক্ট করুন");
+      if (!selectedPop?.tariff_id) throw new Error("এই POP-এ tariff assigned নাই");
       if (!selectedPop?.branch_id) throw new Error("এই POP-এর কোনো branch assign করা নেই");
-      if (isMixed) throw new Error("Mixed profile — single profile-এর user select করুন");
-      if (profileMismatch) throw new Error(`Profile mismatch — User profile "${uniqueProfile}" ≠ Package profile "${selectedPkg.mikrotik_profile}"`);
-
-      if (selectedPop.fund_started && Number(selectedPop.balance || 0) < creditable && !selectedPop.allow_negative_balance) {
-        throw new Error(`POP-এর balance অপ্রতুল (${selectedPop.balance} < ${creditable})`);
-      }
+      if (unmatchedCount > 0) throw new Error(`${unmatchedCount} জন user-এর profile POP-এর tariff-এ নেই — আগে MikroTik-এ profile change করুন বা POP-এর tariff-এ এই package add করুন`);
+      if (balanceShort) throw new Error(`POP-এর balance অপ্রতুল (${selectedPop.balance} < ${totalCreditable})`);
 
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -126,26 +125,34 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
         .in("username", usernames);
       const existingSet = new Set((existing || []).map((c: any) => c.username?.toLowerCase()));
 
-      const sellingRate = Number(selectedPkg.selling_rate) || 0;
+      // Build profile→matched-pkg lookup
+      const pkgByProfile = new Map<string, any>();
+      matched.forEach((m) => { if (m.pkg) pkgByProfile.set((m.profile || "").toLowerCase(), m.pkg); });
+
       const newClients = (mkRows || [])
         .filter((r: any) => r.name && !existingSet.has(r.name.toLowerCase()))
-        .map((r: any) => ({
-          name: r.name,
-          username: r.name,
-          password: r.password || "",
-          profile: r.profile || selectedPkg.mikrotik_profile || null,
-          mac_address: r.caller_id || null,
-          remote_address: r.remote_address || null,
-          connection_type: r.service || null,
-          mikrotik_id: targetMikrotik.id,
-          server_name: targetMikrotik.name || null,
-          branch_id: selectedPop.branch_id,
-          package_id: selectedPkg.package_id,
-          monthly_bill: sellingRate,
-          status: "active",
-          mikrotik_status: "enabled",
-          owner_scope: "pop",
-        }));
+        .map((r: any) => {
+          const pkg = pkgByProfile.get((r.profile || "").toLowerCase());
+          if (!pkg) return null;
+          return {
+            name: r.name,
+            username: r.name,
+            password: r.password || "",
+            profile: pkg.mikrotik_profile, // force POP package profile
+            mac_address: r.caller_id || null,
+            remote_address: r.remote_address || null,
+            connection_type: r.service || null,
+            mikrotik_id: pkg?.mikrotik_devices?.id || null,
+            server_name: pkg?.mikrotik_devices?.name || null,
+            branch_id: selectedPop.branch_id,
+            package_id: pkg.package_id,
+            monthly_bill: Number(pkg.selling_rate || 0),
+            status: "active",
+            mikrotik_status: "enabled",
+            owner_scope: "pop",
+          };
+        })
+        .filter(Boolean);
 
       let createdCount = 0;
       if (newClients.length > 0) {
@@ -155,12 +162,13 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
       }
       const skipped = selectedIds.length - createdCount;
 
+      const firstMikrotikId = (newClients[0] as any)?.mikrotik_id || null;
       const { error } = await supabase
         .from("mikrotik_clients")
         .update({
           transferred_to_pop_id: popId,
-          transferred_to_mikrotik_id: targetMikrotik.id,
-          mikrotik_id: targetMikrotik.id,
+          transferred_to_mikrotik_id: firstMikrotikId,
+          mikrotik_id: firstMikrotikId,
           transferred_at: new Date().toISOString(),
           transferred_by: user?.id ?? null,
           exported: true,
@@ -169,16 +177,17 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
         .in("id", selectedIds);
       if (error) throw error;
 
-      if (creditable > 0 && selectedPop.fund_started) {
+      if (totalCreditable > 0 && selectedPop.fund_started) {
+        const desc = matched.filter((m) => m.pkg).map((m) => `${m.count}× ${m.pkg.isp_packages?.name || m.pkg.mikrotik_profile}`).join(", ");
         const { error: fErr } = await supabase.from("branch_funding").insert({
           branch_id: selectedPop.branch_id,
-          amount: creditable,
-          received_amount: creditable,
+          amount: totalCreditable,
+          received_amount: totalCreditable,
           trans_type: "refund",
           type: "deduction",
           payment_method: "system",
           funding_date: new Date().toISOString().slice(0, 10),
-          description: `MikroTik export: ${createdCount} client × ${perDay.toFixed(2)}/day (${selectedPkg?.isp_packages?.name || ""})`,
+          description: `MikroTik export: ${desc}`,
           remarks: `Auto-debit: MikroTik users → POP ${selectedPop.name}`,
           status: "approved",
           created_by: user?.id ?? null,
@@ -186,12 +195,12 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
         if (fErr) throw fErr;
       }
 
-      return { createdCount, skipped, creditable, fundStarted: !!selectedPop.fund_started };
+      return { createdCount, skipped, totalCreditable, fundStarted: !!selectedPop.fund_started };
     },
     onSuccess: (res) => {
-      const { createdCount, skipped, creditable, fundStarted } = res;
+      const { createdCount, skipped, totalCreditable, fundStarted } = res;
       const base = fundStarted
-        ? `${createdCount} client তৈরি — ৳${creditable} POP balance থেকে কাটা হয়েছে`
+        ? `${createdCount} client তৈরি — ৳${totalCreditable} POP balance থেকে কাটা হয়েছে`
         : `${createdCount} client তৈরি — Free mode (balance unchanged)`;
       toast.success(base + (skipped > 0 ? ` (${skipped} duplicate skip)` : ""));
       qc.invalidateQueries({ queryKey: ["mikrotik_clients"] });
@@ -205,34 +214,19 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRightLeft className="h-5 w-5" /> Export to POP/Reseller
           </DialogTitle>
           <DialogDescription>
-            <Badge variant="secondary">{selectedIds.length}</Badge> জন MikroTik ইউজার POP-এ পাঠানো হবে। POP balance থেকে creditable amount কাটা হবে।
+            <Badge variant="secondary">{selectedIds.length}</Badge> জন MikroTik ইউজার POP-এ পাঠানো হবে। প্রতিটি profile POP-এর tariff-এর সাথে auto-match হবে।
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {isMixed && (
-            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 space-y-1.5">
-              <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
-                <AlertTriangle className="h-4 w-4" /> Mixed profiles detected
-              </div>
-              <p className="text-xs text-destructive/90">সবগুলো user-এর MikroTik profile এক হতে হবে:</p>
-              <ul className="text-xs text-destructive/90 ml-4 list-disc">
-                {profileGroups.map(([prof, count]) => (
-                  <li key={prof}><span className="font-mono">{prof}</span> — {count} user</li>
-                ))}
-              </ul>
-              <p className="text-xs text-muted-foreground pt-1">💡 Import page-এ "প্রোফাইল" filter দিয়ে এক profile-এর user আলাদা করে export করুন।</p>
-            </div>
-          )}
-
           <div className="space-y-2">
-            <Label>MAC/POP Reseller</Label>
+            <Label>POP Reseller</Label>
             <Popover open={popPickerOpen} onOpenChange={setPopPickerOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
@@ -254,7 +248,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
                         <CommandItem
                           key={p.id}
                           value={`${p.name} ${p.pop_code || ""}`}
-                          onSelect={() => { setPopId(p.id); setPackageId(""); setPopPickerOpen(false); }}
+                          onSelect={() => { setPopId(p.id); setPopPickerOpen(false); }}
                         >
                           <Check className={cn("mr-2 h-4 w-4", popId === p.id ? "opacity-100" : "opacity-0")} />
                           <span className="flex-1">{p.name} {p.pop_code ? <span className="text-muted-foreground">({p.pop_code})</span> : null}</span>
@@ -268,65 +262,80 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
             </Popover>
           </div>
 
-          <div className="space-y-2">
-            <Label>Package (Tariff থেকে)</Label>
-            <Select value={packageId} onValueChange={setPackageId} disabled={!popId}>
-              <SelectTrigger>
-                <SelectValue placeholder={!popId ? "প্রথমে POP সিলেক্ট করুন" : !selectedPop?.tariff_id ? "এই POP-এ tariff assigned নাই" : packages.length === 0 ? "Package নাই" : "Package বাছাই করুন"} />
-              </SelectTrigger>
-              <SelectContent>
-                {packages.map((p: any) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p?.isp_packages?.name || "Package"} {p.mikrotik_profile ? `(${p.mikrotik_profile})` : ""} — ৳{p.selling_rate}/{p.validity_days}d
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {selectedPop && !selectedPop.tariff_id && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+              ⚠️ এই POP-এ কোনো tariff assigned নেই। আগে tariff assign করুন।
+            </div>
+          )}
 
-          <div className="space-y-1">
-            <Label className="text-xs">Target MikroTik সার্ভার (auto from package)</Label>
-            <Input
-              readOnly
-              value={targetMikrotik ? `${targetMikrotik.name}${targetMikrotik.ip_address ? ` — ${targetMikrotik.ip_address}` : ""}` : "—"}
-              className="bg-muted"
-            />
-          </div>
+          {selectedPop?.tariff_id && (
+            <div className="space-y-2">
+              <Label>Profile → Package auto-match</Label>
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">User Profile</TableHead>
+                      <TableHead className="text-xs text-center">Users</TableHead>
+                      <TableHead className="text-xs">Matched Package</TableHead>
+                      <TableHead className="text-xs text-right">Per Day × N</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {matched.length === 0 && (
+                      <TableRow><TableCell colSpan={4} className="text-center text-xs text-muted-foreground">No selection</TableCell></TableRow>
+                    )}
+                    {matched.map((m) => (
+                      <TableRow key={m.profile} className={!m.pkg ? "bg-destructive/5" : ""}>
+                        <TableCell className="text-xs font-mono">{m.profile}</TableCell>
+                        <TableCell className="text-xs text-center">{m.count}</TableCell>
+                        <TableCell className="text-xs">
+                          {m.pkg ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                              {m.pkg.isp_packages?.name || "-"} <span className="text-muted-foreground">— ৳{m.pkg.selling_rate}/{m.pkg.validity_days}d</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-destructive">
+                              <XCircle className="h-3.5 w-3.5" /> No matching package in tariff
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-right">{m.pkg ? `৳${m.dayDebit.toFixed(2)}` : "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {unmatchedCount > 0 && (
+                <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded px-2 py-1.5 flex gap-1.5 items-start">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  {unmatchedCount} জন user-এর profile POP-এর tariff-এ নেই। আগে MikroTik-এ profile change করুন অথবা admin থেকে POP-এর tariff-এ এই package add করুন।
+                </p>
+              )}
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Per Day Charge</Label>
-              <Input readOnly value={perDay ? `৳${perDay.toFixed(2)}` : "—"} className="bg-muted" />
+              <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
+                <div className="rounded border p-2">
+                  <div className="text-muted-foreground">Total Monthly (sell)</div>
+                  <div className="font-semibold text-base">৳{totalMonthly.toFixed(2)}</div>
+                </div>
+                <div className="rounded border p-2">
+                  <div className="text-muted-foreground">Today's Creditable (debit)</div>
+                  <div className="font-semibold text-base">৳{totalCreditable.toFixed(2)}</div>
+                </div>
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Per User Monthly</Label>
-              <Input readOnly value={monthlyPerUser ? `৳${monthlyPerUser.toFixed(2)}` : "—"} className="bg-muted" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Total Monthly ({selectedIds.length})</Label>
-              <Input readOnly value={totalMonthly ? `৳${totalMonthly.toFixed(2)}` : "—"} className="bg-muted" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Total Creditable</Label>
-              <Input readOnly value={creditable ? `৳${creditable.toFixed(2)}` : "—"} className="bg-muted font-semibold" />
-            </div>
-          </div>
-
-          {profileMismatch && (
-            <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded px-2 py-1.5">
-              ⚠️ User-দের MikroTik profile <span className="font-mono">"{uniqueProfile}"</span> — কিন্তু Package profile <span className="font-mono">"{selectedPkg?.mikrotik_profile}"</span>। আগে MikroTik-এ profile change করুন।
-            </p>
           )}
 
           {selectedPop && !selectedPop.fund_started && (
             <p className="text-xs text-muted-foreground bg-muted px-2 py-1.5 rounded">
-              🟢 Free mode — এই POP-এর fund start নেই, balance check হবে না। Unlimited transfer allowed।
+              🟢 Free mode — এই POP-এর fund start নেই, balance check হবে না।
             </p>
           )}
 
-          {selectedPop?.fund_started && !selectedPop?.allow_negative_balance && creditable > Number(selectedPop?.balance || 0) && (
+          {balanceShort && (
             <p className="text-xs text-destructive">
-              ⚠️ POP balance ৳{Number(selectedPop.balance || 0).toFixed(2)} — creditable ৳{creditable.toFixed(2)} এর চেয়ে কম। Export blocked।
+              ⚠️ POP balance ৳{Number(selectedPop?.balance || 0).toFixed(2)} — creditable ৳{totalCreditable.toFixed(2)} এর চেয়ে কম। Export blocked।
             </p>
           )}
         </div>
@@ -335,8 +344,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
           <Button
             onClick={() => transfer.mutate()}
-            disabled={!popId || !packageId || !targetMikrotik?.id || transfer.isPending || isMixed || profileMismatch ||
-              (selectedPop?.fund_started && !selectedPop?.allow_negative_balance && creditable > Number(selectedPop?.balance || 0))}
+            disabled={!popId || !selectedPop?.tariff_id || transfer.isPending || unmatchedCount > 0 || balanceShort}
           >
             {transfer.isPending ? "Exporting..." : `Export ✓ (${selectedIds.length})`}
           </Button>
