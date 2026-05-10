@@ -110,6 +110,8 @@ export default function BulkActionButtons({
         )}
         {showBulkRecharge && onBulkClientRecharge && (
           <ActionBtn icon={DollarSign} label="Bulk Client Recharge" onClick={() => requireSelection(onBulkClientRecharge)} color="bg-emerald-600 hover:bg-emerald-700 text-white" />
+        {showTransferToPop && onTransferToPop && (
+          <ActionBtn icon={ArrowRightLeft} label="রিসেলারে ট্রান্সফার" onClick={() => requireSelection(onTransferToPop)} color="bg-indigo-600 hover:bg-indigo-700 text-white" />
         )}
       </div>
       {selectedCount > 0 && (
