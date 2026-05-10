@@ -644,6 +644,9 @@ export default function BulkImport() {
                   <Button size="sm" onClick={applyBulk} disabled={selectedCount === 0}>
                     <Wand2 className="h-4 w-4 mr-1" /> Apply to Selected ({selectedCount})
                   </Button>
+                  <Button size="sm" variant="outline" onClick={resetSelectedToOriginal} disabled={selectedCount === 0}>
+                    <Undo2 className="h-4 w-4 mr-1" /> Reset Selected to Original
+                  </Button>
                   <Button size="sm" variant="outline" onClick={clearBulk}>
                     Clear Form
                   </Button>
