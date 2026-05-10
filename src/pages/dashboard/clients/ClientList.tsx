@@ -569,12 +569,21 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs">
-                      <Switch
-                        checked={c.mikrotik_status === "enabled"}
-                        disabled={togglingId === c.id || !c.mikrotik_id}
-                        onCheckedChange={() => handleToggleMikrotik(c)}
-                        className="scale-75"
-                      />
+                      {(() => {
+                        const exp = c.expire_date ? new Date(c.expire_date) : null;
+                        const today = new Date(); today.setHours(0,0,0,0);
+                        const isExpired = !!(exp && exp.getTime() <= today.getTime());
+                        const isOn = c.mikrotik_status === "enabled";
+                        return (
+                          <Switch
+                            checked={isOn}
+                            disabled={togglingId === c.id || !c.mikrotik_id || (isExpired && !isOn)}
+                            onCheckedChange={() => handleToggleMikrotik(c)}
+                            className="scale-75"
+                            title={isExpired && !isOn ? "Expired — আগে recharge করুন" : undefined}
+                          />
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-xs">
                       <ClientActionButtons client={c} mode="client" invalidateKey="clients-list" />
