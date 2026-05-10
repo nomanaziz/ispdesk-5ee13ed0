@@ -508,6 +508,65 @@ export default function BulkImport() {
         </Card>
       </Collapsible>
 
+      {rows.length > 0 && (
+        <Collapsible open={bulkOpen} onOpenChange={setBulkOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                <div className="flex items-center gap-2">
+                  {bulkOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  <Wand2 className="h-4 w-4" />
+                  <CardTitle className="text-base">একসাথে সেট করুন (Bulk Set)</CardTitle>
+                  <Badge variant="secondary" className="ml-2">{selectedCount} সিলেক্টেড</Badge>
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {BULK_FIELDS.map((f) => (
+                    <div key={f.key} className="space-y-1">
+                      <Label className="text-xs">{f.label}</Label>
+                      {f.type === "select" ? (
+                        <Select value={bulkValues[f.key] || ""} onValueChange={(v) => setBulkValue(f.key, v)}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                          <SelectContent className="bg-popover z-50">
+                            {optionsFor(f.key).map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          type={f.type === "month" ? "month" : f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
+                          min={f.type === "number" ? 1 : undefined}
+                          max={f.type === "number" ? 31 : undefined}
+                          className="h-8 text-xs"
+                          value={bulkValues[f.key] || ""}
+                          onChange={(e) => setBulkValue(f.key, e.target.value)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
+                  <Button size="sm" onClick={applyBulk} disabled={selectedCount === 0}>
+                    <Wand2 className="h-4 w-4 mr-1" /> Apply to Selected ({selectedCount})
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={clearBulk}>
+                    Clear Form
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => toggleAll(!allSelected)}>
+                    {allSelected ? "Unselect All" : "Select All Visible"}
+                  </Button>
+                  {selectedCount === 0 && (
+                    <span className="text-xs text-muted-foreground">আগে রো select করুন (টেবিলের প্রথম কলামে)</span>
+                  )}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
+
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-3 flex-wrap">
