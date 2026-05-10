@@ -350,7 +350,7 @@ export default function BulkImport() {
   const deleteRow = (idx: number) => setRows((prev) => prev.filter((r) => r._idx !== idx));
 
   const downloadEdited = () => {
-    const ws = XLSX.utils.json_to_sheet(rows.map(({ _idx, _mikrotik_client_id, _autoFilled, ...rest }) => rest));
+    const ws = XLSX.utils.json_to_sheet(rows.map(({ _idx, _mikrotik_client_id, _autoFilled, _selected, _original, _codeConflict, ...rest }) => rest));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Edited Data");
     XLSX.writeFile(wb, "edited_import_data.xlsx");
