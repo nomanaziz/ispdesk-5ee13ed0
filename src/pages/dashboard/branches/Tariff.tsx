@@ -86,7 +86,7 @@ export default function Tariff() {
   const [syncing, setSyncing] = useState<string | null>(null);
 
   const [tariffName, setTariffName] = useState("");
-  const [tariffType, setTariffType] = useState<"custom" | "date_to_date">("custom");
+  const tariffType = "date_to_date" as const;
   const [editId, setEditId] = useState<string | null>(null);
 
   const [pkgRows, setPkgRows] = useState<PackageRow[]>([]);
