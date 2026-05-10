@@ -233,6 +233,18 @@ export default function BillingFilterPanel({ filters, onChange, onReset }: Props
                 { value: "personal", label: "পার্সোনাল" },
                 { value: "left", label: "চলে গেছে" },
               ]} />
+            <FilterSelect label="R.Days" value={filters.remainingDays} onChange={(v) => set("remainingDays", v)}
+              options={[
+                { value: "expired", label: "Expired (≤0)" },
+                { value: "1", label: "1 day" },
+                { value: "2", label: "2 days" },
+                { value: "3", label: "3 days" },
+                { value: "5", label: "5 days" },
+                { value: "10plus", label: "10+ days" },
+                { value: "20plus", label: "20+ days" },
+                { value: "30plus", label: "30+ days" },
+                { value: "60plus", label: "60+ days" },
+              ]} />
           </div>
 
           {/* Row 3: Date ranges */}
