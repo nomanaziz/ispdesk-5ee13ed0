@@ -30,8 +30,8 @@ import ispDeskLogo from "@/assets/isp-desk-logo.png";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
-interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
+export interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
+export interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
 
 
 // Rainbow candy-tone color per group label. Light: -600, Dark: -400 for readability.
@@ -69,7 +69,7 @@ function getGroupColor(group: MenuGroup): string {
   return group.color ?? GROUP_COLORS[group.label] ?? "text-muted-foreground";
 }
 
-const menuGroups: MenuGroup[] = [
+export const menuGroups: MenuGroup[] = [
   {
     label: "ড্যাশবোর্ড",
     icon: LayoutDashboard,
@@ -393,7 +393,7 @@ const menuGroups: MenuGroup[] = [
 
 // Bangla → English translations for sidebar group labels and menu item titles.
 // Default UI is Bangla; lookup returns English when language toggled.
-const SIDEBAR_EN: Record<string, string> = {
+export const SIDEBAR_EN: Record<string, string> = {
   // Group labels
   "ড্যাশবোর্ড": "Dashboard",
   "ওয়েবসাইট প্যানেল": "Website Panel",

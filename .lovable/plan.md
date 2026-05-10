@@ -1,62 +1,79 @@
-## Problem
+## লক্ষ্য
 
-Excel upload করলে existing rows-এর সাথে নতুন rows append হয়ে যাচ্ছে — duplicate। User-এর চাহিদা: same client (matching key দিয়ে) হলে existing row update হবে, mismatched হলে নতুন row যোগ হবে।
+পুরো ERP ড্যাশবোর্ডে একটা consistent **Breadcrumb (লিংক হায়ারার্কি)** যোগ করা — যাতে ইউজার দেখতে পায় সে কোন গ্রুপ → কোন পেজে আছে, এবং এক ক্লিকে আগের লেভেল বা পূর্বের পেজে ফিরে যেতে পারে।
 
-## Fix Scope
+দেখতে এমন হবে:
 
-শুধু `src/pages/dashboard/mikrotik/BulkImport.tsx` এর `handleFileUpload` function modify হবে। অন্য কোনো file/business logic touch হবে না।
-
-## Merge Logic
-
-Upload করা প্রত্যেক row-এর জন্য existing rows-এ একটা match খুঁজবে এই priority order-এ:
-
-1. **C.Code** (যদি upload row এবং existing row দুটোর-ই থাকে এবং সমান হয়)
-2. **UserName** (case-insensitive)
-3. **Mobile** (digits-only compare)
-
-Match পেলে → existing row-এর সব field upload row থেকে overwrite হবে (`_idx`, `_mikrotik_client_id`, `_selected`, `_original`, `_codeConflict` preserve থাকবে; `_autoFilled` reset হবে)।  
-Match না পেলে → নতুন row হিসেবে append।
-
-## Toast Feedback
-
-`X টি আপডেট, Y টি নতুন যোগ হয়েছে` — user বুঝতে পারবে কতগুলো merge হয়েছে।
-
-## Technical Detail
-
-```ts
-const handleFileUpload = (e) => {
-  // ...read XLSX as before...
-  setRows(prev => {
-    const next = [...prev];
-    let updated = 0, added = 0;
-    const findIdx = (row) => {
-      const code = String(row["C.Code"] ?? "").trim();
-      const user = String(row["UserName"] ?? "").trim().toLowerCase();
-      const mob  = String(row["Mobile"] ?? "").replace(/\D/g, "");
-      return next.findIndex(r => {
-        const rc = String(r["C.Code"] ?? "").trim();
-        const ru = String(r["UserName"] ?? "").trim().toLowerCase();
-        const rm = String(r["Mobile"] ?? "").replace(/\D/g, "");
-        if (code && rc && code === rc) return true;
-        if (user && ru && user === ru) return true;
-        if (mob && rm && mob === rm) return true;
-        return false;
-      });
-    };
-    for (const row of data) {
-      const i = findIdx(row);
-      if (i >= 0) {
-        next[i] = { ...next[i], ...row, _autoFilled: {} };
-        updated++;
-      } else {
-        next.push({ _idx: Date.now() + Math.random(), _autoFilled: {}, ...row });
-        added++;
-      }
-    }
-    toast.success(`${updated} টি আপডেট, ${added} টি নতুন যোগ হয়েছে`);
-    return next;
-  });
-};
+```text
+[← Back]   ড্যাশবোর্ড  /  All Clients  /  হোম ক্লায়েন্ট
 ```
 
-কোনো DB / schema / অন্য component change নেই।
+প্রতিটা segment clickable — গ্রুপ ক্লিকে ওই গ্রুপের first item-এ যাবে, লাস্ট segment হলো current page (non-clickable)। Back বাটন `navigate(-1)` করবে।
+
+ভাষা সিস্টেমের সাথে কাজ করবে (বাংলা/English) — `useLanguage()` থেকে।
+
+---
+
+## পরিকল্পনা
+
+### 1. Single source of truth: route registry
+নতুন ফাইল `src/lib/routeRegistry.ts` — এখানে এক জায়গায় থাকবে সব ড্যাশবোর্ড route-এর `{ path, title (bn), titleEn, group, groupEn }`। ডেটা আসবে `AppSidebar.tsx`-এর `menuGroups` থেকে copy/extract করে (একই titles যাতে sidebar আর breadcrumb মিলে যায়)।
+
+পাশাপাশি কিছু dynamic/detail route যেগুলো sidebar-এ নেই (যেমন `/dashboard/clients/:id`, `/dashboard/billing/invoice/:id`) — এগুলোর জন্য pattern → label ম্যাপিং রাখব (React Router style `:param` সাপোর্ট সহ একটা ছোট matcher)।
+
+### 2. Hook: `useBreadcrumbs()`
+`src/hooks/useBreadcrumbs.ts` — current `pathname` থেকে registry lookup করে array return করবে:
+
+```ts
+[
+  { label: "ড্যাশবোর্ড", href: "/dashboard" },
+  { label: "All Clients", href: "/dashboard/clients/home" }, // group → first item
+  { label: "হোম ক্লায়েন্ট", href: null }, // current page
+]
+```
+
+কোনো route registry-তে না থাকলে path segments থেকে fallback লেবেল বানাবে।
+
+### 3. Component: `<Breadcrumbs />`
+`src/components/Breadcrumbs.tsx` — shadcn `breadcrumb.tsx` ব্যবহার করে render করবে:
+- বাঁয়ে একটা ছোট **← Back** ghost button (`navigate(-1)`)
+- তারপর `Home` icon → group → page chain
+- Mobile-এ middle segments collapse হবে (BreadcrumbEllipsis), শুধু Home + current দেখাবে
+- Sticky না, simple inline strip
+
+### 4. Mount globally
+`src/components/DashboardLayout.tsx`-এর `<main>` এর একদম উপরে `<Breadcrumbs />` বসানো হবে। Dashboard root (`/dashboard`) এ Back বাটন hide হবে, breadcrumb-ও minimal থাকবে।
+
+কোনো individual page touch করতে হবে না — সব পেজে automatic আসবে।
+
+### 5. (Optional polish)
+- ESC কী চাপলে back navigate করা — accessibility nice-to-have
+- TopBar-এর সাথে spacing adjust যাতে double padding না হয়
+
+---
+
+## টেকনিক্যাল ডিটেইলস
+
+**Files to create**
+- `src/lib/routeRegistry.ts` — route → label/group ম্যাপ + matcher
+- `src/hooks/useBreadcrumbs.ts` — pathname → crumbs[] derive
+- `src/components/Breadcrumbs.tsx` — UI
+
+**Files to edit**
+- `src/components/DashboardLayout.tsx` — `<Breadcrumbs />` mount
+- (ঐচ্ছিক) `src/components/AppSidebar.tsx` — menuGroups কে `export` করা যাতে registry duplicate না হয়
+
+**যা touch হবে না**
+- ব্যাকএন্ড / DB / edge functions — কিছুই না
+- পাবলিক সাইট, পোর্টাল, রিসেলার লেআউট — শুধু admin dashboard
+- কোনো individual পেজ ফাইল
+
+**Coverage**
+সব `/dashboard/*` route automatically পাবে। Reseller (`/reseller/*`) আর portal (`/portal/*`) লেআউটে চাইলে পরে একই pattern apply করা যাবে — এই plan-এ admin dashboard scope।
+
+---
+
+## প্রশ্ন (approve করার আগে জানালে ভালো)
+
+1. Back বাটন কি **ব্রাউজার history back** (`navigate(-1)`) চান, নাকি **parent group** এ যাওয়া (যেমন হোম ক্লায়েন্ট থেকে All Clients group)? ডিফল্টে browser back ধরে এগোচ্ছি।
+2. Reseller portal (`/reseller/*`) আর Customer portal (`/portal/*`)-এও এখনই চান, নাকি শুধু admin dashboard?
