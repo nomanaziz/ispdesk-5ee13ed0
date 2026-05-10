@@ -56,6 +56,7 @@ export default function BulkActionButtons({
   onBulkVip,
   onBulkRemoveVip,
   onBulkProfileChange,
+  onBulkPackageChange,
   onRegenerateInvoice,
   onBulkAutoRechargeOn,
   onBulkAutoRechargeOff,
