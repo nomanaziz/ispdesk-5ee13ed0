@@ -94,9 +94,65 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     });
   }, [profileGroups, tariffPackages]);
 
-  const unmatchedCount = matched.filter((m) => !m.pkg).reduce((s, m) => s + m.count, 0);
-  const totalCreditable = +matched.reduce((s, m) => s + m.dayDebit, 0).toFixed(2);
-  const totalMonthly = +matched.reduce((s, m) => s + (m.pkg ? Number(m.pkg.selling_rate || 0) * m.count : 0), 0).toFixed(2);
+  const unmatchedProfileSet = useMemo(
+    () => new Set(matched.filter((m) => !m.pkg).map((m) => (m.profile || "").toLowerCase())),
+    [matched]
+  );
+
+  // Per-user issue analysis
+  const userIssues = useMemo(() => {
+    return (selectedRows as any[]).map((u) => {
+      const issues: ("profile_mismatch" | "protocol_mismatch")[] = [];
+      const svc = (u.service || "").toLowerCase();
+      if (svc !== "pppoe") issues.push("protocol_mismatch");
+      if (unmatchedProfileSet.has((u.profile || "").toLowerCase())) issues.push("profile_mismatch");
+      return { ...u, issues };
+    });
+  }, [selectedRows, unmatchedProfileSet]);
+
+  const profileMismatchUsers = userIssues.filter((u) => u.issues.includes("profile_mismatch"));
+  const protocolMismatchUsers = userIssues.filter((u) => u.issues.includes("protocol_mismatch"));
+
+  // Group helper
+  const groupUsersBy = (users: any[], key: "profile" | "service") => {
+    const m = new Map<string, any[]>();
+    users.forEach((u) => {
+      const k = u[key] || "(none)";
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push(u);
+    });
+    return Array.from(m.entries()).map(([value, list]) => ({ value, users: list }));
+  };
+
+  // Totals only from valid users (no issues)
+  const validProfileCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    userIssues.filter((u) => u.issues.length === 0).forEach((u) => {
+      const k = u.profile || "(no profile)";
+      m.set(k, (m.get(k) || 0) + 1);
+    });
+    return m;
+  }, [userIssues]);
+
+  const totalCreditable = +Array.from(validProfileCounts.entries()).reduce((s, [profile, count]) => {
+    const m = matched.find((mm) => mm.profile === profile);
+    if (!m?.pkg) return s;
+    const perDay = Number(m.pkg.selling_rate || 0) / Math.max(Number(m.pkg.validity_days || 30), 1);
+    return s + perDay * count;
+  }, 0).toFixed(2);
+  const totalMonthly = +Array.from(validProfileCounts.entries()).reduce((s, [profile, count]) => {
+    const m = matched.find((mm) => mm.profile === profile);
+    return s + (m?.pkg ? Number(m.pkg.selling_rate || 0) * count : 0);
+  }, 0).toFixed(2);
+
+  const unmatchedCount = profileMismatchUsers.length;
+  const protocolMismatchCount = protocolMismatchUsers.length;
+  const blockedByIssues = unmatchedCount > 0 || protocolMismatchCount > 0;
+
+  const [openProfile, setOpenProfile] = useState(false);
+  const [openProtocol, setOpenProtocol] = useState(false);
+  const [openSubGroups, setOpenSubGroups] = useState<Record<string, boolean>>({});
+  const toggleSub = (k: string) => setOpenSubGroups((s) => ({ ...s, [k]: !s[k] }));
 
   const balanceShort =
     !!selectedPop?.fund_started &&
