@@ -2,7 +2,7 @@ import { useState, ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   LogOut, User, Globe, Languages, Palette, Settings,
-  Smartphone, Share, Plus, StickyNote,
+  Smartphone, Share, Plus, StickyNote, Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -15,6 +15,8 @@ import { NotesButton } from "@/components/notes/NotesButton";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { toast } from "@/hooks/use-toast";
 import { HeaderClock } from "@/components/HeaderClock";
+import FundRechargeDialog from "@/components/branches/FundRechargeDialog";
+import { usePopScope } from "@/hooks/usePopScope";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
