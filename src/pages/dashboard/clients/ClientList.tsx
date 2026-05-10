@@ -630,6 +630,12 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
       <BulkDateExtendDialog open={dateExtendOpen} onOpenChange={setDateExtendOpen} selectedClients={selectedClients} invalidateKey="clients-list" />
       <BulkDistrictChangeDialog open={districtOpen} onOpenChange={setDistrictOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
       <BulkThanaChangeDialog open={thanaOpen} onOpenChange={setThanaOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
+      <TransferClientsToPopDialog
+        open={transferToPopOpen}
+        onOpenChange={setTransferToPopOpen}
+        selectedClients={selectedClients}
+        onTransferred={() => { setSelectedIds(new Set()); }}
+      />
       <BulkClientRechargeDialog
         open={bulkRechargeOpen}
         onOpenChange={setBulkRechargeOpen}
