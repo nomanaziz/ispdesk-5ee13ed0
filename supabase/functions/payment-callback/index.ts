@@ -63,6 +63,34 @@ Deno.serve(async (req) => {
         gatewayData = await ex.json();
         verified = gatewayData.statusCode === "0000" || gatewayData.transactionStatus === "Completed";
         trxId = gatewayData.trxID || trxId;
+      } else if (gateway === "sslcommerz" && (status === "VALID" || status === "VALIDATED" || formData.status === "VALID")) {
+        const val = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/sslcommerz-payment`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+          body: JSON.stringify({ action: "validate", val_id: formData.val_id, tran_id: formData.tran_id || trxId }),
+        });
+        gatewayData = await val.json();
+        verified = gatewayData.status === "VALID" || gatewayData.status === "VALIDATED";
+        trxId = gatewayData.bank_tran_id || gatewayData.tran_id || trxId;
+      } else if (gateway === "rechargeserver" && status === "success") {
+        const v = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/rechargeserver-payment`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+          body: JSON.stringify({ action: "verify", invoice_id: url.searchParams.get("invoice_id") || formData.invoice_id, transaction_id: url.searchParams.get("transaction_id") || formData.transaction_id }),
+        });
+        gatewayData = await v.json();
+        verified = !!gatewayData.status;
+        trxId = gatewayData.transaction_id || trxId;
+      } else if (gateway === "nagad" && (status === "Success" || status === "success")) {
+        const paymentRef = url.searchParams.get("payment_ref_id") || url.searchParams.get("paymentRefId") || "";
+        const v = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/nagad-payment`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+          body: JSON.stringify({ action: "verify", payment_ref_id: paymentRef }),
+        });
+        gatewayData = await v.json();
+        verified = gatewayData.status === "Success" || gatewayData.statusCode === "000";
+        trxId = gatewayData.issuerPaymentRefNo || gatewayData.paymentRefId || trxId;
       }
     } catch (e) { console.error("pop recharge verify error", e); }
 
