@@ -193,10 +193,7 @@ export default function BulkImport() {
           "Bill.Month": true, "Join.Date": true, "Exp.Date": true,
         };
 
-        return {
-          _idx: idx,
-          _mikrotik_client_id: mc.id,
-          _autoFilled: autoFilled,
+        const data: Record<string, any> = {
           "C.Code": mc.name || "",
           Name: "",
           Mobile: "",
@@ -223,7 +220,32 @@ export default function BulkImport() {
           MotherName: "",
           Occupation: "",
         };
+
+        return {
+          _idx: idx,
+          _mikrotik_client_id: mc.id,
+          _autoFilled: autoFilled,
+          _selected: false,
+          _original: { ...data, _autoFilled: { ...autoFilled } },
+          _codeConflict: null,
+          ...data,
+        };
       });
+
+      // Check Client Code conflicts in DB (global unique)
+      const codes = mapped.map((r) => r["C.Code"]).filter(Boolean);
+      if (codes.length > 0) {
+        const { data: existing } = await supabase
+          .from("clients")
+          .select("client_id, name")
+          .in("client_id", codes);
+        const conflictMap = new Map<string, string>();
+        (existing || []).forEach((c: any) => conflictMap.set(c.client_id, c.name));
+        mapped.forEach((r) => {
+          const ex = conflictMap.get(r["C.Code"]);
+          if (ex) r._codeConflict = { existingName: ex };
+        });
+      }
 
       setRows(mapped);
       toast.success(`${mapped.length} জন আনম্যাচড MikroTik ইউজার লোড হয়েছে`);
