@@ -138,7 +138,7 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
             </div>
             <div>
               <Label className="text-xs">Selected Clients</Label>
-              <Input value={clients.length} readOnly className="bg-muted" />
+              <Input value={`${calc.valid.length} / ${clients.length}`} readOnly className="bg-muted" />
             </div>
             <div>
               <Label className="text-xs">POP Balance</Label>
