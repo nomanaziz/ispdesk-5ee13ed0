@@ -108,6 +108,20 @@ export function PortalTopBar({
             <HeaderClock />
           </div>
 
+          {isReseller && popId && (
+            <Button
+              size="sm"
+              onClick={() => setFundOpen(true)}
+              className="h-9 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-2 sm:px-3"
+              title={t("ফান্ড রিচার্জ", "Fund Recharge")}
+            >
+              <Wallet className="h-4 w-4" />
+              <span className="hidden md:inline text-xs font-semibold">
+                {t("ফান্ড রিচার্জ", "Fund Recharge")}
+              </span>
+            </Button>
+          )}
+
           {extra}
 
           <DropdownMenu>
