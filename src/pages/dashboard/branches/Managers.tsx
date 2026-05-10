@@ -45,24 +45,25 @@ export default function Managers() {
     queryFn: async () => {
       const { data } = await supabase
         .from("clients")
-        .select("branch_id, billing_status, status, is_online");
-      const map: Record<string, { running: number; enabled: number; disabled: number; left: number; online: number }> = {};
+        .select("branch_id, billing_status, status, mikrotik_status, is_online");
+      const map: Record<string, { all: number; enabled: number; disabled: number; left: number; online: number }> = {};
       for (const c of data ?? []) {
         const bid = (c as any).branch_id;
         if (!bid) continue;
-        if (!map[bid]) map[bid] = { running: 0, enabled: 0, disabled: 0, left: 0, online: 0 };
+        if (!map[bid]) map[bid] = { all: 0, enabled: 0, disabled: 0, left: 0, online: 0 };
         const overall = (c as any).status;
-        const st = (c as any).billing_status;
-        const isLeft = overall === "left" || overall === "inactive";
-        // Running = সকল ক্লায়েন্ট (enabled + disabled + left)
-        map[bid].running++;
+        const billSt = String((c as any).billing_status || "").toLowerCase();
+        const mkSt = String((c as any).mikrotik_status || "").toLowerCase();
+        const isLeft = overall === "left" || overall === "inactive" || billSt === "left";
+        // All Client = active (non-left) clients of this POP
         if (isLeft) {
           map[bid].left++;
-        } else {
-          if (st === "active" || st === "enabled") map[bid].enabled++;
-          else if (st === "disabled" || st === "expired") map[bid].disabled++;
-          if ((c as any).is_online) map[bid].online++;
+          continue;
         }
+        map[bid].all++;
+        if (mkSt === "enabled") map[bid].enabled++;
+        else if (mkSt === "disabled") map[bid].disabled++;
+        if ((c as any).is_online) map[bid].online++;
       }
       return { map };
     },
