@@ -70,7 +70,8 @@ export default function BulkImport() {
   const [instructionOpen, setInstructionOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [autoLoading, setAutoLoading] = useState(false);
-
+  const [bulkOpen, setBulkOpen] = useState(true);
+  const [bulkValues, setBulkValues] = useState<Record<string, string>>({});
   const { data: packages = [] } = useQuery({
     queryKey: ["isp_packages_list"],
     queryFn: async () => {
