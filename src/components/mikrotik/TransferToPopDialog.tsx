@@ -165,6 +165,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
       if (!selectedPop?.tariff_id) throw new Error("এই POP-এ tariff assigned নাই");
       if (!selectedPop?.branch_id) throw new Error("এই POP-এর কোনো branch assign করা নেই");
       if (unmatchedCount > 0) throw new Error(`${unmatchedCount} জন user-এর profile POP-এর tariff-এ নেই — আগে MikroTik-এ profile change করুন বা POP-এর tariff-এ এই package add করুন`);
+      if (protocolMismatchCount > 0) throw new Error(`${protocolMismatchCount} জন user PPPoE নয় — শুধু PPPoE protocol allowed। MikroTik-এ service ঠিক করুন।`);
       if (balanceShort) throw new Error(`POP-এর balance অপ্রতুল (${selectedPop.balance} < ${totalCreditable})`);
 
       const { data: { user } } = await supabase.auth.getUser();
