@@ -28,12 +28,13 @@ Deno.serve(async (req) => {
     for (const pop of pops ?? []) {
       if (!pop.branch_id) continue;
 
-      // Find clients due: expire_date < today AND mikrotik enabled (not manually disabled)
+      // Find clients due: expire_date <= today, mikrotik enabled, per-client auto recharge ON
       const { data: dueClients, error: dErr } = await sb
         .from("clients")
-        .select("id, monthly_bill, expire_date, mikrotik_status, status")
+        .select("id, monthly_bill, expire_date, mikrotik_status, status, auto_recharge_enabled")
         .eq("branch_id", pop.branch_id)
-        .lt("expire_date", today)
+        .eq("auto_recharge_enabled", true)
+        .lte("expire_date", today)
         .gt("monthly_bill", 0)
         .neq("status", "left")
         .neq("mikrotik_status", "disabled");

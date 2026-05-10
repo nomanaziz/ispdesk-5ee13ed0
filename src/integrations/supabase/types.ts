@@ -3207,6 +3207,7 @@ export type Database = {
         Row: {
           address: string | null
           affiliator_id: string | null
+          auto_recharge_enabled: boolean
           bandwidth_burst_mbps: number | null
           bandwidth_committed_mbps: number | null
           bgp_as_number: string | null
@@ -3303,6 +3304,7 @@ export type Database = {
         Insert: {
           address?: string | null
           affiliator_id?: string | null
+          auto_recharge_enabled?: boolean
           bandwidth_burst_mbps?: number | null
           bandwidth_committed_mbps?: number | null
           bgp_as_number?: string | null
@@ -3399,6 +3401,7 @@ export type Database = {
         Update: {
           address?: string | null
           affiliator_id?: string | null
+          auto_recharge_enabled?: boolean
           bandwidth_burst_mbps?: number | null
           bandwidth_committed_mbps?: number | null
           bgp_as_number?: string | null

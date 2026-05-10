@@ -28,6 +28,7 @@ import BulkThanaChangeDialog from "@/components/billing/BulkThanaChangeDialog";
 import BillReceiveDialog from "@/components/billing/BillReceiveDialog";
 import BillingDatePopover from "@/components/billing/BillingDatePopover";
 import RemainingDaysCell from "@/components/billing/RemainingDaysCell";
+import BulkClientRechargeDialog from "@/components/reseller/BulkClientRechargeDialog";
 import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows } from "@/lib/exportClients";
 import { toast } from "sonner";
 import { usePopScope } from "@/hooks/usePopScope";
@@ -59,21 +60,8 @@ export default function BillingList() {
   const [perPage, setPerPage] = useState(25);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Fetch POP type for prepaid-only column (R.Days)
-  const { data: popInfo } = useQuery({
-    queryKey: ["pop-info-billing", branchId],
-    queryFn: async () => {
-      if (!branchId) return null;
-      const { data } = await supabase
-        .from("branch_managers")
-        .select("pop_type")
-        .eq("branch_id", branchId)
-        .maybeSingle();
-      return data;
-    },
-    enabled: isPopMode && !!branchId,
-  });
-  const isPrepaidPop = isPopMode && popInfo?.pop_type === "prepaid";
+  // R.Days column shows for any reseller (POP) mode
+  const isPrepaidPop = isPopMode;
 
   // Dialogs
   const [migrateOpen, setMigrateOpen] = useState(false);
@@ -87,6 +75,7 @@ export default function BillingList() {
   const [thanaOpen, setThanaOpen] = useState(false);
   const [payClient, setPayClient] = useState<any>(null);
   const [payBilling, setPayBilling] = useState<any>(null);
+  const [bulkRechargeOpen, setBulkRechargeOpen] = useState(false);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["billing-list", filters.month, branchId || "all", isPopMode ? "pop" : "admin"],
@@ -335,22 +324,36 @@ export default function BillingList() {
     <div className="space-y-3 p-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-bold text-foreground">বিলিং তালিকা (Billing List)</h1>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={async () => {
-            try {
-              const { data, error } = await supabase.functions.invoke("generate-monthly-billing", { body: {} });
-              if (error) throw error;
-              toast.success(data?.message || "বিল তৈরি সম্পন্ন");
-              queryClient.invalidateQueries({ queryKey: ["billing-list"] });
-            } catch (e: any) {
-              toast.error(e.message || "বিল তৈরি ব্যর্থ");
-            }
-          }}
-        >
-          <Receipt className="h-4 w-4 mr-1" /> এই মাসের বিল তৈরি করুন
-        </Button>
+        <div className="flex items-center gap-2">
+          {isPopMode && (
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => {
+                if (selectedIds.size === 0) { toast.error("কোনো ক্লায়েন্ট সিলেক্ট করা হয়নি"); return; }
+                setBulkRechargeOpen(true);
+              }}
+            >
+              <Banknote className="h-4 w-4 mr-1" /> Bulk Client Recharge ({selectedIds.size})
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              try {
+                const { data, error } = await supabase.functions.invoke("generate-monthly-billing", { body: {} });
+                if (error) throw error;
+                toast.success(data?.message || "বিল তৈরি সম্পন্ন");
+                queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+              } catch (e: any) {
+                toast.error(e.message || "বিল তৈরি ব্যর্থ");
+              }
+            }}
+          >
+            <Receipt className="h-4 w-4 mr-1" /> এই মাসের বিল তৈরি করুন
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -432,14 +435,15 @@ export default function BillingList() {
                   <TableHead>পরিশোধের তারিখ</TableHead>
                   <TableHead>বিল স্ট্যাটাস</TableHead>
                   <TableHead>MikroTik স্ট্যাটাস</TableHead>
+                  {isPopMode && <TableHead className="text-center">Auto Recharge</TableHead>}
                   <TableHead>অ্যাকশন</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={isPrepaidPop ? 20 : 19} className="text-center py-8 text-muted-foreground">লোড হচ্ছে...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={isPrepaidPop ? (isPopMode ? 21 : 20) : 19} className="text-center py-8 text-muted-foreground">লোড হচ্ছে...</TableCell></TableRow>
                 ) : paginated.length === 0 ? (
-                  <TableRow><TableCell colSpan={isPrepaidPop ? 20 : 19} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={isPrepaidPop ? (isPopMode ? 21 : 20) : 19} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
                 ) : paginated.map((c: any, i: number) => {
                   const b = c.currentBill;
                   const paidAmt = Number(c.totalPaid || 0);
@@ -520,6 +524,11 @@ export default function BillingList() {
                       <TableCell>
                         <MikrotikToggle client={c} queryClient={queryClient} />
                       </TableCell>
+                      {isPopMode && (
+                        <TableCell className="text-center">
+                          <AutoRechargeToggle client={c} queryClient={queryClient} />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <ClientActionButtons client={c} mode="billing" invalidateKey="billing-list" />
                       </TableCell>
@@ -535,7 +544,7 @@ export default function BillingList() {
                     <TableCell className="text-right">{pageTotals.paid.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{pageTotals.due.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{pageTotals.advance.toLocaleString()}</TableCell>
-                    <TableCell colSpan={4} />
+                    <TableCell colSpan={isPopMode ? 5 : 4} />
                   </TableRow>
                 </TableFooter>
               )}
@@ -579,6 +588,13 @@ export default function BillingList() {
         billing={payBilling}
         invalidateKey="billing-list"
       />
+      {isPopMode && (
+        <BulkClientRechargeDialog
+          open={bulkRechargeOpen}
+          onOpenChange={setBulkRechargeOpen}
+          clients={selectedClients.map((c: any) => ({ id: c.id, name: c.name, monthly_bill: Number(c.monthly_bill || 0) }))}
+        />
+      )}
     </div>
   );
 }
@@ -638,5 +654,28 @@ function MikrotikToggle({ client, queryClient }: { client: any; queryClient: any
       className={`scale-75 ${loading ? "opacity-50" : ""}`}
       aria-label={isEnabled ? "Enabled" : "Disabled"}
     />
+  );
+}
+
+function AutoRechargeToggle({ client, queryClient }: { client: any; queryClient: any }) {
+  const [loading, setLoading] = useState(false);
+  const [enabled, setEnabled] = useState<boolean>(!!client.auto_recharge_enabled);
+  const handle = async (next: boolean) => {
+    setLoading(true);
+    const prev = enabled;
+    setEnabled(next);
+    try {
+      await callPortal("set_client_auto_recharge", { client_id: client.id, enabled: next });
+      toast.success(next ? "Auto Recharge চালু" : "Auto Recharge বন্ধ");
+      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+    } catch (e: any) {
+      setEnabled(prev);
+      toast.error(e?.message || "আপডেট ব্যর্থ");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <Switch checked={enabled} onCheckedChange={handle} disabled={loading} className="scale-75" aria-label="Auto Recharge" />
   );
 }
