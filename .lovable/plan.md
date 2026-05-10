@@ -1,79 +1,35 @@
-## লক্ষ্য
+## Plan: তিনটা POP/client logic একসাথে ঠিক করা
 
-পুরো ERP ড্যাশবোর্ডে একটা consistent **Breadcrumb (লিংক হায়ারার্কি)** যোগ করা — যাতে ইউজার দেখতে পায় সে কোন গ্রুপ → কোন পেজে আছে, এবং এক ক্লিকে আগের লেভেল বা পূর্বের পেজে ফিরে যেতে পারে।
+### 1) User transfer-এ fund logic ফিরিয়ে আনা
+- `charge_pop_for_client_activation` database function update করব।
+- POP/Reseller-এর `fund_started = false` হলে কোনো balance check বা deduction হবে না।
+- `fund_started = true` হলে আগের মতো insufficient balance check হবে এবং balance deduct হবে।
+- এতে client code `0003`-এর মতো যেসব POP fund start করা হয়নি, তাদের transfer/activation-এ আর `INSUFFICIENT_BALANCE` দেখাবে না।
 
-দেখতে এমন হবে:
+### 2) Manager list-এর “Running” column ঠিক করা
+- `src/pages/dashboard/branches/Managers.tsx`-এ column label `Running` বদলে `All Client` করব।
+- count logic হবে:
+  - **All Client** = ঐ reseller/POP branch-এর মোট client
+  - **Enabled Client** = `mikrotik_status = enabled`
+  - **Disabled Client** = `mikrotik_status = disabled`
+  - **Left** = `status = left/inactive` বা billing left
+- current `billing_status` দিয়ে enabled/disabled গণনার ভুল logic বাদ দেব, যাতে screenshot-এর summary সঠিক হয়।
 
-```text
-[← Back]   ড্যাশবোর্ড  /  All Clients  /  হোম ক্লায়েন্ট
-```
+### 3) Auto recharge enabled client expire না হওয়া ও daily charge ঠিক করা
+- `apply-pop-daily-charges` edge function ঠিক করব:
+  - `auto_recharge_enabled = true` client expired হলেও সরাসরি disable করবে না।
+  - প্রথমে `pop_auto_renew_client`/recharge logic চালাবে, balance থাকলে daily/package charge কেটে expire date বাড়াবে এবং MikroTik enabled রাখবে।
+  - recharge সফল হলে database ও MikroTik status enabled করা হবে।
+  - শুধু recharge fail/insufficient balance হলে disabled হবে।
+- `reseller-auto-recharge` edge function-ও একই safety রাখবে: auto recharge fail হলেই disable, success হলে enabled.
+- POP client list refresh query invalidate থাকবে যাতে `/pop-admin/clients`-এ immediately updated status দেখা যায়।
 
-প্রতিটা segment clickable — গ্রুপ ক্লিকে ওই গ্রুপের first item-এ যাবে, লাস্ট segment হলো current page (non-clickable)। Back বাটন `navigate(-1)` করবে।
+### Technical changes
+- Database migration: `charge_pop_for_client_activation` function update, `fund_started` gate restore.
+- Edge functions: `apply-pop-daily-charges`, `reseller-auto-recharge`, and if needed `portal-data` recharge response handling.
+- Frontend: `Managers.tsx` count query/select and table labels.
 
-ভাষা সিস্টেমের সাথে কাজ করবে (বাংলা/English) — `useLanguage()` থেকে।
-
----
-
-## পরিকল্পনা
-
-### 1. Single source of truth: route registry
-নতুন ফাইল `src/lib/routeRegistry.ts` — এখানে এক জায়গায় থাকবে সব ড্যাশবোর্ড route-এর `{ path, title (bn), titleEn, group, groupEn }`। ডেটা আসবে `AppSidebar.tsx`-এর `menuGroups` থেকে copy/extract করে (একই titles যাতে sidebar আর breadcrumb মিলে যায়)।
-
-পাশাপাশি কিছু dynamic/detail route যেগুলো sidebar-এ নেই (যেমন `/dashboard/clients/:id`, `/dashboard/billing/invoice/:id`) — এগুলোর জন্য pattern → label ম্যাপিং রাখব (React Router style `:param` সাপোর্ট সহ একটা ছোট matcher)।
-
-### 2. Hook: `useBreadcrumbs()`
-`src/hooks/useBreadcrumbs.ts` — current `pathname` থেকে registry lookup করে array return করবে:
-
-```ts
-[
-  { label: "ড্যাশবোর্ড", href: "/dashboard" },
-  { label: "All Clients", href: "/dashboard/clients/home" }, // group → first item
-  { label: "হোম ক্লায়েন্ট", href: null }, // current page
-]
-```
-
-কোনো route registry-তে না থাকলে path segments থেকে fallback লেবেল বানাবে।
-
-### 3. Component: `<Breadcrumbs />`
-`src/components/Breadcrumbs.tsx` — shadcn `breadcrumb.tsx` ব্যবহার করে render করবে:
-- বাঁয়ে একটা ছোট **← Back** ghost button (`navigate(-1)`)
-- তারপর `Home` icon → group → page chain
-- Mobile-এ middle segments collapse হবে (BreadcrumbEllipsis), শুধু Home + current দেখাবে
-- Sticky না, simple inline strip
-
-### 4. Mount globally
-`src/components/DashboardLayout.tsx`-এর `<main>` এর একদম উপরে `<Breadcrumbs />` বসানো হবে। Dashboard root (`/dashboard`) এ Back বাটন hide হবে, breadcrumb-ও minimal থাকবে।
-
-কোনো individual page touch করতে হবে না — সব পেজে automatic আসবে।
-
-### 5. (Optional polish)
-- ESC কী চাপলে back navigate করা — accessibility nice-to-have
-- TopBar-এর সাথে spacing adjust যাতে double padding না হয়
-
----
-
-## টেকনিক্যাল ডিটেইলস
-
-**Files to create**
-- `src/lib/routeRegistry.ts` — route → label/group ম্যাপ + matcher
-- `src/hooks/useBreadcrumbs.ts` — pathname → crumbs[] derive
-- `src/components/Breadcrumbs.tsx` — UI
-
-**Files to edit**
-- `src/components/DashboardLayout.tsx` — `<Breadcrumbs />` mount
-- (ঐচ্ছিক) `src/components/AppSidebar.tsx` — menuGroups কে `export` করা যাতে registry duplicate না হয়
-
-**যা touch হবে না**
-- ব্যাকএন্ড / DB / edge functions — কিছুই না
-- পাবলিক সাইট, পোর্টাল, রিসেলার লেআউট — শুধু admin dashboard
-- কোনো individual পেজ ফাইল
-
-**Coverage**
-সব `/dashboard/*` route automatically পাবে। Reseller (`/reseller/*`) আর portal (`/portal/*`) লেআউটে চাইলে পরে একই pattern apply করা যাবে — এই plan-এ admin dashboard scope।
-
----
-
-## প্রশ্ন (approve করার আগে জানালে ভালো)
-
-1. Back বাটন কি **ব্রাউজার history back** (`navigate(-1)`) চান, নাকি **parent group** এ যাওয়া (যেমন হোম ক্লায়েন্ট থেকে All Clients group)? ডিফল্টে browser back ধরে এগোচ্ছি।
-2. Reseller portal (`/reseller/*`) আর Customer portal (`/portal/*`)-এও এখনই চান, নাকি শুধু admin dashboard?
+### Validation
+- Database function definition verify করব।
+- Relevant edge function deploy/test করব।
+- Confirm করব: fund not started POP transfer no longer checks balance, manager counts use MikroTik status, and auto-recharge users are renewed/enabled instead of auto-expired.
