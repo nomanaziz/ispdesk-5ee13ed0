@@ -673,12 +673,17 @@ export default function BulkImport() {
               <>
                 <Button variant="outline" size="sm" onClick={downloadEdited}><Download className="h-4 w-4 mr-1" /> এডিটেড ডাটা</Button>
                 <Button variant="outline" size="sm" onClick={() => { setRows([]); toast.info("সব ক্লিয়ার হয়েছে"); }}><Trash2 className="h-4 w-4 mr-1" /> সব মুছুন</Button>
-                <Button size="sm" onClick={importAll} disabled={importing || invalidCount > 0}>
+                <Button size="sm" onClick={importAll} disabled={importing || invalidCount > 0 || conflictCount > 0}>
                   <CheckCircle className="h-4 w-4 mr-1" /> সব ইমপোর্ট করুন ({rows.length})
                 </Button>
                 {invalidCount > 0 && (
                   <Badge variant="destructive" className="gap-1">
                     <AlertCircle className="h-3 w-3" /> {invalidCount} টি সারিতে সমস্যা
+                  </Badge>
+                )}
+                {conflictCount > 0 && (
+                  <Badge variant="destructive" className="gap-1">
+                    <AlertCircle className="h-3 w-3" /> {conflictCount} টি Client Code ইতোমধ্যে ব্যবহৃত
                   </Badge>
                 )}
               </>
