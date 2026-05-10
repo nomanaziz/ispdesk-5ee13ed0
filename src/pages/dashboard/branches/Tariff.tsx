@@ -446,7 +446,7 @@ export default function Tariff() {
   const openEdit = (t: any) => {
     setEditId(t.id);
     setTariffName(t.name);
-    setTariffType(t.tariff_type === "date_to_date" ? "date_to_date" : "custom");
+    // tariffType always date_to_date
     const rows: PackageRow[] = (t.reseller_tariff_packages ?? []).map((p: any) => ({
       tempId: crypto.randomUUID(),
       id: p.id,
