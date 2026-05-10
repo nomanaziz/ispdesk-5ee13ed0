@@ -1018,6 +1018,7 @@ Deno.serve(async (req) => {
             server_name, mac_address, protocol_type, profile, password,
             mikrotik_id, mikrotik_status, is_vip, billing_date, is_online,
             zone_id, sub_zone_id, box_id, package_id, email, billing_status,
+            auto_recharge_enabled,
             zone:zones(name),
             package:isp_packages(name),
             mikrotik_device:mikrotik_devices!clients_mikrotik_id_fkey(name),
@@ -2489,6 +2490,22 @@ Deno.serve(async (req) => {
         const { error } = await sb.from("branch_managers").update({ auto_recharge_enabled: enabled }).eq("id", tok.sub);
         if (error) return json({ error: error.message }, 400);
         return json({ ok: true, enabled });
+      }
+
+      case "set_client_auto_recharge": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const ids: string[] = Array.isArray(payload.client_ids) ? payload.client_ids : (payload.client_id ? [payload.client_id] : []);
+        const enabled = !!payload.enabled;
+        if (!ids.length) return json({ error: "client_ids দরকার" }, 400);
+        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch missing" }, 400);
+        const { data: owned } = await sb.from("clients").select("id").eq("branch_id", pop.branch_id).in("id", ids);
+        const allowed = (owned || []).map((c: any) => c.id);
+        if (!allowed.length) return json({ error: "কোনো valid client পাওয়া যায়নি" }, 400);
+        const { error } = await sb.from("clients").update({ auto_recharge_enabled: enabled }).in("id", allowed);
+        if (error) return json({ error: error.message }, 400);
+        return json({ ok: true, updated: allowed.length, enabled });
       }
 
       default:

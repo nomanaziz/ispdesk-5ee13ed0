@@ -1,0 +1,2 @@
+ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS auto_recharge_enabled boolean NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS idx_clients_auto_recharge ON public.clients(branch_id) WHERE auto_recharge_enabled = true;
