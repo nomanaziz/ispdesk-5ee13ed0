@@ -135,6 +135,17 @@ export default function Btrc() {
               <SelectContent><SelectItem value="user_id">User ID</SelectItem><SelectItem value="real_ip">Real IP</SelectItem></SelectContent>
             </Select>
           </div>
+          <div><Label className="text-xs">Reseller (POP)</Label>
+            <Select value={f.reseller_id} onValueChange={(v) => setF({ ...f, reseller_id: v })}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Resellers</SelectItem>
+                {(resellers || []).map((r: any) => (
+                  <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div><Label className="text-xs">Activation From</Label><Input type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} className="h-9" /></div>
           <div><Label className="text-xs">Activation To</Label><Input type="date" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} className="h-9" /></div>
           <Button onClick={() => setA({ ...f })} className="bg-[#2c5f6e] hover:bg-[#245069] h-9">Apply</Button>
