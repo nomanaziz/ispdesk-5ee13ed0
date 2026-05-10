@@ -37,6 +37,7 @@ Deno.serve(async (req) => {
         .from("clients")
         .select(`
           id, name, username, billing_status, monthly_bill, package_id, branch_id,
+          auto_recharge_enabled, expire_date, mikrotik_id,
           isp_packages:package_id ( name, mikrotik_profile, protocol_type, mikrotik_server_id ),
           zones:zone_id ( id, name ),
           sub_zones:sub_zone_id ( id, name )
