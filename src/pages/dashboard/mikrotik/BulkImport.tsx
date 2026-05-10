@@ -1,52 +1,65 @@
-import { useState, useRef, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Download, Upload, Trash2, FileSpreadsheet, ChevronDown, ChevronRight, Info, CheckCircle, RefreshCw } from "lucide-react";
+import { Download, Upload, Trash2, FileSpreadsheet, ChevronDown, ChevronRight, Info, CheckCircle, RefreshCw, AlertCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 
-const SAMPLE_COLUMNS = [
-  "C.Code", "Name", "Mobile", "Email", "NationalID", "Address", "Zone", "Conn.Type",
-  "Server", "Prot.Type", "Profile", "UserName", "Password", "R.Address", "C.Type",
-  "Package", "B.Status", "M.Bill", "Bill.Month", "Join.Date", "Exp.Date",
-  "DateOfBirth", "FatherName", "MotherName", "Occupation"
+const COLUMNS: { key: string; label: string; optional?: boolean; type?: "select" | "text" | "number" }[] = [
+  { key: "C.Code", label: "C.Code" },
+  { key: "Name", label: "Name" },
+  { key: "Mobile", label: "Mobile" },
+  { key: "Email", label: "Email", optional: true },
+  { key: "NationalID", label: "NationalId", optional: true },
+  { key: "Address", label: "Address" },
+  { key: "Zone", label: "Zone", type: "select" },
+  { key: "Conn.Type", label: "Conn.Type", type: "select" },
+  { key: "Server", label: "Server" },
+  { key: "Prot.Type", label: "Prot.Type", type: "select" },
+  { key: "Profile", label: "Profile" },
+  { key: "UserName", label: "UserName" },
+  { key: "Password", label: "Password" },
+  { key: "R.Address", label: "R.Address" },
+  { key: "C.Type", label: "C.Type", type: "select" },
+  { key: "Package", label: "Package", type: "select" },
+  { key: "B.Status", label: "B.Status", type: "select" },
+  { key: "M.Bill", label: "M.Bill", type: "number" },
+  { key: "Bill.Month", label: "Bill.Month" },
+  { key: "Join.Date", label: "Join.Date" },
+  { key: "Exp.Date", label: "Exp.Date" },
+  { key: "DateOfBirth", label: "DateOfBirth", optional: true },
+  { key: "FatherName", label: "FatherName", optional: true },
+  { key: "MotherName", label: "MotherName", optional: true },
+  { key: "Occupation", label: "Occupation", optional: true },
 ];
+
+const MANDATORY = ["Name", "Mobile", "Address", "Zone", "Conn.Type", "Prot.Type", "Package", "M.Bill", "Join.Date", "Exp.Date"];
+const CLIENT_TYPES = ["Home", "Corporate"];
+const STATUSES = ["Active", "Inactive", "Pending"];
 
 interface ImportRow {
   _idx: number;
   _mikrotik_client_id?: string;
-  "C.Code": string;
-  Name: string;
-  Mobile: string;
-  Email: string;
-  NationalID: string;
-  Address: string;
-  Zone: string;
-  "Conn.Type": string;
-  Server: string;
-  "Prot.Type": string;
-  Profile: string;
-  UserName: string;
-  Password: string;
-  "R.Address": string;
-  "C.Type": string;
-  Package: string;
-  "B.Status": string;
-  "M.Bill": number;
-  "Bill.Month": string;
-  "Join.Date": string;
-  "Exp.Date": string;
-  DateOfBirth: string;
-  FatherName: string;
-  MotherName: string;
-  Occupation: string;
+  _autoFilled?: Record<string, boolean>;
   [key: string]: any;
 }
+
+const pad2 = (n: number) => n.toString().padStart(2, "0");
+const todayDDMMYYYY = () => {
+  const d = new Date();
+  return `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
+};
+const currentMMYYYY = () => {
+  const d = new Date();
+  return `${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
+};
 
 export default function BulkImport() {
   const queryClient = useQueryClient();
@@ -68,7 +81,25 @@ export default function BulkImport() {
   const { data: zones = [] } = useQuery({
     queryKey: ["zones_list"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("zones").select("id, name").order("name");
+      const { data, error } = await supabase.from("zones").select("id, name").eq("status", "active").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: connectionTypes = [] } = useQuery({
+    queryKey: ["connection_types_list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("connection_types").select("id, name").eq("status", "active").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: protocolTypes = [] } = useQuery({
+    queryKey: ["protocol_types_list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("protocol_types").select("id, name").eq("status", "active").order("name");
       if (error) throw error;
       return data;
     },
@@ -83,11 +114,37 @@ export default function BulkImport() {
     },
   });
 
+  const { data: billingConfig } = useQuery({
+    queryKey: ["sys_billing_cycle_config"],
+    queryFn: async () => {
+      const { data } = await supabase.from("system_settings").select("setting_value").eq("setting_key", "billing_cycle_config").maybeSingle();
+      return (data?.setting_value as any) || { mode: "monthly_first", grace_days: 0 };
+    },
+  });
+
+  const ready = packages.length > 0 && zones.length >= 0 && connectionTypes.length >= 0 && protocolTypes.length >= 0;
+
+  const matchProtocol = (mkService: string | undefined) => {
+    if (!protocolTypes.length) return "";
+    const s = (mkService || "").toLowerCase().trim();
+    if (s && s !== "any") {
+      const found = protocolTypes.find((p) => p.name.toLowerCase() === s || p.name.toLowerCase().replace(/[^a-z]/g, "") === s.replace(/[^a-z]/g, ""));
+      if (found) return found.name;
+    }
+    const pppoe = protocolTypes.find((p) => p.name.toLowerCase().includes("pppoe"));
+    return pppoe?.name || protocolTypes[0]?.name || "";
+  };
+
+  const computeExpDay = () => {
+    const mode = billingConfig?.mode || "monthly_first";
+    if (mode === "monthly_first") return "01";
+    return pad2(new Date().getDate());
+  };
+
   // Auto-load unmatched MikroTik users
   const loadUnmatchedUsers = async () => {
     setAutoLoading(true);
     try {
-      // Get all mikrotik_clients not yet exported
       const { data: mkClients, error: mkErr } = await supabase
         .from("mikrotik_clients")
         .select("*, mikrotik_devices!mikrotik_clients_mikrotik_id_fkey(name)")
@@ -95,13 +152,11 @@ export default function BulkImport() {
         .order("created_at", { ascending: false });
       if (mkErr) throw mkErr;
 
-      // Get all existing client usernames
       const { data: existingClients } = await supabase.from("clients").select("username");
       const existingUsernames = new Set(
         (existingClients || []).map((c: any) => c.username?.toLowerCase()).filter(Boolean)
       );
 
-      // Filter out already-existing clients
       const unmatched = (mkClients || []).filter(
         (mc: any) => !existingUsernames.has(mc.name?.toLowerCase())
       );
@@ -112,23 +167,39 @@ export default function BulkImport() {
         return;
       }
 
-      // Map to import rows with auto-populated fields
+      const defaultZone = zones[0]?.name || "";
+      const defaultConn = connectionTypes[0]?.name || "";
+      const expDay = computeExpDay();
+      const billMonth = currentMMYYYY();
+      const join = todayDDMMYYYY();
+
       const mapped: ImportRow[] = unmatched.map((mc: any, idx: number) => {
-        const matchedPkg = packages.find(p => p.mikrotik_profile === mc.profile);
+        const matchedPkg = packages.find((p) => p.mikrotik_profile === mc.profile);
         const serverName = mc.mikrotik_devices?.name || mc.server_name || "";
+        const protType = matchProtocol(mc.service);
+
+        const autoFilled: Record<string, boolean> = {
+          "C.Code": true, UserName: true, Password: !!mc.password, Server: !!serverName,
+          "Prot.Type": !!protType, Profile: !!mc.profile, "R.Address": !!mc.remote_address,
+          "C.Type": true, Zone: !!defaultZone, "Conn.Type": !!defaultConn,
+          Package: !!matchedPkg, "M.Bill": !!matchedPkg, "B.Status": true,
+          "Bill.Month": true, "Join.Date": true, "Exp.Date": true,
+        };
+
         return {
           _idx: idx,
           _mikrotik_client_id: mc.id,
+          _autoFilled: autoFilled,
           "C.Code": mc.name || "",
           Name: "",
           Mobile: "",
           Email: "",
           NationalID: "",
           Address: "",
-          Zone: "",
-          "Conn.Type": "",
+          Zone: defaultZone,
+          "Conn.Type": defaultConn,
           Server: serverName,
-          "Prot.Type": mc.service || "pppoe",
+          "Prot.Type": protType,
           Profile: mc.profile || "",
           UserName: mc.name || "",
           Password: mc.password || "",
@@ -136,10 +207,10 @@ export default function BulkImport() {
           "C.Type": "Home",
           Package: matchedPkg?.name || "",
           "B.Status": "Active",
-          "M.Bill": matchedPkg?.price || 500,
-          "Bill.Month": "",
-          "Join.Date": new Date().toISOString().split("T")[0],
-          "Exp.Date": "",
+          "M.Bill": matchedPkg?.price || 0,
+          "Bill.Month": billMonth,
+          "Join.Date": join,
+          "Exp.Date": expDay,
           DateOfBirth: "",
           FatherName: "",
           MotherName: "",
@@ -156,16 +227,15 @@ export default function BulkImport() {
     }
   };
 
-  // Auto-load on mount
   useEffect(() => {
-    if (packages.length > 0) {
-      loadUnmatchedUsers();
-    }
-  }, [packages]);
+    if (ready) loadUnmatchedUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
 
   const downloadSample = () => {
-    const ws = XLSX.utils.aoa_to_sheet([SAMPLE_COLUMNS, SAMPLE_COLUMNS.map(() => "")]);
-    ws["!cols"] = SAMPLE_COLUMNS.map(() => ({ wch: 16 }));
+    const headers = COLUMNS.map((c) => c.key);
+    const ws = XLSX.utils.aoa_to_sheet([headers, headers.map(() => "")]);
+    ws["!cols"] = headers.map(() => ({ wch: 16 }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Import Template");
     XLSX.writeFile(wb, "bulk_import_template.xlsx");
@@ -182,19 +252,12 @@ export default function BulkImport() {
       const data = XLSX.utils.sheet_to_json<any>(ws);
 
       const parsed: ImportRow[] = data.map((row: any, idx: number) => ({
-        _idx: idx + rows.length,
+        _idx: idx + rows.length + Date.now(),
+        _autoFilled: {},
         ...row,
       }));
 
-      let warnings = 0;
-      parsed.forEach((r) => {
-        const pkg = packages.find((p) => p.name === r.Package);
-        if (r.Package && !pkg) warnings++;
-        if (r.Profile && pkg?.mikrotik_profile && r.Profile !== pkg.mikrotik_profile) warnings++;
-      });
-      if (warnings > 0) toast.warning(`${warnings} টি সারিতে প্যাকেজ/প্রোফাইল মিসম্যাচ পাওয়া গেছে`);
-
-      setRows(prev => [...prev, ...parsed]);
+      setRows((prev) => [...prev, ...parsed]);
       toast.success(`${parsed.length} টি সারি লোড হয়েছে`);
     };
     reader.readAsBinaryString(file);
@@ -204,17 +267,51 @@ export default function BulkImport() {
   const deleteRow = (idx: number) => setRows((prev) => prev.filter((r) => r._idx !== idx));
 
   const downloadEdited = () => {
-    const ws = XLSX.utils.json_to_sheet(rows.map(({ _idx, _mikrotik_client_id, ...rest }) => rest));
+    const ws = XLSX.utils.json_to_sheet(rows.map(({ _idx, _mikrotik_client_id, _autoFilled, ...rest }) => rest));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Edited Data");
     XLSX.writeFile(wb, "edited_import_data.xlsx");
     toast.success("এডিটেড ডাটা ডাউনলোড হয়েছে");
   };
 
+  const isRowValid = (r: ImportRow) =>
+    MANDATORY.every((k) => {
+      const v = r[k];
+      if (k === "M.Bill") return Number(v) > 0;
+      return v !== undefined && v !== null && String(v).trim() !== "";
+    });
+
+  const invalidCount = useMemo(() => rows.filter((r) => !isRowValid(r)).length, [rows]);
+
+  const updateCell = (idx: number, key: string, value: string) => {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r._idx !== idx) return r;
+        const updated: ImportRow = { ...r, [key]: value, _autoFilled: { ...(r._autoFilled || {}), [key]: false } };
+        if (key === "Package") {
+          const pkg = packages.find((p) => p.name === value);
+          if (pkg) {
+            updated["M.Bill"] = pkg.price || 0;
+            updated._autoFilled = { ...(updated._autoFilled || {}), "M.Bill": true };
+          }
+        }
+        return updated;
+      })
+    );
+  };
+
   const importAll = async () => {
     if (rows.length === 0) { toast.error("ইমপোর্ট করার ডাটা নেই"); return; }
+    if (invalidCount > 0) { toast.error(`${invalidCount} টি সারিতে mandatory ফিল্ড অনুপস্থিত`); return; }
     setImporting(true);
     try {
+      const parseDDMMYYYY = (s: string) => {
+        if (!s) return null;
+        const m = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+        if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+        return s;
+      };
+
       const clientsToInsert = rows.map((r) => {
         const zone = zones.find((z) => z.name === r.Zone);
         const pkg = packages.find((p) => p.name === r.Package);
@@ -240,9 +337,9 @@ export default function BulkImport() {
           billing_status: r["B.Status"] || "Active",
           monthly_bill: r["M.Bill"] ? Number(r["M.Bill"]) : 0,
           billing_start_month: r["Bill.Month"] || null,
-          joining_date: r["Join.Date"] || null,
+          joining_date: parseDDMMYYYY(r["Join.Date"]),
           expire_date: r["Exp.Date"] || null,
-          date_of_birth: r.DateOfBirth || null,
+          date_of_birth: parseDDMMYYYY(r.DateOfBirth) || null,
           father_name: r.FatherName || null,
           mother_name: r.MotherName || null,
           occupation: r.Occupation || null,
@@ -253,13 +350,9 @@ export default function BulkImport() {
       const { error } = await supabase.from("clients").insert(clientsToInsert);
       if (error) throw error;
 
-      // Mark mikrotik_clients as exported
-      const mkIds = rows.map(r => r._mikrotik_client_id).filter(Boolean);
+      const mkIds = rows.map((r) => r._mikrotik_client_id).filter(Boolean);
       if (mkIds.length > 0) {
-        await supabase
-          .from("mikrotik_clients")
-          .update({ exported: true, exported_to: "client_list" })
-          .in("id", mkIds);
+        await supabase.from("mikrotik_clients").update({ exported: true, exported_to: "client_list" }).in("id", mkIds);
       }
 
       toast.success(`${clientsToInsert.length} জন ক্লায়েন্ট সফলভাবে ইমপোর্ট হয়েছে`);
@@ -272,11 +365,45 @@ export default function BulkImport() {
     }
   };
 
-  const updateCell = (idx: number, key: string, value: string) => {
-    setRows((prev) => prev.map((r) => (r._idx === idx ? { ...r, [key]: value } : r)));
+  const optionsFor = (key: string): string[] => {
+    switch (key) {
+      case "Zone": return zones.map((z) => z.name);
+      case "Conn.Type": return connectionTypes.map((c) => c.name);
+      case "Prot.Type": return protocolTypes.map((p) => p.name);
+      case "C.Type": return CLIENT_TYPES;
+      case "Package": return packages.map((p) => p.name);
+      case "B.Status": return STATUSES;
+      default: return [];
+    }
   };
 
-  const displayCols = SAMPLE_COLUMNS.slice(0, 15);
+  const renderCell = (r: ImportRow, col: typeof COLUMNS[number]) => {
+    const value = r[col.key] ?? "";
+    const auto = r._autoFilled?.[col.key];
+    const missing = MANDATORY.includes(col.key) && (col.key === "M.Bill" ? !(Number(value) > 0) : String(value).trim() === "");
+    const cls = `h-7 text-xs min-w-[100px] ${auto ? "bg-muted/40" : ""} ${missing ? "border-destructive" : ""}`;
+
+    if (col.type === "select") {
+      const opts = optionsFor(col.key);
+      return (
+        <Select value={String(value)} onValueChange={(v) => updateCell(r._idx, col.key, v)}>
+          <SelectTrigger className={cls}><SelectValue placeholder="Select" /></SelectTrigger>
+          <SelectContent className="bg-popover z-50">
+            {opts.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      );
+    }
+
+    return (
+      <Input
+        type={col.type === "number" ? "number" : "text"}
+        className={cls}
+        value={value}
+        onChange={(e) => updateCell(r._idx, col.key, e.target.value)}
+      />
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -301,11 +428,10 @@ export default function BulkImport() {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent className="text-sm space-y-2 text-muted-foreground">
-              <p>✅ এই পেজে MikroTik থেকে সিঙ্ক করা ইউজার যারা ক্লায়েন্ট লিস্টে নেই, তারা অটো লোড হবে।</p>
-              <p>✅ Client Code, UserName, Password, Server, Profile, R.Address অটো পূরণ হবে।</p>
-              <p>✅ Package ও M.Bill প্রোফাইল অনুযায়ী অটো ম্যাচ হবে (ডিফল্ট ৫০০ টাকা)।</p>
-              <p>📋 এছাড়াও Excel আপলোড করেও ক্লায়েন্ট যোগ করতে পারবেন।</p>
-              <p>📥 "সব ইমপোর্ট করুন" বাটনে ক্লিক করলে ক্লায়েন্ট লিস্টে যোগ হবে এবং MikroTik থেকে exported মার্ক হবে।</p>
+              <p>✅ MikroTik থেকে আনম্যাচড ইউজার অটো লোড হয়। Zone, Conn.Type, Prot.Type, C.Type, Package, M.Bill, Bill.Month, Join.Date, Exp.Date — সব config থেকে অটো ফিল হয়।</p>
+              <p>⚪ অটো-ফিল করা সেলগুলো হালকা ব্যাকগ্রাউন্ডে দেখানো হয়। আপনি চাইলে edit করতে পারবেন।</p>
+              <p>🔴 Mandatory ফিল্ড খালি থাকলে border লাল হয় এবং Import disabled থাকে।</p>
+              <p>📋 (Opt.) লেখা কলামগুলো optional — না দিলেও সমস্যা নেই।</p>
             </CardContent>
           </CollapsibleContent>
         </Card>
@@ -321,7 +447,14 @@ export default function BulkImport() {
               <>
                 <Button variant="outline" size="sm" onClick={downloadEdited}><Download className="h-4 w-4 mr-1" /> এডিটেড ডাটা</Button>
                 <Button variant="outline" size="sm" onClick={() => { setRows([]); toast.info("সব ক্লিয়ার হয়েছে"); }}><Trash2 className="h-4 w-4 mr-1" /> সব মুছুন</Button>
-                <Button size="sm" onClick={importAll} disabled={importing}><CheckCircle className="h-4 w-4 mr-1" /> সব ইমপোর্ট করুন ({rows.length})</Button>
+                <Button size="sm" onClick={importAll} disabled={importing || invalidCount > 0}>
+                  <CheckCircle className="h-4 w-4 mr-1" /> সব ইমপোর্ট করুন ({rows.length})
+                </Button>
+                {invalidCount > 0 && (
+                  <Badge variant="destructive" className="gap-1">
+                    <AlertCircle className="h-3 w-3" /> {invalidCount} টি সারিতে সমস্যা
+                  </Badge>
+                )}
               </>
             )}
           </div>
@@ -339,22 +472,21 @@ export default function BulkImport() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-10">#</TableHead>
-                    {displayCols.map((col) => <TableHead key={col} className="min-w-[100px] text-xs">{col}</TableHead>)}
+                    {COLUMNS.map((col) => (
+                      <TableHead key={col.key} className="min-w-[100px] text-xs whitespace-nowrap">
+                        {col.label}
+                        {col.optional ? <span className="text-muted-foreground"> (Opt.)</span> : MANDATORY.includes(col.key) ? <span className="text-destructive"> *</span> : null}
+                      </TableHead>
+                    ))}
                     <TableHead>অ্যাকশন</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((r, i) => (
-                    <TableRow key={r._idx}>
+                    <TableRow key={r._idx} className={!isRowValid(r) ? "bg-destructive/5" : ""}>
                       <TableCell className="text-xs">{i + 1}</TableCell>
-                      {displayCols.map((col) => (
-                        <TableCell key={col} className="p-1">
-                          <Input
-                            className="h-7 text-xs min-w-[80px]"
-                            value={r[col] || ""}
-                            onChange={(e) => updateCell(r._idx, col, e.target.value)}
-                          />
-                        </TableCell>
+                      {COLUMNS.map((col) => (
+                        <TableCell key={col.key} className="p-1">{renderCell(r, col)}</TableCell>
                       ))}
                       <TableCell>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteRow(r._idx)}>
@@ -365,7 +497,7 @@ export default function BulkImport() {
                   ))}
                 </TableBody>
               </Table>
-              <div className="mt-3 text-sm text-muted-foreground">মোট: {rows.length} টি সারি</div>
+              <div className="mt-3 text-sm text-muted-foreground">মোট: {rows.length} টি সারি {invalidCount > 0 && <span className="text-destructive">| {invalidCount} টি অসম্পূর্ণ</span>}</div>
             </div>
           )}
         </CardContent>

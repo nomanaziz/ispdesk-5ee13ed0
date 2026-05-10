@@ -1,58 +1,54 @@
-## ১. Clear Filter বাটনের সমস্যা
+## Goal
+Make BulkImport (`/dashboard/mikrotik/import`) auto-fill all derivable fields when MikroTik users are loaded, so the user only has to fill truly missing personal info (Name, Mobile, Address, etc.).
 
-**বর্তমান অবস্থা** (`src/pages/dashboard/mikrotik/Import.tsx`):
-`clearFilters()` শুধু server / protocol / profile / userType / search reset করে, কিন্তু:
-- `transferStatus` (Pending/Transferred) reset হয় না
-- `selectedIds` (চেকবক্স selection) clear হয় না
-- সব filter ইতিমধ্যে default ("all") থাকলে button চাপলে দৃশ্যত কিছুই হয় না — তাই মনে হয় "কাজ করছে না"
+## Auto-fill Rules
 
-**সমাধান**:
-- `clearFilters()` এর সাথে `transferStatus` কে `"pending"` এ reset + `selectedIds` clear যোগ
-- Button কে disable করা হবে যখন সব filter ইতিমধ্যে default — যাতে clear করার মতো কিছু না থাকলে চাপ দিলে inactive বোঝা যায়
-- Hover এ tooltip: "সব filter, search ও selection clear করুন"
+When MikroTik users load (or refresh), each row will populate as follows — pulling from existing config tables (`zones`, `connection_types`, `protocol_types`, `isp_packages`) and system settings.
 
-## ২. Export to POP/Reseller dialog — issue grouping ও protocol validation
+| Field | Source / Logic |
+|---|---|
+| **C.Code** | MikroTik username (current behavior) |
+| **UserName / Password** | MikroTik (current) |
+| **Server** | MikroTik device name (current) |
+| **Profile** | MikroTik profile (current) |
+| **R.Address** | MikroTik remote_address (current) |
+| **Zone** | First active zone from `zones` table (default). User can edit. |
+| **Conn.Type** | First active row from `connection_types` (e.g. "UTP" / "Fiber"). |
+| **Prot.Type** | Match MikroTik `service` against `protocol_types`. If MikroTik says `pppoe` → "PPPoE". If `any`/empty → fallback to first active protocol_type. |
+| **C.Type** | Default `"Home"` (hardcoded list Home/Corporate). |
+| **Package** | Match by `mikrotik_profile === profile` (current). |
+| **M.Bill** | From matched package `price`. If no match → 0 (not 500). |
+| **B.Status** | `"Active"` (current). |
+| **Bill.Month** | Current `MM-YYYY` (e.g. `05-2026`). |
+| **Join.Date** | Today (`DD-MM-YYYY`) — current is ISO; switch to `DD-MM-YYYY` to match sample. |
+| **Exp.Date** | Day-of-month number based on `billing_cycle_config` (`monthly_first` → `1`, else day of join). Stored as a 2-digit day like `"10"`, matching the sample data. |
 
-**বর্তমান গ্যাপ** (`src/components/mikrotik/TransferToPopDialog.tsx`):
-- শুধু profile mismatch ধরা হয়, কিন্তু `service = "any"` / `dhcp` / `hotspot` ইত্যাদি non-PPPoE protocol আলাদা ভাবে detect/block হয় না
-- কোন user-এ কী সমস্যা সেটা চেনার উপায় নেই — শুধু aggregate count দেখানো হয়
+## UI Changes
 
-**নতুন behavior**:
+1. **Render Zone, Conn.Type, Prot.Type, C.Type, Package, B.Status as `<Select>` dropdowns** instead of free-text Input. Options come from the corresponding config tables / fixed lists. This guarantees only valid values reach the import step.
+2. **Mandatory vs Optional column headers** — append `(Opt.)` to optional columns: `Email`, `NationalId`, `DateOfBirth`, `FatherName`, `MotherName`, `Occupation`. Mandatory ones get a small red `*`.
+3. **Visual highlight** — auto-filled cells get a subtle muted background so the user can quickly spot which cells still need manual input (Name, Mobile, Address).
+4. **Date format** — display dates as `DD-MM-YYYY` to match the user's sample.
 
-### Validation rule
-শুধু `service === "pppoe"` (case-insensitive) allowed। অন্য সব (`any`, `dhcp`, `hotspot`, null) → "Protocol mismatch" issue হিসেবে flag।
+## Validation Before Import
 
-### "User Issues" নতুন section (auto-match table-এর নিচে)
-শুধু সেইসব user দেখাবে যাদের অন্তত একটা issue আছে। গ্রুপিং hierarchy:
+Before allowing "সব ইমপোর্ট করুন":
+- Each row must have: `Name`, `Mobile`, `Address`, `Zone`, `Conn.Type`, `Prot.Type`, `Package`, `M.Bill > 0`, `Join.Date`, `Exp.Date`.
+- Rows missing any mandatory field show an inline red badge; import button shows count of invalid rows.
 
-```text
-Issues Summary
-─────────────────────────────────────────
-[▶] Profile mismatch — 2 user
-       40Mb ......................... 2
-[▶] Protocol mismatch (PPPoE নয়) — 1 user
-       any ........................... 1
-```
+## Data Fetched (additions)
 
-- **Top level**: issue type (Profile mismatch / Protocol mismatch) — by default **collapsed**, count + badge দেখাবে
-- **Expand করলে**: ওই issue-এর under সব affected profile/protocol value, সাথে user count
-- **আরও expand (sub-row) করলে**: actual user list (username, profile, service) — যাতে কোন কোন user সেটা দেখা যায়
-- একই user-এ একাধিক issue থাকলে দু'জায়গায় উভয় section-এ দেখাবে (clarity-র জন্য)
+Add three queries to `BulkImport.tsx`:
+- `connection_types` (where status='active')
+- `protocol_types` (where status='active')
+- `system_settings` row `billing_cycle_config` (to compute Exp.Date day)
 
-### Block / allow behavior
-- `unmatchedCount` (profile) **বা** `protocolMismatchCount` > 0 → Export button disabled
-- Existing red alert text update হয়ে দুটো issue type-ই উল্লেখ করবে: "X জন user-এর profile mismatch, Y জন user PPPoE নয় — আগে MikroTik-এ ঠিক করুন বা POP-এর tariff-এ package add করুন"
-- Per-day debit / total monthly হিসেব শুধু **valid users** (PPPoE + matched profile) থেকে হবে
+## Files
 
-### Data fetched
-`selectedRows` query-তে `service` field যোগ করতে হবে (এখন শুধু `id, name, profile` আসছে)।
+- `src/pages/dashboard/mikrotik/BulkImport.tsx` — only file touched.
+- No DB schema changes, no edge function changes.
 
-## Technical notes
+## Out of Scope
 
-- `useMemo`-এ user-level issue list build: `{ user, issues: ["profile_mismatch" | "protocol_mismatch"] }[]`
-- Collapse UI: shadcn `<Collapsible>` ব্যবহার, কোনো নতুন dependency দরকার নেই
-- কোনো DB schema change নেই — শুধু frontend logic
-
-## Out of scope
-- Server-side validation (existing client-side check + unique constraint যথেষ্ট)
-- Auto-fix protocol from dialog (user MikroTik-এ গিয়ে ঠিক করবে — current pattern অনুযায়ী)
+- Adding a new `client_types` config table (Home/Corporate stays as a fixed two-option list — confirm if you want it driven by a DB table instead).
+- Changing the actual `clients` insert payload shape (already accepts these fields).
