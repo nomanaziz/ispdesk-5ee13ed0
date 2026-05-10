@@ -59,11 +59,10 @@ Deno.serve(async (req) => {
         const daily = Math.round((monthly / 30) * 100) / 100;
         if (daily <= 0) continue;
 
-        // Auto-recharge OFF + expired → disable immediately, do NOT charge
-        const autoOn = (c as any).auto_recharge_enabled !== false;
+        // Expired client সর্বদা disable (auto on/off নির্বিশেষে)। Recharge হলে expire_date push হয়, তখন আর expired থাকবে না।
         const expDate = (c as any).expire_date as string | null;
         const expired = expDate ? expDate <= today : false;
-        if (!autoOn && expired) {
+        if (expired) {
           toDisable.push((c as any).id);
           continue;
         }
@@ -118,9 +117,24 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Suspend clients we couldn't charge today (insufficient wallet)
+      // Suspend clients we couldn't charge today (expired or insufficient wallet)
       if (toDisable.length > 0) {
         await sb.from("clients").update({ mikrotik_status: "disabled" }).in("id", toDisable);
+        // Also push to RouterOS so the secret is actually disabled
+        const { data: tdRows } = await sb
+          .from("clients")
+          .select("id, mikrotik_id, username")
+          .in("id", toDisable);
+        for (const r of (tdRows ?? []) as any[]) {
+          if (!r.mikrotik_id || !r.username) continue;
+          try {
+            await fetch(`${url}/functions/v1/manage-mikrotik-ppp`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+              body: JSON.stringify({ mikrotik_id: r.mikrotik_id, username: r.username, client_id: r.id, action: "disable" }),
+            });
+          } catch (_) { /* swallow */ }
+        }
       }
 
       if (inserts.length === 0) {

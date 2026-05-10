@@ -844,27 +844,30 @@ Deno.serve(async (req) => {
         if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
 
         const p = payload || {};
-        const { mobile: legacyMobile, ...safePayload } = p;
+        const { mobile: legacyMobile, profile: _ignoredProfile, mikrotik_profile: _ignoredMP, mikrotik_id: _ignoredMI, server_name: _ignoredSN, monthly_bill: _ignoredMB, ...safePayload } = p;
         if (!p.name || !p.client_id) return json({ error: "নাম ও ক্লায়েন্ট কোড আবশ্যক" }, 400);
 
-        // Resolve package buying price + validity (prepaid wallet check)
-        let buyPrice = 0;
-        let validityDays = 30;
-        if (p.package_id && pop.tariff_id) {
-          const { data: tpkg } = await sb
-            .from("reseller_tariff_packages")
-            .select("selling_rate, validity_days")
-            .eq("tariff_id", pop.tariff_id)
-            .eq("package_id", p.package_id)
-            .maybeSingle();
-          if (tpkg) {
-            buyPrice = Number(tpkg.selling_rate || 0);
-            validityDays = Number(tpkg.validity_days || 30) || 30;
-          }
+        // Enforce: package_id MUST be in this POP's tariff. No silent fallback.
+        if (!p.package_id) return json({ error: "Package required" }, 400);
+        if (!pop.tariff_id) return json({ error: "এই POP-এ tariff assigned নেই" }, 400);
+
+        const { data: tpkg } = await sb
+          .from("reseller_tariff_packages")
+          .select("selling_rate, validity_days, mikrotik_profile, mikrotik_server_id, package_id, mikrotik_devices:mikrotik_devices!reseller_tariff_packages_mikrotik_server_id_fkey(id, name)")
+          .eq("tariff_id", pop.tariff_id)
+          .eq("package_id", p.package_id)
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (!tpkg) {
+          return json({ error: "PACKAGE_NOT_IN_TARIFF: এই package POP-এর tariff-এ assigned নয়" }, 403);
         }
-        if (!buyPrice && Number(p.monthly_bill) > 0) {
-          buyPrice = Number(p.monthly_bill);
-        }
+
+        const buyPrice = Number(tpkg.selling_rate || 0);
+        const validityDays = Number(tpkg.validity_days || 30) || 30;
+        const forcedProfile = tpkg.mikrotik_profile || null;
+        const forcedMikrotikId = (tpkg as any)?.mikrotik_devices?.id || tpkg.mikrotik_server_id || null;
+        const forcedServerName = (tpkg as any)?.mikrotik_devices?.name || null;
 
         const isActiveBilling = String(p.billing_status || "Active").toLowerCase() === "active";
         const walletBalance = Number(pop.balance || 0);
@@ -888,6 +891,11 @@ Deno.serve(async (req) => {
           district_id: pop.district_id || null,
           upazila_id: pop.upazila_id || null,
           owner_scope: "pop",
+          // Force from tariff package — prevents profile/MB leak
+          profile: forcedProfile,
+          mikrotik_id: forcedMikrotikId,
+          server_name: forcedServerName,
+          monthly_bill: buyPrice,
           expire_date: isActiveBilling ? expIso : (p.expire_date ?? null),
         };
 
@@ -912,7 +920,7 @@ Deno.serve(async (req) => {
         }
 
         // Auto-generate first billing row (prorated) — admin-side bookkeeping only
-        if (inserted?.id && isActiveBilling && Number(p.monthly_bill) > 0) {
+        if (inserted?.id && isActiveBilling && buyPrice > 0) {
           const joinStr = p.joining_date || new Date().toISOString().slice(0, 10);
           const join = new Date(joinStr + "T00:00:00");
           const y = join.getFullYear();
@@ -920,7 +928,7 @@ Deno.serve(async (req) => {
           const totalDays = new Date(y, m, 0).getDate();
           const joinDay = join.getDate();
           const daysRemaining = totalDays - joinDay + 1;
-          const monthly = Number(p.monthly_bill || 0);
+          const monthly = buyPrice;
           const isProrated = joinDay > 1;
           const amount = isProrated
             ? Math.round((monthly / totalDays) * daysRemaining * 100) / 100
