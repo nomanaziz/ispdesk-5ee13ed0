@@ -620,7 +620,14 @@ export default function BulkImport() {
                 </TableHeader>
                 <TableBody>
                   {rows.map((r, i) => (
-                    <TableRow key={r._idx} className={!isRowValid(r) ? "bg-destructive/5" : ""}>
+                    <TableRow key={r._idx} className={!isRowValid(r) ? "bg-destructive/5" : r._selected ? "bg-primary/5" : ""}>
+                      <TableCell className="p-1">
+                        <Checkbox
+                          checked={!!r._selected}
+                          onCheckedChange={(c) => toggleRow(r._idx, !!c)}
+                          aria-label={`Select row ${i + 1}`}
+                        />
+                      </TableCell>
                       <TableCell className="text-xs">{i + 1}</TableCell>
                       {COLUMNS.map((col) => (
                         <TableCell key={col.key} className="p-1">{renderCell(r, col)}</TableCell>
