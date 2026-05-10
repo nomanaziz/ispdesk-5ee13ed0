@@ -656,3 +656,26 @@ function MikrotikToggle({ client, queryClient }: { client: any; queryClient: any
     />
   );
 }
+
+function AutoRechargeToggle({ client, queryClient }: { client: any; queryClient: any }) {
+  const [loading, setLoading] = useState(false);
+  const [enabled, setEnabled] = useState<boolean>(!!client.auto_recharge_enabled);
+  const handle = async (next: boolean) => {
+    setLoading(true);
+    const prev = enabled;
+    setEnabled(next);
+    try {
+      await callPortal("set_client_auto_recharge", { client_id: client.id, enabled: next });
+      toast.success(next ? "Auto Recharge চালু" : "Auto Recharge বন্ধ");
+      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+    } catch (e: any) {
+      setEnabled(prev);
+      toast.error(e?.message || "আপডেট ব্যর্থ");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <Switch checked={enabled} onCheckedChange={handle} disabled={loading} className="scale-75" aria-label="Auto Recharge" />
+  );
+}
