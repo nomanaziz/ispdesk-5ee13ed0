@@ -324,7 +324,20 @@ export default function BulkImport() {
       prev.map((r) => {
         if (!r._selected) return r;
         const updated: ImportRow = { ...r, _autoFilled: { ...(r._autoFilled || {}) } };
-        for (const [k, v] of filled) {
+        for (const [k, raw] of filled) {
+          let v = raw;
+          if (k === "Join.Date" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+            const [y, m, d] = v.split("-");
+            v = `${d}-${m}-${y}`;
+          }
+          if (k === "Bill.Month" && /^\d{4}-\d{2}$/.test(v)) {
+            const [y, m] = v.split("-");
+            v = `${m}-${y}`;
+          }
+          if (k === "Exp.Date") {
+            const n = Math.max(1, Math.min(31, Number(v) || 1));
+            v = pad2(n);
+          }
           updated[k] = v;
           updated._autoFilled![k] = false;
           if (k === "Package") {
