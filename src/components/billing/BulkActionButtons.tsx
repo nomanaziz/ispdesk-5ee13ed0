@@ -56,8 +56,10 @@ export default function BulkActionButtons({
   onRegenerateInvoice,
   onBulkAutoRechargeOn,
   onBulkAutoRechargeOff,
+  onBulkClientRecharge,
   showMigrate = true,
   showAutoRecharge = false,
+  showBulkRecharge = false,
 }: Props) {
   const requireSelection = (fn: () => void) => {
     if (selectedCount === 0) {
