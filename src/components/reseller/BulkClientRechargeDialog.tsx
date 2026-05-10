@@ -115,13 +115,18 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Client Validity Extend / Renewal</DialogTitle>
-          <DialogDescription>Selected client গুলোর জন্য একসাথে recharge করুন। Per-day rate = package buying rate ÷ minimum activation days।</DialogDescription>
+          <DialogDescription>Selected client গুলোর জন্য একসাথে recharge করুন। Per-day rate = package buying rate ÷ validity days।</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div>
             <Label className="text-xs">New Renewal Days <span className="text-destructive">*</span></Label>
-            <Input type="number" min={1} max={365} value={days} onChange={(e) => setDays(e.target.value)} />
+            <Input type="number" min={calc.effectiveMin} max={365} value={days} onChange={(e) => setDays(e.target.value)} />
+            {belowMin && (
+              <p className="text-xs text-destructive flex items-center gap-1 mt-1">
+                <AlertTriangle className="h-3 w-3" /> Minimum {calc.effectiveMin} দিন recharge করতে হবে।
+              </p>
+            )}
             {exceeds && (
               <p className="text-xs text-destructive flex items-center gap-1 mt-1">
                 <AlertTriangle className="h-3 w-3" /> Days limit exceed — POP balance ৳{popBalance.toFixed(2)} যথেষ্ট নয়।
