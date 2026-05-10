@@ -74,6 +74,9 @@ export default function BulkImport() {
   const [instructionOpen, setInstructionOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [autoLoading, setAutoLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState<string>("");
+  const [selectedProfile, setSelectedProfile] = useState<string>("all");
   const [bulkOpen, setBulkOpen] = useState(true);
   const [bulkValues, setBulkValues] = useState<Record<string, string>>({});
   const { data: packages = [] } = useQuery({
