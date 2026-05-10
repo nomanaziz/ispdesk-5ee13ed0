@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Download, Upload, Trash2, FileSpreadsheet, ChevronDown, ChevronRight, Info, CheckCircle, RefreshCw, AlertCircle, Wand2 } from "lucide-react";
+import { Download, Upload, Trash2, FileSpreadsheet, ChevronDown, ChevronRight, Info, CheckCircle, RefreshCw, AlertCircle, Wand2, Undo2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import * as XLSX from "xlsx";
 
 const COLUMNS: { key: string; label: string; optional?: boolean; type?: "select" | "text" | "number" }[] = [
@@ -50,6 +51,9 @@ interface ImportRow {
   _idx: number;
   _mikrotik_client_id?: string;
   _autoFilled?: Record<string, boolean>;
+  _selected?: boolean;
+  _original?: Record<string, any>;
+  _codeConflict?: { existingName: string } | null;
   [key: string]: any;
 }
 
@@ -189,10 +193,7 @@ export default function BulkImport() {
           "Bill.Month": true, "Join.Date": true, "Exp.Date": true,
         };
 
-        return {
-          _idx: idx,
-          _mikrotik_client_id: mc.id,
-          _autoFilled: autoFilled,
+        const data: Record<string, any> = {
           "C.Code": mc.name || "",
           Name: "",
           Mobile: "",
@@ -219,7 +220,32 @@ export default function BulkImport() {
           MotherName: "",
           Occupation: "",
         };
+
+        return {
+          _idx: idx,
+          _mikrotik_client_id: mc.id,
+          _autoFilled: autoFilled,
+          _selected: false,
+          _original: { ...data, _autoFilled: { ...autoFilled } },
+          _codeConflict: null,
+          ...data,
+        };
       });
+
+      // Check Client Code conflicts in DB (global unique)
+      const codes = mapped.map((r) => r["C.Code"]).filter(Boolean);
+      if (codes.length > 0) {
+        const { data: existing } = await supabase
+          .from("clients")
+          .select("client_id, name")
+          .in("client_id", codes);
+        const conflictMap = new Map<string, string>();
+        (existing || []).forEach((c: any) => conflictMap.set(c.client_id, c.name));
+        mapped.forEach((r) => {
+          const ex = conflictMap.get(r["C.Code"]);
+          if (ex) r._codeConflict = { existingName: ex };
+        });
+      }
 
       setRows(mapped);
       toast.success(`${mapped.length} জন আনম্যাচড MikroTik ইউজার লোড হয়েছে`);
@@ -285,6 +311,7 @@ export default function BulkImport() {
     });
 
   const invalidCount = useMemo(() => rows.filter((r) => !isRowValid(r)).length, [rows]);
+  const conflictCount = useMemo(() => rows.filter((r) => r._codeConflict).length, [rows]);
   const selectedCount = useMemo(() => rows.filter((r) => r._selected).length, [rows]);
   const allSelected = rows.length > 0 && selectedCount === rows.length;
 
@@ -292,6 +319,34 @@ export default function BulkImport() {
     setRows((prev) => prev.map((r) => (r._idx === idx ? { ...r, _selected: checked } : r)));
   const toggleAll = (checked: boolean) =>
     setRows((prev) => prev.map((r) => ({ ...r, _selected: checked })));
+
+  const resetSelectedToOriginal = () => {
+    if (selectedCount === 0) {
+      toast.error("আগে রো select করুন");
+      return;
+    }
+    setRows((prev) =>
+      prev.map((r) => {
+        if (!r._selected || !r._original) return r;
+        const { _autoFilled: origAuto, ...origData } = r._original;
+        return { ...r, ...origData, _autoFilled: { ...(origAuto || {}) } };
+      })
+    );
+    toast.success(`${selectedCount} টি রো রিসেট হয়েছে`);
+  };
+
+  const checkCodeConflict = async (idx: number, code: string) => {
+    if (!code || !code.trim()) {
+      setRows((prev) => prev.map((r) => (r._idx === idx ? { ...r, _codeConflict: null } : r)));
+      return;
+    }
+    const { data } = await supabase.from("clients").select("client_id, name").eq("client_id", code).maybeSingle();
+    setRows((prev) =>
+      prev.map((r) =>
+        r._idx === idx ? { ...r, _codeConflict: data ? { existingName: (data as any).name } : null } : r
+      )
+    );
+  };
 
   const BULK_FIELDS: { key: string; label: string; type: "select" | "text" | "month" | "date" | "number" }[] = [
     { key: "Zone", label: "Zone", type: "select" },
@@ -369,11 +424,16 @@ export default function BulkImport() {
         return updated;
       })
     );
+    if (key === "C.Code") {
+      // fire-and-forget conflict re-check
+      void checkCodeConflict(idx, value);
+    }
   };
 
   const importAll = async () => {
     if (rows.length === 0) { toast.error("ইমপোর্ট করার ডাটা নেই"); return; }
     if (invalidCount > 0) { toast.error(`${invalidCount} টি সারিতে mandatory ফিল্ড অনুপস্থিত`); return; }
+    if (conflictCount > 0) { toast.error(`${conflictCount} টি Client Code ইতোমধ্যে ব্যবহৃত — পরিবর্তন করুন`); return; }
     setImporting(true);
     try {
       const parseDDMMYYYY = (s: string) => {
@@ -381,6 +441,18 @@ export default function BulkImport() {
         const m = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
         if (m) return `${m[3]}-${m[2]}-${m[1]}`;
         return s;
+      };
+
+      const computeExpireDate = (billMonth: string, expDay: string): string | null => {
+        if (!expDay) return null;
+        const day = Math.max(1, Math.min(31, Number(expDay) || 1));
+        let year: number, month: number;
+        const mm = (billMonth || "").match(/^(\d{2})-(\d{4})$/);
+        if (mm) { month = Number(mm[1]); year = Number(mm[2]); }
+        else { const d = new Date(); month = d.getMonth() + 1; year = d.getFullYear(); }
+        const lastDay = new Date(year, month, 0).getDate();
+        const realDay = Math.min(day, lastDay);
+        return `${year}-${pad2(month)}-${pad2(realDay)}`;
       };
 
       const clientsToInsert = rows.map((r) => {
@@ -409,7 +481,7 @@ export default function BulkImport() {
           monthly_bill: r["M.Bill"] ? Number(r["M.Bill"]) : 0,
           billing_start_month: r["Bill.Month"] || null,
           joining_date: parseDDMMYYYY(r["Join.Date"]),
-          expire_date: r["Exp.Date"] || null,
+          expire_date: computeExpireDate(r["Bill.Month"], r["Exp.Date"]),
           date_of_birth: parseDDMMYYYY(r.DateOfBirth) || null,
           father_name: r.FatherName || null,
           mother_name: r.MotherName || null,
@@ -452,7 +524,8 @@ export default function BulkImport() {
     const value = r[col.key] ?? "";
     const auto = r._autoFilled?.[col.key];
     const missing = MANDATORY.includes(col.key) && (col.key === "M.Bill" ? !(Number(value) > 0) : String(value).trim() === "");
-    const cls = `h-7 text-xs min-w-[100px] ${auto ? "bg-muted/40" : ""} ${missing ? "border-destructive" : ""}`;
+    const conflict = col.key === "C.Code" && r._codeConflict;
+    const cls = `h-7 text-xs min-w-[100px] ${auto ? "bg-muted/40" : ""} ${missing || conflict ? "border-destructive" : ""}`;
 
     if (col.type === "select") {
       const opts = optionsFor(col.key);
@@ -466,7 +539,7 @@ export default function BulkImport() {
       );
     }
 
-    return (
+    const input = (
       <Input
         type={col.type === "number" ? "number" : "text"}
         className={cls}
@@ -474,6 +547,26 @@ export default function BulkImport() {
         onChange={(e) => updateCell(r._idx, col.key, e.target.value)}
       />
     );
+
+    if (conflict) {
+      return (
+        <TooltipProvider delayDuration={150}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1">
+                {input}
+                <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              এই কোড ইতোমধ্যে ব্যবহৃত: <strong>{r._codeConflict?.existingName}</strong>। অন্য কোড দিন।
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return input;
   };
 
   return (
@@ -551,6 +644,9 @@ export default function BulkImport() {
                   <Button size="sm" onClick={applyBulk} disabled={selectedCount === 0}>
                     <Wand2 className="h-4 w-4 mr-1" /> Apply to Selected ({selectedCount})
                   </Button>
+                  <Button size="sm" variant="outline" onClick={resetSelectedToOriginal} disabled={selectedCount === 0}>
+                    <Undo2 className="h-4 w-4 mr-1" /> Reset Selected to Original
+                  </Button>
                   <Button size="sm" variant="outline" onClick={clearBulk}>
                     Clear Form
                   </Button>
@@ -577,12 +673,17 @@ export default function BulkImport() {
               <>
                 <Button variant="outline" size="sm" onClick={downloadEdited}><Download className="h-4 w-4 mr-1" /> এডিটেড ডাটা</Button>
                 <Button variant="outline" size="sm" onClick={() => { setRows([]); toast.info("সব ক্লিয়ার হয়েছে"); }}><Trash2 className="h-4 w-4 mr-1" /> সব মুছুন</Button>
-                <Button size="sm" onClick={importAll} disabled={importing || invalidCount > 0}>
+                <Button size="sm" onClick={importAll} disabled={importing || invalidCount > 0 || conflictCount > 0}>
                   <CheckCircle className="h-4 w-4 mr-1" /> সব ইমপোর্ট করুন ({rows.length})
                 </Button>
                 {invalidCount > 0 && (
                   <Badge variant="destructive" className="gap-1">
                     <AlertCircle className="h-3 w-3" /> {invalidCount} টি সারিতে সমস্যা
+                  </Badge>
+                )}
+                {conflictCount > 0 && (
+                  <Badge variant="destructive" className="gap-1">
+                    <AlertCircle className="h-3 w-3" /> {conflictCount} টি Client Code ইতোমধ্যে ব্যবহৃত
                   </Badge>
                 )}
               </>

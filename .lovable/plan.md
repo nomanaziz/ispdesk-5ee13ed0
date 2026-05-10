@@ -1,39 +1,56 @@
-## Goal
-Add a "Bulk Set" toolbar to `/dashboard/mikrotik/bulk-import` so the user can apply common values (Zone, Connection Type, Protocol Type, Package, Client Type, Status, Bill Month, Join Date, Expiry Date) to many rows at once instead of editing them one by one.
+## Issues to Fix
 
-## How it works
+### 1. Bug — "invalid input syntax for type date: '10'"
+`clients.expire_date` is a Postgres `date` column, but the import is sending the **day-of-month** string (e.g. `"10"`). 
 
-1. **Selection-driven** — A checkbox column already exists per row. The bulk toolbar applies its values **only to selected rows**. If nothing is selected, a helper note says "Select rows first" and Apply is disabled. A "Select all visible" shortcut sits next to it.
+**Fix:** Convert `Exp.Date` (day 1–31) plus `Bill.Month` (`MM-YYYY`) into a real `YYYY-MM-DD` date before insert. If the day exceeds the month length (e.g. day 31 in February), fall back to the month's last day. If `Bill.Month` is missing, use the current month.
 
-2. **Bulk toolbar UI** — A new collapsible card titled "একসাথে সেট করুন (Bulk Set)" placed right above the import table. Inside it, a responsive grid of fields:
-   - Zone (Select, from `zones`)
-   - Conn.Type (Select, from `connection_types_config`)
-   - Prot.Type (Select, from `protocol_types`)
-   - Package (Select, from `isp_packages` — when applied, also auto-fills `M.Bill` from package price)
-   - C.Type (Select: Home / Corporate)
-   - B.Status (Select: Active / Inactive / Pending)
-   - Bill.Month (month input → `MM-YYYY`)
-   - Join.Date (date input → `DD-MM-YYYY`)
-   - Exp.Date (number 1–31, day-of-month)
+```text
+Bill.Month = "05-2026", Exp.Date = "10"  →  expire_date = 2026-05-10
+Bill.Month = "02-2026", Exp.Date = "31"  →  expire_date = 2026-02-28
+```
 
-   Each field is optional; only fields the user actually filled get applied. Two buttons: **Apply to Selected** and **Clear** (clears the bulk form, not the table).
+This is a one-line change inside `importAll()` in `BulkImport.tsx`.
 
-3. **Behavior rules**
-   - Applying overwrites the value in every selected row (even if that row already had one), so the user can correct mistakes in bulk too.
-   - Applying Package also sets `M.Bill` for those rows (matching current single-row behavior).
-   - After apply: success toast like "১২ টি রো আপডেট হয়েছে" and the bulk form stays filled (user can apply again to a different selection).
+### 2. Original snapshot + reset on clear
+Currently the bulk toolbar's "Clear Form" only clears the input fields — it does not undo what was applied to rows. Per the user's request, after editing rows in bulk, the user should be able to **select rows and "Reset to Original"** to restore the values that were auto-filled when the row was first loaded from MikroTik.
 
-4. **No DB or API changes** — Pure frontend. Uses the same option lists already fetched on the page.
+**Implementation:**
+- When `loadUnmatchedUsers()` builds each row, also stash an immutable `_original` snapshot of every cell value (including `_autoFilled` flags).
+- Add a new button in the bulk toolbar: **"Reset Selected to Original"** (icon: `Undo2`).
+- Clicking it restores selected rows' fields back to their `_original` snapshot, preserves their `_selected` state, and shows toast `"৫ টি রো রিসেট হয়েছে"`.
+- Also keep the existing `Clear Form` button (clears the bulk input fields only — current behaviour).
 
-## Technical Details
+This solves the "ভুল entry দিতে পারে, তখন সব clear করার দরকার লাগতে পারে" need without losing the loaded MikroTik data.
 
-- **File touched:** `src/pages/dashboard/mikrotik/BulkImport.tsx` only.
-- Add `bulkValues` state object (one optional value per field).
-- Add `applyBulk()` that maps over `rows`, and for `selected` rows merges only the keys present in `bulkValues`.
-- Reuse existing `<Select>` option arrays (`zones`, `connectionTypes`, `protocolTypes`, `packages`).
-- Layout: `Card` with a `grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3` body, action row underneath.
-- No changes to validation, import payload, or DB schema.
+### 3. Global Client Code uniqueness check
+`clients.client_id` already has a **global unique index** (`clients_client_id_key`), so the database will reject duplicates. But currently the user only finds out at insert time with a cryptic error. We should validate **before** import and tell them exactly which existing client owns the conflicting code.
+
+**Implementation in `BulkImport.tsx`:**
+
+- **On row load (and on every C.Code edit, debounced),** query:
+  ```sql
+  SELECT client_id, name, branch_id FROM clients WHERE client_id IN (...)
+  ```
+  Mark each row's `_codeConflict` with `{ existingName, branchId }` if a match is found.
+
+- **Visual indicator in the C.Code cell:**
+  - Red border + small `AlertCircle` icon next to the input.
+  - Tooltip / hover: `"এই কোড ইতোমধ্যে ব্যবহৃত: <existingName> (<branch>)"`.
+
+- **Row-level badge:** add to the existing destructive-row treatment so conflicting rows are highlighted along with rows missing mandatory fields.
+
+- **Import button:** disabled when `conflictCount > 0`. Show a badge: `"X টি কোড ইতোমধ্যে ব্যবহৃত — পরিবর্তন করুন"`.
+
+- **Header summary:** above the table — total rows, invalid rows, **conflicting code count**.
+
+The actual uniqueness is enforced at DB level (across admin / reseller / bandwidth reseller — all live in the same `clients` table), so this check covers all three scopes the user mentioned.
+
+## Files Touched
+- `src/pages/dashboard/mikrotik/BulkImport.tsx` — only file.
+
+No schema changes (the unique index already exists; `expire_date` stays as `date`).
 
 ## Out of Scope
-- Bulk-editing personal fields (Name / Mobile / Address / NID) — those are intentionally per-row.
-- Saving bulk presets for reuse across sessions.
+- Auto-generating a fresh client code when conflict is detected (user explicitly wants to **decide** which side to change).
+- Changing the bulk-set toolbar layout — only adding the "Reset to Original" button.
