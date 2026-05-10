@@ -30,6 +30,7 @@ export interface BillingFilters {
   fromDate: string;
   toDate: string;
   month: string;
+  remainingDays: string;
 }
 
 export const defaultFilters: BillingFilters = {
