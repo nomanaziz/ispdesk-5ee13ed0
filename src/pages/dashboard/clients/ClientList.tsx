@@ -480,6 +480,29 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                         >
                           <Info className="h-2.5 w-2.5" />
                         </button>
+                        {isPopMode && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await callPortal("set_client_auto_recharge", { client_ids: [c.id], enabled: !c.auto_recharge_enabled });
+                                queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+                              } catch (e: any) { toast.error(e.message); }
+                            }}
+                            className={cn(
+                              "inline-flex items-center justify-center h-4 w-4 rounded-full transition-colors",
+                              c.auto_recharge_enabled
+                                ? "text-emerald-600 hover:text-emerald-700"
+                                : "text-red-500 hover:text-red-600"
+                            )}
+                            title={c.auto_recharge_enabled
+                              ? "Auto recharge ON — click to disable"
+                              : "Auto recharge OFF — client will be disabled on expire"}
+                          >
+                            {c.auto_recharge_enabled
+                              ? <RotateCw className="h-3 w-3" />
+                              : <RotateCcw className="h-3 w-3 line-through" />}
+                          </button>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-xs">
