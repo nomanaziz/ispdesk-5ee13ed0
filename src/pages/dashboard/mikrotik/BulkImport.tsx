@@ -74,6 +74,9 @@ export default function BulkImport() {
   const [instructionOpen, setInstructionOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [autoLoading, setAutoLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState<string>("");
+  const [selectedProfile, setSelectedProfile] = useState<string>("all");
   const [bulkOpen, setBulkOpen] = useState(true);
   const [bulkValues, setBulkValues] = useState<Record<string, string>>({});
   const { data: packages = [] } = useQuery({
@@ -148,15 +151,22 @@ export default function BulkImport() {
     return pad2(new Date().getDate());
   };
 
-  // Auto-load unmatched MikroTik users
+  // Auto-load unmatched MikroTik users (filtered by selected device + profile)
   const loadUnmatchedUsers = async () => {
+    if (!selectedDevice) {
+      toast.error("আগে একটি MikroTik সার্ভার সিলেক্ট করুন");
+      return;
+    }
     setAutoLoading(true);
     try {
-      const { data: mkClients, error: mkErr } = await supabase
+      let q = supabase
         .from("mikrotik_clients")
         .select("*, mikrotik_devices!mikrotik_clients_mikrotik_id_fkey(name)")
         .eq("exported", false)
+        .eq("mikrotik_id", selectedDevice)
         .order("created_at", { ascending: false });
+      if (selectedProfile !== "all") q = q.eq("profile", selectedProfile);
+      const { data: mkClients, error: mkErr } = await q;
       if (mkErr) throw mkErr;
 
       const { data: existingClients } = await supabase.from("clients").select("username");
@@ -256,10 +266,54 @@ export default function BulkImport() {
     }
   };
 
+  // Auto-select first device when devices list loads
   useEffect(() => {
-    if (ready) loadUnmatchedUsers();
+    if (!selectedDevice && mikrotikDevices.length > 0) {
+      setSelectedDevice(mikrotikDevices[0].id);
+    }
+  }, [mikrotikDevices, selectedDevice]);
+
+  // Distinct profile list for the selected device (from cached mikrotik_clients)
+  const { data: deviceProfiles = [] } = useQuery({
+    queryKey: ["mikrotik_device_profiles", selectedDevice],
+    queryFn: async () => {
+      if (!selectedDevice) return [];
+      const { data } = await supabase
+        .from("mikrotik_clients")
+        .select("profile")
+        .eq("mikrotik_id", selectedDevice);
+      const set = new Set<string>();
+      (data || []).forEach((r: any) => { if (r.profile) set.add(r.profile); });
+      return Array.from(set).sort();
+    },
+    enabled: !!selectedDevice,
+  });
+
+  useEffect(() => {
+    if (ready && selectedDevice) loadUnmatchedUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready]);
+  }, [ready, selectedDevice, selectedProfile]);
+
+  const syncFromMikroTik = async () => {
+    if (!selectedDevice) {
+      toast.error("আগে একটি MikroTik সার্ভার সিলেক্ট করুন");
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-mikrotik-ppp", {
+        body: { device_id: selectedDevice },
+      });
+      if (error) throw error;
+      toast.success(`${data?.synced || 0} জন PPP ইউজার সিঙ্ক হয়েছে`);
+      queryClient.invalidateQueries({ queryKey: ["mikrotik_device_profiles", selectedDevice] });
+      await loadUnmatchedUsers();
+    } catch (e: any) {
+      toast.error("সিঙ্ক ব্যর্থ: " + (e.message || "অজানা ত্রুটি"));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const downloadSample = () => {
     const headers = COLUMNS.map((c) => c.key);
@@ -571,13 +625,51 @@ export default function BulkImport() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold flex items-center gap-2"><FileSpreadsheet className="h-6 w-6" /> বাল্ক ক্লায়েন্ট ইমপোর্ট</h1>
-        <Button variant="outline" onClick={loadUnmatchedUsers} disabled={autoLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${autoLoading ? "animate-spin" : ""}`} />
-          {autoLoading ? "লোড হচ্ছে..." : "MikroTik থেকে রিফ্রেশ"}
-        </Button>
       </div>
+
+      {/* Source toolbar — pick MikroTik server + profile filter, then sync/reload */}
+      <Card>
+        <CardContent className="pt-4 flex flex-wrap items-end gap-3">
+          <div className="space-y-1 min-w-[220px]">
+            <Label className="text-xs">MikroTik সার্ভার</Label>
+            <Select value={selectedDevice} onValueChange={(v) => { setSelectedDevice(v); setSelectedProfile("all"); }}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="সার্ভার বাছাই করুন" /></SelectTrigger>
+              <SelectContent>
+                {mikrotikDevices.map((d: any) => (
+                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 min-w-[200px]">
+            <Label className="text-xs">প্রোফাইল ফিল্টার</Label>
+            <Select value={selectedProfile} onValueChange={setSelectedProfile} disabled={!selectedDevice}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">সব প্রোফাইল</SelectItem>
+                {deviceProfiles.map((p: string) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={syncFromMikroTik} disabled={!selectedDevice || isSyncing} className="h-9">
+            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+            {isSyncing ? "সিঙ্ক হচ্ছে..." : "MikroTik থেকে সিঙ্ক"}
+          </Button>
+          <Button variant="outline" onClick={loadUnmatchedUsers} disabled={!selectedDevice || autoLoading} className="h-9">
+            <RefreshCw className={`h-4 w-4 mr-2 ${autoLoading ? "animate-spin" : ""}`} />
+            {autoLoading ? "লোড হচ্ছে..." : "আনম্যাচড রিলোড"}
+          </Button>
+          {selectedDevice && rows.length === 0 && !autoLoading && (
+            <p className="text-xs text-muted-foreground basis-full">
+              এই সার্ভারে কোনো নতুন আনম্যাচড PPP ইউজার নেই। নতুন ইউজার থাকলে উপরে <b>"MikroTik থেকে সিঙ্ক"</b> চাপুন।
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <Collapsible open={instructionOpen} onOpenChange={setInstructionOpen}>
         <Card>
