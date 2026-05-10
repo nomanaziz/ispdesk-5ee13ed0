@@ -35,6 +35,7 @@ import { callPortal } from "@/lib/portalApi";
 import ExpireCell from "@/components/billing/ExpireCell";
 import RemainingDaysCell from "@/components/billing/RemainingDaysCell";
 import ClientCommentDialog from "@/components/clients/ClientCommentDialog";
+import BulkClientRechargeDialog from "@/components/reseller/BulkClientRechargeDialog";
 
 interface ClientListProps {
   /** When set, locks the client_type filter to this value and hides the dropdown.
