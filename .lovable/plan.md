@@ -1,68 +1,37 @@
-## লক্ষ্য
+## Fix POP Recharge Errors & Remaining=0 Auto-Disable
 
-POP → Client recharge এর সঠিক হিসাব:
+### Issue 1 — Recharge fails with `record "v_pkg" has no field "mikrotik_server_id"`
 
-- **Daily rate** = `package_buy_price / validity_days` (validity দিয়ে ভাগ, min_activation দিয়ে নয়)
-- **Total charge** = `daily_rate × days` (calendar মাস irrelevant)
-- **Minimum recharge** = `min_activation_days` — এর কম দিন দিলে block
+**Root cause:** The DB function `pop_recharge_client_days` and the cron `apply-pop-daily-charges` reference `isp_packages.mikrotik_server_id` and `isp_packages.protocol_type`, but the actual columns on `isp_packages` are **`mikrotik_id`** and **`protocol`**. So `v_pkg` (a record from `isp_packages`) has no such fields, and recharge crashes.
 
-উদাহরণ: Basic, buy ৳250, validity 30, min_activation 10 → daily ৳8.33; ১০ দিনের কম recharge করা যাবে না; ৩০ দিন = ৳250।
+**Fix (migration):** Recreate `pop_recharge_client_days` using the correct column names (`v_pkg.mikrotik_id`, `v_pkg.protocol`) and look up the server name via `mikrotik_devices.id = v_pkg.mikrotik_id`. The recharge math (`buy / validity_days × days`, with `min_activation_days` block) stays exactly as approved.
 
-## ফাইল পরিবর্তন
+**Fix (edge function):** Update `apply-pop-daily-charges/index.ts` to select `mikrotik_id, protocol` from `isp_packages` instead of the wrong names, and to map them into `pop_daily_charges.server_id` / `protocol_type`.
 
-### 1. New migration — `pop_resolve_client_package_cost` revert + extend
+### Issue 2 — Clients with remaining days = 0 keep getting auto-disabled
 
-| Field | Value |
-|---|---|
-| `buy_price` | `rtp.selling_rate` (Admin → POP rate) |
-| `validity_days` | `COALESCE(NULLIF(rtp.validity_days,0), 30)` ← **revert from min_activation_days** |
-| `min_activation_days` (new) | `COALESCE(NULLIF(rtp.min_activation_days,0), 1)` |
+**Current behavior:**
+- `enforce-expired-disable` (every 15 min) disables every client where `expire_date <= today`.
+- `apply-pop-daily-charges` (daily) does the same (`expDate <= today`).
 
-Return type becomes `TABLE(buy_price numeric, validity_days int, min_activation_days int)`।
+So a manually-enabled client whose `expire_date` is today gets shut off within 15 minutes.
 
-### 2. Same migration — `pop_recharge_client_days`
+**Fix (per your answers):**
+- **Cron skip rule:** Both jobs will treat a client as "expired" only when `expire_date < today` (strictly past). When `expire_date = today` (remaining = 0), cron leaves `mikrotik_status` alone — POP can manually toggle freely all day.
+- **Hard lock on truly expired:** When `expire_date < today`, manual enable from POP UI / API will be blocked with a clear error: "Client expired — recharge করুন আগে". This will be enforced at the toggle endpoint (server-side) so neither the dashboard nor the portal can bypass it.
 
-- `SELECT buy_price, validity_days, min_activation_days INTO v_buy, v_days, v_min`
-- Add check: `IF p_days < v_min THEN RAISE EXCEPTION 'MIN_DAYS: এই package এ minimum % দিন recharge করতে হবে', v_min;`
-- `v_daily := round(v_buy / v_days, 2)` — অপরিবর্তিত
-- Return JSON এ `min_activation_days` যোগ
+### Files to change
 
-### 3. Same migration — `pop_auto_renew_client`
-
-- Renew for full `validity_days` (অপরিবর্তিত), শুধু signature update
-
-### 4. `supabase/functions/portal-data/index.ts` — `get_clients_recharge_cost`
-
-প্রতি client এর জন্য return:
+```text
+supabase/migrations/<new>.sql        — recreate pop_recharge_client_days with correct isp_packages columns
+supabase/functions/apply-pop-daily-charges/index.ts  — use mikrotik_id/protocol; expired only when expire_date < today
+supabase/functions/enforce-expired-disable/index.ts  — change .lte("expire_date", today) → .lt("expire_date", today)
+supabase/functions/portal-data/index.ts (or the toggle case) — block manual enable when expire_date < today
+src/components/reseller/* toggle UI                  — surface the new "expired, recharge first" error nicely
 ```
-{ client_id, buy_rate, validity_days, min_activation_days, daily_rate }
-```
-যেখানে `daily_rate = buy_rate / validity_days`।
 
-### 5. `src/components/reseller/BulkClientRechargeDialog.tsx`
+### Acceptance
 
-- `costMap` এ `min_activation_days` track করব
-- Selected clients এর মধ্যে সর্বোচ্চ `min_activation_days` = `effectiveMin`
-- Days input এর `min={effectiveMin}`, default value `effectiveMin`
-- যদি user `< effectiveMin` দেয় → red warning "Minimum X days required" এবং Submit disable
-- Per-client `daily × days` total — অপরিবর্তিত
-- Submit এর সময় শুধু `validIds` (rate resolved) পাঠাবে; server-side MIN_DAYS error এলে toast এ দেখাবে
-
-### 6. `src/components/reseller/RemainingDaysCell.tsx` (single-client R.Days save)
-
-- Save এর আগে server থেকে `min_activation_days` নিয়ে input validate করব (যদি `<min` হলে toast error, save block)
-
-## প্রভাবিত নয়
-
-- `bandwidthBilling.ts` (BW Buy/BW Sale prorate) — অপরিবর্তিত, এটা bandwidth বিক্রয়ের জন্য, package recharge নয়
-- DB schema — কোনো পরিবর্তন নেই (column গুলো আগে থেকেই আছে)
-- Client-facing monthly billing (`generate-monthly-billing`) — এই hisab POP→Client recharge, end-customer billing নয়
-
-## যাচাই
-
-- Buy ৳250, validity 30, min 10 → daily ৳8.33, 30 days = ৳250 ✓
-- 5 days দিলে → MIN_DAYS error ("minimum 10 days") ✓
-- Bulk dialog এ একাধিক client (min 10 / min 30 mix) → input min = 30 ✓
-- Auto-renew cron → 30 দিন cycle, charge ৳250 ✓
-
-Approve করলে migration লিখে কোড edits করব।
+1. The two failing expired clients can be recharged successfully (no `v_pkg` error).
+2. A client at remaining = 0 can be enabled by POP and stays enabled across the 15-minute cron tick — until they manually disable or until midnight rolls `expire_date` into the past.
+3. Once `expire_date < today`, manual enable returns an error and the client cannot be turned on without a recharge.
