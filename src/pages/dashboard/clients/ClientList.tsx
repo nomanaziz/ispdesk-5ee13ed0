@@ -33,6 +33,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
 import ExpireCell from "@/components/billing/ExpireCell";
+import RemainingDaysCell from "@/components/billing/RemainingDaysCell";
 import ClientCommentDialog from "@/components/clients/ClientCommentDialog";
 
 interface ClientListProps {
