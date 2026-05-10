@@ -28,6 +28,7 @@ import BulkThanaChangeDialog from "@/components/billing/BulkThanaChangeDialog";
 import BillReceiveDialog from "@/components/billing/BillReceiveDialog";
 import BillingDatePopover from "@/components/billing/BillingDatePopover";
 import RemainingDaysCell from "@/components/billing/RemainingDaysCell";
+import BulkClientRechargeDialog from "@/components/reseller/BulkClientRechargeDialog";
 import { exportClientsExcel, exportClientsPdf, exportInvoicesPdf, clientsToRows } from "@/lib/exportClients";
 import { toast } from "sonner";
 import { usePopScope } from "@/hooks/usePopScope";
@@ -74,6 +75,7 @@ export default function BillingList() {
   const [thanaOpen, setThanaOpen] = useState(false);
   const [payClient, setPayClient] = useState<any>(null);
   const [payBilling, setPayBilling] = useState<any>(null);
+  const [bulkRechargeOpen, setBulkRechargeOpen] = useState(false);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["billing-list", filters.month, branchId || "all", isPopMode ? "pop" : "admin"],
