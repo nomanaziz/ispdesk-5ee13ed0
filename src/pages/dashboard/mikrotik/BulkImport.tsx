@@ -151,15 +151,22 @@ export default function BulkImport() {
     return pad2(new Date().getDate());
   };
 
-  // Auto-load unmatched MikroTik users
+  // Auto-load unmatched MikroTik users (filtered by selected device + profile)
   const loadUnmatchedUsers = async () => {
+    if (!selectedDevice) {
+      toast.error("আগে একটি MikroTik সার্ভার সিলেক্ট করুন");
+      return;
+    }
     setAutoLoading(true);
     try {
-      const { data: mkClients, error: mkErr } = await supabase
+      let q = supabase
         .from("mikrotik_clients")
         .select("*, mikrotik_devices!mikrotik_clients_mikrotik_id_fkey(name)")
         .eq("exported", false)
+        .eq("mikrotik_id", selectedDevice)
         .order("created_at", { ascending: false });
+      if (selectedProfile !== "all") q = q.eq("profile", selectedProfile);
+      const { data: mkClients, error: mkErr } = await q;
       if (mkErr) throw mkErr;
 
       const { data: existingClients } = await supabase.from("clients").select("username");
