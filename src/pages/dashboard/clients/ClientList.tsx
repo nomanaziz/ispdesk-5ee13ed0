@@ -217,6 +217,28 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
     if (f.toExpireDate) list = list.filter((c: any) => c.expire_date && c.expire_date <= f.toExpireDate);
     if (f.fromDate) list = list.filter((c: any) => c.created_at >= f.fromDate);
     if (f.toDate) list = list.filter((c: any) => c.created_at <= f.toDate + "T23:59:59");
+    if (f.remainingDays && f.remainingDays !== "all") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      list = list.filter((c: any) => {
+        if (!c.expire_date) return f.remainingDays === "expired";
+        const exp = new Date(c.expire_date);
+        exp.setHours(0, 0, 0, 0);
+        const diff = Math.ceil((exp.getTime() - today.getTime()) / 86400000);
+        switch (f.remainingDays) {
+          case "expired": return diff <= 0;
+          case "1": return diff === 1;
+          case "2": return diff === 2;
+          case "3": return diff === 3;
+          case "5": return diff === 5;
+          case "10plus": return diff >= 10;
+          case "20plus": return diff >= 20;
+          case "30plus": return diff >= 30;
+          case "60plus": return diff >= 60;
+          default: return true;
+        }
+      });
+    }
     if (vipOnly) list = list.filter((c: any) => !!c.is_vip);
     return list;
   }, [clients, filters, lockedClientType, vipOnly]);
