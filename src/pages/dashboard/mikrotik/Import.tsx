@@ -321,7 +321,7 @@ export default function Import() {
                 <SelectItem value="unlisted">Unlisted (no POP/Client)</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" onClick={clearFilters}><XCircle className="h-4 w-4 mr-1" /> ক্লিয়ার</Button>
+            <Button variant="outline" size="sm" onClick={clearFilters} disabled={isClean} title="সব filter, search ও selection clear করুন"><XCircle className="h-4 w-4 mr-1" /> ক্লিয়ার</Button>
           </div>
           <div className="flex items-center gap-3 mt-3 flex-wrap">
             <Input placeholder="সার্চ করুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
