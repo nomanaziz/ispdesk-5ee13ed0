@@ -1,37 +1,71 @@
-## Fix POP Recharge Errors & Remaining=0 Auto-Disable
+## Tariff: Remove "Custom" — Always Date-to-Date
 
-### Issue 1 — Recharge fails with `record "v_pkg" has no field "mikrotik_server_id"`
+### Goal
+Admin → Reseller tariff structure simplified. Only **date-to-date** delivery exists. Each package has `validity_days` (default 30) and `min_activation_days` (default 1). The dual radio (Custom / Date-to-Date) goes away. Client self-recharge from portal becomes available the moment a client expires (remaining=0 included), with day-count chosen by the client (subject to `min_activation_days`).
 
-**Root cause:** The DB function `pop_recharge_client_days` and the cron `apply-pop-daily-charges` reference `isp_packages.mikrotik_server_id` and `isp_packages.protocol_type`, but the actual columns on `isp_packages` are **`mikrotik_id`** and **`protocol`**. So `v_pkg` (a record from `isp_packages`) has no such fields, and recharge crashes.
+---
 
-**Fix (migration):** Recreate `pop_recharge_client_days` using the correct column names (`v_pkg.mikrotik_id`, `v_pkg.protocol`) and look up the server name via `mikrotik_devices.id = v_pkg.mikrotik_id`. The recharge math (`buy / validity_days × days`, with `min_activation_days` block) stays exactly as approved.
+### 1. Database migration
 
-**Fix (edge function):** Update `apply-pop-daily-charges/index.ts` to select `mikrotik_id, protocol` from `isp_packages` instead of the wrong names, and to map them into `pop_daily_charges.server_id` / `protocol_type`.
+- **Backfill existing rows** in `reseller_tariffs`:
+  - `tariff_type` = `'date_to_date'` for every row (covert all `'custom'`).
+- **Backfill `reseller_tariff_packages`**:
+  - `validity_days` → 30 wherever it's NULL or 0.
+  - `min_activation_days` → 1 wherever it's NULL or 0.
+- Make these the new column **defaults** (`DEFAULT 30` / `DEFAULT 1`) so future inserts get correct defaults even if UI forgets.
+- Optional: add a CHECK that `validity_days >= 1` and `min_activation_days >= 1`.
 
-### Issue 2 — Clients with remaining days = 0 keep getting auto-disabled
+(The pricing function `pop_resolve_client_package_cost` already returns these with sane fallbacks, so no function change needed.)
 
-**Current behavior:**
-- `enforce-expired-disable` (every 15 min) disables every client where `expire_date <= today`.
-- `apply-pop-daily-charges` (daily) does the same (`expDate <= today`).
+### 2. Admin Tariff page (`src/pages/dashboard/branches/Tariff.tsx`)
 
-So a manually-enabled client whose `expire_date` is today gets shut off within 15 minutes.
+- Drop the `tariffType` state and the Custom / Date-to-Date `RadioGroup`.
+- Always submit `tariff_type: "date_to_date"`.
+- Show `validity_days` and `min_activation_days` inputs unconditionally on every package row, with defaults `30` and `1`.
+- Remove the `tariffType === "date_to_date" ? 0 : ...` branches when building insert payloads.
+- TariffChangeLog dialog: keep showing the values; nothing to remove.
 
-**Fix (per your answers):**
-- **Cron skip rule:** Both jobs will treat a client as "expired" only when `expire_date < today` (strictly past). When `expire_date = today` (remaining = 0), cron leaves `mikrotik_status` alone — POP can manually toggle freely all day.
-- **Hard lock on truly expired:** When `expire_date < today`, manual enable from POP UI / API will be blocked with a clear error: "Client expired — recharge করুন আগে". This will be enforced at the toggle endpoint (server-side) so neither the dashboard nor the portal can bypass it.
+### 3. Reseller-side recharge (already correct)
 
-### Files to change
+- `pop_recharge_client_days` already enforces `min_activation_days` via the `MIN_DAYS` exception. Leave as-is.
+- Bulk recharge dialog already uses `effectiveMin`. Leave as-is.
+
+### 4. Client self-recharge from portal
+
+Currently: portal `Bills` page lets the client pay a generated monthly bill. We're switching to a **package-day recharge** model that mirrors what the reseller does — but initiated by the client, paid through the existing payment-gateway flow.
+
+- New portal endpoint in `portal-data` (client tok scope): `client_get_recharge_quote`
+  - Returns `{ buy_price, validity_days, min_activation_days, daily_rate, expire_date, can_recharge }`.
+  - `can_recharge = expire_date <= today`.
+- New endpoint: `client_create_recharge_payment`
+  - Input: `days` (must be ≥ `min_activation_days`).
+  - Reject if `expire_date > today` → "এখনো expire হয়নি — recharge করার দরকার নেই"।
+  - Computes `amount = round(daily_rate * days, 2)` (uses the **package selling_rate**, not POP buying rate, so the customer pays the retail price — clarify in implementation that we use `pop_package_pricing.pop_selling_rate` falling back to `reseller_tariff_packages.selling_rate`).
+  - Creates a `public_payment_request` row (or equivalent) tagged with `purpose='client_recharge'`, `meta={days}`, then returns the gateway URL the existing `bkash-payment` / `nagad-payment` / `sslcommerz-payment` flow uses.
+- `payment-callback`: when a paid request has `purpose='client_recharge'`, invoke `pop_recharge_client_days(client_id, days)` after marking paid. The POP wallet is debited at buy-rate exactly like a reseller recharge; the client paid retail. Difference goes to admin/POP margin (already the model).
+
+### 5. Portal UI
+
+- `src/pages/portal/PortalBills.tsx` (or a new `PortalRecharge.tsx` linked from dashboard):
+  - Show "Recharge" card only when `can_recharge=true`.
+  - Days input with `min={min_activation_days}`, live total = `daily_rate × days`.
+  - "Pay" button → triggers `client_create_recharge_payment` → redirects to gateway.
+- When `can_recharge=false`: show greyed card "এখনো expire হয়নি, recharge দরকার নেই — expire হলে এখানে option আসবে"।
+
+### 6. Files to change
 
 ```text
-supabase/migrations/<new>.sql        — recreate pop_recharge_client_days with correct isp_packages columns
-supabase/functions/apply-pop-daily-charges/index.ts  — use mikrotik_id/protocol; expired only when expire_date < today
-supabase/functions/enforce-expired-disable/index.ts  — change .lte("expire_date", today) → .lt("expire_date", today)
-supabase/functions/portal-data/index.ts (or the toggle case) — block manual enable when expire_date < today
-src/components/reseller/* toggle UI                  — surface the new "expired, recharge first" error nicely
+supabase/migrations/<new>.sql                      — backfill + defaults
+src/pages/dashboard/branches/Tariff.tsx            — drop Custom/D2D toggle, default 30/1
+supabase/functions/portal-data/index.ts            — client_get_recharge_quote, client_create_recharge_payment
+supabase/functions/payment-callback/index.ts       — handle purpose='client_recharge' → call pop_recharge_client_days
+src/pages/portal/PortalBills.tsx (or new PortalRecharge.tsx) — recharge UI
+src/components/PortalLayout.tsx                    — surface the new menu if separate page
 ```
 
-### Acceptance
+### 7. Acceptance
 
-1. The two failing expired clients can be recharged successfully (no `v_pkg` error).
-2. A client at remaining = 0 can be enabled by POP and stays enabled across the 15-minute cron tick — until they manually disable or until midnight rolls `expire_date` into the past.
-3. Once `expire_date < today`, manual enable returns an error and the client cannot be turned on without a recharge.
+1. Admin tariff form has no Custom radio; every package shows validity & min-activation inputs with defaults 30/1.
+2. All existing tariffs show `date_to_date` and have non-zero validity/min-activation in DB.
+3. Reseller recharge still respects min_activation_days (unchanged).
+4. Portal: an active client sees "no recharge needed". A client at remaining=0 or past expiry sees a Recharge card, picks days (≥ min), pays through gateway, and on payment success their `expire_date` extends and MikroTik enables — exactly like a reseller-initiated recharge.
