@@ -375,6 +375,7 @@ Deno.serve(async (req) => {
         return json({ ok: true, request_id: pr?.id, amount, days: nDays });
       }
 
+      case "get_ledger": {
         if (tok.type === "client") {
           const [{ data: bills }, { data: cols }] = await Promise.all([
             sb.from("billing").select("bill_id, amount, paid, due, discount, month, created_at").eq("client_id", tok.sub).order("created_at"),
