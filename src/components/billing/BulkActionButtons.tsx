@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import {
   FileSpreadsheet, FileText, RefreshCw, Download, Ban, CheckCircle,
   MapPin, Building, ArrowRightLeft, Star, StarOff, Settings,
-  MessageSquare, Mail, CalendarPlus, Zap, FilePlus, Repeat, RepeatIcon, DollarSign
+  MessageSquare, Mail, CalendarPlus, Zap, FilePlus, Repeat, RepeatIcon, DollarSign, Package
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -25,6 +25,7 @@ interface Props {
   onBulkVip: () => void;
   onBulkRemoveVip: () => void;
   onBulkProfileChange: () => void;
+  onBulkPackageChange?: () => void;
   onRegenerateInvoice?: () => void;
   onBulkAutoRechargeOn?: () => void;
   onBulkAutoRechargeOff?: () => void;
@@ -55,6 +56,7 @@ export default function BulkActionButtons({
   onBulkVip,
   onBulkRemoveVip,
   onBulkProfileChange,
+  onBulkPackageChange,
   onRegenerateInvoice,
   onBulkAutoRechargeOn,
   onBulkAutoRechargeOff,
@@ -99,6 +101,9 @@ export default function BulkActionButtons({
         <ActionBtn icon={Star} label="VIP করুন" onClick={() => requireSelection(onBulkVip)} />
         <ActionBtn icon={StarOff} label="VIP বাতিল" onClick={() => requireSelection(onBulkRemoveVip)} />
         <ActionBtn icon={Settings} label="প্রোফাইল পরিবর্তন" onClick={() => requireSelection(onBulkProfileChange)} />
+        {onBulkPackageChange && (
+          <ActionBtn icon={Package} label="প্যাকেজ পরিবর্তন" onClick={() => requireSelection(onBulkPackageChange)} />
+        )}
         {onRegenerateInvoice && (
           <ActionBtn icon={FilePlus} label="ইনভয়েস পুনরায় তৈরি" onClick={() => requireSelection(onRegenerateInvoice)} color="bg-violet-600 hover:bg-violet-700 text-white" />
         )}

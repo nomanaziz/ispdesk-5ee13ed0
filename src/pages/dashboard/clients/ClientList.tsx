@@ -23,6 +23,7 @@ import ServerMigrationDialog from "@/components/billing/ServerMigrationDialog";
 import BulkStatusChangeDialog from "@/components/billing/BulkStatusChangeDialog";
 import BulkZoneChangeDialog from "@/components/billing/BulkZoneChangeDialog";
 import BulkProfileChangeDialog from "@/components/billing/BulkProfileChangeDialog";
+import BulkPackageChangeDialog from "@/components/billing/BulkPackageChangeDialog";
 import BulkSmsDialog from "@/components/billing/BulkSmsDialog";
 import BulkEmailDialog from "@/components/billing/BulkEmailDialog";
 import BulkDateExtendDialog from "@/components/billing/BulkDateExtendDialog";
@@ -80,6 +81,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
   const [statusChangeOpen, setStatusChangeOpen] = useState(false);
   const [zoneChangeOpen, setZoneChangeOpen] = useState(false);
   const [profileChangeOpen, setProfileChangeOpen] = useState(false);
+  const [packageChangeOpen, setPackageChangeOpen] = useState(false);
   const [smsOpen, setSmsOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [dateExtendOpen, setDateExtendOpen] = useState(false);
@@ -414,6 +416,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
         onBulkVip={() => handleBulkVip(true)}
         onBulkRemoveVip={() => handleBulkVip(false)}
         onBulkProfileChange={() => setProfileChangeOpen(true)}
+        onBulkPackageChange={() => setPackageChangeOpen(true)}
         showMigrate={!isPopMode}
         showAutoRecharge={isPopMode}
         showBulkRecharge={isPopMode}
@@ -625,6 +628,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
       <BulkStatusChangeDialog open={statusChangeOpen} onOpenChange={setStatusChangeOpen} selectedClientIds={[...selectedIds]} />
       <BulkZoneChangeDialog open={zoneChangeOpen} onOpenChange={setZoneChangeOpen} selectedClientIds={[...selectedIds]} />
       <BulkProfileChangeDialog open={profileChangeOpen} onOpenChange={setProfileChangeOpen} selectedClients={selectedClients} />
+      <BulkPackageChangeDialog open={packageChangeOpen} onOpenChange={setPackageChangeOpen} selectedClients={selectedClients} />
       <BulkSmsDialog open={smsOpen} onOpenChange={setSmsOpen} selectedClients={selectedClients} />
       <BulkEmailDialog open={emailOpen} onOpenChange={setEmailOpen} selectedClients={selectedClients} />
       <BulkDateExtendDialog open={dateExtendOpen} onOpenChange={setDateExtendOpen} selectedClients={selectedClients} invalidateKey="clients-list" />

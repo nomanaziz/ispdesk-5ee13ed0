@@ -1,46 +1,47 @@
-## কেন এখন ০ user দেখাচ্ছে?
+## Problem
+এখনকার "Bulk Profile Change" আসলে **package change**-ই করে — package select করলে একসাথে `package_id`, `profile`, `speed`, `monthly_bill` সব update হয়। User চাচ্ছেন এই দুটো আলাদা হোক:
 
-`BulkImport` page শুধু `mikrotik_clients` (DB cache) থেকে পড়ে — **কোনো live sync নেই**। Sync হয় শুধু `/dashboard/mikrotik/import` page-এ। তাই নতুন বানানো MikroTik PPP user (যেদিকে কখনো sync run হয়নি) এই page-এ আসবে না।
+| Action | কী change হবে | কী হবে না |
+|---|---|---|
+| **Bulk Profile Change** | `clients.profile` + MikroTik PPP profile (speed) | `package_id`, `monthly_bill` অপরিবর্তিত |
+| **Bulk Package Change** | `clients.package_id`, `monthly_bill` (= package price) | `profile`, MikroTik speed অপরিবর্তিত |
 
-DB check-এ দেখা যাচ্ছে: শুধু একটা device-এর ১৭ জন user cached, আর সবগুলোই ইতিমধ্যে `clients` table-এ আছে — তাই "আনম্যাচড ০"। ইউজার-এর নতুন device / নতুন user-এর জন্য কখনো sync হয়নি।
+কারণ: admin চাইতে পারে ৫০০ টাকার package-এ বেশি speed-এর profile দিতে — যা reseller পারে না। এখন একসাথে coupled থাকায় সেটা সম্ভব না।
 
-## যা যোগ করব
+## পরিবর্তন
 
-`BulkImport.tsx`-এর header-এ একটা **toolbar** যেখানে থাকবে:
+### 1. `src/components/billing/BulkProfileChangeDialog.tsx` — Rewrite
+- Package dropdown সরিয়ে **Profile dropdown** আনব।
+- Profile-এর source: একটা MikroTik server selector (default = প্রথম selected client-এর `mikrotik_id`) → তারপর `fetch-mikrotik-profiles` edge function call করে সেই device-এর live profile list।
+- যদি selected client-রা ভিন্ন device-এ থাকে → একটা warning: "Selected clients একাধিক MikroTik server-এ আছে। সবগুলোতে একই profile name থাকা প্রয়োজন।"
+- Submit:
+  - DB: `update clients set profile = <chosenName> where id in (...)` — আর কিছু না।
+  - MikroTik: প্রতিটা client-এর জন্য `manage-mikrotik-ppp` action `update` দিয়ে শুধু `profile` পাঠাব (existing pattern)।
+- Title: "শুধু Profile (Speed) পরিবর্তন"।
 
-1. **MikroTik Server selector** (Select dropdown)
-   - সব `mikrotik_devices` list থেকে — default = order-এর প্রথমটা।
-   - Page প্রথমবার load-এ default device auto-select।
+### 2. `src/components/billing/BulkPackageChangeDialog.tsx` — New
+- Package dropdown (active `isp_packages`)।
+- Submit:
+  - DB: `update clients set package_id = <id>, monthly_bill = <price> where id in (...)` — `profile`, `speed`, MikroTik কিছুই touch করব না।
+- Title: "শুধু Package (Price) পরিবর্তন"।
+- Helper text: "প্রোফাইল/স্পিড অপরিবর্তিত থাকবে। শুধু বিল ও প্যাকেজ ম্যাপিং পরিবর্তন হবে।"
 
-2. **Profile filter** (Select dropdown)
-   - Selected server-এর profile list (live `fetch-mikrotik-profiles` থেকে বা cached `mikrotik_clients`-এর distinct profile থেকে)।
-   - Default = "All profiles"।
+### 3. `src/components/billing/BulkActionButtons.tsx`
+- নতুন prop: `onBulkPackageChange?: () => void` + button **"প্যাকেজ পরিবর্তন"** (`Package` icon)।
+- Existing "প্রোফাইল পরিবর্তন" button রাখব — কিন্তু এখন এটা শুধু profile dialog খুলবে।
 
-3. **"MikroTik থেকে Sync"** button (`RefreshCw` icon)
-   - `supabase.functions.invoke("fetch-mikrotik-ppp", { device_id: selectedDevice })` call করবে — Import.tsx-এর exact pattern।
-   - সফল হলে toast + auto re-run `loadUnmatchedUsers()`।
-
-4. **"আনম্যাচড লোড"** button (existing) থাকবে — কিন্তু এখন device + profile filter respect করবে।
-
-## `loadUnmatchedUsers()` পরিবর্তন
-
-- Query-এ filter add: `eq("mikrotik_id", selectedDevice)` + (profile !== "all" হলে) `eq("profile", selectedProfile)`।
-- বাকি logic অপরিবর্তিত (exported=false, unmatched-by-username, auto-fill, code-conflict check)।
-- Server change বা profile change হলে useEffect দিয়ে auto reload।
-
-## UX Flow
-
-```
-[Server: MT-Pop1 ▾]  [Profile: All ▾]  [↻ Sync MikroTik]  [Reload unmatched]
-─────────────────────────────────────────────────────────────────────
-যদি ০ user → একটা info banner: "এই device-এ কোনো নতুন PPP user নেই।
-            নতুন user থাকলে উপরে 'Sync MikroTik' চাপুন।"
-```
-
-## Files
-- `src/pages/dashboard/mikrotik/BulkImport.tsx` — শুধু এই file। নতুন state (`selectedDevice`, `selectedProfile`, `isSyncing`), toolbar UI, sync handler, query filters।
+### 4. `src/pages/dashboard/clients/ClientList.tsx`
+- নতুন state: `packageChangeOpen`।
+- নতুন import + dialog mount।
+- BulkActionButtons-এ `onBulkPackageChange={() => setPackageChangeOpen(true)}` পাঠাব।
 
 ## Out of Scope
-- Multi-device একসাথে sync — একবারে একটা device।
-- Excel upload flow পরিবর্তন (অপরিবর্তিত)।
-- `fetch-mikrotik-ppp` edge function-এ পরিবর্তন (existing logic ঠিক আছে)।
+- Profile-package validation rules (যেমন "এই package-এ এই profile allowed কি না") — admin-এর সম্পূর্ণ স্বাধীনতা থাকবে।
+- POP/reseller scope-এ Package Change লুকানো — পরে যদি লাগে, `showPackageChange` flag দিয়ে toggle করা যাবে। আপাতত admin & POP দুজনের জন্যই দেখাব (admin চাইলে use করবে, POP-এ usually disabled থাকতে পারে — পরে decide)।
+- Schema change দরকার নেই।
+
+## Files
+- `src/components/billing/BulkProfileChangeDialog.tsx` — rewrite
+- `src/components/billing/BulkPackageChangeDialog.tsx` — new
+- `src/components/billing/BulkActionButtons.tsx` — new button + prop
+- `src/pages/dashboard/clients/ClientList.tsx` — wiring
