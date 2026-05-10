@@ -1,71 +1,59 @@
-## Tariff: Remove "Custom" — Always Date-to-Date
+## সমস্যা
 
-### Goal
-Admin → Reseller tariff structure simplified. Only **date-to-date** delivery exists. Each package has `validity_days` (default 30) and `min_activation_days` (default 1). The dual radio (Custom / Date-to-Date) goes away. Client self-recharge from portal becomes available the moment a client expires (remaining=0 included), with day-count chosen by the client (subject to `min_activation_days`).
+Reseller (POP-admin) যখন bKash/SSLCommerz-এ fund recharge cancel করেন, gateway তখন `payment-callback` edge function-কে hit করে। সেখান থেকে user-কে app-এ redirect করার সময় base URL ভুলভাবে তৈরি হচ্ছে:
 
----
-
-### 1. Database migration
-
-- **Backfill existing rows** in `reseller_tariffs`:
-  - `tariff_type` = `'date_to_date'` for every row (covert all `'custom'`).
-- **Backfill `reseller_tariff_packages`**:
-  - `validity_days` → 30 wherever it's NULL or 0.
-  - `min_activation_days` → 1 wherever it's NULL or 0.
-- Make these the new column **defaults** (`DEFAULT 30` / `DEFAULT 1`) so future inserts get correct defaults even if UI forgets.
-- Optional: add a CHECK that `validity_days >= 1` and `min_activation_days >= 1`.
-
-(The pricing function `pop_resolve_client_package_cost` already returns these with sane fallbacks, so no function change needed.)
-
-### 2. Admin Tariff page (`src/pages/dashboard/branches/Tariff.tsx`)
-
-- Drop the `tariffType` state and the Custom / Date-to-Date `RadioGroup`.
-- Always submit `tariff_type: "date_to_date"`.
-- Show `validity_days` and `min_activation_days` inputs unconditionally on every package row, with defaults `30` and `1`.
-- Remove the `tariffType === "date_to_date" ? 0 : ...` branches when building insert payloads.
-- TariffChangeLog dialog: keep showing the values; nothing to remove.
-
-### 3. Reseller-side recharge (already correct)
-
-- `pop_recharge_client_days` already enforces `min_activation_days` via the `MIN_DAYS` exception. Leave as-is.
-- Bulk recharge dialog already uses `effectiveMin`. Leave as-is.
-
-### 4. Client self-recharge from portal
-
-Currently: portal `Bills` page lets the client pay a generated monthly bill. We're switching to a **package-day recharge** model that mirrors what the reseller does — but initiated by the client, paid through the existing payment-gateway flow.
-
-- New portal endpoint in `portal-data` (client tok scope): `client_get_recharge_quote`
-  - Returns `{ buy_price, validity_days, min_activation_days, daily_rate, expire_date, can_recharge }`.
-  - `can_recharge = expire_date <= today`.
-- New endpoint: `client_create_recharge_payment`
-  - Input: `days` (must be ≥ `min_activation_days`).
-  - Reject if `expire_date > today` → "এখনো expire হয়নি — recharge করার দরকার নেই"।
-  - Computes `amount = round(daily_rate * days, 2)` (uses the **package selling_rate**, not POP buying rate, so the customer pays the retail price — clarify in implementation that we use `pop_package_pricing.pop_selling_rate` falling back to `reseller_tariff_packages.selling_rate`).
-  - Creates a `public_payment_request` row (or equivalent) tagged with `purpose='client_recharge'`, `meta={days}`, then returns the gateway URL the existing `bkash-payment` / `nagad-payment` / `sslcommerz-payment` flow uses.
-- `payment-callback`: when a paid request has `purpose='client_recharge'`, invoke `pop_recharge_client_days(client_id, days)` after marking paid. The POP wallet is debited at buy-rate exactly like a reseller recharge; the client paid retail. Difference goes to admin/POP margin (already the model).
-
-### 5. Portal UI
-
-- `src/pages/portal/PortalBills.tsx` (or a new `PortalRecharge.tsx` linked from dashboard):
-  - Show "Recharge" card only when `can_recharge=true`.
-  - Days input with `min={min_activation_days}`, live total = `daily_rate × days`.
-  - "Pay" button → triggers `client_create_recharge_payment` → redirects to gateway.
-- When `can_recharge=false`: show greyed card "এখনো expire হয়নি, recharge দরকার নেই — expire হলে এখানে option আসবে"।
-
-### 6. Files to change
-
-```text
-supabase/migrations/<new>.sql                      — backfill + defaults
-src/pages/dashboard/branches/Tariff.tsx            — drop Custom/D2D toggle, default 30/1
-supabase/functions/portal-data/index.ts            — client_get_recharge_quote, client_create_recharge_payment
-supabase/functions/payment-callback/index.ts       — handle purpose='client_recharge' → call pop_recharge_client_days
-src/pages/portal/PortalBills.tsx (or new PortalRecharge.tsx) — recharge UI
-src/components/PortalLayout.tsx                    — surface the new menu if separate page
+```ts
+const base = APP_URL || `${url.protocol}//${url.host.replace(/\.functions\..*/, ".lovable.app")}`;
 ```
 
-### 7. Acceptance
+- `APP_URL` env secret সেট নেই
+- Edge function এখন `<ref>.supabase.co` host-এ চলে, `.functions.` substring নেই → regex কিছু replace করে না → host হয়ে যায় `hdrhscfambaswndxqzau.supabase.co`
+- Final redirect: `https://hdrhscfambaswndxqzau.supabase.co/pop-admin/fund-history/debit?recharge=failed` → Supabase responds **"requested path is invalid"**
 
-1. Admin tariff form has no Custom radio; every package shows validity & min-activation inputs with defaults 30/1.
-2. All existing tariffs show `date_to_date` and have non-zero validity/min-activation in DB.
-3. Reseller recharge still respects min_activation_days (unchanged).
-4. Portal: an active client sees "no recharge needed". A client at remaining=0 or past expiry sees a Recharge card, picks days (≥ min), pays through gateway, and on payment success their `expire_date` extends and MikroTik enables — exactly like a reseller-initiated recharge.
+আবার tenant-এর custom subdomain (যেমন কোনো POP নিজস্ব domain ব্যবহার করে) থাকলে hardcoded `.lovable.app` fallback-ও সঠিক জায়গায় ফেরত পাঠাবে না।
+
+## সমাধান
+
+Recharge শুরু হওয়ার সময় browser-এর actual origin store করি, তারপর callback-এ ওটাই ব্যবহার করি।
+
+### 1. Schema migration
+`pop_fund_recharges` টেবিলে নতুন column:
+- `return_origin TEXT` — initiating browser-এর origin (e.g. `https://abc.ispdesk.lovable.app` বা custom domain)
+
+### 2. Frontend — `FundRechargeDialog.tsx`
+`supabase.functions.invoke("pop-fund-recharge", …)` call-এ payload-এ যোগ করি:
+```ts
+app_origin: window.location.origin
+```
+
+### 3. Edge function — `pop-fund-recharge/index.ts`
+- Body থেকে `app_origin` পড়ে `pop_fund_recharges` insert-এ `return_origin` হিসেবে সেভ করি
+- Header fallback হিসেবে `req.headers.get("origin")` ও store করতে পারি
+
+### 4. Edge function — `payment-callback/index.ts`
+Base URL resolution priority:
+
+1. `rec.return_origin` (database থেকে — সবচেয়ে নির্ভরযোগ্য)
+2. `APP_URL` env (যদি set থাকে)
+3. Request `Origin`/`Referer` header
+4. Final fallback: hardcoded লোভেবল preview domain
+
+এতে cancel/fail/success সব ক্ষেত্রেই user যেই app-tenant URL থেকে recharge শুরু করেছিলেন ঠিক সেখানে ফিরে যাবেন (`/pop-admin/fund-history/debit?recharge=cancelled|failed|success`)।
+
+### 5. Status mapping
+SSLCommerz cancel → `status=CANCELLED` query parameter → callback-এ `recharge=cancelled` (এখন সবই `failed` হয়ে যায়)। তিনটে স্পষ্ট status pass করব: `success`, `failed`, `cancelled`। UI এ ToastDialog এ এদের separately দেখাব।
+
+## ফাইল পরিবর্তন
+
+- `supabase/migrations/<new>.sql` — `return_origin` column যোগ
+- `supabase/functions/pop-fund-recharge/index.ts` — origin capture + save
+- `supabase/functions/payment-callback/index.ts` — base URL resolution fix + cancelled status
+- `src/components/branches/FundRechargeDialog.tsx` — `app_origin` পাঠাবে
+- `src/pages/reseller/PopFundDebitHistory.tsx` — `?recharge=cancelled|failed|success` toast handling
+
+## ব্যবহারকারীর কাছে ফলাফল
+
+Cancel চাপলে আপনাকে সরাসরি **POP-admin → Debit History** পেজে ফিরিয়ে আনা হবে এবং উপরে একটা toast দেখাবে:
+- Cancel: "ফান্ড রিচার্জ বাতিল করা হয়েছে"
+- Fail: "রিচার্জ ব্যর্থ হয়েছে"
+- Success: "ফান্ড সফলভাবে যোগ হয়েছে"
