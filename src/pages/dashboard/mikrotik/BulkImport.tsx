@@ -8,8 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Download, Upload, Trash2, FileSpreadsheet, ChevronDown, ChevronRight, Info, CheckCircle, RefreshCw, AlertCircle } from "lucide-react";
+import { Download, Upload, Trash2, FileSpreadsheet, ChevronDown, ChevronRight, Info, CheckCircle, RefreshCw, AlertCircle, Wand2 } from "lucide-react";
 import * as XLSX from "xlsx";
 
 const COLUMNS: { key: string; label: string; optional?: boolean; type?: "select" | "text" | "number" }[] = [
@@ -68,7 +70,8 @@ export default function BulkImport() {
   const [instructionOpen, setInstructionOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [autoLoading, setAutoLoading] = useState(false);
-
+  const [bulkOpen, setBulkOpen] = useState(true);
+  const [bulkValues, setBulkValues] = useState<Record<string, string>>({});
   const { data: packages = [] } = useQuery({
     queryKey: ["isp_packages_list"],
     queryFn: async () => {
@@ -282,6 +285,74 @@ export default function BulkImport() {
     });
 
   const invalidCount = useMemo(() => rows.filter((r) => !isRowValid(r)).length, [rows]);
+  const selectedCount = useMemo(() => rows.filter((r) => r._selected).length, [rows]);
+  const allSelected = rows.length > 0 && selectedCount === rows.length;
+
+  const toggleRow = (idx: number, checked: boolean) =>
+    setRows((prev) => prev.map((r) => (r._idx === idx ? { ...r, _selected: checked } : r)));
+  const toggleAll = (checked: boolean) =>
+    setRows((prev) => prev.map((r) => ({ ...r, _selected: checked })));
+
+  const BULK_FIELDS: { key: string; label: string; type: "select" | "text" | "month" | "date" | "number" }[] = [
+    { key: "Zone", label: "Zone", type: "select" },
+    { key: "Conn.Type", label: "Conn.Type", type: "select" },
+    { key: "Prot.Type", label: "Prot.Type", type: "select" },
+    { key: "Package", label: "Package", type: "select" },
+    { key: "C.Type", label: "C.Type", type: "select" },
+    { key: "B.Status", label: "B.Status", type: "select" },
+    { key: "Bill.Month", label: "Bill.Month (MM-YYYY)", type: "month" },
+    { key: "Join.Date", label: "Join.Date", type: "date" },
+    { key: "Exp.Date", label: "Exp.Date (Day 1-31)", type: "number" },
+  ];
+
+  const setBulkValue = (key: string, value: string) =>
+    setBulkValues((prev) => ({ ...prev, [key]: value }));
+
+  const clearBulk = () => setBulkValues({});
+
+  const applyBulk = () => {
+    if (selectedCount === 0) {
+      toast.error("আগে রো select করুন");
+      return;
+    }
+    const filled = Object.entries(bulkValues).filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "");
+    if (filled.length === 0) {
+      toast.error("কমপক্ষে একটি ফিল্ড পূরণ করুন");
+      return;
+    }
+    setRows((prev) =>
+      prev.map((r) => {
+        if (!r._selected) return r;
+        const updated: ImportRow = { ...r, _autoFilled: { ...(r._autoFilled || {}) } };
+        for (const [k, raw] of filled) {
+          let v = raw;
+          if (k === "Join.Date" && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+            const [y, m, d] = v.split("-");
+            v = `${d}-${m}-${y}`;
+          }
+          if (k === "Bill.Month" && /^\d{4}-\d{2}$/.test(v)) {
+            const [y, m] = v.split("-");
+            v = `${m}-${y}`;
+          }
+          if (k === "Exp.Date") {
+            const n = Math.max(1, Math.min(31, Number(v) || 1));
+            v = pad2(n);
+          }
+          updated[k] = v;
+          updated._autoFilled![k] = false;
+          if (k === "Package") {
+            const pkg = packages.find((p) => p.name === v);
+            if (pkg) {
+              updated["M.Bill"] = pkg.price || 0;
+              updated._autoFilled!["M.Bill"] = false;
+            }
+          }
+        }
+        return updated;
+      })
+    );
+    toast.success(`${selectedCount} টি রো আপডেট হয়েছে`);
+  };
 
   const updateCell = (idx: number, key: string, value: string) => {
     setRows((prev) =>
@@ -437,6 +508,65 @@ export default function BulkImport() {
         </Card>
       </Collapsible>
 
+      {rows.length > 0 && (
+        <Collapsible open={bulkOpen} onOpenChange={setBulkOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                <div className="flex items-center gap-2">
+                  {bulkOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  <Wand2 className="h-4 w-4" />
+                  <CardTitle className="text-base">একসাথে সেট করুন (Bulk Set)</CardTitle>
+                  <Badge variant="secondary" className="ml-2">{selectedCount} সিলেক্টেড</Badge>
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {BULK_FIELDS.map((f) => (
+                    <div key={f.key} className="space-y-1">
+                      <Label className="text-xs">{f.label}</Label>
+                      {f.type === "select" ? (
+                        <Select value={bulkValues[f.key] || ""} onValueChange={(v) => setBulkValue(f.key, v)}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                          <SelectContent className="bg-popover z-50">
+                            {optionsFor(f.key).map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          type={f.type === "month" ? "month" : f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
+                          min={f.type === "number" ? 1 : undefined}
+                          max={f.type === "number" ? 31 : undefined}
+                          className="h-8 text-xs"
+                          value={bulkValues[f.key] || ""}
+                          onChange={(e) => setBulkValue(f.key, e.target.value)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
+                  <Button size="sm" onClick={applyBulk} disabled={selectedCount === 0}>
+                    <Wand2 className="h-4 w-4 mr-1" /> Apply to Selected ({selectedCount})
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={clearBulk}>
+                    Clear Form
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => toggleAll(!allSelected)}>
+                    {allSelected ? "Unselect All" : "Select All Visible"}
+                  </Button>
+                  {selectedCount === 0 && (
+                    <span className="text-xs text-muted-foreground">আগে রো select করুন (টেবিলের প্রথম কলামে)</span>
+                  )}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
+
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-3 flex-wrap">
@@ -471,6 +601,13 @@ export default function BulkImport() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={(c) => toggleAll(!!c)}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
                     <TableHead className="w-10">#</TableHead>
                     {COLUMNS.map((col) => (
                       <TableHead key={col.key} className="min-w-[100px] text-xs whitespace-nowrap">
@@ -483,7 +620,14 @@ export default function BulkImport() {
                 </TableHeader>
                 <TableBody>
                   {rows.map((r, i) => (
-                    <TableRow key={r._idx} className={!isRowValid(r) ? "bg-destructive/5" : ""}>
+                    <TableRow key={r._idx} className={!isRowValid(r) ? "bg-destructive/5" : r._selected ? "bg-primary/5" : ""}>
+                      <TableCell className="p-1">
+                        <Checkbox
+                          checked={!!r._selected}
+                          onCheckedChange={(c) => toggleRow(r._idx, !!c)}
+                          aria-label={`Select row ${i + 1}`}
+                        />
+                      </TableCell>
                       <TableCell className="text-xs">{i + 1}</TableCell>
                       {COLUMNS.map((col) => (
                         <TableCell key={col.key} className="p-1">{renderCell(r, col)}</TableCell>

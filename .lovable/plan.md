@@ -1,54 +1,39 @@
 ## Goal
-Make BulkImport (`/dashboard/mikrotik/import`) auto-fill all derivable fields when MikroTik users are loaded, so the user only has to fill truly missing personal info (Name, Mobile, Address, etc.).
+Add a "Bulk Set" toolbar to `/dashboard/mikrotik/bulk-import` so the user can apply common values (Zone, Connection Type, Protocol Type, Package, Client Type, Status, Bill Month, Join Date, Expiry Date) to many rows at once instead of editing them one by one.
 
-## Auto-fill Rules
+## How it works
 
-When MikroTik users load (or refresh), each row will populate as follows — pulling from existing config tables (`zones`, `connection_types`, `protocol_types`, `isp_packages`) and system settings.
+1. **Selection-driven** — A checkbox column already exists per row. The bulk toolbar applies its values **only to selected rows**. If nothing is selected, a helper note says "Select rows first" and Apply is disabled. A "Select all visible" shortcut sits next to it.
 
-| Field | Source / Logic |
-|---|---|
-| **C.Code** | MikroTik username (current behavior) |
-| **UserName / Password** | MikroTik (current) |
-| **Server** | MikroTik device name (current) |
-| **Profile** | MikroTik profile (current) |
-| **R.Address** | MikroTik remote_address (current) |
-| **Zone** | First active zone from `zones` table (default). User can edit. |
-| **Conn.Type** | First active row from `connection_types` (e.g. "UTP" / "Fiber"). |
-| **Prot.Type** | Match MikroTik `service` against `protocol_types`. If MikroTik says `pppoe` → "PPPoE". If `any`/empty → fallback to first active protocol_type. |
-| **C.Type** | Default `"Home"` (hardcoded list Home/Corporate). |
-| **Package** | Match by `mikrotik_profile === profile` (current). |
-| **M.Bill** | From matched package `price`. If no match → 0 (not 500). |
-| **B.Status** | `"Active"` (current). |
-| **Bill.Month** | Current `MM-YYYY` (e.g. `05-2026`). |
-| **Join.Date** | Today (`DD-MM-YYYY`) — current is ISO; switch to `DD-MM-YYYY` to match sample. |
-| **Exp.Date** | Day-of-month number based on `billing_cycle_config` (`monthly_first` → `1`, else day of join). Stored as a 2-digit day like `"10"`, matching the sample data. |
+2. **Bulk toolbar UI** — A new collapsible card titled "একসাথে সেট করুন (Bulk Set)" placed right above the import table. Inside it, a responsive grid of fields:
+   - Zone (Select, from `zones`)
+   - Conn.Type (Select, from `connection_types_config`)
+   - Prot.Type (Select, from `protocol_types`)
+   - Package (Select, from `isp_packages` — when applied, also auto-fills `M.Bill` from package price)
+   - C.Type (Select: Home / Corporate)
+   - B.Status (Select: Active / Inactive / Pending)
+   - Bill.Month (month input → `MM-YYYY`)
+   - Join.Date (date input → `DD-MM-YYYY`)
+   - Exp.Date (number 1–31, day-of-month)
 
-## UI Changes
+   Each field is optional; only fields the user actually filled get applied. Two buttons: **Apply to Selected** and **Clear** (clears the bulk form, not the table).
 
-1. **Render Zone, Conn.Type, Prot.Type, C.Type, Package, B.Status as `<Select>` dropdowns** instead of free-text Input. Options come from the corresponding config tables / fixed lists. This guarantees only valid values reach the import step.
-2. **Mandatory vs Optional column headers** — append `(Opt.)` to optional columns: `Email`, `NationalId`, `DateOfBirth`, `FatherName`, `MotherName`, `Occupation`. Mandatory ones get a small red `*`.
-3. **Visual highlight** — auto-filled cells get a subtle muted background so the user can quickly spot which cells still need manual input (Name, Mobile, Address).
-4. **Date format** — display dates as `DD-MM-YYYY` to match the user's sample.
+3. **Behavior rules**
+   - Applying overwrites the value in every selected row (even if that row already had one), so the user can correct mistakes in bulk too.
+   - Applying Package also sets `M.Bill` for those rows (matching current single-row behavior).
+   - After apply: success toast like "১২ টি রো আপডেট হয়েছে" and the bulk form stays filled (user can apply again to a different selection).
 
-## Validation Before Import
+4. **No DB or API changes** — Pure frontend. Uses the same option lists already fetched on the page.
 
-Before allowing "সব ইমপোর্ট করুন":
-- Each row must have: `Name`, `Mobile`, `Address`, `Zone`, `Conn.Type`, `Prot.Type`, `Package`, `M.Bill > 0`, `Join.Date`, `Exp.Date`.
-- Rows missing any mandatory field show an inline red badge; import button shows count of invalid rows.
+## Technical Details
 
-## Data Fetched (additions)
-
-Add three queries to `BulkImport.tsx`:
-- `connection_types` (where status='active')
-- `protocol_types` (where status='active')
-- `system_settings` row `billing_cycle_config` (to compute Exp.Date day)
-
-## Files
-
-- `src/pages/dashboard/mikrotik/BulkImport.tsx` — only file touched.
-- No DB schema changes, no edge function changes.
+- **File touched:** `src/pages/dashboard/mikrotik/BulkImport.tsx` only.
+- Add `bulkValues` state object (one optional value per field).
+- Add `applyBulk()` that maps over `rows`, and for `selected` rows merges only the keys present in `bulkValues`.
+- Reuse existing `<Select>` option arrays (`zones`, `connectionTypes`, `protocolTypes`, `packages`).
+- Layout: `Card` with a `grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3` body, action row underneath.
+- No changes to validation, import payload, or DB schema.
 
 ## Out of Scope
-
-- Adding a new `client_types` config table (Home/Corporate stays as a fixed two-option list — confirm if you want it driven by a DB table instead).
-- Changing the actual `clients` insert payload shape (already accepts these fields).
+- Bulk-editing personal fields (Name / Mobile / Address / NID) — those are intentionally per-row.
+- Saving bulk presets for reuse across sessions.
