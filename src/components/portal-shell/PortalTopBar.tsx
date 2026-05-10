@@ -2,7 +2,7 @@ import { useState, ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   LogOut, User, Globe, Languages, Palette, Settings,
-  Smartphone, Share, Plus, StickyNote,
+  Smartphone, Share, Plus, StickyNote, Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -15,6 +15,8 @@ import { NotesButton } from "@/components/notes/NotesButton";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { toast } from "@/hooks/use-toast";
 import { HeaderClock } from "@/components/HeaderClock";
+import FundRechargeDialog from "@/components/branches/FundRechargeDialog";
+import { usePopScope } from "@/hooks/usePopScope";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -47,7 +49,10 @@ export function PortalTopBar({
   const [themeOpen, setThemeOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [iosHelpOpen, setIosHelpOpen] = useState(false);
+  const [fundOpen, setFundOpen] = useState(false);
   const { canPromptNative, isIOS, installed, promptInstall } = useInstallPrompt();
+  const { popId, popName } = usePopScope();
+  const isReseller = customer?.type === "reseller";
 
   const displayName = customer?.name || customer?.username || "User";
   const subLabel = customer?.type === "reseller_sub"
@@ -102,6 +107,20 @@ export function PortalTopBar({
           <div className="hidden lg:block">
             <HeaderClock />
           </div>
+
+          {isReseller && popId && (
+            <Button
+              size="sm"
+              onClick={() => setFundOpen(true)}
+              className="h-9 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-2 sm:px-3"
+              title={t("ফান্ড রিচার্জ", "Fund Recharge")}
+            >
+              <Wallet className="h-4 w-4" />
+              <span className="hidden md:inline text-xs font-semibold">
+                {t("ফান্ড রিচার্জ", "Fund Recharge")}
+              </span>
+            </Button>
+          )}
 
           {extra}
 
@@ -195,6 +214,9 @@ export function PortalTopBar({
 
       <ThemeCustomizer open={themeOpen} onOpenChange={setThemeOpen} />
       <QuickSettings open={quickOpen} onOpenChange={setQuickOpen} />
+      {isReseller && (
+        <FundRechargeDialog open={fundOpen} onOpenChange={setFundOpen} popId={popId} popName={popName} />
+      )}
 
       <Dialog open={iosHelpOpen} onOpenChange={setIosHelpOpen}>
         <DialogContent className="max-w-md">

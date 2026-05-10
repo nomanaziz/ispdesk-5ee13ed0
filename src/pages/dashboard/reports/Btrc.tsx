@@ -24,11 +24,16 @@ export default function Btrc() {
     user_type: "all", client_type: "all", connection_type: "all",
     b_status: "all", zone_id: "all", allocated_ip_type: "user_id",
     distributed_point_type: "all",
+    reseller_id: "all",
     from: init.from, to: init.to,
   });
   const [a, setA] = useState(f);
 
   const { data: zones } = useQuery({ queryKey: ["btrc-zones"], queryFn: async () => (await supabase.from("zones").select("id,name").eq("status", "active")).data || [] });
+  const { data: resellers } = useQuery({
+    queryKey: ["btrc-resellers"],
+    queryFn: async () => (await supabase.from("branch_managers").select("id, name, branch_id").eq("status", "active").order("name")).data || [],
+  });
 
   const { data: rows = [], isLoading, refetch } = useQuery({
     queryKey: ["rpt-btrc", a],
@@ -51,6 +56,11 @@ export default function Btrc() {
       if (a.connection_type !== "all") q = q.eq("connection_type", a.connection_type);
       if (a.b_status !== "all") q = q.eq("billing_status", a.b_status);
       if (a.zone_id !== "all") q = q.eq("zone_id", a.zone_id);
+      if (a.reseller_id !== "all") {
+        const branchId = (resellers || []).find((r: any) => r.id === a.reseller_id)?.branch_id;
+        if (branchId) q = q.eq("branch_id", branchId);
+        else q = q.eq("id", "00000000-0000-0000-0000-000000000000");
+      }
       const { data } = await q;
       return (data || []).map((c: any, i: number) => ({
         id: c.id,
@@ -123,6 +133,17 @@ export default function Btrc() {
             <Select value={f.allocated_ip_type} onValueChange={(v) => setF({ ...f, allocated_ip_type: v })}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="user_id">User ID</SelectItem><SelectItem value="real_ip">Real IP</SelectItem></SelectContent>
+            </Select>
+          </div>
+          <div><Label className="text-xs">Reseller (POP)</Label>
+            <Select value={f.reseller_id} onValueChange={(v) => setF({ ...f, reseller_id: v })}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Resellers</SelectItem>
+                {(resellers || []).map((r: any) => (
+                  <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
           <div><Label className="text-xs">Activation From</Label><Input type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} className="h-9" /></div>

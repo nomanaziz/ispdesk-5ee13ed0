@@ -369,7 +369,7 @@ const PopReportMessages = lazy(() => import("@/pages/reseller/reports/PopMessage
 const PopReportDueSms = lazy(() => import("@/pages/reseller/reports/PopDueSms"));
 const PopReportProcessingFee = lazy(() => import("@/pages/reseller/reports/PopProcessingFee"));
 const PopReportDiscount = lazy(() => import("@/pages/reseller/reports/PopDiscount"));
-const PopReportBtrc = lazy(() => import("@/pages/reseller/reports/PopBtrc"));
+
 const PopReportFinancial = lazy(() => import("@/pages/reseller/reports/PopFinancial"));
 const PopReportEnableDisable = lazy(() => import("@/pages/reseller/reports/PopEnableDisable"));
 const PopFundCreditHistory = lazy(() => import("@/pages/reseller/PopFundCreditHistory"));
@@ -872,7 +872,7 @@ const App = () => (
               <Route path="/pop-admin/reports/processing-fee" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportProcessingFee /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/reports/discount" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportDiscount /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/reports/due-sms" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportDueSms /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/reports/btrc" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportBtrc /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              
               <Route path="/pop-admin/reports/financial" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportFinancial /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/system/setup" element={<PortalAuthProvider><ResellerProtectedRoute require="system"><ResellerLayout><PopSetup /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/system/bill-period" element={<PortalAuthProvider><ResellerProtectedRoute require="system"><ResellerLayout><PopBillPeriod /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />

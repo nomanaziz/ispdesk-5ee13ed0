@@ -94,7 +94,6 @@ const groups: ResellerGroup[] = [
       { url: "/pop-admin/reports/due-sms", title: "ডিউ এসএমএস", titleEn: "Due SMS", icon: BarChart3 },
       { url: "/pop-admin/reports/discount", title: "ডিসকাউন্ট", titleEn: "Discount", icon: BarChart3 },
       { url: "/pop-admin/reports/processing-fee", title: "প্রসেসিং ফি", titleEn: "Processing Fee", icon: BarChart3 },
-      { url: "/pop-admin/reports/btrc", title: "বিটিআরসি মাসিক", titleEn: "BTRC Monthly", icon: BarChart3 },
       { url: "/pop-admin/reports/financial", title: "আর্থিক", titleEn: "Financial", icon: BarChart3 },
     ],
   },
