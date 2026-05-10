@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     .select("*, clients(name)").eq("id", requestId).maybeSingle();
 
   const portalUrl = (s: string) => {
-    const base = APP_URL || `${url.protocol}//${url.host.replace(/\.functions\..*/, ".lovable.app")}`;
+    const base = resolveBase((pr as any)?.return_origin);
     const billPart = pr?.billing_id ? `/portal/bill/${pr.billing_id}` : `/portal/bills`;
     return `${base}${billPart}?payment=${s}`;
   };
