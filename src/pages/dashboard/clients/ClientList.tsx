@@ -81,6 +81,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
   const [statusChangeOpen, setStatusChangeOpen] = useState(false);
   const [zoneChangeOpen, setZoneChangeOpen] = useState(false);
   const [profileChangeOpen, setProfileChangeOpen] = useState(false);
+  const [packageChangeOpen, setPackageChangeOpen] = useState(false);
   const [smsOpen, setSmsOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [dateExtendOpen, setDateExtendOpen] = useState(false);
