@@ -608,6 +608,11 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
       <BulkDateExtendDialog open={dateExtendOpen} onOpenChange={setDateExtendOpen} selectedClients={selectedClients} invalidateKey="clients-list" />
       <BulkDistrictChangeDialog open={districtOpen} onOpenChange={setDistrictOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
       <BulkThanaChangeDialog open={thanaOpen} onOpenChange={setThanaOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
+      <BulkClientRechargeDialog
+        open={bulkRechargeOpen}
+        onOpenChange={setBulkRechargeOpen}
+        clients={selectedClients.map((c: any) => ({ id: c.id, monthly_bill: Number(c.monthly_bill || 0), name: c.name }))}
+      />
       <ClientCommentDialog
         open={!!commentClient}
         onOpenChange={(o) => { if (!o) setCommentClient(null); }}
