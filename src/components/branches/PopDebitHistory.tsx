@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +13,11 @@ import { exportCSV, exportPDF, fmtMoney, fmtDate, type Column } from "@/lib/repo
 interface Props {
   branchId: string | undefined;
   popName?: string;
+  /** "pop" → fetch via portal-data (POP JWT). "admin" → direct REST (default). */
+  mode?: "admin" | "pop";
 }
 
-export default function PopDebitHistory({ branchId, popName }: Props) {
+export default function PopDebitHistory({ branchId, popName, mode = "admin" }: Props) {
   const today = new Date();
   const firstOfYear = new Date(today.getFullYear(), 0, 1).toISOString().slice(0, 10);
   const todayStr = today.toISOString().slice(0, 10);
@@ -22,9 +25,13 @@ export default function PopDebitHistory({ branchId, popName }: Props) {
   const [to, setTo] = useState(todayStr);
 
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["pop-debit-history", branchId, from, to],
-    enabled: !!branchId,
+    queryKey: ["pop-debit-history", mode, branchId, from, to],
+    enabled: mode === "pop" ? true : !!branchId,
     queryFn: async () => {
+      if (mode === "pop") {
+        const res = await callPortal<{ rows: any[] }>("pop_get_debit_history", { from, to });
+        return res?.rows ?? [];
+      }
       const { data, error } = await supabase
         .from("branch_funding")
         .select("*")
