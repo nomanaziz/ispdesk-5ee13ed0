@@ -49,7 +49,10 @@ export function PortalTopBar({
   const [themeOpen, setThemeOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [iosHelpOpen, setIosHelpOpen] = useState(false);
+  const [fundOpen, setFundOpen] = useState(false);
   const { canPromptNative, isIOS, installed, promptInstall } = useInstallPrompt();
+  const { popId, popName } = usePopScope();
+  const isReseller = customer?.type === "reseller";
 
   const displayName = customer?.name || customer?.username || "User";
   const subLabel = customer?.type === "reseller_sub"
