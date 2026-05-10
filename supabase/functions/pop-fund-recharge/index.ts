@@ -11,7 +11,8 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { pop_id, amount, gateway = "bkash", payer_reference } = body || {};
+    const { pop_id, amount, gateway = "bkash", payer_reference, app_origin } = body || {};
+    const returnOrigin = (app_origin || req.headers.get("origin") || req.headers.get("referer") || "").replace(/\/+$/, "");
     if (!pop_id || !amount || Number(amount) <= 0) {
       return new Response(JSON.stringify({ ok: false, message: "pop_id and positive amount required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -41,6 +42,7 @@ Deno.serve(async (req) => {
         method: gateway,
         status: "pending",
         note: `POP self-recharge via ${gateway}`,
+        return_origin: returnOrigin || null,
       })
       .select("id")
       .single();

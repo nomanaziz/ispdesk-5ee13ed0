@@ -7107,6 +7107,7 @@ export type Database = {
           method: string
           note: string | null
           pop_id: string
+          return_origin: string | null
           status: string
           trx_id: string | null
         }
@@ -7122,6 +7123,7 @@ export type Database = {
           method: string
           note?: string | null
           pop_id: string
+          return_origin?: string | null
           status?: string
           trx_id?: string | null
         }
@@ -7137,6 +7139,7 @@ export type Database = {
           method?: string
           note?: string | null
           pop_id?: string
+          return_origin?: string | null
           status?: string
           trx_id?: string | null
         }

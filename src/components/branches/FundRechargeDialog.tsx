@@ -72,7 +72,7 @@ export default function FundRechargeDialog({ open, onOpenChange, popId, popName 
     try {
       const key = gatewayKey(gw.name);
       const { data, error } = await supabase.functions.invoke("pop-fund-recharge", {
-        body: { pop_id: popId, amount: amt, gateway: key },
+        body: { pop_id: popId, amount: amt, gateway: key, app_origin: window.location.origin },
       });
       if (error) throw error;
       const url = (data as any)?.redirect_url;

@@ -38,6 +38,26 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Helper to resolve a safe app base URL for redirects
+  const resolveBase = (storedOrigin?: string | null) => {
+    const candidates = [
+      storedOrigin,
+      APP_URL,
+      req.headers.get("origin"),
+      req.headers.get("referer"),
+    ].filter(Boolean) as string[];
+    for (const c of candidates) {
+      try {
+        const u = new URL(c);
+        if (!u.host.endsWith("supabase.co")) {
+          return `${u.protocol}//${u.host}`;
+        }
+      } catch { /* ignore */ }
+    }
+    // Last-resort fallback
+    return "https://ispdesk.lovable.app";
+  };
+
   // ---------- POP self-service fund recharge flow ----------
   if (popRechargeId) {
     const { data: rec } = await supabase.from("pop_fund_recharges")
@@ -45,10 +65,16 @@ Deno.serve(async (req) => {
       .eq("id", popRechargeId).maybeSingle();
 
     const popPortal = (s: string) => {
-      const base = APP_URL || `${url.protocol}//${url.host.replace(/\.functions\..*/, ".lovable.app")}`;
+      const base = resolveBase(rec?.return_origin);
       return `${base}/pop-admin/fund-history/debit?recharge=${s}`;
     };
     if (!rec) return redirect(popPortal("failed"));
+
+    // Detect explicit cancellation from gateway query/form params
+    const cancelled =
+      /cancel/i.test(status) ||
+      /cancel/i.test(String(formData.status || "")) ||
+      url.searchParams.get("cancel") === "1";
 
     let verified = false;
     let gatewayData: any = formData;
@@ -95,10 +121,11 @@ Deno.serve(async (req) => {
     } catch (e) { console.error("pop recharge verify error", e); }
 
     if (!verified) {
+      const finalStatus = cancelled ? "cancelled" : "failed";
       await supabase.from("pop_fund_recharges").update({
-        status: "failed", gateway_response: gatewayData, trx_id: trxId || rec.trx_id,
+        status: finalStatus, gateway_response: gatewayData, trx_id: trxId || rec.trx_id,
       }).eq("id", rec.id);
-      return redirect(popPortal("failed"));
+      return redirect(popPortal(finalStatus));
     }
 
     // Insert into branch_funding (trigger will credit pop balance)
@@ -136,7 +163,7 @@ Deno.serve(async (req) => {
     .select("*, clients(name)").eq("id", requestId).maybeSingle();
 
   const portalUrl = (s: string) => {
-    const base = APP_URL || `${url.protocol}//${url.host.replace(/\.functions\..*/, ".lovable.app")}`;
+    const base = resolveBase((pr as any)?.return_origin);
     const billPart = pr?.billing_id ? `/portal/bill/${pr.billing_id}` : `/portal/bills`;
     return `${base}${billPart}?payment=${s}`;
   };
