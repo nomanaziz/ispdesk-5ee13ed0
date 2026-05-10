@@ -369,7 +369,7 @@ const PopReportMessages = lazy(() => import("@/pages/reseller/reports/PopMessage
 const PopReportDueSms = lazy(() => import("@/pages/reseller/reports/PopDueSms"));
 const PopReportProcessingFee = lazy(() => import("@/pages/reseller/reports/PopProcessingFee"));
 const PopReportDiscount = lazy(() => import("@/pages/reseller/reports/PopDiscount"));
-const PopReportBtrc = lazy(() => import("@/pages/reseller/reports/PopBtrc"));
+
 const PopReportFinancial = lazy(() => import("@/pages/reseller/reports/PopFinancial"));
 const PopReportEnableDisable = lazy(() => import("@/pages/reseller/reports/PopEnableDisable"));
 const PopFundCreditHistory = lazy(() => import("@/pages/reseller/PopFundCreditHistory"));
