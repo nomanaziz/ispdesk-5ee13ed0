@@ -28,8 +28,10 @@ interface Props {
   onRegenerateInvoice?: () => void;
   onBulkAutoRechargeOn?: () => void;
   onBulkAutoRechargeOff?: () => void;
+  onBulkClientRecharge?: () => void;
   showMigrate?: boolean;
   showAutoRecharge?: boolean;
+  showBulkRecharge?: boolean;
 }
 
 export default function BulkActionButtons({
