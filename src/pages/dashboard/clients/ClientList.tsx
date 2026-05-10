@@ -443,7 +443,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
               <TableHead className="text-xs">মাসিক বিল</TableHead>
               <TableHead className="text-xs">Exp Date</TableHead>
               {isPopMode && <TableHead className="text-xs text-center">R.Days</TableHead>}
-              {isPopMode && <TableHead className="text-xs text-center">Auto R.</TableHead>}
+              
               <TableHead className="text-xs">কানেকশন টাইপ</TableHead>
               <TableHead className="text-xs">কাস্টমার টাইপ</TableHead>
               <TableHead className="text-xs">রিমোট অ্যাড্রেস</TableHead>
