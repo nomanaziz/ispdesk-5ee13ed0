@@ -553,37 +553,34 @@ export default function Tariff() {
                     }}
                   />
                 </div>
-                {tariffType === "custom" && (
-                  <>
-                    <div>
-                      <Label>Validity Days</Label>
-                      <Input
-                        type="number"
-                        value={pkgForm.validity_days}
-                        onChange={(e) =>
-                          setPkgForm({
-                            ...pkgForm,
-                            validity_days: Number(e.target.value),
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label>Min Activation Days</Label>
-                      <Input
-                        type="number"
-                        value={pkgForm.min_activation_days}
-                        min={1}
-                        onChange={(e) =>
-                          setPkgForm({
-                            ...pkgForm,
-                            min_activation_days: Math.max(1, Number(e.target.value)),
-                          })
-                        }
-                      />
-                    </div>
-                  </>
-                )}
+                <div>
+                  <Label>Validity Days *</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={pkgForm.validity_days}
+                    onChange={(e) =>
+                      setPkgForm({
+                        ...pkgForm,
+                        validity_days: Math.max(1, Number(e.target.value)),
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>Min Activation Days *</Label>
+                  <Input
+                    type="number"
+                    value={pkgForm.min_activation_days}
+                    min={1}
+                    onChange={(e) =>
+                      setPkgForm({
+                        ...pkgForm,
+                        min_activation_days: Math.max(1, Number(e.target.value)),
+                      })
+                    }
+                  />
+                </div>
                 <div>
                   <Label>Protocol</Label>
                   <Select
