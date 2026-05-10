@@ -26,7 +26,10 @@ interface Props {
   onBulkRemoveVip: () => void;
   onBulkProfileChange: () => void;
   onRegenerateInvoice?: () => void;
+  onBulkAutoRechargeOn?: () => void;
+  onBulkAutoRechargeOff?: () => void;
   showMigrate?: boolean;
+  showAutoRecharge?: boolean;
 }
 
 export default function BulkActionButtons({
