@@ -100,6 +100,76 @@ const PortalBills = () => {
           right={{ label: "পরিশোধিত", value: `৳${totals.paid.toLocaleString()}`, icon: TrendingDown, tone: "success", hint: `${totals.paidCount} টি` }}
         />
 
+        {/* Recharge card */}
+        {quote && (
+          <div className="m-card p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-amber-500" />
+              <h3 className="font-semibold text-sm">রিচার্জ</h3>
+              {quote.expire_date && (
+                <Badge variant="secondary" className="text-[10px]">Expire: {quote.expire_date}</Badge>
+              )}
+            </div>
+            {!quote.can_recharge ? (
+              <p className="text-xs text-muted-foreground">
+                এখনো expire হয়নি — recharge দরকার নেই। Expire হলে এখানে option আসবে।
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <div className="text-xs text-muted-foreground">
+                  Daily rate: ৳{dailyRate.toFixed(2)} · Min {minDays} day(s) · Validity {quote.validity_days}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Days</Label>
+                    <Input
+                      type="number"
+                      min={minDays}
+                      value={days || ""}
+                      placeholder={String(minDays)}
+                      onChange={(e) => setDays(Math.max(0, Number(e.target.value)))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Total</Label>
+                    <Input value={`৳${totalAmount.toFixed(2)}`} readOnly />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-xs">Method</Label>
+                    <select
+                      className="w-full h-9 rounded-md border bg-background px-2 text-sm"
+                      value={method}
+                      onChange={(e) => setMethod(e.target.value)}
+                    >
+                      <option value="bkash">bKash</option>
+                      <option value="nagad">Nagad</option>
+                      <option value="rocket">Rocket</option>
+                      <option value="manual">Manual</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Sender No.</Label>
+                    <Input value={sender} onChange={(e) => setSender(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Trx ID</Label>
+                    <Input value={trxId} onChange={(e) => setTrxId(e.target.value)} />
+                  </div>
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={effectiveDays < minDays || submitRecharge.isPending}
+                  onClick={() => submitRecharge.mutate()}
+                >
+                  {submitRecharge.isPending ? "Submitting..." : `Pay ৳${totalAmount.toFixed(2)}`}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         <PillTabs
           value={tab}
           onChange={(v) => setTab(v as any)}
