@@ -49,15 +49,24 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const { data: rpcRes, error: rpcErr } = await sb.rpc("pop_bulk_recharge_clients", {
-        p_client_ids: ids,
-        p_days: 1,
-      });
-      if (rpcErr) {
-        results.push({ pop: pop.name, error: rpcErr.message, due: ids.length });
-        continue;
+      // Renew each eligible client by ONE FULL package cycle. If wallet runs out,
+      // disable any client that couldn't be renewed.
+      let ok = 0, fail = 0, totalCharged = 0;
+      const failures: any[] = [];
+      for (const cid of ids) {
+        const { data: rpcRes, error: rpcErr } = await sb.rpc("pop_auto_renew_client", { p_client_id: cid });
+        if (rpcErr) {
+          fail++;
+          failures.push({ client_id: cid, error: rpcErr.message });
+          if (String(rpcErr.message || "").includes("INSUFFICIENT_BALANCE")) {
+            await sb.from("clients").update({ mikrotik_status: "disabled" }).eq("id", cid);
+          }
+        } else {
+          ok++;
+          totalCharged += Number((rpcRes as any)?.charged || 0);
+        }
       }
-      results.push({ pop: pop.name, due: ids.length, ...(rpcRes as any) });
+      results.push({ pop: pop.name, due: ids.length, succeeded: ok, failed: fail, total_charged: totalCharged, errors: failures });
     }
 
     return new Response(JSON.stringify({ ok: true, date: today, results }), {
