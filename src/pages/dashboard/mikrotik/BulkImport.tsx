@@ -266,10 +266,54 @@ export default function BulkImport() {
     }
   };
 
+  // Auto-select first device when devices list loads
   useEffect(() => {
-    if (ready) loadUnmatchedUsers();
+    if (!selectedDevice && mikrotikDevices.length > 0) {
+      setSelectedDevice(mikrotikDevices[0].id);
+    }
+  }, [mikrotikDevices, selectedDevice]);
+
+  // Distinct profile list for the selected device (from cached mikrotik_clients)
+  const { data: deviceProfiles = [] } = useQuery({
+    queryKey: ["mikrotik_device_profiles", selectedDevice],
+    queryFn: async () => {
+      if (!selectedDevice) return [];
+      const { data } = await supabase
+        .from("mikrotik_clients")
+        .select("profile")
+        .eq("mikrotik_id", selectedDevice);
+      const set = new Set<string>();
+      (data || []).forEach((r: any) => { if (r.profile) set.add(r.profile); });
+      return Array.from(set).sort();
+    },
+    enabled: !!selectedDevice,
+  });
+
+  useEffect(() => {
+    if (ready && selectedDevice) loadUnmatchedUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready]);
+  }, [ready, selectedDevice, selectedProfile]);
+
+  const syncFromMikroTik = async () => {
+    if (!selectedDevice) {
+      toast.error("আগে একটি MikroTik সার্ভার সিলেক্ট করুন");
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-mikrotik-ppp", {
+        body: { device_id: selectedDevice },
+      });
+      if (error) throw error;
+      toast.success(`${data?.synced || 0} জন PPP ইউজার সিঙ্ক হয়েছে`);
+      queryClient.invalidateQueries({ queryKey: ["mikrotik_device_profiles", selectedDevice] });
+      await loadUnmatchedUsers();
+    } catch (e: any) {
+      toast.error("সিঙ্ক ব্যর্থ: " + (e.message || "অজানা ত্রুটি"));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const downloadSample = () => {
     const headers = COLUMNS.map((c) => c.key);
