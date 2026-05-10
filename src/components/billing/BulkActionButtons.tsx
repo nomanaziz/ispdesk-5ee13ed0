@@ -29,9 +29,11 @@ interface Props {
   onBulkAutoRechargeOn?: () => void;
   onBulkAutoRechargeOff?: () => void;
   onBulkClientRecharge?: () => void;
+  onTransferToPop?: () => void;
   showMigrate?: boolean;
   showAutoRecharge?: boolean;
   showBulkRecharge?: boolean;
+  showTransferToPop?: boolean;
 }
 
 export default function BulkActionButtons({
