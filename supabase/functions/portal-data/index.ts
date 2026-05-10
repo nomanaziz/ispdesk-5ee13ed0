@@ -2491,6 +2491,27 @@ Deno.serve(async (req) => {
         });
       }
 
+      case "get_clients_recharge_cost": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const ids: string[] = Array.isArray(payload.client_ids) ? payload.client_ids : [];
+        if (!ids.length) return json({ items: [] });
+        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
+        if (!pop?.branch_id) return json({ error: "POP branch missing" }, 400);
+        const { data: owned } = await sb.from("clients").select("id").eq("branch_id", pop.branch_id).in("id", ids);
+        const items: any[] = [];
+        for (const row of (owned || [])) {
+          const { data: cost, error: cErr } = await sb.rpc("pop_resolve_client_package_cost", { p_client_id: (row as any).id });
+          if (cErr) { items.push({ client_id: (row as any).id, error: cErr.message }); continue; }
+          const r = Array.isArray(cost) ? cost[0] : cost;
+          const buy = Number(r?.buy_price || 0);
+          const days = Number(r?.validity_days || 30) || 30; // RPC returns column named validity_days but value is min_activation_days now
+          const daily = days > 0 ? Math.round((buy / days) * 100) / 100 : 0;
+          items.push({ client_id: (row as any).id, buy_rate: buy, min_activation_days: days, daily_rate: daily });
+        }
+        return json({ items });
+      }
+
       case "pop_recharge_client": {
         if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
         const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;

@@ -28,24 +28,52 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
   const popBalance = Number(popInfo?.pop?.balance || 0);
   const allowNeg = !!popInfo?.pop?.allow_negative_balance;
 
+  const { data: costInfo } = useQuery({
+    queryKey: ["clients-recharge-cost", clients.map((c) => c.id).sort().join(",")],
+    queryFn: async () =>
+      await callPortal<{ items: Array<{ client_id: string; buy_rate?: number; min_activation_days?: number; daily_rate?: number; error?: string }> }>(
+        "get_clients_recharge_cost",
+        { client_ids: clients.map((c) => c.id) },
+      ),
+    enabled: open && clients.length > 0,
+  });
+
+  const costMap = useMemo(() => {
+    const m = new Map<string, { daily: number; days: number; buy: number; error?: string }>();
+    for (const it of costInfo?.items || []) {
+      m.set(it.client_id, {
+        daily: Number(it.daily_rate || 0),
+        days: Number(it.min_activation_days || 0),
+        buy: Number(it.buy_rate || 0),
+        error: it.error,
+      });
+    }
+    return m;
+  }, [costInfo]);
+
   const calc = useMemo(() => {
     const n = parseInt(days) || 0;
     const lines = clients.map((c) => {
-      const monthly = Number(c.monthly_bill || 0);
-      const daily = Math.round((monthly / 30) * 100) / 100;
-      return { ...c, daily, lineTotal: daily * n };
+      const info = costMap.get(c.id);
+      const daily = info?.daily ?? 0;
+      const ok = !info?.error && daily > 0;
+      return { ...c, daily, lineTotal: daily * n, ok, error: info?.error };
     });
-    const total = lines.reduce((s, l) => s + l.lineTotal, 0);
-    const avgDaily = lines.length ? lines.reduce((s, l) => s + l.daily, 0) / lines.length : 0;
-    return { lines, total, avgDaily, n };
-  }, [days, clients]);
+    const valid = lines.filter((l) => l.ok);
+    const total = valid.reduce((s, l) => s + l.lineTotal, 0);
+    const avgDaily = valid.length ? valid.reduce((s, l) => s + l.daily, 0) / valid.length : 0;
+    const invalidCount = lines.length - valid.length;
+    return { lines, valid, total, avgDaily, n, invalidCount };
+  }, [days, clients, costMap]);
 
   const exceeds = !allowNeg && calc.total > popBalance;
 
   const mutate = useMutation({
     mutationFn: async () => {
+      const validIds = calc.valid.map((l) => l.id);
+      if (!validIds.length) throw new Error("কোনো client-এর rate resolve হয়নি");
       const res: any = await callPortal("pop_bulk_recharge_clients", {
-        client_ids: clients.map((c) => c.id),
+        client_ids: validIds,
         days: calc.n,
       });
       return res;
@@ -84,7 +112,7 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Client Validity Extend / Renewal</DialogTitle>
-          <DialogDescription>Selected client গুলোর জন্য একসাথে recharge করুন। Per-day rate = monthly bill / 30।</DialogDescription>
+          <DialogDescription>Selected client গুলোর জন্য একসাথে recharge করুন। Per-day rate = package buying rate ÷ minimum activation days।</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -96,6 +124,11 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
                 <AlertTriangle className="h-3 w-3" /> Days limit exceed — POP balance ৳{popBalance.toFixed(2)} যথেষ্ট নয়।
               </p>
             )}
+            {calc.invalidCount > 0 && (
+              <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
+                <AlertTriangle className="h-3 w-3" /> {calc.invalidCount} client-এর package buying rate পাওয়া যায়নি — তারা skip হবে।
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -105,7 +138,7 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
             </div>
             <div>
               <Label className="text-xs">Selected Clients</Label>
-              <Input value={clients.length} readOnly className="bg-muted" />
+              <Input value={`${calc.valid.length} / ${clients.length}`} readOnly className="bg-muted" />
             </div>
             <div>
               <Label className="text-xs">POP Balance</Label>
@@ -123,7 +156,7 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
           <Button
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
             onClick={() => mutate.mutate()}
-            disabled={mutate.isPending || calc.n < 1 || clients.length === 0 || exceeds}
+            disabled={mutate.isPending || calc.n < 1 || calc.valid.length === 0 || exceeds}
           >
             {mutate.isPending ? "Processing..." : "Recharge / Renew"}
           </Button>
