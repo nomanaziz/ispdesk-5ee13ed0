@@ -601,6 +601,13 @@ export default function BulkImport() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={(c) => toggleAll(!!c)}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
                     <TableHead className="w-10">#</TableHead>
                     {COLUMNS.map((col) => (
                       <TableHead key={col.key} className="min-w-[100px] text-xs whitespace-nowrap">
