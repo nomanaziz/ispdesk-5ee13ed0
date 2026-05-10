@@ -57,6 +57,7 @@ export const defaultFilters: BillingFilters = {
   fromDate: "",
   toDate: "",
   month: "",
+  remainingDays: "all",
 };
 
 interface Props {
