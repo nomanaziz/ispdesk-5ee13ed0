@@ -30,8 +30,8 @@ import ispDeskLogo from "@/assets/isp-desk-logo.png";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
-interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
+export interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
+export interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
 
 
 // Rainbow candy-tone color per group label. Light: -600, Dark: -400 for readability.
