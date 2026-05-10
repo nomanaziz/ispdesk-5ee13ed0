@@ -18,11 +18,10 @@ Deno.serve(async (req) => {
 
     const today = (body?.date as string) || new Date().toISOString().slice(0, 10);
 
-    // Fetch all prepaid POPs
+    // Fetch all funded POPs (prepaid wallet model)
     const { data: pops, error: popsErr } = await sb
       .from("branch_managers")
       .select("id, name, branch_id, balance, fund_started, pop_type")
-      .eq("pop_type", "prepaid")
       .eq("fund_started", true);
     if (popsErr) throw popsErr;
 
