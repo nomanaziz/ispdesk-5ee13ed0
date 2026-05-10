@@ -42,6 +42,7 @@ Deno.serve(async (req) => {
         method: gateway,
         status: "pending",
         note: `POP self-recharge via ${gateway}`,
+        return_origin: returnOrigin || null,
       })
       .select("id")
       .single();
