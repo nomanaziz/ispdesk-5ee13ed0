@@ -71,6 +71,14 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
   const exceeds = !allowNeg && calc.total > popBalance;
   const belowMin = calc.n > 0 && calc.n < calc.effectiveMin;
 
+  // Auto-bump days input when effective minimum changes (e.g. dialog opens with min=10)
+  useEffect(() => {
+    if (open && calc.effectiveMin > 1 && (parseInt(days) || 0) < calc.effectiveMin) {
+      setDays(String(calc.effectiveMin));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calc.effectiveMin, open]);
+
   const mutate = useMutation({
     mutationFn: async () => {
       const validIds = calc.valid.map((l) => l.id);
