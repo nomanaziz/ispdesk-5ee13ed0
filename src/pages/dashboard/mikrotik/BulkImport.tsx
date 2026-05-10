@@ -334,14 +334,41 @@ export default function BulkImport() {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json<any>(ws);
 
-      const parsed: ImportRow[] = data.map((row: any, idx: number) => ({
-        _idx: idx + rows.length + Date.now(),
-        _autoFilled: {},
-        ...row,
-      }));
-
-      setRows((prev) => [...prev, ...parsed]);
-      toast.success(`${parsed.length} টি সারি লোড হয়েছে`);
+      setRows((prev) => {
+        const next = [...prev];
+        let updated = 0, added = 0;
+        const norm = (v: any) => String(v ?? "").trim();
+        const findIdx = (row: any) => {
+          const code = norm(row["C.Code"]);
+          const user = norm(row["UserName"]).toLowerCase();
+          const mob = norm(row["Mobile"]).replace(/\D/g, "");
+          return next.findIndex((r) => {
+            const rc = norm(r["C.Code"]);
+            const ru = norm(r["UserName"]).toLowerCase();
+            const rm = norm(r["Mobile"]).replace(/\D/g, "");
+            if (code && rc && code === rc) return true;
+            if (user && ru && user === ru) return true;
+            if (mob && rm && mob === rm) return true;
+            return false;
+          });
+        };
+        for (const row of data) {
+          const i = findIdx(row);
+          if (i >= 0) {
+            next[i] = { ...next[i], ...row, _autoFilled: {} };
+            updated++;
+          } else {
+            next.push({
+              _idx: Date.now() + Math.random(),
+              _autoFilled: {},
+              ...row,
+            } as ImportRow);
+            added++;
+          }
+        }
+        toast.success(`${updated} টি আপডেট, ${added} টি নতুন যোগ হয়েছে`);
+        return next;
+      });
     };
     reader.readAsBinaryString(file);
     if (fileRef.current) fileRef.current.value = "";

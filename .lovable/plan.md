@@ -1,47 +1,62 @@
 ## Problem
-এখনকার "Bulk Profile Change" আসলে **package change**-ই করে — package select করলে একসাথে `package_id`, `profile`, `speed`, `monthly_bill` সব update হয়। User চাচ্ছেন এই দুটো আলাদা হোক:
 
-| Action | কী change হবে | কী হবে না |
-|---|---|---|
-| **Bulk Profile Change** | `clients.profile` + MikroTik PPP profile (speed) | `package_id`, `monthly_bill` অপরিবর্তিত |
-| **Bulk Package Change** | `clients.package_id`, `monthly_bill` (= package price) | `profile`, MikroTik speed অপরিবর্তিত |
+Excel upload করলে existing rows-এর সাথে নতুন rows append হয়ে যাচ্ছে — duplicate। User-এর চাহিদা: same client (matching key দিয়ে) হলে existing row update হবে, mismatched হলে নতুন row যোগ হবে।
 
-কারণ: admin চাইতে পারে ৫০০ টাকার package-এ বেশি speed-এর profile দিতে — যা reseller পারে না। এখন একসাথে coupled থাকায় সেটা সম্ভব না।
+## Fix Scope
 
-## পরিবর্তন
+শুধু `src/pages/dashboard/mikrotik/BulkImport.tsx` এর `handleFileUpload` function modify হবে। অন্য কোনো file/business logic touch হবে না।
 
-### 1. `src/components/billing/BulkProfileChangeDialog.tsx` — Rewrite
-- Package dropdown সরিয়ে **Profile dropdown** আনব।
-- Profile-এর source: একটা MikroTik server selector (default = প্রথম selected client-এর `mikrotik_id`) → তারপর `fetch-mikrotik-profiles` edge function call করে সেই device-এর live profile list।
-- যদি selected client-রা ভিন্ন device-এ থাকে → একটা warning: "Selected clients একাধিক MikroTik server-এ আছে। সবগুলোতে একই profile name থাকা প্রয়োজন।"
-- Submit:
-  - DB: `update clients set profile = <chosenName> where id in (...)` — আর কিছু না।
-  - MikroTik: প্রতিটা client-এর জন্য `manage-mikrotik-ppp` action `update` দিয়ে শুধু `profile` পাঠাব (existing pattern)।
-- Title: "শুধু Profile (Speed) পরিবর্তন"।
+## Merge Logic
 
-### 2. `src/components/billing/BulkPackageChangeDialog.tsx` — New
-- Package dropdown (active `isp_packages`)।
-- Submit:
-  - DB: `update clients set package_id = <id>, monthly_bill = <price> where id in (...)` — `profile`, `speed`, MikroTik কিছুই touch করব না।
-- Title: "শুধু Package (Price) পরিবর্তন"।
-- Helper text: "প্রোফাইল/স্পিড অপরিবর্তিত থাকবে। শুধু বিল ও প্যাকেজ ম্যাপিং পরিবর্তন হবে।"
+Upload করা প্রত্যেক row-এর জন্য existing rows-এ একটা match খুঁজবে এই priority order-এ:
 
-### 3. `src/components/billing/BulkActionButtons.tsx`
-- নতুন prop: `onBulkPackageChange?: () => void` + button **"প্যাকেজ পরিবর্তন"** (`Package` icon)।
-- Existing "প্রোফাইল পরিবর্তন" button রাখব — কিন্তু এখন এটা শুধু profile dialog খুলবে।
+1. **C.Code** (যদি upload row এবং existing row দুটোর-ই থাকে এবং সমান হয়)
+2. **UserName** (case-insensitive)
+3. **Mobile** (digits-only compare)
 
-### 4. `src/pages/dashboard/clients/ClientList.tsx`
-- নতুন state: `packageChangeOpen`।
-- নতুন import + dialog mount।
-- BulkActionButtons-এ `onBulkPackageChange={() => setPackageChangeOpen(true)}` পাঠাব।
+Match পেলে → existing row-এর সব field upload row থেকে overwrite হবে (`_idx`, `_mikrotik_client_id`, `_selected`, `_original`, `_codeConflict` preserve থাকবে; `_autoFilled` reset হবে)।  
+Match না পেলে → নতুন row হিসেবে append।
 
-## Out of Scope
-- Profile-package validation rules (যেমন "এই package-এ এই profile allowed কি না") — admin-এর সম্পূর্ণ স্বাধীনতা থাকবে।
-- POP/reseller scope-এ Package Change লুকানো — পরে যদি লাগে, `showPackageChange` flag দিয়ে toggle করা যাবে। আপাতত admin & POP দুজনের জন্যই দেখাব (admin চাইলে use করবে, POP-এ usually disabled থাকতে পারে — পরে decide)।
-- Schema change দরকার নেই।
+## Toast Feedback
 
-## Files
-- `src/components/billing/BulkProfileChangeDialog.tsx` — rewrite
-- `src/components/billing/BulkPackageChangeDialog.tsx` — new
-- `src/components/billing/BulkActionButtons.tsx` — new button + prop
-- `src/pages/dashboard/clients/ClientList.tsx` — wiring
+`X টি আপডেট, Y টি নতুন যোগ হয়েছে` — user বুঝতে পারবে কতগুলো merge হয়েছে।
+
+## Technical Detail
+
+```ts
+const handleFileUpload = (e) => {
+  // ...read XLSX as before...
+  setRows(prev => {
+    const next = [...prev];
+    let updated = 0, added = 0;
+    const findIdx = (row) => {
+      const code = String(row["C.Code"] ?? "").trim();
+      const user = String(row["UserName"] ?? "").trim().toLowerCase();
+      const mob  = String(row["Mobile"] ?? "").replace(/\D/g, "");
+      return next.findIndex(r => {
+        const rc = String(r["C.Code"] ?? "").trim();
+        const ru = String(r["UserName"] ?? "").trim().toLowerCase();
+        const rm = String(r["Mobile"] ?? "").replace(/\D/g, "");
+        if (code && rc && code === rc) return true;
+        if (user && ru && user === ru) return true;
+        if (mob && rm && mob === rm) return true;
+        return false;
+      });
+    };
+    for (const row of data) {
+      const i = findIdx(row);
+      if (i >= 0) {
+        next[i] = { ...next[i], ...row, _autoFilled: {} };
+        updated++;
+      } else {
+        next.push({ _idx: Date.now() + Math.random(), _autoFilled: {}, ...row });
+        added++;
+      }
+    }
+    toast.success(`${updated} টি আপডেট, ${added} টি নতুন যোগ হয়েছে`);
+    return next;
+  });
+};
+```
+
+কোনো DB / schema / অন্য component change নেই।
