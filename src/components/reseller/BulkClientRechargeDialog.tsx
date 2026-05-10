@@ -164,7 +164,7 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
           <Button
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
             onClick={() => mutate.mutate()}
-            disabled={mutate.isPending || calc.n < 1 || calc.valid.length === 0 || exceeds}
+            disabled={mutate.isPending || calc.n < 1 || calc.valid.length === 0 || exceeds || belowMin}
           >
             {mutate.isPending ? "Processing..." : "Recharge / Renew"}
           </Button>
