@@ -59,6 +59,15 @@ Deno.serve(async (req) => {
         const daily = Math.round((monthly / 30) * 100) / 100;
         if (daily <= 0) continue;
 
+        // Auto-recharge OFF + expired → disable immediately, do NOT charge
+        const autoOn = (c as any).auto_recharge_enabled !== false;
+        const expDate = (c as any).expire_date as string | null;
+        const expired = expDate ? expDate <= today : false;
+        if (!autoOn && expired) {
+          toDisable.push((c as any).id);
+          continue;
+        }
+
         // Strict prepaid: stop and disable when wallet can't cover today's daily cost
         if (runningBalance < daily) {
           toDisable.push((c as any).id);
