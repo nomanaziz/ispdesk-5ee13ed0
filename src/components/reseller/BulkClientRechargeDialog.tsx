@@ -67,6 +67,16 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
       qc.invalidateQueries({ queryKey: ["pop-balance-info"] });
       if (succeeded > 0 && failed === 0) onOpenChange(false);
     },
+    onError: (e: any) => {
+      const msg = String(e?.message || e);
+      if (msg.includes("INSUFFICIENT_BALANCE")) {
+        toast.error("পর্যাপ্ত balance নেই — recharge করুন", {
+          action: { label: "Recharge", onClick: () => navigate("/pop-admin/fund-history/credit") },
+        });
+      } else {
+        toast.error(msg);
+      }
+    },
   });
 
   return (
