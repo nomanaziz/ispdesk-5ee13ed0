@@ -393,7 +393,7 @@ export const menuGroups: MenuGroup[] = [
 
 // Bangla → English translations for sidebar group labels and menu item titles.
 // Default UI is Bangla; lookup returns English when language toggled.
-const SIDEBAR_EN: Record<string, string> = {
+export const SIDEBAR_EN: Record<string, string> = {
   // Group labels
   "ড্যাশবোর্ড": "Dashboard",
   "ওয়েবসাইট প্যানেল": "Website Panel",
