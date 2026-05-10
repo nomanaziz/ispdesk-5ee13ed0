@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
       }
 
       if (inserts.length === 0) {
-        popResults.push({ pop: pop.name, charged: 0, users: 0, suspended: toDisable.length });
+        popResults.push({ pop: pop.name, charged: 0, users: 0, suspended: toDisable.length, auto_renewed: autoRenewed });
         continue;
       }
 
@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
 
       totalCharged += popCharged;
       totalRows += inserted?.length ?? 0;
-      popResults.push({ pop: pop.name, charged: popCharged, users: inserted?.length ?? 0, suspended: toDisable.length });
+      popResults.push({ pop: pop.name, charged: popCharged, users: inserted?.length ?? 0, suspended: toDisable.length, auto_renewed: autoRenewed });
     }
 
     return new Response(
