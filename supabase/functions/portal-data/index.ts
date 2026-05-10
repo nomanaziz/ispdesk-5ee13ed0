@@ -1929,6 +1929,19 @@ Deno.serve(async (req) => {
           if (payload.client_id && !(await assertClientInBranch(payload.client_id))) {
             return json({ error: "Client not in this POP" }, 403);
           }
+          // Block manual enable when client's expire_date is strictly past — recharge first
+          if (action === "pop_manage_mikrotik_ppp" && payload.action === "enable" && payload.client_id) {
+            const { data: cRow } = await sb
+              .from("clients")
+              .select("expire_date")
+              .eq("id", payload.client_id)
+              .maybeSingle();
+            const exp = (cRow as any)?.expire_date as string | null;
+            const todayStr = new Date().toISOString().slice(0, 10);
+            if (exp && exp < todayStr) {
+              return json({ error: "EXPIRED: Client expired — আগে recharge করুন, তারপর enable করা যাবে" }, 400);
+            }
+          }
           const url = `${SUPABASE_URL}/functions/v1/manage-mikrotik-ppp`;
           const r = await fetch(url, {
             method: "POST",
