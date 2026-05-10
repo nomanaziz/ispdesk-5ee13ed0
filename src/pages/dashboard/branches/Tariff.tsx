@@ -248,7 +248,7 @@ export default function Tariff() {
 
   const resetDialog = () => {
     setTariffName("");
-    setTariffType("custom");
+    // tariffType is fixed to date_to_date
     setEditId(null);
     setPkgRows([]);
     setPkgForm(emptyPkgForm());
