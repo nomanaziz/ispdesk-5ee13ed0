@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,9 +37,13 @@ export default function PopCreditHistory({ popId, popName, mode = "admin" }: Pro
   const [detailDate, setDetailDate] = useState<string | undefined>();
 
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["pop-credit-history", popId, from, to],
-    enabled: !!popId,
+    queryKey: ["pop-credit-history", mode, popId, from, to],
+    enabled: mode === "pop" ? true : !!popId,
     queryFn: async () => {
+      if (mode === "pop") {
+        const res = await callPortal<{ rows: any[] }>("pop_get_credit_history", { from, to });
+        return res?.rows ?? [];
+      }
       const { data, error } = await supabase
         .from("pop_daily_charges" as any)
         .select("charge_date, package_name, profile, protocol_type, server_name, charged_amount, client_id")
@@ -183,6 +188,7 @@ export default function PopCreditHistory({ popId, popName, mode = "admin" }: Pro
         popId={popId}
         date={detailDate}
         popName={popName}
+        mode={mode}
       />
     </div>
   );

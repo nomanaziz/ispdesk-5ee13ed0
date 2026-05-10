@@ -33,7 +33,7 @@ export default function PopFundDebitHistory() {
           <Plus className="h-4 w-4" /> Fund Recharge
         </Button>
       </div>
-      <PopDebitHistory branchId={branchId} popName={popName} />
+      <PopDebitHistory branchId={branchId} popName={popName} mode="pop" />
       <FundRechargeDialog open={open} onOpenChange={setOpen} popId={popId} popName={popName} />
     </div>
   );

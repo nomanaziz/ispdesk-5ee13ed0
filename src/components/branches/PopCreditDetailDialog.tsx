@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,16 +15,21 @@ interface Props {
   popId: string | undefined;
   date: string | undefined;
   popName?: string;
+  mode?: "admin" | "pop";
 }
 
-export default function PopCreditDetailDialog({ open, onOpenChange, popId, date, popName }: Props) {
+export default function PopCreditDetailDialog({ open, onOpenChange, popId, date, popName, mode = "admin" }: Props) {
   const [zoneFilter, setZoneFilter] = useState<string>("all");
   const [subZoneFilter, setSubZoneFilter] = useState<string>("all");
 
   const { data: rows = [] } = useQuery({
-    queryKey: ["pop-credit-detail", popId, date],
-    enabled: !!open && !!popId && !!date,
+    queryKey: ["pop-credit-detail", mode, popId, date],
+    enabled: !!open && (mode === "pop" ? !!date : (!!popId && !!date)),
     queryFn: async () => {
+      if (mode === "pop") {
+        const res = await callPortal<{ rows: any[] }>("pop_get_credit_detail", { date });
+        return res?.rows ?? [];
+      }
       const { data, error } = await supabase
         .from("pop_daily_charges" as any)
         .select("*")
