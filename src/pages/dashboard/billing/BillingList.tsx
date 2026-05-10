@@ -324,22 +324,36 @@ export default function BillingList() {
     <div className="space-y-3 p-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-bold text-foreground">বিলিং তালিকা (Billing List)</h1>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={async () => {
-            try {
-              const { data, error } = await supabase.functions.invoke("generate-monthly-billing", { body: {} });
-              if (error) throw error;
-              toast.success(data?.message || "বিল তৈরি সম্পন্ন");
-              queryClient.invalidateQueries({ queryKey: ["billing-list"] });
-            } catch (e: any) {
-              toast.error(e.message || "বিল তৈরি ব্যর্থ");
-            }
-          }}
-        >
-          <Receipt className="h-4 w-4 mr-1" /> এই মাসের বিল তৈরি করুন
-        </Button>
+        <div className="flex items-center gap-2">
+          {isPopMode && (
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => {
+                if (selectedIds.size === 0) { toast.error("কোনো ক্লায়েন্ট সিলেক্ট করা হয়নি"); return; }
+                setBulkRechargeOpen(true);
+              }}
+            >
+              <Banknote className="h-4 w-4 mr-1" /> Bulk Client Recharge ({selectedIds.size})
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              try {
+                const { data, error } = await supabase.functions.invoke("generate-monthly-billing", { body: {} });
+                if (error) throw error;
+                toast.success(data?.message || "বিল তৈরি সম্পন্ন");
+                queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+              } catch (e: any) {
+                toast.error(e.message || "বিল তৈরি ব্যর্থ");
+              }
+            }}
+          >
+            <Receipt className="h-4 w-4 mr-1" /> এই মাসের বিল তৈরি করুন
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
