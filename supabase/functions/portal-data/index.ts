@@ -2493,11 +2493,22 @@ Deno.serve(async (req) => {
         // Verify the client belongs to this POP's branch
         const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
         if (!pop?.branch_id) return json({ error: "POP branch missing" }, 400);
-        const { data: client } = await sb.from("clients").select("id").eq("id", clientId).eq("branch_id", pop.branch_id).maybeSingle();
+        const { data: client } = await sb.from("clients").select("id, mikrotik_id, username, mikrotik_status").eq("id", clientId).eq("branch_id", pop.branch_id).maybeSingle();
         if (!client) return json({ error: "Client not in this POP" }, 404);
 
         const { data, error } = await sb.rpc("pop_recharge_client_days", { p_client_id: clientId, p_days: days });
         if (error) return json({ error: error.message }, 400);
+
+        // Auto-enable MikroTik secret after successful recharge (only if disabled)
+        if (client.mikrotik_id && client.username && client.mikrotik_status !== "enabled") {
+          try {
+            await fetch(`${SUPABASE_URL}/functions/v1/manage-mikrotik-ppp`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}` },
+              body: JSON.stringify({ mikrotik_id: client.mikrotik_id, username: client.username, client_id: clientId, action: "enable" }),
+            });
+          } catch (_) { /* non-fatal */ }
+        }
         return json(data);
       }
 
@@ -2511,12 +2522,31 @@ Deno.serve(async (req) => {
         const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
         if (!pop?.branch_id) return json({ error: "POP branch missing" }, 400);
         // Filter to only this POP's clients
-        const { data: owned } = await sb.from("clients").select("id").eq("branch_id", pop.branch_id).in("id", ids);
-        const allowedIds = (owned || []).map((c: any) => c.id);
+        const { data: owned } = await sb.from("clients").select("id, mikrotik_id, username, mikrotik_status").eq("branch_id", pop.branch_id).in("id", ids);
+        const allowedRows = owned || [];
+        const allowedIds = allowedRows.map((c: any) => c.id);
         if (!allowedIds.length) return json({ error: "কোনো valid client পাওয়া যায়নি" }, 400);
 
         const { data, error } = await sb.rpc("pop_bulk_recharge_clients", { p_client_ids: allowedIds, p_days: days });
         if (error) return json({ error: error.message }, 400);
+
+        // Auto-enable MikroTik for clients that were recharged successfully (best-effort)
+        const failedIds = new Set<string>(
+          Array.isArray((data as any)?.errors)
+            ? (data as any).errors.flatMap((e: any) => Array.isArray(e) ? e.map((x: any) => x.client_id) : [e.client_id]).filter(Boolean)
+            : []
+        );
+        await Promise.all(
+          allowedRows
+            .filter((c: any) => !failedIds.has(c.id) && c.mikrotik_id && c.username && c.mikrotik_status !== "enabled")
+            .map((c: any) =>
+              fetch(`${SUPABASE_URL}/functions/v1/manage-mikrotik-ppp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}` },
+                body: JSON.stringify({ mikrotik_id: c.mikrotik_id, username: c.username, client_id: c.id, action: "enable" }),
+              }).catch(() => null),
+            ),
+        );
         return json(data);
       }
 
