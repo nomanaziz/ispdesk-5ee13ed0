@@ -90,7 +90,7 @@ export default function BulkImport() {
   const { data: connectionTypes = [] } = useQuery({
     queryKey: ["connection_types_list"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("connection_types").select("id, name").eq("status", "active").order("name");
+      const { data, error } = await supabase.from("connection_types_config").select("id, name").eq("status", "active").order("name");
       if (error) throw error;
       return data;
     },
