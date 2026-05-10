@@ -492,7 +492,25 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                         />
                       )}
                     </TableCell>
-                    <TableCell className="text-xs">{c.connection_type || "-"}</TableCell>
+                    {isPopMode && (
+                      <TableCell className="text-center">
+                        <RemainingDaysCell client={c} invalidateKey="clients-list" />
+                      </TableCell>
+                    )}
+                    {isPopMode && (
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={!!c.auto_recharge_enabled}
+                          onCheckedChange={async (v) => {
+                            try {
+                              await callPortal("set_client_auto_recharge", { client_ids: [c.id], enabled: !!v });
+                              queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+                            } catch (e: any) { toast.error(e.message); }
+                          }}
+                          className="scale-75"
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="text-xs">{c.client_type || "-"}</TableCell>
                     <TableCell className="text-xs">{c.remote_address || "-"}</TableCell>
                     <TableCell className="text-xs font-mono text-[10px]">{c.mac_address || "-"}</TableCell>
