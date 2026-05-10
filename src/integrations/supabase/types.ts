@@ -7811,6 +7811,8 @@ export type Database = {
           id: string
           method: string
           note: string | null
+          purpose: string
+          recharge_days: number | null
           sender_number: string | null
           status: string
           trx_id: string | null
@@ -7828,6 +7830,8 @@ export type Database = {
           id?: string
           method: string
           note?: string | null
+          purpose?: string
+          recharge_days?: number | null
           sender_number?: string | null
           status?: string
           trx_id?: string | null
@@ -7845,6 +7849,8 @@ export type Database = {
           id?: string
           method?: string
           note?: string | null
+          purpose?: string
+          recharge_days?: number | null
           sender_number?: string | null
           status?: string
           trx_id?: string | null

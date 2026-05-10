@@ -432,6 +432,21 @@ function PendingOnlinePayments() {
     mutationFn: async (req: any) => {
       const amt = Number(req.amount || 0);
 
+      // Client self-recharge flow — skip bill update, run RPC
+      if (req.purpose === "client_recharge" && req.recharge_days) {
+        const { error: rpcErr } = await supabase.rpc("pop_recharge_client_days", {
+          p_client_id: req.client_id,
+          p_days: Number(req.recharge_days),
+        });
+        if (rpcErr) throw rpcErr;
+        const { error: updErr } = await supabase
+          .from("public_payment_requests")
+          .update({ status: "approved", approved_at: new Date().toISOString() })
+          .eq("id", req.id);
+        if (updErr) throw updErr;
+        return;
+      }
+
       const { data: billRows } = await supabase
         .from("billing")
         .select("id, amount, paid, due, status")

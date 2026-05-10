@@ -1,19 +1,25 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { callPortal } from "@/lib/portalApi";
 import {
   GradientHeader, PillTabs, ListRow, StatCardPair,
 } from "@/components/mobile";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import {
-  Receipt, Wallet, ChevronLeft, FileText, CreditCard, TrendingUp, TrendingDown,
+  Receipt, Wallet, ChevronLeft, FileText, CreditCard, TrendingUp, TrendingDown, Zap,
 } from "lucide-react";
 
 const PortalBills = () => {
   const { customer } = usePortalAuth();
   const [tab, setTab] = useState<"all" | "due" | "paid">("all");
+
+  const qc = useQueryClient();
 
   const { data: bills = [], isLoading } = useQuery({
     queryKey: ["portal-bills", customer?.sub],
@@ -23,6 +29,40 @@ const PortalBills = () => {
     },
     enabled: !!customer?.sub && customer?.type === "client",
   });
+
+  const { data: quote } = useQuery({
+    queryKey: ["portal-recharge-quote", customer?.sub],
+    queryFn: async () => callPortal<any>("client_get_recharge_quote"),
+    enabled: !!customer?.sub && customer?.type === "client",
+  });
+
+  const minDays = Math.max(1, Number(quote?.min_activation_days || 1));
+  const [days, setDays] = useState<number>(0);
+  const effectiveDays = days || minDays;
+  const dailyRate = Number(quote?.daily_rate || 0);
+  const totalAmount = Math.round(dailyRate * effectiveDays * 100) / 100;
+  const [trxId, setTrxId] = useState("");
+  const [sender, setSender] = useState("");
+  const [method, setMethod] = useState("bkash");
+
+  const submitRecharge = useMutation({
+    mutationFn: async () => {
+      return callPortal<any>("client_create_recharge_payment", {
+        days: effectiveDays,
+        payment_method: method,
+        transaction_id: trxId || null,
+        sender_number: sender || null,
+      });
+    },
+    onSuccess: (res: any) => {
+      if (res?.error) { toast.error(res.error); return; }
+      toast.success(`৳${res.amount} recharge request পাঠানো হয়েছে — admin approve করলে activate হবে।`);
+      setTrxId(""); setSender(""); setDays(0);
+      qc.invalidateQueries({ queryKey: ["portal-recharge-quote"] });
+    },
+    onError: (e: any) => toast.error(e.message || "Failed"),
+  });
+
 
   const totals = useMemo(() => {
     const amount = bills.reduce((s, b) => s + Number(b.amount || 0), 0);
@@ -59,6 +99,76 @@ const PortalBills = () => {
           left={{ label: "মোট বিল", value: `৳${totals.amount.toLocaleString()}`, icon: TrendingUp, tone: "info" }}
           right={{ label: "পরিশোধিত", value: `৳${totals.paid.toLocaleString()}`, icon: TrendingDown, tone: "success", hint: `${totals.paidCount} টি` }}
         />
+
+        {/* Recharge card */}
+        {quote && (
+          <div className="m-card p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-amber-500" />
+              <h3 className="font-semibold text-sm">রিচার্জ</h3>
+              {quote.expire_date && (
+                <Badge variant="secondary" className="text-[10px]">Expire: {quote.expire_date}</Badge>
+              )}
+            </div>
+            {!quote.can_recharge ? (
+              <p className="text-xs text-muted-foreground">
+                এখনো expire হয়নি — recharge দরকার নেই। Expire হলে এখানে option আসবে।
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <div className="text-xs text-muted-foreground">
+                  Daily rate: ৳{dailyRate.toFixed(2)} · Min {minDays} day(s) · Validity {quote.validity_days}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Days</Label>
+                    <Input
+                      type="number"
+                      min={minDays}
+                      value={days || ""}
+                      placeholder={String(minDays)}
+                      onChange={(e) => setDays(Math.max(0, Number(e.target.value)))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Total</Label>
+                    <Input value={`৳${totalAmount.toFixed(2)}`} readOnly />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-xs">Method</Label>
+                    <select
+                      className="w-full h-9 rounded-md border bg-background px-2 text-sm"
+                      value={method}
+                      onChange={(e) => setMethod(e.target.value)}
+                    >
+                      <option value="bkash">bKash</option>
+                      <option value="nagad">Nagad</option>
+                      <option value="rocket">Rocket</option>
+                      <option value="manual">Manual</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Sender No.</Label>
+                    <Input value={sender} onChange={(e) => setSender(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Trx ID</Label>
+                    <Input value={trxId} onChange={(e) => setTrxId(e.target.value)} />
+                  </div>
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={effectiveDays < minDays || submitRecharge.isPending}
+                  onClick={() => submitRecharge.mutate()}
+                >
+                  {submitRecharge.isPending ? "Submitting..." : `Pay ৳${totalAmount.toFixed(2)}`}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
         <PillTabs
           value={tab}

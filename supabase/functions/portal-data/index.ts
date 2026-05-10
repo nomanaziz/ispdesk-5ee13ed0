@@ -295,6 +295,86 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
 
+      case "client_get_recharge_quote": {
+        if (tok.type !== "client") return json({ error: "Not allowed" }, 403);
+        const { data: client } = await sb
+          .from("clients")
+          .select("id, expire_date, package_id, monthly_bill")
+          .eq("id", tok.sub)
+          .maybeSingle();
+        if (!client) return json({ error: "Client not found" }, 404);
+        const { data: cost, error: cErr } = await sb.rpc(
+          "pop_resolve_client_package_cost",
+          { p_client_id: tok.sub },
+        );
+        if (cErr) return json({ error: cErr.message }, 500);
+        const row = Array.isArray(cost) ? cost[0] : cost;
+        const buy_price = Number(row?.buy_price ?? 0);
+        const validity_days = Number(row?.validity_days ?? 30);
+        const min_activation_days = Number(row?.min_activation_days ?? 1);
+        const daily_rate = validity_days > 0 ? buy_price / validity_days : 0;
+        const today = new Date().toISOString().slice(0, 10);
+        const exp = client.expire_date as string | null;
+        const can_recharge = !exp || exp <= today;
+        return json({
+          buy_price,
+          validity_days,
+          min_activation_days,
+          daily_rate,
+          expire_date: exp,
+          can_recharge,
+        });
+      }
+
+      case "client_create_recharge_payment": {
+        if (tok.type !== "client") return json({ error: "Not allowed" }, 403);
+        const { days, payment_method, transaction_id, sender_number } = payload || {};
+        const nDays = Math.floor(Number(days || 0));
+        if (!nDays || nDays < 1) return json({ error: "Days দিন" }, 400);
+        const { data: client } = await sb
+          .from("clients")
+          .select("id, expire_date")
+          .eq("id", tok.sub)
+          .maybeSingle();
+        if (!client) return json({ error: "Client not found" }, 404);
+        const today = new Date().toISOString().slice(0, 10);
+        const exp = client.expire_date as string | null;
+        if (exp && exp > today) {
+          return json({ error: "এখনো expire হয়নি — recharge করার দরকার নেই" }, 400);
+        }
+        const { data: cost, error: cErr } = await sb.rpc(
+          "pop_resolve_client_package_cost",
+          { p_client_id: tok.sub },
+        );
+        if (cErr) return json({ error: cErr.message }, 500);
+        const row = Array.isArray(cost) ? cost[0] : cost;
+        const buy_price = Number(row?.buy_price ?? 0);
+        const validity_days = Number(row?.validity_days ?? 30);
+        const min_activation_days = Number(row?.min_activation_days ?? 1);
+        if (nDays < min_activation_days) {
+          return json({ error: `Minimum ${min_activation_days} দিন recharge করতে হবে` }, 400);
+        }
+        const daily_rate = validity_days > 0 ? buy_price / validity_days : 0;
+        const amount = Math.round(daily_rate * nDays * 100) / 100;
+        const { data: pr, error: prErr } = await sb
+          .from("public_payment_requests")
+          .insert({
+            client_id: tok.sub,
+            amount,
+            method: payment_method || "manual",
+            trx_id: transaction_id || null,
+            sender_number: sender_number || null,
+            note: `Client self-recharge ${nDays} day(s)`,
+            status: transaction_id ? "pending" : "initiated",
+            purpose: "client_recharge",
+            recharge_days: nDays,
+          })
+          .select("id")
+          .maybeSingle();
+        if (prErr) return json({ error: prErr.message }, 500);
+        return json({ ok: true, request_id: pr?.id, amount, days: nDays });
+      }
+
       case "get_ledger": {
         if (tok.type === "client") {
           const [{ data: bills }, { data: cols }] = await Promise.all([
