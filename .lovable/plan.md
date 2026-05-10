@@ -1,45 +1,72 @@
 ## Goal
 
-1. **Reseller portal থেকে BTRC Monthly Report সরাও** — শুধু Admin/Super Admin-এ থাকবে এবং সব reseller / single reseller filter সহ কাজ করবে।
-2. **Reseller portal-এ Fund Recharge shortcut button** — TopBar (desktop) এবং Mobile home দুজায়গায়, যাতে যেকোনো জায়গা থেকে এক ক্লিকে fund recharge করা যায়।
-3. **Credit History (Daily Charges) ঠিক রাখা** — যা reference image-এর মতো দেখায়: প্রতিদিন কতজন user-এর জন্য কত টাকা কাটছে (part-by-part daily, never monthly lump sum)।
+Reference image (Bulk Client Recharge popup + R.Days column with red badge) অনুযায়ী Client List পেজে তিনটা কাজ:
+
+1. **Auto R. column সরাও** — আলাদা কলামের পরিবর্তে C.Code-এর পাশে একটা ছোট icon (sync/refresh symbol) দাও — সবুজ tick (auto on) / লাল cross (auto off), click করলেই toggle হবে।
+2. **Bulk Client Recharge button + popup** — image-এর মতো একটা popup, যেখানে selected client দের জন্য একসাথে N দিন recharge হবে (per-day = monthly/30, total দেখাবে, POP balance দেখাবে)।
+3. **Remaining Days filter** — Client List-এর filter panel-এ "R.Days" dropdown যোগ করো: Expired, 1 day, 2 days, 3 days, 5 days, 10+ days, 20+ days, 30+ days, 60+ days। Filter করার পর সব select করে bulk recharge করা যাবে।
+
+পাশাপাশি **auto-disable on expire** (auto-recharge OFF হলে expire হলেই MikroTik disable) verify করব — `apply-pop-daily-charges` already করছে যখন wallet < daily, কিন্তু auto_recharge_enabled = false case-এ আলাদা path দরকার।
 
 ## Changes
 
-### A) BTRC Report — reseller থেকে সরাও, admin-এ filter add করো
+### A) `src/pages/dashboard/clients/ClientList.tsx`
 
-- `src/components/portal-shell/ResellerSidebar.tsx` (line 97) — BTRC Monthly entry মুছে দাও।
-- `src/App.tsx` —
-  - `PopReportBtrc` lazy import (line 372) এবং route `/pop-admin/reports/btrc` (line 875) মুছে দাও।
-- `src/pages/reseller/reports/PopBtrc.tsx` — file delete।
-- `src/pages/dashboard/reports/Btrc.tsx` — admin filter বাড়াও:
-  - নতুন **Reseller (POP)** dropdown: "All Resellers" + প্রতিটা active reseller (`branch_managers` থেকে fetch)।
-  - query-তে যদি specific reseller select করা হয়, `clients.pop_id`/`branch_id` দিয়ে filter (current schema অনুযায়ী যেটা ব্যবহৃত হয়)। default = সব resellers (current behaviour)।
+- Header থেকে `<TableHead>Auto R.</TableHead>` (line 417) মুছে দাও।
+- Body থেকে Auto R. cell (line 501-514, পুরো `<Switch>` cell) মুছে দাও।
+- C.Code cell-এ (line 439-454) Info button-এর পাশে একটা **AutoRechargeIcon** component যোগ করো:
+  - `auto_recharge_enabled === true` → green `<RefreshCw />` icon (tooltip: "Auto recharge ON — click to disable")
+  - `auto_recharge_enabled === false` → muted/red `<RefreshCwOff />` icon (tooltip: "Auto recharge OFF — client will be disabled on expire")
+  - Click → `callPortal("set_client_auto_recharge", { client_ids: [c.id], enabled: !current })` + invalidate query
+- TableHeader-এ `colSpan={18}` কে `colSpan={17}` করো (loading/empty rows)।
 
-### B) Fund Recharge shortcut button (Reseller)
+### B) Bulk Client Recharge — নতুন button + dialog (admin/POP both)
 
-- `src/components/portal-shell/PortalTopBar.tsx` —
-  - Reseller portal context-এ একটি ছোট **"+ Fund Recharge"** button (icon + label, lg+ এ label visible, mobile-এ icon only) `extra` slot-এর আগে render করো।
-  - Click করলে `FundRechargeDialog` খুলবে। `popId`/`popName`/`branchId` `usePopScope()` থেকে নাও।
-  - শুধু `customer?.type === "reseller"` হলে দেখাও (sub-user / bw_customer-এ না)।
-- `src/pages/reseller/PopMobileHome.tsx` —
-  - Top-এ একটি prominent **Fund Recharge** quick-action card/button (already there হলে verify, না থাকলে add)।
-- Existing `FundRechargeDialog` (`src/components/branches/FundRechargeDialog.tsx`) reuse করব।
+- `src/components/billing/BulkActionButtons.tsx` —
+  - নতুন prop: `onBulkClientRecharge?: () => void` এবং `showBulkRecharge?: boolean`
+  - Row 2-এর শেষে নতুন **"Bulk Client Recharge"** button (icon: `DollarSign`, color: green) যোগ করো — শুধু POP mode-এ দেখাবে।
+- `src/pages/dashboard/clients/ClientList.tsx` —
+  - নতুন state `bulkRechargeOpen` এবং `selectedClients` derived list।
+  - `<BulkActionButtons>`-এ `showBulkRecharge={isPopMode}` এবং `onBulkClientRecharge={() => setBulkRechargeOpen(true)}` pass করো।
+  - বিদ্যমান `BulkClientRechargeDialog` (`src/components/reseller/BulkClientRechargeDialog.tsx`) reuse করব।
 
-### C) Debit / Credit History pages — verify (no schema change)
+### C) `src/components/reseller/BulkClientRechargeDialog.tsx` — reference image-এর সাথে align
 
-`PopFundDebitHistory` (Debit Transactions) এবং `PopFundCreditHistory` (Credit / Daily Charges) ইতিমধ্যেই বিদ্যমান এবং reference image-এর columns ম্যাচ করছে। শুধু নিশ্চিত করব:
+বর্তমান dialog-এর UI ঠিকই আছে (Per Day Charge, Selected Clients, POP Balance, Total Creditable Amount, Days input)। শুধু:
 
-- Credit page-এ "Total Credited User" আজকের তারিখে কতজন user থেকে charge হয়েছে তা দেখাচ্ছে (already from `pop_daily_charges` distinct `client_id`)।
-- Daily charges system part-by-part কাটছে (already implemented via `apply-pop-daily-charges` cron + 30-day prepaid wallet)। কোনো monthly lump sum নেই।
-- Advance recharge (e.g. 30 days) করলে wallet থেকে সেই amount **reserve/debited** হয় এবং `pop_daily_charges`-এ আগামী days-এর entries pre-create হয় — এটা current `pop_recharge_client_days()` migration-এ যা করছে, তাই এখানে কোনো নতুন কাজ নেই, শুধু বর্তমান flow image-এর সাথে মেলে কি না verify করব।
+- `Avg. Per Day Charge` → "Per Day Charge (avg)" label clarify।
+- Insufficient হলে "Days limit exceed! Reduce or recharge first." message reference-এর মতো রাখা (already আছে)।
+- Empty state: যদি `clients.length === 0` হলে disabled + warning।
+- কোনো backend change নেই — `pop_bulk_recharge_clients` action আগেই বানানো।
+
+### D) Remaining Days filter
+
+- `src/components/billing/BillingFilterPanel.tsx` — নতুন field `remainingDays` যোগ করো (Select dropdown) values: `all | expired | 1 | 2 | 3 | 5 | 10plus | 20plus | 30plus | 60plus`।
+- `BillingFilters` interface-এ `remainingDays?: string` যোগ করো এবং `defaultFilters`-এ `"all"` set করো।
+- `src/pages/dashboard/clients/ClientList.tsx` — `filtered = useMemo(...)` block-এ remaining-days filter logic যোগ করো:
+  - `expire_date` থেকে আজকের তারিখ বাদ দিয়ে `remainingDays` calculate (already করা হচ্ছে likely)।
+  - Filter expression: expired (≤0), exact 1/2/3/5, ≥10, ≥20, ≥30, ≥60।
+
+### E) Auto-disable on expire (no auto-recharge)
+
+`supabase/functions/apply-pop-daily-charges/index.ts` — line 55-65 logic:
+- বর্তমানে wallet < daily হলেই disable করছে। কিন্তু **auto_recharge_enabled = false** client-দের জন্য আলাদা rule দরকার:
+  - Client query-তে `auto_recharge_enabled, expire_date` add করো।
+  - Loop-এর শুরুতে: যদি `c.auto_recharge_enabled === false` AND `expire_date <= today` → `toDisable.push(c.id)`, `continue;` (charge না করেই disable, কারণ user চায় না auto কাটতে)।
+  - এতে user expire হওয়ার সাথে সাথে MikroTik disable হবে এবং balance reserve থাকবে।
+
+পাশাপাশি disable হলে MikroTik-এও push করতে `manage-mikrotik-ppp` invoke (currently শুধু DB column update — same as existing behaviour)।
 
 ## Out of scope
 
-- New columns বা schema change লাগবে না।
-- Admin-এর Fund History / accounting flow অপরিবর্তিত।
+- "Connection Type" কলাম রাখাই থাকবে (এটা নতুন না, original screenshot-এও আছে)।
+- Schema change নেই; `auto_recharge_enabled` কলাম already আছে।
+- Bulk Auto Recharge ON/OFF buttons (already আছে) থাকবে।
 
 ## Files touched
 
-- delete: `src/pages/reseller/reports/PopBtrc.tsx`
-- edit: `src/components/portal-shell/ResellerSidebar.tsx`, `src/App.tsx`, `src/pages/dashboard/reports/Btrc.tsx`, `src/components/portal-shell/PortalTopBar.tsx`, `src/pages/reseller/PopMobileHome.tsx`
+- edit: `src/pages/dashboard/clients/ClientList.tsx`
+- edit: `src/components/billing/BulkActionButtons.tsx`
+- edit: `src/components/billing/BillingFilterPanel.tsx`
+- edit: `src/components/reseller/BulkClientRechargeDialog.tsx` (label tweak only)
+- edit: `supabase/functions/apply-pop-daily-charges/index.ts`
