@@ -424,11 +424,16 @@ export default function BulkImport() {
         return updated;
       })
     );
+    if (key === "C.Code") {
+      // fire-and-forget conflict re-check
+      void checkCodeConflict(idx, value);
+    }
   };
 
   const importAll = async () => {
     if (rows.length === 0) { toast.error("ইমপোর্ট করার ডাটা নেই"); return; }
     if (invalidCount > 0) { toast.error(`${invalidCount} টি সারিতে mandatory ফিল্ড অনুপস্থিত`); return; }
+    if (conflictCount > 0) { toast.error(`${conflictCount} টি Client Code ইতোমধ্যে ব্যবহৃত — পরিবর্তন করুন`); return; }
     setImporting(true);
     try {
       const parseDDMMYYYY = (s: string) => {
@@ -436,6 +441,18 @@ export default function BulkImport() {
         const m = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
         if (m) return `${m[3]}-${m[2]}-${m[1]}`;
         return s;
+      };
+
+      const computeExpireDate = (billMonth: string, expDay: string): string | null => {
+        if (!expDay) return null;
+        const day = Math.max(1, Math.min(31, Number(expDay) || 1));
+        let year: number, month: number;
+        const mm = (billMonth || "").match(/^(\d{2})-(\d{4})$/);
+        if (mm) { month = Number(mm[1]); year = Number(mm[2]); }
+        else { const d = new Date(); month = d.getMonth() + 1; year = d.getFullYear(); }
+        const lastDay = new Date(year, month, 0).getDate();
+        const realDay = Math.min(day, lastDay);
+        return `${year}-${pad2(month)}-${pad2(realDay)}`;
       };
 
       const clientsToInsert = rows.map((r) => {
