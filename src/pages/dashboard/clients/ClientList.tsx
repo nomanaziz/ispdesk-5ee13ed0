@@ -417,6 +417,8 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
         showMigrate={!isPopMode}
         showAutoRecharge={isPopMode}
         showBulkRecharge={isPopMode}
+        showTransferToPop={!isPopMode}
+        onTransferToPop={() => setTransferToPopOpen(true)}
         onBulkAutoRechargeOn={() => handleBulkAutoRecharge(true)}
         onBulkAutoRechargeOff={() => handleBulkAutoRecharge(false)}
         onBulkClientRecharge={() => {
