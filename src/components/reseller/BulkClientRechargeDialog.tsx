@@ -112,7 +112,7 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Client Validity Extend / Renewal</DialogTitle>
-          <DialogDescription>Selected client গুলোর জন্য একসাথে recharge করুন। Per-day rate = monthly bill / 30।</DialogDescription>
+          <DialogDescription>Selected client গুলোর জন্য একসাথে recharge করুন। Per-day rate = package buying rate ÷ minimum activation days।</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -122,6 +122,11 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
             {exceeds && (
               <p className="text-xs text-destructive flex items-center gap-1 mt-1">
                 <AlertTriangle className="h-3 w-3" /> Days limit exceed — POP balance ৳{popBalance.toFixed(2)} যথেষ্ট নয়।
+              </p>
+            )}
+            {calc.invalidCount > 0 && (
+              <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
+                <AlertTriangle className="h-3 w-3" /> {calc.invalidCount} client-এর package buying rate পাওয়া যায়নি — তারা skip হবে।
               </p>
             )}
           </div>
