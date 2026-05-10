@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, CalendarClock, Crown, Wifi, ChevronLeft, ChevronRight, Plus, Info } from "lucide-react";
+import { Users, UserPlus, RefreshCw, Gift, Eye, EyeOff, CalendarClock, Crown, Wifi, ChevronLeft, ChevronRight, Plus, Info, RotateCw, RotateCcw } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ import { callPortal } from "@/lib/portalApi";
 import ExpireCell from "@/components/billing/ExpireCell";
 import RemainingDaysCell from "@/components/billing/RemainingDaysCell";
 import ClientCommentDialog from "@/components/clients/ClientCommentDialog";
+import BulkClientRechargeDialog from "@/components/reseller/BulkClientRechargeDialog";
 
 interface ClientListProps {
   /** When set, locks the client_type filter to this value and hides the dropdown.
@@ -83,6 +84,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
   const [dateExtendOpen, setDateExtendOpen] = useState(false);
   const [districtOpen, setDistrictOpen] = useState(false);
   const [thanaOpen, setThanaOpen] = useState(false);
+  const [bulkRechargeOpen, setBulkRechargeOpen] = useState(false);
   const [commentClient, setCommentClient] = useState<any | null>(null);
 
   const { data: clients, isLoading } = useQuery({
@@ -215,6 +217,28 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
     if (f.toExpireDate) list = list.filter((c: any) => c.expire_date && c.expire_date <= f.toExpireDate);
     if (f.fromDate) list = list.filter((c: any) => c.created_at >= f.fromDate);
     if (f.toDate) list = list.filter((c: any) => c.created_at <= f.toDate + "T23:59:59");
+    if (f.remainingDays && f.remainingDays !== "all") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      list = list.filter((c: any) => {
+        if (!c.expire_date) return f.remainingDays === "expired";
+        const exp = new Date(c.expire_date);
+        exp.setHours(0, 0, 0, 0);
+        const diff = Math.ceil((exp.getTime() - today.getTime()) / 86400000);
+        switch (f.remainingDays) {
+          case "expired": return diff <= 0;
+          case "1": return diff === 1;
+          case "2": return diff === 2;
+          case "3": return diff === 3;
+          case "5": return diff === 5;
+          case "10plus": return diff >= 10;
+          case "20plus": return diff >= 20;
+          case "30plus": return diff >= 30;
+          case "60plus": return diff >= 60;
+          default: return true;
+        }
+      });
+    }
     if (vipOnly) list = list.filter((c: any) => !!c.is_vip);
     return list;
   }, [clients, filters, lockedClientType, vipOnly]);
@@ -381,8 +405,13 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
         onBulkProfileChange={() => setProfileChangeOpen(true)}
         showMigrate={!isPopMode}
         showAutoRecharge={isPopMode}
+        showBulkRecharge={isPopMode}
         onBulkAutoRechargeOn={() => handleBulkAutoRecharge(true)}
         onBulkAutoRechargeOff={() => handleBulkAutoRecharge(false)}
+        onBulkClientRecharge={() => {
+          if (selectedClients.length === 0) { toast.error("কোনো ক্লায়েন্ট সিলেক্ট করা হয়নি"); return; }
+          setBulkRechargeOpen(true);
+        }}
       />
 
       {/* Entries + Total */}
@@ -414,7 +443,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
               <TableHead className="text-xs">মাসিক বিল</TableHead>
               <TableHead className="text-xs">Exp Date</TableHead>
               {isPopMode && <TableHead className="text-xs text-center">R.Days</TableHead>}
-              {isPopMode && <TableHead className="text-xs text-center">Auto R.</TableHead>}
+              
               <TableHead className="text-xs">কানেকশন টাইপ</TableHead>
               <TableHead className="text-xs">কাস্টমার টাইপ</TableHead>
               <TableHead className="text-xs">রিমোট অ্যাড্রেস</TableHead>
@@ -427,9 +456,9 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={18} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={17} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
             ) : paginated.length === 0 ? (
-              <TableRow><TableCell colSpan={18} className="text-center py-8">কোনো ক্লায়েন্ট পাওয়া যায়নি</TableCell></TableRow>
+              <TableRow><TableCell colSpan={17} className="text-center py-8">কোনো ক্লায়েন্ট পাওয়া যায়নি</TableCell></TableRow>
             ) : (
               paginated.map((c: any) => {
                 const expireBadge = getExpireBadge(c.expire_date, c.is_vip);
@@ -451,6 +480,29 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                         >
                           <Info className="h-2.5 w-2.5" />
                         </button>
+                        {isPopMode && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await callPortal("set_client_auto_recharge", { client_ids: [c.id], enabled: !c.auto_recharge_enabled });
+                                queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+                              } catch (e: any) { toast.error(e.message); }
+                            }}
+                            className={cn(
+                              "inline-flex items-center justify-center h-4 w-4 rounded-full transition-colors",
+                              c.auto_recharge_enabled
+                                ? "text-emerald-600 hover:text-emerald-700"
+                                : "text-red-500 hover:text-red-600"
+                            )}
+                            title={c.auto_recharge_enabled
+                              ? "Auto recharge ON — click to disable"
+                              : "Auto recharge OFF — client will be disabled on expire"}
+                          >
+                            {c.auto_recharge_enabled
+                              ? <RotateCw className="h-3 w-3" />
+                              : <RotateCcw className="h-3 w-3 line-through" />}
+                          </button>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-xs">
@@ -496,20 +548,6 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                     {isPopMode && (
                       <TableCell className="text-center">
                         <RemainingDaysCell client={c} invalidateKey="clients-list" />
-                      </TableCell>
-                    )}
-                    {isPopMode && (
-                      <TableCell className="text-center">
-                        <Switch
-                          checked={!!c.auto_recharge_enabled}
-                          onCheckedChange={async (v) => {
-                            try {
-                              await callPortal("set_client_auto_recharge", { client_ids: [c.id], enabled: !!v });
-                              queryClient.invalidateQueries({ queryKey: ["clients-list"] });
-                            } catch (e: any) { toast.error(e.message); }
-                          }}
-                          className="scale-75"
-                        />
                       </TableCell>
                     )}
                     <TableCell className="text-xs">{c.client_type || "-"}</TableCell>
@@ -570,6 +608,11 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
       <BulkDateExtendDialog open={dateExtendOpen} onOpenChange={setDateExtendOpen} selectedClients={selectedClients} invalidateKey="clients-list" />
       <BulkDistrictChangeDialog open={districtOpen} onOpenChange={setDistrictOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
       <BulkThanaChangeDialog open={thanaOpen} onOpenChange={setThanaOpen} selectedClientIds={[...selectedIds]} invalidateKey="clients-list" />
+      <BulkClientRechargeDialog
+        open={bulkRechargeOpen}
+        onOpenChange={setBulkRechargeOpen}
+        clients={selectedClients.map((c: any) => ({ id: c.id, monthly_bill: Number(c.monthly_bill || 0), name: c.name }))}
+      />
       <ClientCommentDialog
         open={!!commentClient}
         onOpenChange={(o) => { if (!o) setCommentClient(null); }}

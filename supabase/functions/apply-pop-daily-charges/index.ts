@@ -37,6 +37,7 @@ Deno.serve(async (req) => {
         .from("clients")
         .select(`
           id, name, username, billing_status, monthly_bill, package_id, branch_id,
+          auto_recharge_enabled, expire_date, mikrotik_id,
           isp_packages:package_id ( name, mikrotik_profile, protocol_type, mikrotik_server_id ),
           zones:zone_id ( id, name ),
           sub_zones:sub_zone_id ( id, name )
@@ -57,6 +58,15 @@ Deno.serve(async (req) => {
         if (monthly <= 0) continue;
         const daily = Math.round((monthly / 30) * 100) / 100;
         if (daily <= 0) continue;
+
+        // Auto-recharge OFF + expired → disable immediately, do NOT charge
+        const autoOn = (c as any).auto_recharge_enabled !== false;
+        const expDate = (c as any).expire_date as string | null;
+        const expired = expDate ? expDate <= today : false;
+        if (!autoOn && expired) {
+          toDisable.push((c as any).id);
+          continue;
+        }
 
         // Strict prepaid: stop and disable when wallet can't cover today's daily cost
         if (runningBalance < daily) {

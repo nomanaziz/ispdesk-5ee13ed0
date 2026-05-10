@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import {
   FileSpreadsheet, FileText, RefreshCw, Download, Ban, CheckCircle,
   MapPin, Building, ArrowRightLeft, Star, StarOff, Settings,
-  MessageSquare, Mail, CalendarPlus, Zap, FilePlus, Repeat, RepeatIcon
+  MessageSquare, Mail, CalendarPlus, Zap, FilePlus, Repeat, RepeatIcon, DollarSign
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -28,8 +28,10 @@ interface Props {
   onRegenerateInvoice?: () => void;
   onBulkAutoRechargeOn?: () => void;
   onBulkAutoRechargeOff?: () => void;
+  onBulkClientRecharge?: () => void;
   showMigrate?: boolean;
   showAutoRecharge?: boolean;
+  showBulkRecharge?: boolean;
 }
 
 export default function BulkActionButtons({
@@ -54,8 +56,10 @@ export default function BulkActionButtons({
   onRegenerateInvoice,
   onBulkAutoRechargeOn,
   onBulkAutoRechargeOff,
+  onBulkClientRecharge,
   showMigrate = true,
   showAutoRecharge = false,
+  showBulkRecharge = false,
 }: Props) {
   const requireSelection = (fn: () => void) => {
     if (selectedCount === 0) {
@@ -99,6 +103,9 @@ export default function BulkActionButtons({
         )}
         {showAutoRecharge && onBulkAutoRechargeOff && (
           <ActionBtn icon={RepeatIcon} label="Auto Recharge OFF" onClick={() => requireSelection(onBulkAutoRechargeOff)} color="bg-slate-600 hover:bg-slate-700 text-white" />
+        )}
+        {showBulkRecharge && onBulkClientRecharge && (
+          <ActionBtn icon={DollarSign} label="Bulk Client Recharge" onClick={() => requireSelection(onBulkClientRecharge)} color="bg-emerald-600 hover:bg-emerald-700 text-white" />
         )}
       </div>
       {selectedCount > 0 && (
