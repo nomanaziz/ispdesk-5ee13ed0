@@ -492,6 +492,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                         />
                       )}
                     </TableCell>
+                    <TableCell className="text-xs">{c.connection_type || "-"}</TableCell>
                     {isPopMode && (
                       <TableCell className="text-center">
                         <RemainingDaysCell client={c} invalidateKey="clients-list" />
