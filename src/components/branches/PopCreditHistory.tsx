@@ -188,6 +188,7 @@ export default function PopCreditHistory({ popId, popName, mode = "admin" }: Pro
         popId={popId}
         date={detailDate}
         popName={popName}
+        mode={mode}
       />
     </div>
   );
