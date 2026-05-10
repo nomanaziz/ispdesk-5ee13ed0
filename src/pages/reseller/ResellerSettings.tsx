@@ -231,7 +231,7 @@ function AutoRechargeCard() {
           <div className="flex-1">
             <div className="font-medium">Auto Recharge প্রতিদিন</div>
             <div className="text-xs text-muted-foreground">
-              সক্রিয় থাকলে রাত ১২:৩০ থেকে যেসব client এর R.Days = 0 এবং MikroTik enabled, তাদের প্রত্যেকের জন্য ১ দিনের balance auto কেটে নেওয়া হবে। MikroTik disable করা থাকলে বা balance না থাকলে recharge হবে না।
+              সক্রিয় থাকলে রাত ১২:৩০-এ যেসব client এর R.Days = 0 (expire হয়ে গেছে) এবং Billing List পেজ থেকে Auto Recharge toggle ON করা আছে, তাদের প্রত্যেকের জন্য ১ দিনের balance auto কেটে নেওয়া হবে। MikroTik disable বা client এর Auto Recharge OFF থাকলে recharge হবে না — সেগুলো manually recharge করতে হবে।
             </div>
           </div>
           <Switch checked={enabled} onCheckedChange={(v) => m.mutate(v)} disabled={m.isPending} />
