@@ -11580,6 +11580,7 @@ export type Database = {
         Args: { p_client_id: string }
         Returns: {
           buy_price: number
+          min_activation_days: number
           validity_days: number
         }[]
       }

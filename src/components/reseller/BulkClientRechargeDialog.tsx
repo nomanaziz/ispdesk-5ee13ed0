@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { callPortal } from "@/lib/portalApi";
@@ -31,7 +31,7 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
   const { data: costInfo } = useQuery({
     queryKey: ["clients-recharge-cost", clients.map((c) => c.id).sort().join(",")],
     queryFn: async () =>
-      await callPortal<{ items: Array<{ client_id: string; buy_rate?: number; min_activation_days?: number; daily_rate?: number; error?: string }> }>(
+      await callPortal<{ items: Array<{ client_id: string; buy_rate?: number; validity_days?: number; min_activation_days?: number; daily_rate?: number; error?: string }> }>(
         "get_clients_recharge_cost",
         { client_ids: clients.map((c) => c.id) },
       ),
@@ -39,11 +39,12 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
   });
 
   const costMap = useMemo(() => {
-    const m = new Map<string, { daily: number; days: number; buy: number; error?: string }>();
+    const m = new Map<string, { daily: number; validity: number; min: number; buy: number; error?: string }>();
     for (const it of costInfo?.items || []) {
       m.set(it.client_id, {
         daily: Number(it.daily_rate || 0),
-        days: Number(it.min_activation_days || 0),
+        validity: Number(it.validity_days || 0),
+        min: Number(it.min_activation_days || 0),
         buy: Number(it.buy_rate || 0),
         error: it.error,
       });
@@ -57,16 +58,26 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
       const info = costMap.get(c.id);
       const daily = info?.daily ?? 0;
       const ok = !info?.error && daily > 0;
-      return { ...c, daily, lineTotal: daily * n, ok, error: info?.error };
+      return { ...c, daily, lineTotal: daily * n, ok, error: info?.error, min: info?.min ?? 1 };
     });
     const valid = lines.filter((l) => l.ok);
     const total = valid.reduce((s, l) => s + l.lineTotal, 0);
     const avgDaily = valid.length ? valid.reduce((s, l) => s + l.daily, 0) / valid.length : 0;
     const invalidCount = lines.length - valid.length;
-    return { lines, valid, total, avgDaily, n, invalidCount };
+    const effectiveMin = valid.length ? Math.max(...valid.map((l) => l.min || 1)) : 1;
+    return { lines, valid, total, avgDaily, n, invalidCount, effectiveMin };
   }, [days, clients, costMap]);
 
   const exceeds = !allowNeg && calc.total > popBalance;
+  const belowMin = calc.n > 0 && calc.n < calc.effectiveMin;
+
+  // Auto-bump days input when effective minimum changes (e.g. dialog opens with min=10)
+  useEffect(() => {
+    if (open && calc.effectiveMin > 1 && (parseInt(days) || 0) < calc.effectiveMin) {
+      setDays(String(calc.effectiveMin));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calc.effectiveMin, open]);
 
   const mutate = useMutation({
     mutationFn: async () => {
@@ -112,13 +123,18 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Client Validity Extend / Renewal</DialogTitle>
-          <DialogDescription>Selected client গুলোর জন্য একসাথে recharge করুন। Per-day rate = package buying rate ÷ minimum activation days।</DialogDescription>
+          <DialogDescription>Selected client গুলোর জন্য একসাথে recharge করুন। Per-day rate = package buying rate ÷ validity days।</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div>
             <Label className="text-xs">New Renewal Days <span className="text-destructive">*</span></Label>
-            <Input type="number" min={1} max={365} value={days} onChange={(e) => setDays(e.target.value)} />
+            <Input type="number" min={calc.effectiveMin} max={365} value={days} onChange={(e) => setDays(e.target.value)} />
+            {belowMin && (
+              <p className="text-xs text-destructive flex items-center gap-1 mt-1">
+                <AlertTriangle className="h-3 w-3" /> Minimum {calc.effectiveMin} দিন recharge করতে হবে।
+              </p>
+            )}
             {exceeds && (
               <p className="text-xs text-destructive flex items-center gap-1 mt-1">
                 <AlertTriangle className="h-3 w-3" /> Days limit exceed — POP balance ৳{popBalance.toFixed(2)} যথেষ্ট নয়।
@@ -156,7 +172,7 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
           <Button
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
             onClick={() => mutate.mutate()}
-            disabled={mutate.isPending || calc.n < 1 || calc.valid.length === 0 || exceeds}
+            disabled={mutate.isPending || calc.n < 1 || calc.valid.length === 0 || exceeds || belowMin}
           >
             {mutate.isPending ? "Processing..." : "Recharge / Renew"}
           </Button>

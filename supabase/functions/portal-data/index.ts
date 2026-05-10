@@ -2505,9 +2505,10 @@ Deno.serve(async (req) => {
           if (cErr) { items.push({ client_id: (row as any).id, error: cErr.message }); continue; }
           const r = Array.isArray(cost) ? cost[0] : cost;
           const buy = Number(r?.buy_price || 0);
-          const days = Number(r?.validity_days || 30) || 30; // RPC returns column named validity_days but value is min_activation_days now
-          const daily = days > 0 ? Math.round((buy / days) * 100) / 100 : 0;
-          items.push({ client_id: (row as any).id, buy_rate: buy, min_activation_days: days, daily_rate: daily });
+          const validity = Number(r?.validity_days || 30) || 30;
+          const minDays = Number(r?.min_activation_days || 1) || 1;
+          const daily = validity > 0 ? Math.round((buy / validity) * 100) / 100 : 0;
+          items.push({ client_id: (row as any).id, buy_rate: buy, validity_days: validity, min_activation_days: minDays, daily_rate: daily });
         }
         return json({ items });
       }
