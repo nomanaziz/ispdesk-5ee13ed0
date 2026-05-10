@@ -164,6 +164,15 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
       return;
     }
     const action = client.mikrotik_status === "enabled" ? "disable" : "enable";
+    // Guard: never allow enabling an expired client whose auto-recharge is OFF
+    if (action === "enable" && client.auto_recharge_enabled === false) {
+      const exp = client.expire_date ? new Date(client.expire_date) : null;
+      const today = new Date(); today.setHours(0,0,0,0);
+      if (exp && exp.setHours(0,0,0,0) <= today.getTime()) {
+        toast.error("Expired client — আগে recharge করুন। Auto Recharge OFF থাকায় MikroTik enable করা যাবে না।");
+        return;
+      }
+    }
     setTogglingId(client.id);
     try {
       await supabase.functions.invoke("manage-mikrotik-ppp", {
@@ -544,12 +553,12 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                         />
                       )}
                     </TableCell>
-                    <TableCell className="text-xs">{c.connection_type || "-"}</TableCell>
                     {isPopMode && (
                       <TableCell className="text-center">
                         <RemainingDaysCell client={c} invalidateKey="clients-list" />
                       </TableCell>
                     )}
+                    <TableCell className="text-xs">{c.connection_type || "-"}</TableCell>
                     <TableCell className="text-xs">{c.client_type || "-"}</TableCell>
                     <TableCell className="text-xs">{c.remote_address || "-"}</TableCell>
                     <TableCell className="text-xs font-mono text-[10px]">{c.mac_address || "-"}</TableCell>
