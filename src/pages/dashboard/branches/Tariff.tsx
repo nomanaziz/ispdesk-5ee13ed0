@@ -501,32 +501,12 @@ export default function Tariff() {
               </DialogTitle>
             </DialogHeader>
 
-            {/* Tariff Type */}
-            <div className="space-y-2">
+            {/* Date-to-Date is the only delivery model */}
+            <div className="space-y-1">
               <Label>Tariff Type</Label>
-              <RadioGroup
-                value={tariffType}
-                onValueChange={(v) => setTariffType(v as any)}
-                className="flex gap-6"
-              >
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="custom" id="t-custom" />
-                  <Label htmlFor="t-custom" className="cursor-pointer">Custom</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="date_to_date" id="t-d2d" />
-                  <Label htmlFor="t-d2d" className="cursor-pointer">Date To Date</Label>
-                </div>
-              </RadioGroup>
-              {tariffType === "date_to_date" ? (
-                <p className="text-xs text-muted-foreground">
-                  Date To Date — client-এর billing date থেকে পরের মাসের একই তারিখ পর্যন্ত validity হবে। Validity Days / Min Activation Days প্রযোজ্য নয়।
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Custom — admin-defined validity ও minimum activation দিন ব্যবহার হবে।
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                Date To Date — recharge-এর তারিখ থেকে validity দিন পর্যন্ত চলবে। প্রতি package-এ Validity Days (default 30) ও Min Activation Days (default 1) সেট করুন।
+              </p>
             </div>
 
             {/* Tariff Name */}
