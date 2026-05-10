@@ -2584,6 +2584,58 @@ Deno.serve(async (req) => {
         });
       }
 
+      case "pop_get_debit_history": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const from = String(payload.from || "1970-01-01");
+        const to = String(payload.to || new Date().toISOString().slice(0, 10));
+        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
+        if (!pop?.branch_id) return json({ rows: [] });
+        const { data, error } = await sb
+          .from("branch_funding")
+          .select("*")
+          .eq("branch_id", pop.branch_id)
+          .gte("funding_date", from)
+          .lte("funding_date", to)
+          .order("funding_date", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(2000);
+        if (error) return json({ error: error.message }, 400);
+        return json({ rows: data || [] });
+      }
+
+      case "pop_get_credit_history": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const popId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const from = String(payload.from || "1970-01-01");
+        const to = String(payload.to || new Date().toISOString().slice(0, 10));
+        const { data, error } = await sb
+          .from("pop_daily_charges")
+          .select("charge_date, package_name, profile, protocol_type, server_name, charged_amount, client_id")
+          .eq("pop_id", popId)
+          .gte("charge_date", from)
+          .lte("charge_date", to)
+          .order("charge_date", { ascending: false })
+          .limit(10000);
+        if (error) return json({ error: error.message }, 400);
+        return json({ rows: data || [] });
+      }
+
+      case "pop_get_credit_detail": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
+        const popId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const date = String(payload.date || "");
+        if (!date) return json({ rows: [] });
+        const { data, error } = await sb
+          .from("pop_daily_charges")
+          .select("*")
+          .eq("pop_id", popId)
+          .eq("charge_date", date)
+          .order("client_username", { ascending: true });
+        if (error) return json({ error: error.message }, 400);
+        return json({ rows: data || [] });
+      }
+
       case "get_clients_recharge_cost": {
         if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
         const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
