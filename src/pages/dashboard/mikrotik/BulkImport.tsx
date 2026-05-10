@@ -51,6 +51,9 @@ interface ImportRow {
   _idx: number;
   _mikrotik_client_id?: string;
   _autoFilled?: Record<string, boolean>;
+  _selected?: boolean;
+  _original?: Record<string, any>;
+  _codeConflict?: { existingName: string } | null;
   [key: string]: any;
 }
 
