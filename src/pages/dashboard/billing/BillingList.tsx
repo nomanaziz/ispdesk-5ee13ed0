@@ -412,6 +412,9 @@ export default function BillingList() {
         onBulkProfileChange={() => setProfileChangeOpen(true)}
         onRegenerateInvoice={() => regenerateMut.mutate()}
         showMigrate={!isPopMode}
+        showAutoRecharge={isPopMode}
+        onBulkAutoRechargeOn={() => handleBulkAutoRecharge(true)}
+        onBulkAutoRechargeOff={() => handleBulkAutoRecharge(false)}
       />
 
       <BulkSmsDialog open={smsOpen} onOpenChange={setSmsOpen} selectedClients={selectedClients} />
