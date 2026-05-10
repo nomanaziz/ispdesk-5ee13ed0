@@ -405,8 +405,13 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
         onBulkProfileChange={() => setProfileChangeOpen(true)}
         showMigrate={!isPopMode}
         showAutoRecharge={isPopMode}
+        showBulkRecharge={isPopMode}
         onBulkAutoRechargeOn={() => handleBulkAutoRecharge(true)}
         onBulkAutoRechargeOff={() => handleBulkAutoRecharge(false)}
+        onBulkClientRecharge={() => {
+          if (selectedClients.length === 0) { toast.error("কোনো ক্লায়েন্ট সিলেক্ট করা হয়নি"); return; }
+          setBulkRechargeOpen(true);
+        }}
       />
 
       {/* Entries + Total */}
