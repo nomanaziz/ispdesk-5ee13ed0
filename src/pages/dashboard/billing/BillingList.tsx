@@ -441,9 +441,9 @@ export default function BillingList() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={isPrepaidPop ? 20 : 19} className="text-center py-8 text-muted-foreground">লোড হচ্ছে...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={isPrepaidPop ? (isPopMode ? 21 : 20) : 19} className="text-center py-8 text-muted-foreground">লোড হচ্ছে...</TableCell></TableRow>
                 ) : paginated.length === 0 ? (
-                  <TableRow><TableCell colSpan={isPrepaidPop ? 20 : 19} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={isPrepaidPop ? (isPopMode ? 21 : 20) : 19} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
                 ) : paginated.map((c: any, i: number) => {
                   const b = c.currentBill;
                   const paidAmt = Number(c.totalPaid || 0);
