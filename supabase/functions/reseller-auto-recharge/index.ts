@@ -60,10 +60,32 @@ Deno.serve(async (req) => {
           failures.push({ client_id: cid, error: rpcErr.message });
           if (String(rpcErr.message || "").includes("INSUFFICIENT_BALANCE")) {
             await sb.from("clients").update({ mikrotik_status: "disabled" }).eq("id", cid);
+            // Push disable to RouterOS
+            const { data: cr } = await sb.from("clients").select("mikrotik_id, username").eq("id", cid).maybeSingle();
+            if ((cr as any)?.mikrotik_id && (cr as any)?.username) {
+              try {
+                await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/manage-mikrotik-ppp`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+                  body: JSON.stringify({ mikrotik_id: (cr as any).mikrotik_id, username: (cr as any).username, client_id: cid, action: "disable" }),
+                });
+              } catch (_) { /* swallow */ }
+            }
           }
         } else {
           ok++;
           totalCharged += Number((rpcRes as any)?.charged || 0);
+          // Ensure MikroTik secret is enabled after successful renewal
+          const { data: cr } = await sb.from("clients").select("mikrotik_id, username, mikrotik_status").eq("id", cid).maybeSingle();
+          if ((cr as any)?.mikrotik_id && (cr as any)?.username && (cr as any)?.mikrotik_status !== "enabled") {
+            try {
+              await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/manage-mikrotik-ppp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+                body: JSON.stringify({ mikrotik_id: (cr as any).mikrotik_id, username: (cr as any).username, client_id: cid, action: "enable" }),
+              });
+            } catch (_) { /* swallow */ }
+          }
         }
       }
       results.push({ pop: pop.name, due: ids.length, succeeded: ok, failed: fail, total_charged: totalCharged, errors: failures });
