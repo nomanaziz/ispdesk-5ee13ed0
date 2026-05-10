@@ -69,7 +69,7 @@ function getGroupColor(group: MenuGroup): string {
   return group.color ?? GROUP_COLORS[group.label] ?? "text-muted-foreground";
 }
 
-const menuGroups: MenuGroup[] = [
+export const menuGroups: MenuGroup[] = [
   {
     label: "ড্যাশবোর্ড",
     icon: LayoutDashboard,
