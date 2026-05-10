@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import {
   FileSpreadsheet, FileText, RefreshCw, Download, Ban, CheckCircle,
   MapPin, Building, ArrowRightLeft, Star, StarOff, Settings,
-  MessageSquare, Mail, CalendarPlus, Zap, FilePlus, Repeat, RepeatIcon, DollarSign
+  MessageSquare, Mail, CalendarPlus, Zap, FilePlus, Repeat, RepeatIcon, DollarSign, Package
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
