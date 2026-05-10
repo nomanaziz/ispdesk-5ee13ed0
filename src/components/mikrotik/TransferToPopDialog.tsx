@@ -45,7 +45,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     queryFn: async () => {
       const { data, error } = await supabase
         .from("mikrotik_clients")
-        .select("id, name, profile")
+        .select("id, name, profile, service")
         .in("id", selectedIds);
       if (error) throw error;
       return data || [];
