@@ -56,6 +56,11 @@ export default function Btrc() {
       if (a.connection_type !== "all") q = q.eq("connection_type", a.connection_type);
       if (a.b_status !== "all") q = q.eq("billing_status", a.b_status);
       if (a.zone_id !== "all") q = q.eq("zone_id", a.zone_id);
+      if (a.reseller_id !== "all") {
+        const branchId = (resellers || []).find((r: any) => r.id === a.reseller_id)?.branch_id;
+        if (branchId) q = q.eq("branch_id", branchId);
+        else q = q.eq("id", "00000000-0000-0000-0000-000000000000");
+      }
       const { data } = await q;
       return (data || []).map((c: any, i: number) => ({
         id: c.id,
