@@ -872,7 +872,7 @@ const App = () => (
               <Route path="/pop-admin/reports/processing-fee" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportProcessingFee /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/reports/discount" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportDiscount /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/reports/due-sms" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportDueSms /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/reports/btrc" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportBtrc /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              
               <Route path="/pop-admin/reports/financial" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopReportFinancial /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/system/setup" element={<PortalAuthProvider><ResellerProtectedRoute require="system"><ResellerLayout><PopSetup /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/system/bill-period" element={<PortalAuthProvider><ResellerProtectedRoute require="system"><ResellerLayout><PopBillPeriod /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
