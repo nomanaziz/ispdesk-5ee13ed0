@@ -118,7 +118,7 @@ export default function Managers() {
       const bid = (m as any).branch_id;
       if (!bid) continue;
       const c = clientCounts?.[bid];
-      if (c) { totalClients += c.running; totalOnline += c.online; }
+      if (c) { totalClients += c.all; totalOnline += c.online; }
     }
     return { total, totalClients, totalOnline };
   }, [managers, clientCounts]);
@@ -190,7 +190,7 @@ export default function Managers() {
                   <TableHead>Contact Person</TableHead>
                   <TableHead>Mobile</TableHead>
                   <TableHead>Tariff</TableHead>
-                  <TableHead className="text-center">Running</TableHead>
+                  <TableHead className="text-center">All Client</TableHead>
                   <TableHead className="text-center">Enabled</TableHead>
                   <TableHead className="text-center">Disabled</TableHead>
                   <TableHead className="text-center">Left</TableHead>
@@ -208,7 +208,7 @@ export default function Managers() {
                   <TableRow><TableCell colSpan={16} className="text-center text-muted-foreground py-8">কোনো POP পাওয়া যায়নি</TableCell></TableRow>
                 ) : (
                   filtered.map((m: any, i) => {
-                    const c = (m.branch_id ? clientCounts?.[m.branch_id] : null) || { running: 0, enabled: 0, disabled: 0, left: 0 };
+                    const c = (m.branch_id ? clientCounts?.[m.branch_id] : null) || { all: 0, enabled: 0, disabled: 0, left: 0 };
                     return (
                       <TableRow key={m.id} className="hover:bg-muted/30">
                         <TableCell>{i + 1}</TableCell>
@@ -221,7 +221,7 @@ export default function Managers() {
                         <TableCell>{m.name}</TableCell>
                         <TableCell>{m.contact || "-"}</TableCell>
                         <TableCell className="text-xs">{m.reseller_tariffs?.name || "-"}</TableCell>
-                        <TableCell className="text-center">{c.running}</TableCell>
+                        <TableCell className="text-center">{c.all}</TableCell>
                         <TableCell className="text-center text-emerald-600">{c.enabled}</TableCell>
                         <TableCell className="text-center text-destructive">{c.disabled}</TableCell>
                         <TableCell className="text-center text-muted-foreground">{c.left}</TableCell>
