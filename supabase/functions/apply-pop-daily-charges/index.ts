@@ -117,9 +117,24 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Suspend clients we couldn't charge today (insufficient wallet)
+      // Suspend clients we couldn't charge today (expired or insufficient wallet)
       if (toDisable.length > 0) {
         await sb.from("clients").update({ mikrotik_status: "disabled" }).in("id", toDisable);
+        // Also push to RouterOS so the secret is actually disabled
+        const { data: tdRows } = await sb
+          .from("clients")
+          .select("id, mikrotik_id, username")
+          .in("id", toDisable);
+        for (const r of (tdRows ?? []) as any[]) {
+          if (!r.mikrotik_id || !r.username) continue;
+          try {
+            await fetch(`${url}/functions/v1/manage-mikrotik-ppp`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+              body: JSON.stringify({ mikrotik_id: r.mikrotik_id, username: r.username, client_id: r.id, action: "disable" }),
+            });
+          } catch (_) { /* swallow */ }
+        }
       }
 
       if (inserts.length === 0) {
