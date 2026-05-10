@@ -19,6 +19,8 @@ const PortalBills = () => {
   const { customer } = usePortalAuth();
   const [tab, setTab] = useState<"all" | "due" | "paid">("all");
 
+  const qc = useQueryClient();
+
   const { data: bills = [], isLoading } = useQuery({
     queryKey: ["portal-bills", customer?.sub],
     queryFn: async () => {
@@ -27,6 +29,40 @@ const PortalBills = () => {
     },
     enabled: !!customer?.sub && customer?.type === "client",
   });
+
+  const { data: quote } = useQuery({
+    queryKey: ["portal-recharge-quote", customer?.sub],
+    queryFn: async () => callPortal<any>("client_get_recharge_quote"),
+    enabled: !!customer?.sub && customer?.type === "client",
+  });
+
+  const minDays = Math.max(1, Number(quote?.min_activation_days || 1));
+  const [days, setDays] = useState<number>(0);
+  const effectiveDays = days || minDays;
+  const dailyRate = Number(quote?.daily_rate || 0);
+  const totalAmount = Math.round(dailyRate * effectiveDays * 100) / 100;
+  const [trxId, setTrxId] = useState("");
+  const [sender, setSender] = useState("");
+  const [method, setMethod] = useState("bkash");
+
+  const submitRecharge = useMutation({
+    mutationFn: async () => {
+      return callPortal<any>("client_create_recharge_payment", {
+        days: effectiveDays,
+        payment_method: method,
+        transaction_id: trxId || null,
+        sender_number: sender || null,
+      });
+    },
+    onSuccess: (res: any) => {
+      if (res?.error) { toast.error(res.error); return; }
+      toast.success(`৳${res.amount} recharge request পাঠানো হয়েছে — admin approve করলে activate হবে।`);
+      setTrxId(""); setSender(""); setDays(0);
+      qc.invalidateQueries({ queryKey: ["portal-recharge-quote"] });
+    },
+    onError: (e: any) => toast.error(e.message || "Failed"),
+  });
+
 
   const totals = useMemo(() => {
     const amount = bills.reduce((s, b) => s + Number(b.amount || 0), 0);
