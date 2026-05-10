@@ -550,7 +550,6 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                         <RemainingDaysCell client={c} invalidateKey="clients-list" />
                       </TableCell>
                     )}
-                    <TableCell className="text-xs">{c.connection_type || "-"}</TableCell>
                     <TableCell className="text-xs">{c.client_type || "-"}</TableCell>
                     <TableCell className="text-xs">{c.remote_address || "-"}</TableCell>
                     <TableCell className="text-xs font-mono text-[10px]">{c.mac_address || "-"}</TableCell>
