@@ -311,6 +311,7 @@ export default function BulkImport() {
     });
 
   const invalidCount = useMemo(() => rows.filter((r) => !isRowValid(r)).length, [rows]);
+  const conflictCount = useMemo(() => rows.filter((r) => r._codeConflict).length, [rows]);
   const selectedCount = useMemo(() => rows.filter((r) => r._selected).length, [rows]);
   const allSelected = rows.length > 0 && selectedCount === rows.length;
 
@@ -318,6 +319,34 @@ export default function BulkImport() {
     setRows((prev) => prev.map((r) => (r._idx === idx ? { ...r, _selected: checked } : r)));
   const toggleAll = (checked: boolean) =>
     setRows((prev) => prev.map((r) => ({ ...r, _selected: checked })));
+
+  const resetSelectedToOriginal = () => {
+    if (selectedCount === 0) {
+      toast.error("আগে রো select করুন");
+      return;
+    }
+    setRows((prev) =>
+      prev.map((r) => {
+        if (!r._selected || !r._original) return r;
+        const { _autoFilled: origAuto, ...origData } = r._original;
+        return { ...r, ...origData, _autoFilled: { ...(origAuto || {}) } };
+      })
+    );
+    toast.success(`${selectedCount} টি রো রিসেট হয়েছে`);
+  };
+
+  const checkCodeConflict = async (idx: number, code: string) => {
+    if (!code || !code.trim()) {
+      setRows((prev) => prev.map((r) => (r._idx === idx ? { ...r, _codeConflict: null } : r)));
+      return;
+    }
+    const { data } = await supabase.from("clients").select("client_id, name").eq("client_id", code).maybeSingle();
+    setRows((prev) =>
+      prev.map((r) =>
+        r._idx === idx ? { ...r, _codeConflict: data ? { existingName: (data as any).name } : null } : r
+      )
+    );
+  };
 
   const BULK_FIELDS: { key: string; label: string; type: "select" | "text" | "month" | "date" | "number" }[] = [
     { key: "Zone", label: "Zone", type: "select" },
