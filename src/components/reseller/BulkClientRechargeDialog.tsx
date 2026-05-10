@@ -180,13 +180,34 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs">Avg. Per Day Charge</Label>
-              <Input value={calc.avgDaily.toFixed(2)} readOnly className="bg-muted" />
+          {calc.groups.length > 0 && (
+            <div className="rounded-md border overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/60">
+                  <tr className="text-left">
+                    <th className="px-2 py-1.5 font-medium">Package</th>
+                    <th className="px-2 py-1.5 font-medium text-center">Clients</th>
+                    <th className="px-2 py-1.5 font-medium text-right">৳/day</th>
+                    <th className="px-2 py-1.5 font-medium text-right">Line Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {calc.groups.map((g) => (
+                    <tr key={g.key} className="border-t">
+                      <td className="px-2 py-1.5">{g.packageName}</td>
+                      <td className="px-2 py-1.5 text-center">{g.clientCount}</td>
+                      <td className="px-2 py-1.5 text-right">{g.dailyRate.toFixed(2)}</td>
+                      <td className="px-2 py-1.5 text-right font-medium">{g.lineTotal.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <Label className="text-xs">Selected Clients</Label>
+              <Label className="text-xs">Selected</Label>
               <Input value={`${calc.valid.length} / ${clients.length}`} readOnly className="bg-muted" />
             </div>
             <div>
@@ -194,7 +215,7 @@ export default function BulkClientRechargeDialog({ open, onOpenChange, clients }
               <Input value={popBalance.toFixed(2)} readOnly className="bg-muted" />
             </div>
             <div>
-              <Label className="text-xs">Total Creditable Amount</Label>
+              <Label className="text-xs">Total Creditable</Label>
               <Input value={calc.total.toFixed(2)} readOnly className="bg-muted font-semibold" />
             </div>
           </div>
