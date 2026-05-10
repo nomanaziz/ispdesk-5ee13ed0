@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { ArrowRightLeft, Check, ChevronsUpDown, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowRightLeft, Check, ChevronsUpDown, AlertTriangle, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -44,7 +45,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     queryFn: async () => {
       const { data, error } = await supabase
         .from("mikrotik_clients")
-        .select("id, name, profile")
+        .select("id, name, profile, service")
         .in("id", selectedIds);
       if (error) throw error;
       return data || [];
@@ -93,9 +94,65 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
     });
   }, [profileGroups, tariffPackages]);
 
-  const unmatchedCount = matched.filter((m) => !m.pkg).reduce((s, m) => s + m.count, 0);
-  const totalCreditable = +matched.reduce((s, m) => s + m.dayDebit, 0).toFixed(2);
-  const totalMonthly = +matched.reduce((s, m) => s + (m.pkg ? Number(m.pkg.selling_rate || 0) * m.count : 0), 0).toFixed(2);
+  const unmatchedProfileSet = useMemo(
+    () => new Set(matched.filter((m) => !m.pkg).map((m) => (m.profile || "").toLowerCase())),
+    [matched]
+  );
+
+  // Per-user issue analysis
+  const userIssues = useMemo(() => {
+    return (selectedRows as any[]).map((u) => {
+      const issues: ("profile_mismatch" | "protocol_mismatch")[] = [];
+      const svc = (u.service || "").toLowerCase();
+      if (svc !== "pppoe") issues.push("protocol_mismatch");
+      if (unmatchedProfileSet.has((u.profile || "").toLowerCase())) issues.push("profile_mismatch");
+      return { ...u, issues };
+    });
+  }, [selectedRows, unmatchedProfileSet]);
+
+  const profileMismatchUsers = userIssues.filter((u) => u.issues.includes("profile_mismatch"));
+  const protocolMismatchUsers = userIssues.filter((u) => u.issues.includes("protocol_mismatch"));
+
+  // Group helper
+  const groupUsersBy = (users: any[], key: "profile" | "service") => {
+    const m = new Map<string, any[]>();
+    users.forEach((u) => {
+      const k = u[key] || "(none)";
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push(u);
+    });
+    return Array.from(m.entries()).map(([value, list]) => ({ value, users: list }));
+  };
+
+  // Totals only from valid users (no issues)
+  const validProfileCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    userIssues.filter((u) => u.issues.length === 0).forEach((u) => {
+      const k = u.profile || "(no profile)";
+      m.set(k, (m.get(k) || 0) + 1);
+    });
+    return m;
+  }, [userIssues]);
+
+  const totalCreditable = +Array.from(validProfileCounts.entries()).reduce((s, [profile, count]) => {
+    const m = matched.find((mm) => mm.profile === profile);
+    if (!m?.pkg) return s;
+    const perDay = Number(m.pkg.selling_rate || 0) / Math.max(Number(m.pkg.validity_days || 30), 1);
+    return s + perDay * count;
+  }, 0).toFixed(2);
+  const totalMonthly = +Array.from(validProfileCounts.entries()).reduce((s, [profile, count]) => {
+    const m = matched.find((mm) => mm.profile === profile);
+    return s + (m?.pkg ? Number(m.pkg.selling_rate || 0) * count : 0);
+  }, 0).toFixed(2);
+
+  const unmatchedCount = profileMismatchUsers.length;
+  const protocolMismatchCount = protocolMismatchUsers.length;
+  const blockedByIssues = unmatchedCount > 0 || protocolMismatchCount > 0;
+
+  const [openProfile, setOpenProfile] = useState(false);
+  const [openProtocol, setOpenProtocol] = useState(false);
+  const [openSubGroups, setOpenSubGroups] = useState<Record<string, boolean>>({});
+  const toggleSub = (k: string) => setOpenSubGroups((s) => ({ ...s, [k]: !s[k] }));
 
   const balanceShort =
     !!selectedPop?.fund_started &&
@@ -108,6 +165,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
       if (!selectedPop?.tariff_id) throw new Error("এই POP-এ tariff assigned নাই");
       if (!selectedPop?.branch_id) throw new Error("এই POP-এর কোনো branch assign করা নেই");
       if (unmatchedCount > 0) throw new Error(`${unmatchedCount} জন user-এর profile POP-এর tariff-এ নেই — আগে MikroTik-এ profile change করুন বা POP-এর tariff-এ এই package add করুন`);
+      if (protocolMismatchCount > 0) throw new Error(`${protocolMismatchCount} জন user PPPoE নয় — শুধু PPPoE protocol allowed। MikroTik-এ service ঠিক করুন।`);
       if (balanceShort) throw new Error(`POP-এর balance অপ্রতুল (${selectedPop.balance} < ${totalCreditable})`);
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -214,7 +272,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRightLeft className="h-5 w-5" /> Export to POP/Reseller
@@ -307,11 +365,103 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
                   </TableBody>
                 </Table>
               </div>
-              {unmatchedCount > 0 && (
-                <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded px-2 py-1.5 flex gap-1.5 items-start">
-                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  {unmatchedCount} জন user-এর profile POP-এর tariff-এ নেই। আগে MikroTik-এ profile change করুন অথবা admin থেকে POP-এর tariff-এ এই package add করুন।
-                </p>
+              {blockedByIssues && (
+                <div className="space-y-2">
+                  <div className="flex items-start gap-1.5 text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded px-2 py-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      {unmatchedCount > 0 && <>{unmatchedCount} জন user-এর <b>profile mismatch</b>। </>}
+                      {protocolMismatchCount > 0 && <>{protocolMismatchCount} জন user <b>PPPoE নয়</b> (শুধু PPPoE allowed)। </>}
+                      নিচে details দেখুন — MikroTik-এ ঠিক করুন বা admin থেকে POP-এর tariff-এ এই package add করুন।
+                    </span>
+                  </div>
+
+                  <div className="rounded-md border divide-y">
+                    {protocolMismatchCount > 0 && (
+                      <Collapsible open={openProtocol} onOpenChange={setOpenProtocol}>
+                        <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 text-sm">
+                          <span className="flex items-center gap-2">
+                            <ChevronRight className={cn("h-4 w-4 transition-transform", openProtocol && "rotate-90")} />
+                            <XCircle className="h-4 w-4 text-destructive" />
+                            <span className="font-medium">Protocol mismatch (PPPoE নয়)</span>
+                          </span>
+                          <Badge variant="destructive">{protocolMismatchCount} user</Badge>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="bg-muted/30">
+                          {groupUsersBy(protocolMismatchUsers, "service").map((g) => {
+                            const k = `proto:${g.value}`;
+                            return (
+                              <div key={k} className="border-t">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSub(k)}
+                                  className="w-full flex items-center justify-between px-8 py-1.5 hover:bg-muted/50 text-xs"
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <ChevronRight className={cn("h-3 w-3 transition-transform", openSubGroups[k] && "rotate-90")} />
+                                    <span className="font-mono">{g.value}</span>
+                                  </span>
+                                  <span className="text-muted-foreground">{g.users.length} user</span>
+                                </button>
+                                {openSubGroups[k] && (
+                                  <ul className="px-12 py-1.5 text-xs space-y-0.5 bg-background/50">
+                                    {g.users.map((u: any) => (
+                                      <li key={u.id} className="font-mono text-muted-foreground">
+                                        {u.name} <span className="text-[10px]">({u.profile || "—"})</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {unmatchedCount > 0 && (
+                      <Collapsible open={openProfile} onOpenChange={setOpenProfile}>
+                        <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 text-sm">
+                          <span className="flex items-center gap-2">
+                            <ChevronRight className={cn("h-4 w-4 transition-transform", openProfile && "rotate-90")} />
+                            <XCircle className="h-4 w-4 text-destructive" />
+                            <span className="font-medium">Profile mismatch</span>
+                          </span>
+                          <Badge variant="destructive">{unmatchedCount} user</Badge>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="bg-muted/30">
+                          {groupUsersBy(profileMismatchUsers, "profile").map((g) => {
+                            const k = `prof:${g.value}`;
+                            return (
+                              <div key={k} className="border-t">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSub(k)}
+                                  className="w-full flex items-center justify-between px-8 py-1.5 hover:bg-muted/50 text-xs"
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <ChevronRight className={cn("h-3 w-3 transition-transform", openSubGroups[k] && "rotate-90")} />
+                                    <span className="font-mono">{g.value}</span>
+                                  </span>
+                                  <span className="text-muted-foreground">{g.users.length} user</span>
+                                </button>
+                                {openSubGroups[k] && (
+                                  <ul className="px-12 py-1.5 text-xs space-y-0.5 bg-background/50">
+                                    {g.users.map((u: any) => (
+                                      <li key={u.id} className="font-mono text-muted-foreground">
+                                        {u.name} <span className="text-[10px]">(service: {u.service || "—"})</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+                  </div>
+                </div>
               )}
 
               <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
@@ -344,7 +494,7 @@ export function TransferToPopDialog({ open, onOpenChange, selectedIds, onTransfe
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
           <Button
             onClick={() => transfer.mutate()}
-            disabled={!popId || !selectedPop?.tariff_id || transfer.isPending || unmatchedCount > 0 || balanceShort}
+            disabled={!popId || !selectedPop?.tariff_id || transfer.isPending || blockedByIssues || balanceShort}
           >
             {transfer.isPending ? "Exporting..." : `Export ✓ (${selectedIds.length})`}
           </Button>
