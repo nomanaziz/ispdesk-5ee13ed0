@@ -2591,7 +2591,13 @@ Deno.serve(async (req) => {
         if (!ids.length) return json({ items: [] });
         const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
         if (!pop?.branch_id) return json({ error: "POP branch missing" }, 400);
-        const { data: owned } = await sb.from("clients").select("id").eq("branch_id", pop.branch_id).in("id", ids);
+        const { data: owned } = await sb.from("clients").select("id, package_id").eq("branch_id", pop.branch_id).in("id", ids);
+        const pkgIds = Array.from(new Set((owned || []).map((r: any) => r.package_id).filter(Boolean)));
+        const pkgMap = new Map<string, string>();
+        if (pkgIds.length) {
+          const { data: pkgs } = await sb.from("isp_packages").select("id, name").in("id", pkgIds);
+          for (const p of (pkgs || [])) pkgMap.set((p as any).id, (p as any).name);
+        }
         const items: any[] = [];
         for (const row of (owned || [])) {
           const { data: cost, error: cErr } = await sb.rpc("pop_resolve_client_package_cost", { p_client_id: (row as any).id });
@@ -2601,7 +2607,16 @@ Deno.serve(async (req) => {
           const validity = Number(r?.validity_days || 30) || 30;
           const minDays = Number(r?.min_activation_days || 1) || 1;
           const daily = validity > 0 ? Math.round((buy / validity) * 100) / 100 : 0;
-          items.push({ client_id: (row as any).id, buy_rate: buy, validity_days: validity, min_activation_days: minDays, daily_rate: daily });
+          const pkgId = (row as any).package_id || null;
+          items.push({
+            client_id: (row as any).id,
+            package_id: pkgId,
+            package_name: pkgId ? (pkgMap.get(pkgId) || "Unknown") : "No Package",
+            buy_rate: buy,
+            validity_days: validity,
+            min_activation_days: minDays,
+            daily_rate: daily,
+          });
         }
         return json({ items });
       }
