@@ -609,7 +609,8 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                         const eff = c.temp_expire_date || c.expire_date;
                         const exp = eff ? new Date(eff) : null;
                         const today = new Date(); today.setHours(0,0,0,0);
-                        const isExpired = !c.is_vip && !!(exp && exp.getTime() <= today.getTime());
+                        const exemptStatus = ["personal", "free", "vip"].includes(String(c.billing_status || "").toLowerCase());
+                        const isExpired = !c.is_vip && !exemptStatus && !!(exp && exp.getTime() <= today.getTime());
                         const isOn = c.mikrotik_status === "enabled";
                         return (
                           <Switch
