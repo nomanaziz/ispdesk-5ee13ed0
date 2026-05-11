@@ -110,10 +110,34 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
     },
   });
 
+  // Auto-enable MikroTik PPP secret when client gets a future expiry date
+  const autoEnableMikrotikIfFuture = async (clientId: string, effectiveDate: string | null) => {
+    if (!effectiveDate) return;
+    const exp = new Date(effectiveDate);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (exp.getTime() <= today.getTime()) return; // still expired
+
+    const { data: c } = await supabase
+      .from("clients")
+      .select("id, mikrotik_id, username, mikrotik_status")
+      .eq("id", clientId)
+      .maybeSingle();
+    if (!c?.mikrotik_id || !c?.username) return;
+
+    try {
+      await supabase.functions.invoke("manage-mikrotik-ppp", {
+        body: { mikrotik_id: c.mikrotik_id, username: c.username, client_id: c.id, action: "enable" },
+      });
+    } catch (e: any) {
+      toast.warning(`MikroTik auto-enable ব্যর্থ: ${e.message || "router unreachable"}`);
+    }
+  };
+
   const updateExpireMutation = useMutation({
     mutationFn: async ({ id, date }: { id: string; date: string }) => {
       const { error } = await supabase.from("clients").update({ expire_date: date }).eq("id", id);
       if (error) throw error;
+      await autoEnableMikrotikIfFuture(id, date);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients-list"] });
@@ -129,6 +153,8 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
         .update({ temp_expire_date: date, temp_expire_note: note } as any)
         .eq("id", id);
       if (error) throw error;
+      // If override set in future, auto-enable. Use the temp date as effective.
+      await autoEnableMikrotikIfFuture(id, date);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients-list"] });
