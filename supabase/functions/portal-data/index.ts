@@ -1031,19 +1031,27 @@ Deno.serve(async (req) => {
       }
 
       case "list_pop_clients": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
+        if (!isPopScopedToken(tok)) {
           return json({ error: "Not allowed" }, 403);
         }
-        const resellerId =
-          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        const ctx = await resolvePopContext(sb, tok);
+        if (ctx.isBwPanel && !ctx.panelActive) {
+          return json({ error: "Panel subscription inactive" }, 403);
+        }
         const search = String(payload.search || "").trim();
         const minimal = !!payload.minimal;
-        const { data: pop } = await sb
-          .from("branch_managers")
-          .select("branch_id")
-          .eq("id", resellerId)
-          .maybeSingle();
-        if (!pop?.branch_id) return json({ clients: [] });
+        let branchId: string | null = ctx.branchId;
+        if (!branchId && !ctx.isBwPanel) {
+          const { data: pop } = await sb
+            .from("branch_managers")
+            .select("branch_id")
+            .eq("id", ctx.popId)
+            .maybeSingle();
+          branchId = pop?.branch_id || null;
+        }
+        if (!branchId) return json({ clients: [] });
+        // Reuse below as `pop.branch_id`
+        const pop = { branch_id: branchId };
 
         let q: any = sb
           .from("clients")
