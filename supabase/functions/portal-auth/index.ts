@@ -16,7 +16,10 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { username, password, action, session_id, sub, type } = body || {};
+    let { username, password } = body || {};
+    const { action, session_id, sub, type } = body || {};
+    if (typeof username === "string") username = username.trim();
+    if (typeof password === "string") password = password.trim();
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
