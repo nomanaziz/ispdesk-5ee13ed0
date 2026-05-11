@@ -64,59 +64,40 @@ const baseGroups: NavGroup[] = [
 
 const panelGroups: NavGroup[] = [
   {
-    key: "configuration", label: "কনফিগারেশন", en: "Configuration", icon: Cog, tint: "slate", panelOnly: true,
-    items: [
-      { to: "/bw/panel/config/zones", label: "জোন", en: "Zone", icon: MapPin },
-      { to: "/bw/panel/config/sub-zones", label: "সাব জোন", en: "Sub Zone", icon: Layers },
-      { to: "/bw/panel/config/boxes", label: "বক্স", en: "Box", icon: Box },
-      { to: "/bw/panel/config/packages", label: "প্যাকেজ", en: "Package", icon: Package },
-      { to: "/bw/panel/config/departments", label: "বিভাগ", en: "Department", icon: Briefcase },
-      { to: "/bw/panel/config/designations", label: "পদবী", en: "Designation", icon: BadgeCheck },
-      { to: "/bw/panel/config/devices", label: "ডিভাইস", en: "Device", icon: Cpu },
-    ],
-  },
-  {
-    key: "mikrotik", label: "মাইক্রোটিক", en: "MikroTik", icon: Server, tint: "emerald", panelOnly: true,
-    items: [
-      { to: "/bw/panel/mikrotik", label: "MikroTik সার্ভার", en: "MikroTik Servers", icon: Server },
-      { to: "/bw/panel/mikrotik-users", label: "MikroTik ইউজার", en: "MikroTik Users", icon: Users },
-    ],
-  },
-  {
     key: "client", label: "ক্লায়েন্ট", en: "Clients", icon: Users, tint: "blue", panelOnly: true,
     items: [
+      { to: "/bw/panel/clients/new-request", label: "নতুন রিকোয়েস্ট", en: "New Request", icon: MessageSquare },
+      { to: "/bw/panel/clients/home", label: "হোম ক্লায়েন্ট", en: "Home Clients", icon: UserPlus },
+      { to: "/bw/panel/clients/corporate", label: "কর্পোরেট ক্লায়েন্ট", en: "Corporate Clients", icon: Building2 },
+      { to: "/bw/panel/billing", label: "বিলিং তালিকা", en: "Billing List", icon: CreditCard },
+      { to: "/bw/panel/billing/daily", label: "দৈনিক বিল কালেকশন", en: "Daily Collection", icon: Wallet },
+      { to: "/bw/panel/clients/installation-fee", label: "ইনস্টলেশন ফি", en: "Installation Fee", icon: DollarSign },
+      { to: "/bw/panel/clients/left", label: "চলে যাওয়া ক্লায়েন্ট", en: "Left Clients", icon: UserX },
+      { to: "/bw/panel/clients/scheduler", label: "শিডিউলার", en: "Scheduler", icon: Calendar },
+      { to: "/bw/panel/clients/change-request", label: "পরিবর্তন রিকোয়েস্ট", en: "Change Request", icon: RefreshCw },
       { to: "/bw/panel/clients/add", label: "ক্লায়েন্ট যোগ", en: "Add Client", icon: UserPlus },
       { to: "/bw/panel/clients/bulk", label: "বাল্ক ইম্পোর্ট", en: "Bulk Import", icon: FileSpreadsheet },
       { to: "/bw/panel/clients", label: "ক্লায়েন্ট তালিকা", en: "Client List", icon: Users },
-      { to: "/bw/panel/clients/left", label: "চলে যাওয়া ক্লায়েন্ট", en: "Left Clients", icon: Users },
-      { to: "/bw/panel/clients/scheduler", label: "শিডিউলার", en: "Scheduler", icon: Calendar },
     ],
   },
   {
-    key: "panel-billing", label: "বিলিং", en: "Billing", icon: Receipt, tint: "violet", panelOnly: true,
+    key: "support", label: "সাপোর্ট ও টিকেটিং", en: "Support & Tickets", icon: Headphones, tint: "rose", panelOnly: true,
     items: [
-      { to: "/bw/panel/billing/daily", label: "দৈনিক সংগ্রহ", en: "Daily Collection", icon: Wallet },
-      { to: "/bw/panel/billing", label: "বিলিং তালিকা", en: "Billing List", icon: Receipt },
+      { to: "/bw/panel/tickets", label: "ক্লায়েন্ট সাপোর্ট", en: "Client Support", icon: Headphones },
+      { to: "/bw/panel/support/history", label: "সাপোর্ট হিস্টরি", en: "Support History", icon: History },
+      { to: "/bw/panel/support/notices", label: "নোটিশ", en: "Notices", icon: Bell },
     ],
   },
   {
-    key: "monitoring", label: "মনিটরিং", en: "Monitoring", icon: Wifi, tint: "teal", panelOnly: true,
-    items: [{ to: "/bw/panel/monitoring/online", label: "অনলাইন ক্লায়েন্ট", en: "Online Clients", icon: Wifi }],
-  },
-  {
-    key: "panel-tickets", label: "ক্লায়েন্ট টিকেট", en: "Client Tickets", icon: LifeBuoy, tint: "rose", panelOnly: true,
-    items: [{ to: "/bw/panel/tickets", label: "ক্লায়েন্ট টিকেট", en: "Client Tickets", icon: LifeBuoy }],
-  },
-  {
-    key: "sms", label: "এসএমএস", en: "SMS", icon: MessageSquare, tint: "sky", panelOnly: true,
+    key: "accounting", label: "অ্যাকাউন্টিং", en: "Accounting", icon: Wallet, tint: "green", panelOnly: true,
     items: [
-      { to: "/bw/panel/sms/templates", label: "টেমপ্লেট", en: "Templates", icon: FileText },
-      { to: "/bw/panel/sms/send", label: "এসএমএস পাঠান", en: "Send SMS", icon: Send },
-      { to: "/bw/panel/sms/gateway", label: "গেটওয়ে", en: "Gateway", icon: Server },
+      { to: "/bw/panel/accounting/income", label: "আয়", en: "Income", icon: TrendingUp },
+      { to: "/bw/panel/accounting/expense", label: "ব্যয়", en: "Expense", icon: Wallet },
+      { to: "/bw/panel/accounting/cashbook", label: "ক্যাশ বুক", en: "Cash Book", icon: BookOpen },
     ],
   },
   {
-    key: "employee", label: "কর্মচারী", en: "Employees", icon: Users, tint: "pink", panelOnly: true,
+    key: "employee", label: "HR", en: "HR", icon: Users, tint: "pink", panelOnly: true,
     items: [
       { to: "/bw/panel/employees/add", label: "কর্মচারী যোগ", en: "Add Employee", icon: UserPlus },
       { to: "/bw/panel/employees", label: "কর্মচারী তালিকা", en: "Employee List", icon: Users },
@@ -124,19 +105,73 @@ const panelGroups: NavGroup[] = [
     ],
   },
   {
-    key: "accounting", label: "হিসাব", en: "Accounting", icon: Wallet, tint: "green", panelOnly: true,
+    key: "olt", label: "OLT ম্যানেজমেন্ট", en: "OLT Management", icon: Cpu, tint: "indigo", panelOnly: true,
     items: [
-      { to: "/bw/panel/accounting/income", label: "Income", en: "Income", icon: TrendingUp },
-      { to: "/bw/panel/accounting/expense", label: "Expense", en: "Expense", icon: Wallet },
-      { to: "/bw/panel/accounting/cashbook", label: "Cash Book", en: "Cash Book", icon: BookOpen },
+      { to: "/bw/panel/olt-overview", label: "OLT / ONU ওভারভিউ", en: "OLT / ONU Overview", icon: Cpu },
+      { to: "/bw/panel/olt", label: "OLT ডিভাইস", en: "OLT Devices", icon: Server },
+      { to: "/bw/panel/olt/power-dashboard", label: "OLT Power Dashboard", en: "OLT Power Dashboard", icon: Activity },
+      { to: "/bw/panel/olt/onu", label: "ONU তালিকা", en: "ONU List", icon: List },
+      { to: "/bw/panel/olt/users", label: "OLT ইউজার", en: "OLT Users", icon: Users },
+      { to: "/bw/panel/olt/ports", label: "OLT Port Classification", en: "OLT Port Classification", icon: Network },
+      { to: "/bw/panel/olt/user-down", label: "ইউজার ডাউন কাউন্ট", en: "User Down Count", icon: UserX },
+      { to: "/bw/panel/olt/fiber-down", label: "ফাইবার ডাউন ফাইন্ডার", en: "Fiber Down Finder", icon: Cable },
+      { to: "/bw/panel/olt/sharing", label: "OLT শেয়ারিং", en: "OLT Sharing", icon: Layers },
     ],
   },
   {
-    key: "reports", label: "রিপোর্ট", en: "Reports", icon: BarChart3, tint: "blue", panelOnly: true,
+    key: "monitoring", label: "নেটওয়ার্ক মনিটরিং", en: "Network Monitoring", icon: Activity, tint: "teal", panelOnly: true,
     items: [
-      { to: "/bw/panel/reports/bill-collection", label: "বিল সংগ্রহ", en: "Bill Collection", icon: BarChart3 },
-      { to: "/bw/panel/reports/customer", label: "কাস্টমার", en: "Customer", icon: BarChart3 },
+      { to: "/bw/panel/monitoring/online", label: "অনলাইন মনিটরিং", en: "Online Monitoring", icon: Wifi },
+      { to: "/bw/panel/monitoring/live-traffic", label: "Live Traffic", en: "Live Traffic", icon: Activity },
+      { to: "/bw/panel/network/switches", label: "Switch ম্যানেজমেন্ট", en: "Switch Management", icon: Network },
+      { to: "/bw/panel/monitoring/pop-dass", label: "POP DASS", en: "POP DASS", icon: Monitor },
+      { to: "/bw/panel/monitoring/pop-ip", label: "POP IP", en: "POP IP", icon: Globe },
+      { to: "/bw/panel/monitoring/pop-log", label: "POP লগ", en: "POP Log", icon: ScrollText },
+      { to: "/bw/panel/monitoring/ping-tools", label: "Ping টুলস", en: "Ping Tools", icon: Wifi },
+      { to: "/bw/panel/monitoring/pop-devices", label: "POP ডিভাইস", en: "POP Devices", icon: Radio },
+    ],
+  },
+  {
+    key: "device", label: "ডিভাইস", en: "Device", icon: ShieldCheck, tint: "emerald", panelOnly: true,
+    items: [
+      { to: "/bw/panel/device-admin", label: "ড্যাশবোর্ড", en: "Dashboard", icon: LayoutDashboard },
+      { to: "/bw/panel/device-admin/devices", label: "ডিভাইস ইনভেন্টরি", en: "Device Inventory", icon: Server },
+      { to: "/bw/panel/mikrotik", label: "MikroTik PPPoE", en: "MikroTik PPPoE", icon: Server },
+      { to: "/bw/panel/mikrotik-users", label: "MikroTik ইউজার", en: "MikroTik Users", icon: Users },
+    ],
+  },
+  {
+    key: "reports", label: "রিপোর্ট", en: "Reports", icon: FileBarChart, tint: "blue", panelOnly: true,
+    items: [
+      { to: "/bw/panel/reports/bill-collection", label: "বিল কালেকশন", en: "Bill Collection", icon: BarChart3 },
+      { to: "/bw/panel/reports/customer", label: "কাস্টমার রিপোর্ট", en: "Customer", icon: BarChart3 },
       { to: "/bw/panel/reports/financial", label: "আর্থিক", en: "Financial", icon: BarChart3 },
+    ],
+  },
+  {
+    key: "sms", label: "SMS সার্ভিস", en: "SMS Service", icon: Send, tint: "sky", panelOnly: true,
+    items: [
+      { to: "/bw/panel/sms/templates", label: "টেমপ্লেট", en: "Templates", icon: FileText },
+      { to: "/bw/panel/sms/send", label: "এসএমএস পাঠান", en: "Send SMS", icon: Send },
+      { to: "/bw/panel/sms/gateway", label: "গেটওয়ে", en: "Gateway", icon: Server },
+    ],
+  },
+  {
+    key: "configuration", label: "কনফিগারেশন", en: "Configuration", icon: Settings, tint: "slate", panelOnly: true,
+    items: [
+      { to: "/bw/panel/config/zones", label: "জোন", en: "Zone", icon: MapPin },
+      { to: "/bw/panel/config/sub-zones", label: "সাব জোন", en: "Sub Zone", icon: Layers },
+      { to: "/bw/panel/config/boxes", label: "বক্স", en: "Box", icon: Box },
+      { to: "/bw/panel/config/connection-types", label: "কানেকশন টাইপ", en: "Connection Type", icon: Cable },
+      { to: "/bw/panel/config/client-types", label: "ক্লায়েন্ট টাইপ", en: "Client Type", icon: Users },
+      { to: "/bw/panel/config/protocol-types", label: "প্রোটোকল টাইপ", en: "Protocol Type", icon: Shield },
+      { to: "/bw/panel/config/billing-statuses", label: "বিলিং স্ট্যাটাস", en: "Billing Status", icon: Tag },
+      { to: "/bw/panel/config/packages", label: "প্যাকেজ", en: "Package", icon: Package },
+      { to: "/bw/panel/config/locations", label: "এলাকা (বিভাগ/জেলা/উপজেলা)", en: "Locations", icon: MapPin },
+      { to: "/bw/panel/config/service-types", label: "সার্ভিস টাইপ", en: "Service Type", icon: Wrench },
+      { to: "/bw/panel/config/departments", label: "বিভাগ", en: "Department", icon: Briefcase },
+      { to: "/bw/panel/config/designations", label: "পদবী", en: "Designation", icon: BadgeCheck },
+      { to: "/bw/panel/config/devices", label: "ডিভাইস টাইপ", en: "Device Type", icon: Cpu },
     ],
   },
 ];
