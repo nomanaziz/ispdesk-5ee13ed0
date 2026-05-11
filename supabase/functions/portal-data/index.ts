@@ -949,29 +949,42 @@ Deno.serve(async (req) => {
       }
 
       case "create_client": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub")
-          return json({ error: "Not allowed" }, 403);
-        const resellerId =
-          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
-        const { data: pop } = await sb
-          .from("branch_managers")
-          .select("id, branch_id, district_id, upazila_id, balance, tariff_id")
-          .eq("id", resellerId)
-          .maybeSingle();
-        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ error: "প্যানেল সাবস্ক্রিপশন এক্সপায়ার্ড" }, 403);
+        if (!scope.branchId) return json({ error: "POP branch not found" }, 400);
 
         const p = payload || {};
-        const { mobile: legacyMobile, profile: _ignoredProfile, mikrotik_profile: _ignoredMP, mikrotik_id: _ignoredMI, server_name: _ignoredSN, monthly_bill: _ignoredMB, ...safePayload } = p;
+        const { mobile: legacyMobile, ...safePayload } = p as any;
         if (!p.name || !p.client_id) return json({ error: "নাম ও ক্লায়েন্ট কোড আবশ্যক" }, 400);
 
+        // ─── BW Panel path: simple insert (no tariff/wallet checks) ───
+        if (scope.isBw) {
+          const insertRow: any = {
+            ...safePayload,
+            contact: p.contact ?? legacyMobile ?? null,
+            branch_id: scope.branchId,
+            owner_scope: "pop",
+          };
+          const { data: inserted, error } = await sb
+            .from("clients")
+            .insert(insertRow)
+            .select("id")
+            .single();
+          if (error) return json({ error: error.message }, 500);
+          return json({ ok: true, id: inserted?.id });
+        }
+
+        // ─── POP admin path (tariff-based, prepaid wallet) ───
+        const pop = scope.pop;
         // Enforce: package_id MUST be in this POP's tariff. No silent fallback.
         if (!p.package_id) return json({ error: "Package required" }, 400);
-        if (!pop.tariff_id) return json({ error: "এই POP-এ tariff assigned নেই" }, 400);
+        if (!scope.tariffId) return json({ error: "এই POP-এ tariff assigned নেই" }, 400);
 
         const { data: tpkg } = await sb
           .from("reseller_tariff_packages")
           .select("selling_rate, validity_days, mikrotik_profile, mikrotik_server_id, package_id, mikrotik_devices:mikrotik_devices!reseller_tariff_packages_mikrotik_server_id_fkey(id, name)")
-          .eq("tariff_id", pop.tariff_id)
+          .eq("tariff_id", scope.tariffId)
           .eq("package_id", p.package_id)
           .eq("status", "active")
           .maybeSingle();
@@ -987,28 +1000,27 @@ Deno.serve(async (req) => {
         const forcedServerName = (tpkg as any)?.mikrotik_devices?.name || null;
 
         const isActiveBilling = String(p.billing_status || "Active").toLowerCase() === "active";
-        const walletBalance = Number(pop.balance || 0);
+        const walletBalance = Number((pop as any)?.balance || 0);
         if (isActiveBilling && buyPrice > 0 && walletBalance < buyPrice) {
           return json({
             error: `INSUFFICIENT_BALANCE: প্যাকেজ ৳${buyPrice} — wallet balance ৳${walletBalance.toFixed(2)}। আগে recharge করুন।`,
           }, 400);
         }
 
-        // Force scope to this POP's branch + set prepaid expire_date
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const exp = new Date(today);
         exp.setDate(exp.getDate() + validityDays);
         const expIso = exp.toISOString().slice(0, 10);
 
+        const { profile: _ignoredProfile, mikrotik_profile: _ignoredMP, mikrotik_id: _ignoredMI, server_name: _ignoredSN, monthly_bill: _ignoredMB, ...stripped } = safePayload;
         const insertRow: any = {
-          ...safePayload,
+          ...stripped,
           contact: p.contact ?? legacyMobile ?? null,
-          branch_id: pop.branch_id,
-          district_id: pop.district_id || null,
-          upazila_id: pop.upazila_id || null,
+          branch_id: scope.branchId,
+          district_id: (pop as any)?.district_id || null,
+          upazila_id: (pop as any)?.upazila_id || null,
           owner_scope: "pop",
-          // Force from tariff package — prevents profile/MB leak
           profile: forcedProfile,
           mikrotik_id: forcedMikrotikId,
           server_name: forcedServerName,
@@ -1023,20 +1035,17 @@ Deno.serve(async (req) => {
           .single();
         if (error) return json({ error: error.message }, 500);
 
-        // Deduct wallet for the activation cycle (idempotent ledger via pop_daily_charges)
         if (isActiveBilling && inserted?.id && buyPrice > 0) {
           const { error: rpcErr } = await sb.rpc("pop_recharge_client_days", {
             p_client_id: inserted.id,
             p_days: validityDays,
           });
           if (rpcErr) {
-            // Roll back client insert if wallet deduction fails (race condition)
             await sb.from("clients").delete().eq("id", inserted.id);
             return json({ error: rpcErr.message }, 400);
           }
         }
 
-        // Auto-generate first billing row (prorated) — admin-side bookkeeping only
         if (inserted?.id && isActiveBilling && buyPrice > 0) {
           const joinStr = p.joining_date || new Date().toISOString().slice(0, 10);
           const join = new Date(joinStr + "T00:00:00");
@@ -1060,7 +1069,7 @@ Deno.serve(async (req) => {
             due: amount,
             status: "unpaid",
             generated: true,
-            branch_id: pop.branch_id,
+            branch_id: scope.branchId,
           });
         }
 
