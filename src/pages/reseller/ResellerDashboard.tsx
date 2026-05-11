@@ -7,15 +7,16 @@ import { callPortal } from "@/lib/portalApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Wallet, Receipt, Calendar, CheckCircle2, ShoppingCart, LifeBuoy,
+  Wallet, Receipt, CheckCircle2, LifeBuoy,
   Bell, MessageSquare, Mail, TrendingDown, AlertTriangle, Gift,
   Users, UserPlus, BarChart3, Wifi, Banknote,
 } from "lucide-react";
-import { Icons8Icon, hasIcons8Icon } from "@/components/icons/Icons8Icon";
+import KpiCard from "@/components/dashboard/KpiCard";
+import MetricTile from "@/components/dashboard/MetricTile";
 import AssignedAreasWidget from "@/components/reseller/AssignedAreasWidget";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell,
 } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
 import PopMobileHome from "./PopMobileHome";
@@ -29,7 +30,6 @@ const ResellerDashboard = () => {
   const { popId, branchId } = getPopScope(customer);
   const billingId = getBillingCustomerId(customer);
 
-  // ============ Company-level data (between POP and main company) ============
   const { data: company } = useQuery({
     queryKey: ["reseller-company", popId, billingId, branchId],
     enabled: !!popId,
@@ -53,7 +53,6 @@ const ResellerDashboard = () => {
       const monthlyDiscount = thisMonth.reduce((s: number, r: any) => s + Number(r.discount || 0), 0);
       const invoiceDue = (lastInvs.data || []).reduce((s: number, r: any) => s + Number(r.due || 0), 0);
 
-      // Also include outstanding due from POP funding (admin-recorded)
       let fundingDue = 0;
       if (branchId) {
         const { data: funds } = await supabase
@@ -76,9 +75,6 @@ const ResellerDashboard = () => {
     },
   });
 
-  // ============ Internal POP data via portal API (service-role; bypasses RLS) ============
-  // Only resellers (POP managers) and their sub-users can call POP overview.
-  // bw_customer logs into the reseller area but does not own a POP.
   const isPopManager =
     customer?.type === "reseller" || customer?.type === "reseller_sub";
 
@@ -120,21 +116,21 @@ const ResellerDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Row 1 — Company-level stats */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
-        <Stat icons8="sms" icon={<Mail className="h-5 w-5" />} label="SMS Balance" value={String(company?.smsBalance ?? 0)} sub="বাকি SMS" />
-        <Stat icons8="wallet" icon={<Wallet className="h-5 w-5" />} label="Remaining Balance" value={tk(internal?.balance)} tone="primary" />
-        <Stat icons8="data-transfer" icon={<TrendingDown className="h-5 w-5" />} label="Daily Charge" value={tk(internal?.dailyCharged)} sub="approx per day" />
-        <Stat icons8="coins" icon={<Banknote className="h-5 w-5" />} label="Approximate Rechargeable" value={tk(internal?.approxRechargeable)} sub="বাকি দিনের জন্য" />
-        <Stat icons8="bar-chart" icon={<BarChart3 className="h-5 w-5" />} label="Monthly Charged" value={tk(company?.monthlyCharged)} />
-        <Stat icons8="checked" icon={<CheckCircle2 className="h-5 w-5" />} label="Monthly Payment" value={tk(company?.monthlyPaid)} tone="success" />
-        <Stat icons8="discount" icon={<Gift className="h-5 w-5" />} label="Monthly Discount" value={tk(company?.monthlyDiscount)} />
-        <Stat icons8="high-priority" icon={<AlertTriangle className="h-5 w-5" />} label="Balance Due" value={tk(company?.totalDue)} tone={company && company.totalDue > 0 ? "warning" : undefined} />
+      {/* Row 1 — Company-level KPIs (matches main portal pattern) */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="SMS Balance" value={String(company?.smsBalance ?? 0)} icon={Mail} tone="primary" caption="বাকি SMS" />
+        <KpiCard label="Remaining Balance" value={tk(internal?.balance)} icon={Wallet} tone="violet" />
+        <KpiCard label="Daily Charge" value={tk(internal?.dailyCharged)} icon={TrendingDown} tone="amber" caption="approx per day" />
+        <KpiCard label="Approx Rechargeable" value={tk(internal?.approxRechargeable)} icon={Banknote} tone="emerald" caption="বাকি দিনের জন্য" />
+        <KpiCard label="Monthly Charged" value={tk(company?.monthlyCharged)} icon={BarChart3} tone="primary" />
+        <KpiCard label="Monthly Payment" value={tk(company?.monthlyPaid)} icon={CheckCircle2} tone="success" />
+        <KpiCard label="Monthly Discount" value={tk(company?.monthlyDiscount)} icon={Gift} tone="violet" />
+        <KpiCard label="Balance Due" value={tk(company?.totalDue)} icon={AlertTriangle} tone={company && company.totalDue > 0 ? "warning" : "primary"} />
       </div>
 
-      {/* Charts row (middle separator) */}
+      {/* Charts row */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 rounded-2xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Monthly New Client (last 6 months)</CardTitle>
           </CardHeader>
@@ -144,16 +140,14 @@ const ResellerDashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <Tooltip
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
-                />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
                 <Bar dataKey="count" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Zone-wise Clients</CardTitle>
           </CardHeader>
@@ -184,16 +178,16 @@ const ResellerDashboard = () => {
         </Card>
       </div>
 
-      {/* Row 2 — Internal POP stats */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
-        <Stat icons8="add-user-male" icon={<UserPlus className="h-5 w-5" />} label="New Client (this month)" value={String(internal?.newThisMonth ?? 0)} tone="success" />
-        <Stat icons8="people" icon={<Users className="h-5 w-5" />} label="Total Client" value={String(internal?.totalClients ?? 0)} sub={`Active ${internal?.activeClients ?? 0}`} />
-        <Stat icons8="wi-fi-connected" icon={<Wifi className="h-5 w-5" />} label="Online Clients" value={String(internal?.onlineClients ?? 0)} tone="success" />
-        <Stat icons8="documents" icon={<Receipt className="h-5 w-5" />} label="Monthly Bill" value={tk(internal?.monthlyBillSum)} />
-        <Stat icons8="checked" icon={<CheckCircle2 className="h-5 w-5" />} label="Collected" value={tk(internal?.collected)} tone="success" />
-        <Stat icons8="discount" icon={<Gift className="h-5 w-5" />} label="Discount" value={tk(internal?.totalDiscount)} />
-        <Stat icons8="high-priority" icon={<AlertTriangle className="h-5 w-5" />} label="Total Due" value={tk(internal?.totalDue)} tone={internal && internal.totalDue > 0 ? "warning" : undefined} />
-        <Stat icons8="coins" icon={<Banknote className="h-5 w-5" />} label="Cash on Hand" value={tk(internal?.cashOnHand)} />
+      {/* Row 2 — Internal POP metrics (MetricTile pattern) */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricTile label="New Client (this month)" value={String(internal?.newThisMonth ?? 0)} icon={UserPlus} tone="emerald" />
+        <MetricTile label="Total Client" value={String(internal?.totalClients ?? 0)} icon={Users} tone="violet" hint={`Active ${internal?.activeClients ?? 0}`} />
+        <MetricTile label="Online Clients" value={String(internal?.onlineClients ?? 0)} icon={Wifi} tone="teal" />
+        <MetricTile label="Monthly Bill" value={tk(internal?.monthlyBillSum)} icon={Receipt} tone="indigo" />
+        <MetricTile label="Collected" value={tk(internal?.collected)} icon={CheckCircle2} tone="emerald" />
+        <MetricTile label="Discount" value={tk(internal?.totalDiscount)} icon={Gift} tone="pink" />
+        <MetricTile label="Total Due" value={tk(internal?.totalDue)} icon={AlertTriangle} tone={internal && internal.totalDue > 0 ? "rose" : "sky"} />
+        <MetricTile label="Cash on Hand" value={tk(internal?.cashOnHand)} icon={Banknote} tone="amber" />
       </div>
 
       {/* Bottom row */}
@@ -203,7 +197,7 @@ const ResellerDashboard = () => {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 rounded-2xl">
           <CardHeader className="pb-2 flex-row items-center gap-2 space-y-0">
             <AlertTriangle className="h-4 w-4 text-orange-500" />
             <CardTitle className="text-base">Top 10 Unpaid Clients</CardTitle>
@@ -221,7 +215,7 @@ const ResellerDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader className="pb-2 flex-row items-center gap-2 space-y-0">
             <Bell className="h-4 w-4 text-primary" />
             <CardTitle className="text-base">Notices</CardTitle>
@@ -241,7 +235,7 @@ const ResellerDashboard = () => {
       </div>
 
       {/* Tickets summary */}
-      <Card>
+      <Card className="rounded-2xl">
         <CardHeader className="pb-2 flex-row items-center gap-2 space-y-0">
           <MessageSquare className="h-4 w-4 text-primary" />
           <CardTitle className="text-base">Recent Support Tickets</CardTitle>
@@ -262,47 +256,6 @@ const ResellerDashboard = () => {
         </CardContent>
       </Card>
     </div>
-  );
-};
-
-const Stat = ({
-  icon, label, value, sub, tone, icons8,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub?: string;
-  tone?: "warning" | "success" | "primary";
-  icons8?: string;
-}) => {
-  const useIcons8 = hasIcons8Icon(icons8);
-  return (
-    <Card>
-      <CardContent className="p-3.5">
-        <div className="flex items-center gap-3">
-          <div
-            className={`h-11 w-11 rounded-lg flex items-center justify-center shrink-0 ${
-              useIcons8
-                ? "bg-muted/40"
-                : tone === "warning"
-                ? "bg-orange-500/10 text-orange-600"
-                : tone === "success"
-                ? "bg-green-500/10 text-green-600"
-                : tone === "primary"
-                ? "bg-primary/10 text-primary"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {useIcons8 ? <Icons8Icon name={icons8!} size={32} /> : icon}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-xs text-muted-foreground truncate">{label}</div>
-            <div className="text-base font-semibold truncate">{value}</div>
-            {sub && <div className="text-[10px] text-muted-foreground truncate">{sub}</div>}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 };
 
