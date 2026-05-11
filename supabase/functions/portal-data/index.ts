@@ -1180,17 +1180,11 @@ Deno.serve(async (req) => {
       }
 
       case "list_pop_billing_clients": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
-          return json({ error: "Not allowed" }, 403);
-        }
-        const resellerId =
-          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
-        const { data: pop } = await sb
-          .from("branch_managers")
-          .select("branch_id")
-          .eq("id", resellerId)
-          .maybeSingle();
-        if (!pop?.branch_id) return json({ clients: [] });
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ clients: [] });
+        if (!scope.branchId) return json({ clients: [] });
+        const pop = { branch_id: scope.branchId };
 
         const { data: clients, error } = await sb
           .from("clients")
