@@ -194,8 +194,8 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
       return;
     }
     const action = client.mikrotik_status === "enabled" ? "disable" : "enable";
-    // Guard: expired client কখনই enable হবে না (auto on/off নির্বিশেষে)
-    if (action === "enable") {
+    // Guard: expired client কখনই enable হবে না (VIP client এই guard থেকে মুক্ত)
+    if (action === "enable" && !client.is_vip) {
       const eff = client.temp_expire_date || client.expire_date;
       const exp = eff ? new Date(eff) : null;
       const today = new Date(); today.setHours(0,0,0,0);
@@ -607,7 +607,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                         const eff = c.temp_expire_date || c.expire_date;
                         const exp = eff ? new Date(eff) : null;
                         const today = new Date(); today.setHours(0,0,0,0);
-                        const isExpired = !!(exp && exp.getTime() <= today.getTime());
+                        const isExpired = !c.is_vip && !!(exp && exp.getTime() <= today.getTime());
                         const isOn = c.mikrotik_status === "enabled";
                         return (
                           <Switch
@@ -615,7 +615,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                             disabled={togglingId === c.id || !c.mikrotik_id || (isExpired && !isOn)}
                             onCheckedChange={() => handleToggleMikrotik(c)}
                             className="scale-75"
-                            title={isExpired && !isOn ? "Expired — আগে recharge করুন" : undefined}
+                            title={isExpired && !isOn ? "Expired — আগে recharge করুন" : (!c.mikrotik_id ? "MikroTik সংযুক্ত নেই" : undefined)}
                           />
                         );
                       })()}
