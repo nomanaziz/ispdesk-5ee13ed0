@@ -120,7 +120,9 @@ export const PortalAuthProvider = ({ children }: { children: React.ReactNode }) 
         }
       );
       const data = await res.json();
-      if (!res.ok) return { error: data.error || "Login failed" };
+      if (!res.ok || data?.error || !data?.token || !data?.customer) {
+        return { error: data?.error || "Login failed" };
+      }
       localStorage.setItem("portal_token", data.token);
       setToken(data.token);
       setCustomer(data.customer);
