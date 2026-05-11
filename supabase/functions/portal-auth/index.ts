@@ -11,6 +11,9 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+const loginError = (message = "Invalid username or password") =>
+  json({ ok: false, error: message }, 200);
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -82,7 +85,7 @@ Deno.serve(async (req) => {
     }
 
     if (!username || !password) {
-      return json({ error: "Username and password are required" }, 400);
+      return loginError("Username and password are required");
     }
 
     const ip =
@@ -101,7 +104,7 @@ Deno.serve(async (req) => {
 
     const client = clients?.[0];
     if (client) {
-      if (client.password !== password) return json({ error: "Invalid username or password" }, 401);
+      if (client.password !== password) return loginError();
       const { token, customer, sid } = issueToken({
         sub: client.id,
         name: client.name,
@@ -137,7 +140,7 @@ Deno.serve(async (req) => {
 
     const reseller = resellers?.[0];
     if (reseller) {
-      if (reseller.password !== password) return json({ error: "Invalid username or password" }, 401);
+      if (reseller.password !== password) return loginError();
       if (reseller.portal_enabled === false) return json({ error: "Portal access disabled. Contact admin." }, 403);
       if (reseller.status && reseller.status.toLowerCase() !== "active") {
         return json({ error: "Account is inactive. Please contact support." }, 403);
@@ -177,7 +180,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (subUser) {
-      if (subUser.password !== password) return json({ error: "Invalid username or password" }, 401);
+      if (subUser.password !== password) return loginError();
       if (subUser.status !== "active") return json({ error: "Sub-user is inactive" }, 403);
       const parent: any = subUser.branch_managers;
       const { token, customer, sid } = issueToken({
@@ -212,11 +215,11 @@ Deno.serve(async (req) => {
     const { data: bwCustomer } = await supabase
       .from("bw_sale_customers")
       .select("id, customer_name, customer_code, username, password, activity_status, pop_id, email, mobile, contact_person, address, panel_access_enabled, panel_user_limit, panel_subscription_expires_at, panel_branch_id")
-      .eq("username", username)
+      .or(`username.eq.${username},customer_code.eq.${username},mobile.eq.${username},email.eq.${username}`)
       .maybeSingle();
 
     if (bwCustomer) {
-      if (bwCustomer.password !== password) return json({ error: "Invalid username or password" }, 401);
+      if (bwCustomer.password !== password) return loginError();
       if ((bwCustomer.activity_status || "").toLowerCase() !== "active") {
         return json({ error: "Account is inactive. Please contact support." }, 403);
       }
@@ -250,7 +253,7 @@ Deno.serve(async (req) => {
       return json({ token, customer });
     }
 
-    return json({ error: "Invalid username or password" }, 401);
+    return loginError();
   } catch (err) {
     console.error("portal-auth error:", err);
     return json({ error: "Internal server error" }, 500);
