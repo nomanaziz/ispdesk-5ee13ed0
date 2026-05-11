@@ -63,14 +63,8 @@ export default function BwPanelMikrotikServers() {
     queryKey: ["bw_panel_mikrotik_devices", branchId],
     enabled: !!branchId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("mikrotik_devices")
-        .select("*")
-        .eq("branch_id", branchId!)
-        .order("order_no", { ascending: true, nullsFirst: false })
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data as MikrotikDevice[];
+      const res = await callPortal<{ devices: MikrotikDevice[] }>("bw_panel_list_mikrotik");
+      return res.devices || [];
     },
   });
 
@@ -78,17 +72,10 @@ export default function BwPanelMikrotikServers() {
 
   const upsertMutation = useMutation({
     mutationFn: async (values: typeof defaultForm & { id?: string }) => {
-      const payload: any = { ...values };
       if (values.id) {
-        const { error } = await supabase.from("mikrotik_devices").update(payload).eq("id", values.id);
-        if (error) throw error;
+        await callPortal("bw_panel_update_mikrotik", { ...values });
       } else {
-        payload.status = "unknown";
-        payload.enabled = true;
-        payload.branch_id = branchId;
-        payload.assigned_to_pop_id = popId;
-        const { error } = await supabase.from("mikrotik_devices").insert(payload);
-        if (error) throw error;
+        await callPortal("bw_panel_create_mikrotik", values);
       }
     },
     onSuccess: () => {
@@ -101,8 +88,7 @@ export default function BwPanelMikrotikServers() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("mikrotik_devices").delete().eq("id", id);
-      if (error) throw error;
+      await callPortal("bw_panel_delete_mikrotik", { id });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bw_panel_mikrotik_devices"] });
@@ -112,13 +98,11 @@ export default function BwPanelMikrotikServers() {
   });
 
   const toggleEnabled = useMutation({
-    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
-      const updates: any = { enabled: !enabled };
-      if (!enabled === false) updates.status = "offline";
-      const { error } = await supabase.from("mikrotik_devices").update(updates).eq("id", id);
-      if (error) throw error;
+    mutationFn: async ({ id }: { id: string; enabled: boolean }) => {
+      await callPortal("bw_panel_toggle_mikrotik", { id });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["bw_panel_mikrotik_devices"] }),
+    onError: (e: any) => toast.error(e.message),
   });
 
   const checkStatus = async (deviceId: string) => {
