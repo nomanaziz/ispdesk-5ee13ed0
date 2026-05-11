@@ -43,6 +43,46 @@ function isPopScopedToken(tok: PortalToken | null): boolean {
   return tok.type === "bw_customer";
 }
 
+function allowPanelOrPop(tok: PortalToken | null): boolean {
+  return !!tok && (tok.type === "reseller" || tok.type === "reseller_sub" || tok.type === "bw_customer");
+}
+
+/**
+ * Unified scope resolver — works for POP admin (reseller/reseller_sub) and BW panel customers.
+ * Returns `{ branchId, popId, isBw, panelActive, tariffId, pop }`.
+ * For BW: popId is null (no branch_managers row), tariffId is null (no admin-defined tariff).
+ */
+async function getScope(sb: ReturnType<typeof createClient>, tok: PortalToken) {
+  if (tok.type === "bw_customer") {
+    const ctx = await resolvePopContext(sb, tok);
+    return {
+      branchId: ctx.branchId as string | null,
+      popId: null as string | null,
+      isBw: true,
+      panelActive: ctx.panelActive,
+      tariffId: null as string | null,
+      pop: null as any,
+    };
+  }
+  if (tok.type === "reseller" || tok.type === "reseller_sub") {
+    const popId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+    const { data: pop } = await sb
+      .from("branch_managers")
+      .select("id, name, branch_id, tariff_id, pop_code, pop_prefix, district_id, upazila_id, server_id")
+      .eq("id", popId)
+      .maybeSingle();
+    return {
+      branchId: (pop as any)?.branch_id || null,
+      popId,
+      isBw: false,
+      panelActive: true,
+      tariffId: (pop as any)?.tariff_id || null,
+      pop,
+    };
+  }
+  return { branchId: null, popId: null, isBw: false, panelActive: false, tariffId: null, pop: null };
+}
+
 async function resolvePopContext(sb: ReturnType<typeof createClient>, tok: PortalToken) {
   if (tok.type === "bw_customer") {
     const { data: customer } = await sb
