@@ -66,10 +66,29 @@ const PortalAuthContext = createContext<PortalAuthContextType>({
 
 export const usePortalAuth = () => useContext(PortalAuthContext);
 
+// Synchronously read the stored portal token so that PortalAuthProvider
+// instances mounted on every route don't briefly flash a null `customer`
+// (which previously caused panel sidebar items to disappear on navigation).
+const readStoredAuth = (): { customer: PortalCustomer | null; token: string | null } => {
+  if (typeof window === "undefined") return { customer: null, token: null };
+  try {
+    const stored = window.localStorage.getItem("portal_token");
+    if (!stored) return { customer: null, token: null };
+    const decoded: PortalCustomer = JSON.parse(atob(stored));
+    if (decoded?.exp && decoded.exp > Date.now()) {
+      return { customer: decoded, token: stored };
+    }
+  } catch {
+    // ignore — treat as not logged in
+  }
+  return { customer: null, token: null };
+};
+
 export const PortalAuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [customer, setCustomer] = useState<PortalCustomer | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initial = readStoredAuth();
+  const [customer, setCustomer] = useState<PortalCustomer | null>(initial.customer);
+  const [token, setToken] = useState<string | null>(initial.token);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Pick up impersonation token from URL hash (one-shot)
