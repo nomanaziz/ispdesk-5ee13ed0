@@ -43,6 +43,46 @@ function isPopScopedToken(tok: PortalToken | null): boolean {
   return tok.type === "bw_customer";
 }
 
+function allowPanelOrPop(tok: PortalToken | null): boolean {
+  return !!tok && (tok.type === "reseller" || tok.type === "reseller_sub" || tok.type === "bw_customer");
+}
+
+/**
+ * Unified scope resolver — works for POP admin (reseller/reseller_sub) and BW panel customers.
+ * Returns `{ branchId, popId, isBw, panelActive, tariffId, pop }`.
+ * For BW: popId is null (no branch_managers row), tariffId is null (no admin-defined tariff).
+ */
+async function getScope(sb: ReturnType<typeof createClient>, tok: PortalToken) {
+  if (tok.type === "bw_customer") {
+    const ctx = await resolvePopContext(sb, tok);
+    return {
+      branchId: ctx.branchId as string | null,
+      popId: null as string | null,
+      isBw: true,
+      panelActive: ctx.panelActive,
+      tariffId: null as string | null,
+      pop: null as any,
+    };
+  }
+  if (tok.type === "reseller" || tok.type === "reseller_sub") {
+    const popId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+    const { data: pop } = await sb
+      .from("branch_managers")
+      .select("id, name, branch_id, tariff_id, pop_code, pop_prefix, district_id, upazila_id, server_id")
+      .eq("id", popId)
+      .maybeSingle();
+    return {
+      branchId: (pop as any)?.branch_id || null,
+      popId,
+      isBw: false,
+      panelActive: true,
+      tariffId: (pop as any)?.tariff_id || null,
+      pop,
+    };
+  }
+  return { branchId: null, popId: null, isBw: false, panelActive: false, tariffId: null, pop: null };
+}
+
 async function resolvePopContext(sb: ReturnType<typeof createClient>, tok: PortalToken) {
   if (tok.type === "bw_customer") {
     const { data: customer } = await sb
@@ -769,21 +809,13 @@ Deno.serve(async (req) => {
       }
 
       case "get_client_form_meta": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub")
-          return json({ error: "Not allowed" }, 403);
-        const resellerId =
-          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
-        if (!resellerId) return json({ error: "No reseller" }, 400);
-
-        const { data: pop } = await sb
-          .from("branch_managers")
-          .select("id, branch_id, tariff_id, server_id, pop_prefix, pop_code, district_id, upazila_id")
-          .eq("id", resellerId)
-          .maybeSingle();
-        if (!pop) return json({ error: "POP not found" }, 404);
-
-        const branchId = pop.branch_id;
-        const tariffId = pop.tariff_id;
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ error: "প্যানেল সাবস্ক্রিপশন এক্সপায়ার্ড" }, 403);
+        const branchId = scope.branchId;
+        if (!branchId) return json({ error: "POP branch পাওয়া যায়নি" }, 400);
+        const tariffId = scope.tariffId;
+        const pop = scope.pop || {};
 
         const [
           tariff, district, upazila,
@@ -791,70 +823,77 @@ Deno.serve(async (req) => {
           connTypes, clientTypes, billingStatuses, protocolTypes,
           mikrotiks, employees,
           tpkgs,
+          allPackages,
         ] = await Promise.all([
           tariffId
             ? sb.from("reseller_tariffs").select("mikrotik_server_id").eq("id", tariffId).maybeSingle()
             : Promise.resolve({ data: null } as any),
-          pop.district_id
-            ? sb.from("districts").select("name").eq("id", pop.district_id).maybeSingle()
+          (pop as any).district_id
+            ? sb.from("districts").select("name").eq("id", (pop as any).district_id).maybeSingle()
             : Promise.resolve({ data: null } as any),
-          pop.upazila_id
-            ? sb.from("upazilas").select("name").eq("id", pop.upazila_id).maybeSingle()
+          (pop as any).upazila_id
+            ? sb.from("upazilas").select("name").eq("id", (pop as any).upazila_id).maybeSingle()
             : Promise.resolve({ data: null } as any),
-          branchId
-            ? sb.from("zones").select("id, name").eq("status", "active").eq("branch_id", branchId)
-            : Promise.resolve({ data: [] } as any),
-          branchId
-            ? sb.from("sub_zones").select("id, name, zone_id").eq("status", "active").eq("branch_id", branchId)
-            : Promise.resolve({ data: [] } as any),
-          branchId
-            ? sb.from("boxes").select("id, name, zone_id").eq("status", "active").eq("branch_id", branchId)
-            : Promise.resolve({ data: [] } as any),
+          sb.from("zones").select("id, name").eq("status", "active").eq("branch_id", branchId),
+          sb.from("sub_zones").select("id, name, zone_id").eq("status", "active").eq("branch_id", branchId),
+          sb.from("boxes").select("id, name, zone_id").eq("status", "active").eq("branch_id", branchId),
           sb.from("connection_types_config").select("id, name").eq("status", "active"),
           sb.from("client_types").select("id, name").eq("status", "active"),
           sb.from("billing_statuses").select("id, name").eq("status", "active"),
           sb.from("protocol_types").select("id, name").eq("status", "active"),
-          sb.from("mikrotik_devices").select("id, name"),
-          branchId
-            ? sb.from("employees").select("id, name").eq("status", "active").eq("branch_id", branchId)
-            : Promise.resolve({ data: [] } as any),
+          // BW: only this branch's mikrotik servers (admin POP: legacy behaviour shows all)
+          scope.isBw
+            ? sb.from("mikrotik_devices").select("id, name").eq("branch_id", branchId).eq("enabled", true)
+            : sb.from("mikrotik_devices").select("id, name"),
+          sb.from("employees").select("id, name").eq("status", "active").eq("branch_id", branchId),
           tariffId
             ? sb.from("reseller_tariff_packages")
                 .select("id, package_id, selling_rate, mikrotik_profile, mikrotik_server_id, isp_packages(id, name, bandwidth_down, price)")
                 .eq("tariff_id", tariffId)
             : Promise.resolve({ data: [] } as any),
+          // BW: fall back to all active ISP packages (no POP-tariff layer)
+          scope.isBw
+            ? sb.from("isp_packages").select("id, name, bandwidth_down, price").eq("status", "active")
+            : Promise.resolve({ data: [] } as any),
         ]);
 
         const defaultServerId =
-          (tariff as any)?.data?.mikrotik_server_id || pop.server_id || null;
+          (tariff as any)?.data?.mikrotik_server_id || (pop as any).server_id || null;
 
-        // POP-specific selling rates
-        const tpkgRows = ((tpkgs as any).data || []).filter((p: any) => p.isp_packages);
-        let popPriceMap = new Map<string, number>();
-        if (tpkgRows.length) {
-          const { data: pricing } = await sb
-            .from("pop_package_pricing")
-            .select("tariff_package_id, pop_selling_rate")
-            .eq("branch_manager_id", resellerId)
-            .in("tariff_package_id", tpkgRows.map((r: any) => r.id));
-          popPriceMap = new Map(
-            (pricing || []).map((r: any) => [r.tariff_package_id, Number(r.pop_selling_rate ?? 0)]),
-          );
+        let packages: any[];
+        if (scope.isBw) {
+          packages = ((allPackages as any).data || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            bandwidth_down: p.bandwidth_down,
+            price: Number(p.price ?? 0),
+            mikrotik_profile: null,
+            mikrotik_server_id: null,
+          }));
+        } else {
+          const tpkgRows = ((tpkgs as any).data || []).filter((p: any) => p.isp_packages);
+          let popPriceMap = new Map<string, number>();
+          if (tpkgRows.length && scope.popId) {
+            const { data: pricing } = await sb
+              .from("pop_package_pricing")
+              .select("tariff_package_id, pop_selling_rate")
+              .eq("branch_manager_id", scope.popId)
+              .in("tariff_package_id", tpkgRows.map((r: any) => r.id));
+            popPriceMap = new Map(
+              (pricing || []).map((r: any) => [r.tariff_package_id, Number(r.pop_selling_rate ?? 0)]),
+            );
+          }
+          packages = tpkgRows.map((p: any) => ({
+            id: p.isp_packages.id,
+            name: p.isp_packages.name,
+            bandwidth_down: p.isp_packages.bandwidth_down,
+            price: popPriceMap.get(p.id) ?? Number(p.selling_rate ?? 0),
+            mikrotik_profile: p.mikrotik_profile || null,
+            mikrotik_server_id: p.mikrotik_server_id || null,
+          }));
         }
 
-        const packages = tpkgRows.map((p: any) => ({
-          id: p.isp_packages.id,
-          name: p.isp_packages.name,
-          bandwidth_down: p.isp_packages.bandwidth_down,
-          price: popPriceMap.get(p.id) ?? Number(p.selling_rate ?? 0),
-          mikrotik_profile: p.mikrotik_profile || null,
-          mikrotik_server_id: p.mikrotik_server_id || null,
-        }));
-
-        // Generate next client code preview using the same pattern as set_client_code trigger
-        // Format: <pop_code>-<6-digit-seq>. We don't consume the sequence here — use COUNT-based suggestion.
-        const popPrefix = pop.pop_prefix || pop.pop_code || "0000";
-        // Find last code matching prefix to suggest next
+        const popPrefix = (pop as any).pop_prefix || (pop as any).pop_code || (scope.isBw ? "BW" : "0000");
         const { data: lastClient } = await sb
           .from("clients")
           .select("client_id")
@@ -869,7 +908,6 @@ Deno.serve(async (req) => {
         }
         const nextClientCode = `${popPrefix}-${String(nextNum).padStart(6, "0")}`;
 
-        // Server name lookup
         let serverName: string | null = null;
         if (defaultServerId) {
           const srv = ((mikrotiks as any).data || []).find((m: any) => m.id === defaultServerId);
@@ -899,8 +937,7 @@ Deno.serve(async (req) => {
       }
 
       case "check_client_code_unique": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub")
-          return json({ error: "Not allowed" }, 403);
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
         const code = String(payload.client_id || "").trim();
         if (!code) return json({ unique: true });
         const { data } = await sb
@@ -912,29 +949,42 @@ Deno.serve(async (req) => {
       }
 
       case "create_client": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub")
-          return json({ error: "Not allowed" }, 403);
-        const resellerId =
-          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
-        const { data: pop } = await sb
-          .from("branch_managers")
-          .select("id, branch_id, district_id, upazila_id, balance, tariff_id")
-          .eq("id", resellerId)
-          .maybeSingle();
-        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ error: "প্যানেল সাবস্ক্রিপশন এক্সপায়ার্ড" }, 403);
+        if (!scope.branchId) return json({ error: "POP branch not found" }, 400);
 
         const p = payload || {};
-        const { mobile: legacyMobile, profile: _ignoredProfile, mikrotik_profile: _ignoredMP, mikrotik_id: _ignoredMI, server_name: _ignoredSN, monthly_bill: _ignoredMB, ...safePayload } = p;
+        const { mobile: legacyMobile, ...safePayload } = p as any;
         if (!p.name || !p.client_id) return json({ error: "নাম ও ক্লায়েন্ট কোড আবশ্যক" }, 400);
 
+        // ─── BW Panel path: simple insert (no tariff/wallet checks) ───
+        if (scope.isBw) {
+          const insertRow: any = {
+            ...safePayload,
+            contact: p.contact ?? legacyMobile ?? null,
+            branch_id: scope.branchId,
+            owner_scope: "pop",
+          };
+          const { data: inserted, error } = await sb
+            .from("clients")
+            .insert(insertRow)
+            .select("id")
+            .single();
+          if (error) return json({ error: error.message }, 500);
+          return json({ ok: true, id: inserted?.id });
+        }
+
+        // ─── POP admin path (tariff-based, prepaid wallet) ───
+        const pop = scope.pop;
         // Enforce: package_id MUST be in this POP's tariff. No silent fallback.
         if (!p.package_id) return json({ error: "Package required" }, 400);
-        if (!pop.tariff_id) return json({ error: "এই POP-এ tariff assigned নেই" }, 400);
+        if (!scope.tariffId) return json({ error: "এই POP-এ tariff assigned নেই" }, 400);
 
         const { data: tpkg } = await sb
           .from("reseller_tariff_packages")
           .select("selling_rate, validity_days, mikrotik_profile, mikrotik_server_id, package_id, mikrotik_devices:mikrotik_devices!reseller_tariff_packages_mikrotik_server_id_fkey(id, name)")
-          .eq("tariff_id", pop.tariff_id)
+          .eq("tariff_id", scope.tariffId)
           .eq("package_id", p.package_id)
           .eq("status", "active")
           .maybeSingle();
@@ -950,28 +1000,27 @@ Deno.serve(async (req) => {
         const forcedServerName = (tpkg as any)?.mikrotik_devices?.name || null;
 
         const isActiveBilling = String(p.billing_status || "Active").toLowerCase() === "active";
-        const walletBalance = Number(pop.balance || 0);
+        const walletBalance = Number((pop as any)?.balance || 0);
         if (isActiveBilling && buyPrice > 0 && walletBalance < buyPrice) {
           return json({
             error: `INSUFFICIENT_BALANCE: প্যাকেজ ৳${buyPrice} — wallet balance ৳${walletBalance.toFixed(2)}। আগে recharge করুন।`,
           }, 400);
         }
 
-        // Force scope to this POP's branch + set prepaid expire_date
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const exp = new Date(today);
         exp.setDate(exp.getDate() + validityDays);
         const expIso = exp.toISOString().slice(0, 10);
 
+        const { profile: _ignoredProfile, mikrotik_profile: _ignoredMP, mikrotik_id: _ignoredMI, server_name: _ignoredSN, monthly_bill: _ignoredMB, ...stripped } = safePayload;
         const insertRow: any = {
-          ...safePayload,
+          ...stripped,
           contact: p.contact ?? legacyMobile ?? null,
-          branch_id: pop.branch_id,
-          district_id: pop.district_id || null,
-          upazila_id: pop.upazila_id || null,
+          branch_id: scope.branchId,
+          district_id: (pop as any)?.district_id || null,
+          upazila_id: (pop as any)?.upazila_id || null,
           owner_scope: "pop",
-          // Force from tariff package — prevents profile/MB leak
           profile: forcedProfile,
           mikrotik_id: forcedMikrotikId,
           server_name: forcedServerName,
@@ -986,20 +1035,17 @@ Deno.serve(async (req) => {
           .single();
         if (error) return json({ error: error.message }, 500);
 
-        // Deduct wallet for the activation cycle (idempotent ledger via pop_daily_charges)
         if (isActiveBilling && inserted?.id && buyPrice > 0) {
           const { error: rpcErr } = await sb.rpc("pop_recharge_client_days", {
             p_client_id: inserted.id,
             p_days: validityDays,
           });
           if (rpcErr) {
-            // Roll back client insert if wallet deduction fails (race condition)
             await sb.from("clients").delete().eq("id", inserted.id);
             return json({ error: rpcErr.message }, 400);
           }
         }
 
-        // Auto-generate first billing row (prorated) — admin-side bookkeeping only
         if (inserted?.id && isActiveBilling && buyPrice > 0) {
           const joinStr = p.joining_date || new Date().toISOString().slice(0, 10);
           const join = new Date(joinStr + "T00:00:00");
@@ -1023,7 +1069,7 @@ Deno.serve(async (req) => {
             due: amount,
             status: "unpaid",
             generated: true,
-            branch_id: pop.branch_id,
+            branch_id: scope.branchId,
           });
         }
 
@@ -1075,20 +1121,13 @@ Deno.serve(async (req) => {
       }
 
       case "get_pop_client_profile": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
-          return json({ error: "Not allowed" }, 403);
-        }
-        const resellerId =
-          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ error: "প্যানেল সাবস্ক্রিপশন এক্সপায়ার্ড" }, 403);
+        if (!scope.branchId) return json({ error: "POP branch not found" }, 400);
         const clientId = String(payload.client_id || "");
         if (!clientId) return json({ error: "Client is required" }, 400);
-
-        const { data: pop } = await sb
-          .from("branch_managers")
-          .select("branch_id")
-          .eq("id", resellerId)
-          .maybeSingle();
-        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+        const pop = { branch_id: scope.branchId };
 
         const { data: client, error: cErr } = await sb
           .from("clients")
@@ -1141,17 +1180,11 @@ Deno.serve(async (req) => {
       }
 
       case "list_pop_billing_clients": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
-          return json({ error: "Not allowed" }, 403);
-        }
-        const resellerId =
-          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
-        const { data: pop } = await sb
-          .from("branch_managers")
-          .select("branch_id")
-          .eq("id", resellerId)
-          .maybeSingle();
-        if (!pop?.branch_id) return json({ clients: [] });
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ clients: [] });
+        if (!scope.branchId) return json({ clients: [] });
+        const pop = { branch_id: scope.branchId };
 
         const { data: clients, error } = await sb
           .from("clients")
@@ -1178,15 +1211,15 @@ Deno.serve(async (req) => {
       }
 
       case "ensure_pop_client_bill": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
-        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ error: "প্যানেল সাবস্ক্রিপশন এক্সপায়ার্ড" }, 403);
+        if (!scope.branchId) return json({ error: "POP branch not found" }, 400);
         const monthKey = String(payload.month || new Date().toISOString().slice(0, 7));
         const monthStart = `${monthKey}-01`;
         const clientId = String(payload.client_id || "");
         if (!clientId) return json({ error: "Client is required" }, 400);
-
-        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
-        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+        const pop = { branch_id: scope.branchId };
 
         const { data: client } = await sb
           .from("clients")
@@ -1226,13 +1259,13 @@ Deno.serve(async (req) => {
       }
 
       case "list_pop_daily_collections": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
-        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ collections: [] });
+        if (!scope.branchId) return json({ collections: [] });
         const fromDate = String(payload.fromDate || new Date().toISOString().slice(0, 10));
         const toDate = String(payload.toDate || new Date().toISOString().slice(0, 10));
-        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
-        if (!pop?.branch_id) return json({ collections: [] });
-        const { data: branchClients } = await sb.from("clients").select("id").eq("branch_id", pop.branch_id);
+        const { data: branchClients } = await sb.from("clients").select("id").eq("branch_id", scope.branchId);
         const clientIds = (branchClients || []).map((c: any) => c.id);
         if (!clientIds.length) return json({ collections: [] });
         const { data, error } = await sb
@@ -1251,10 +1284,11 @@ Deno.serve(async (req) => {
       }
 
       case "receive_pop_bill": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
-        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
-        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
-        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ error: "প্যানেল সাবস্ক্রিপশন এক্সপায়ার্ড" }, 403);
+        if (!scope.branchId) return json({ error: "POP branch not found" }, 400);
+        const pop = { branch_id: scope.branchId };
         const clientId = String(payload.client_id || "");
         if (!clientId) return json({ error: "Client is required" }, 400);
         const amount = Number(payload.amount || 0);
@@ -2781,6 +2815,91 @@ Deno.serve(async (req) => {
         const { error } = await sb.from("clients").update({ auto_recharge_enabled: enabled }).in("id", allowed);
         if (error) return json({ error: error.message }, 400);
         return json({ ok: true, updated: allowed.length, enabled });
+      }
+
+      // ===== BW Panel: MikroTik device CRUD (service-role; bypasses admin RLS) =====
+      case "bw_panel_list_mikrotik":
+      case "bw_panel_create_mikrotik":
+      case "bw_panel_update_mikrotik":
+      case "bw_panel_delete_mikrotik":
+      case "bw_panel_toggle_mikrotik": {
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ error: "প্যানেল সাবস্ক্রিপশন এক্সপায়ার্ড" }, 403);
+        if (!scope.branchId) return json({ error: "POP branch পাওয়া যায়নি" }, 400);
+        const branchId = scope.branchId;
+
+        if (action === "bw_panel_list_mikrotik") {
+          const { data, error } = await sb
+            .from("mikrotik_devices")
+            .select("*")
+            .eq("branch_id", branchId)
+            .order("order_no", { ascending: true, nullsFirst: false })
+            .order("created_at", { ascending: true });
+          if (error) return json({ error: error.message }, 500);
+          return json({ devices: data || [] });
+        }
+
+        if (action === "bw_panel_create_mikrotik") {
+          const p = payload || {};
+          if (!p.name || !p.ip_address || !p.username) {
+            return json({ error: "name, ip_address, username আবশ্যক" }, 400);
+          }
+          const insertRow: any = {
+            name: p.name,
+            ip_address: p.ip_address,
+            username: p.username,
+            password_encrypted: p.password_encrypted || "",
+            api_port: Number(p.api_port || 8728),
+            version: p.version || "6.43_or_older",
+            timeout: Number(p.timeout || 10),
+            order_no: p.order_no ?? null,
+            status: "unknown",
+            enabled: true,
+            branch_id: branchId,
+            assigned_to_pop_id: scope.popId || null,
+          };
+          const { data, error } = await sb.from("mikrotik_devices").insert(insertRow).select("*").single();
+          if (error) return json({ error: error.message }, 500);
+          return json({ ok: true, device: data });
+        }
+
+        // For update/delete/toggle: enforce branch ownership
+        const id = String(payload.id || "");
+        if (!id) return json({ error: "id আবশ্যক" }, 400);
+        const { data: existing } = await sb
+          .from("mikrotik_devices")
+          .select("id, branch_id, enabled")
+          .eq("id", id)
+          .maybeSingle();
+        if (!existing || existing.branch_id !== branchId) {
+          return json({ error: "ডিভাইস এই branch-এর নয়" }, 403);
+        }
+
+        if (action === "bw_panel_update_mikrotik") {
+          const p = payload || {};
+          const patch: any = {};
+          for (const k of ["name", "ip_address", "username", "password_encrypted", "api_port", "version", "timeout", "order_no"]) {
+            if (k in p) patch[k] = p[k];
+          }
+          const { error } = await sb.from("mikrotik_devices").update(patch).eq("id", id);
+          if (error) return json({ error: error.message }, 500);
+          return json({ ok: true });
+        }
+
+        if (action === "bw_panel_delete_mikrotik") {
+          const { error } = await sb.from("mikrotik_devices").delete().eq("id", id);
+          if (error) return json({ error: error.message }, 500);
+          return json({ ok: true });
+        }
+
+        // toggle
+        const nextEnabled = !existing.enabled;
+        const updates: any = { enabled: nextEnabled };
+        if (!nextEnabled) updates.status = "offline";
+        const { error } = await sb.from("mikrotik_devices").update(updates).eq("id", id);
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true, enabled: nextEnabled });
       }
 
       default:
