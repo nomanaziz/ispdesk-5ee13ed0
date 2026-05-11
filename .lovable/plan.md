@@ -1,113 +1,118 @@
+# Unify Bandwidth Portal (one sidebar, one dashboard)
 
-# Unify Portals — Design + Payments
+Right now a Bandwidth customer sees two completely separate portals: `/bw/*` (BwCustomerLayout) for billing/orders, and `/bw-panel/*` (BwPanelLayout) for MikroTik/clients. After they activate the panel they jump between two shells with two dashboards. The user wants this collapsed into **one portal with one sidebar**, where panel-only menus appear/disappear based on subscription status.
 
-দুইটা বড় কাজ এখানে আছে:
+## 1. Single layout & route namespace
 
-1. **Design unification** — Main admin portal এর নতুন design (Icons8/Hishabee custom icons, নতুন widget pattern, sidebar এর menu-link style) সব portal এ apply করা।
-2. **Recharge/Payment system integration** — সব portal এ same payment methods, কিন্তু আলাদা accounting bucket।
+- Make `BwCustomerLayout` the **only** shell. Delete `BwPanelLayout` usage.
+- Keep all routes under `/bw/*`. Migrate every `/bw-panel/*` route to `/bw/panel/*` and add redirects from the old paths so old links/bookmarks still work.
+- Remove the "Open My Panel" CTA card and the "← Back to Billing" pill — they no longer make sense once it's one shell.
 
-কাজটা একসাথে করলে অনেক বড় হবে এবং ভুল হওয়ার risk বেশি, তাই step-by-step portal-by-portal এগোবো।
+## 2. One sidebar, two states
 
----
+Single sidebar with grouped menu (icons fixed via `Icons8Icon` / `resolveIcons8`, same pattern as POP Admin):
 
-## Portal map
+**Always visible (billing customer):**
+- Dashboard
+- Billing & Invoices
+- Service Orders (Upgrade / Downgrade requests)
+- Support Tickets
+- Company Settings
 
-| # | Portal | Path | Layout file | Sidebar file |
-|---|--------|------|-------------|--------------|
-| 1 | Admin (main) — ✅ already done | `/dashboard/*` | `DashboardLayout.tsx` | `AppSidebar.tsx` |
-| 2 | POP / Branch Manager (Reseller) | `/reseller/*` | `ResellerLayout.tsx` | `portal-shell/ResellerSidebar.tsx` |
-| 3 | Bandwidth Buyer Panel | `/bw-panel/*` | `BwPanelLayout.tsx` | (inline) |
-| 4 | Bandwidth Customer | `/bw-customer/*` | `BwCustomerLayout.tsx` | (inline) |
-| 5 | End-user Portal (shared by admin's users, POP's users, BW reseller's users) | `/portal/*` | `PortalLayout.tsx` | `portal-shell/PortalSidebar.tsx` |
+**Visible only when `panel_access_enabled && panel_subscription_expires_at > now`:**
+- MikroTik Servers
+- Clients (List / Add / Bulk Import)
+- Billing List / Daily Collection
+- Online Monitoring
+- SMS (Templates / Send / Gateway)
+- Employees
+- Accounting (Income / Expense / Cash Book)
+- Reports (Bill Collection / Customer / Financial)
 
----
+When the panel is inactive, those entries are simply hidden (not greyed out). A small "Activate Panel" pill stays in the sidebar header so the trial user can upgrade.
 
-## Phase A — Design unification (one portal per step)
+## 3. Unified dashboard (`/bw/dashboard`)
 
-প্রতিটা portal এ একই কাজ:
-- `lucide-react` extra icons বাদ দিয়ে main portal এর custom icon set (Icons8Icon / HishabeeIcon) ব্যবহার করা।
-- Sidebar কে main portal এর মত menu-link pattern এ আনা (same collapse behavior, same spacing, same active state)।
-- Dashboard widget গুলো main portal এর `KpiCard`, `MetricTile`, `ResourceGauge`, `InfoList`, `ImportantLinksSection` pattern এ migrate করা।
-- TopBar / breadcrumbs / theme tokens main portal এর সাথে align করা।
+Single page replacing both `BwDashboard.tsx` and `BwPanelDashboard.tsx`.
 
-### Step A1 — Reseller (POP / Branch Manager) portal
-- `ResellerSidebar.tsx` rewrite → main `AppSidebar` এর menu-link structure follow করবে।
-- `ResellerDashboard.tsx` widget গুলো main `Dashboard.tsx` এর pattern এ refactor।
-- Icon swap (lucide → custom icons set)।
+**Top — "Relationship with Admin" summary card (always shown):**
+- Customer name, code, contact info
+- Subscribed services chips: Internet, FNN, GGC, BDX (derived from active `bw_sales_invoices` / package metadata)
+- Total Due, This-Month Paid, Last Invoice, Next Due Date (existing KPIs)
+- Quick links: New Service Order, Pay Now (online), Company Settings
+- Recent invoices (5) + Recent service orders (5)
 
-### Step A2 — Bandwidth Panel (`/bw-panel`)
-- `BwPanelLayout.tsx` এর inline sidebar → `portal-shell` style এ extract করে main pattern এ।
-- `BwPanelDashboard.tsx` widget refactor।
+**Bottom — Panel summary (only when panel active):**
+- KPIs: Total Clients, Online Now, MikroTik Servers, Daily Collection, Employees
+- Top performing clients (by traffic)
+- Quick tiles: Add Client, Billing, Online Monitoring, Send SMS, Reports
 
-### Step A3 — Bandwidth Customer (`/bw-customer`)
-- Same treatment as A2 for `BwCustomerLayout.tsx` + `BwDashboard.tsx`।
+When panel inactive, the bottom section is replaced by a single "Unlock Panel" promo card.
 
-### Step A4 — End-user Portal (`/portal`)
-- `PortalSidebar.tsx` + `PortalTopBar.tsx` কে main pattern এর সাথে fully align।
-- `PortalDashboard.tsx` widget refactor।
-- **Company info section**: portal owner অনুযায়ী contact info dynamic হবে —
-  - Admin's user → admin company info (name fixed: GalaxyNet, contact = admin setup contact)
-  - POP's user → POP manager এর setup contact
-  - BW reseller's user → BW reseller এর portal-setup contact
-  - এটা already partially আছে কি না check করে missing piece add করব।
+## 4. Service Orders rework
 
----
+Replace generic "Purchase Orders" UI with two-action flow:
 
-## Phase B — Payment / Recharge unification
+- **Bandwidth Upgrade** — instant request; once approved, takes effect immediately, billing prorated from approval date.
+- **Bandwidth Downgrade** — requires **minimum 1 month notice**. Form forces `effective_date >= today + 30 days` and shows a notice banner explaining the rule.
 
-Main admin portal এ যে payment/recharge integration আছে, সেটাকে reusable করে সব portal এ plug করব।
+List page shows both upgrade and downgrade requests with status (pending/approved/rejected/scheduled).
 
-### B1 — Shared payment module
-- `src/components/payments/` এ shared components: `PayButton`, `RechargeDialog`, `PaymentMethodPicker`, `PaymentHistory` ইত্যাদি extract করা (যেগুলো main portal এ আছে সেগুলো থেকে)।
-- সব gateway method (existing recharge server methods) একই module থেকে আসবে।
+Backend: reuse existing `bw_purchase_orders` table by adding/using a `request_type` column (`upgrade` | `downgrade`) and `effective_date`. Validation lives in the create dialog; admin-side approval flow stays as-is.
 
-### B2 — Per-portal accounting buckets
-নতুন/extended Supabase tables দরকার হবে যাতে প্রতিটা owner এর হিসাব আলাদা থাকে:
-- `wallet_accounts (owner_type, owner_id, balance, currency)` — owner_type: `admin_user`, `pop_manager`, `bw_reseller`, `client`
-- `wallet_transactions (wallet_id, type [credit/debit], amount, source [recharge/bill/manual], reference_id, gateway_txn_id, created_at)`
-- RLS: প্রত্যেকে শুধু নিজের wallet/transactions দেখবে; admin সব দেখবে।
+## 5. Bulk Client Import — back navigation
 
-(Schema final করার আগে user এর কাছে confirm করব কোন owner কোন currency / minimum recharge amount allow করবে।)
+`BulkClientImportHub` (used at `/bw-panel/clients/bulk`, will move to `/bw/panel/clients/bulk`) currently has no exit. Add a standard page header with:
+- "← Back to Clients" button (navigates to `/bw/panel/clients`)
+- Breadcrumb: Dashboard › Clients › Bulk Import
 
-### B3 — Plug into each portal
-- **Admin's direct users** (`/portal`) → already has pay flow; verify + standardize।
-- **POP managers** (`/reseller`) → "Recharge Fund" + bill এ "Pay Online" button।
-- **BW resellers** (`/bw-panel`) → same — fund recharge + bill pay।
-- **BW customers** (`/bw-customer`) → invoice এ "Pay Online" button।
-- **Clients** (end-users in `/portal`) → already; ensure all gateways available।
+Apply same back-header pattern to other deep panel pages that lack it (Add Client, Add Employee, SMS Send) for consistency.
 
-### B4 — Accounting separation
-- প্রতিটা successful payment ঠিক owner এর wallet এ credit হবে।
-- Admin dashboard এ consolidated view (filter by owner_type)।
-- POP / BW reseller dashboard এ শুধু নিজের ledger।
+## 6. Invoices — keep with online pay
 
----
+Invoices page stays as a standalone route (`/bw/invoices`) and keeps the existing "Pay Online" button (bKash / Nagad / SSLCommerz already wired). Just re-skin to match the new unified header.
 
-## Execution order
+## 7. Sidebar icon fixes
 
-আমি এই order এ এগোবো এবং প্রতিটা step এর শেষে preview check করব:
+The current BW sidebar has plain Lucide icons even though `Icons8Icon` is imported. Bind every menu entry to its `icons8` slug (same set the POP Admin sidebar uses) so the colorful PNGs appear in both desktop sidebar and mobile bottom bar:
 
-1. A1 — Reseller portal design
-2. A2 — BW Panel design
-3. A3 — BW Customer design
-4. A4 — End-user portal design + dynamic company info
-5. B1 — Shared payment module extraction
-6. B2 — Wallet/accounting schema migration (approval নিয়ে)
-7. B3 — Plug payment into each portal
-8. B4 — Per-owner ledger views
+| Menu | icons8 slug |
+|---|---|
+| Dashboard | `business` |
+| Billing & Invoices | `folder-invoices` |
+| Service Orders | `purchase-order` |
+| Support Tickets | `online-support` |
+| Company Settings | `settings` |
+| MikroTik | `router` |
+| Clients | `conference-call` |
+| Bulk Import | `import` |
+| Billing List | `bill` |
+| Daily Collection | `cash-in-hand` |
+| Online Monitoring | `wifi-router` |
+| SMS | `sms` |
+| Employees | `manager` |
+| Accounting | `accounting` |
+| Reports | `combo-chart` |
 
----
+## Technical details
 
-## Technical notes
+**Files to edit:**
+- `src/components/BwCustomerLayout.tsx` — expand sidebar with grouped menu + conditional panel groups; remove "Open My Panel" upgrade card (replace with thin "Activate" pill in trial mode).
+- `src/pages/bw-customer/BwDashboard.tsx` — fold panel KPIs into a conditional section.
+- `src/pages/bw-customer/BwPurchaseOrders.tsx` → rename concept to `BwServiceOrders.tsx`; add upgrade/downgrade dialogs with the 30-day rule.
+- `src/App.tsx` — move every `/bw-panel/*` route under `/bw/panel/*` wrapped in `BwCustomerLayout`; add legacy redirects; drop `BwPanelLayout` usage.
+- `src/pages/reseller/clients/BulkClientImportHub.tsx` — add `PageHeader` with back link + breadcrumb (only when rendered inside `/bw/*`).
 
-- কোনো hardcoded color use করব না — শুধু `index.css` / `tailwind.config.ts` semantic tokens।
-- Sidebar collapsed/expanded behavior, hover states, active indicator — main portal এর exact tokens।
-- Icon migration এর সময় missing custom icon থাকলে `Icons8Icon` set এ add করব।
-- Wallet schema multi-tenant safe — প্রতিটা row এ `tenant_id` থাকবে এবং RLS এ enforce হবে।
-- Payment gateway secrets আগেই configured আছে কিনা `fetch_secrets` দিয়ে check করে নেব B1 এর আগে।
+**Files to delete:**
+- `src/components/BwPanelLayout.tsx`
+- `src/pages/bw-panel/BwPanelDashboard.tsx`
 
----
+**Schema:** add `request_type text` and `effective_date date` to `bw_purchase_orders` (migration). Keep RLS unchanged.
 
-## Confirm before I start
+**Auth/guards:** `BwPanelProtectedRoute` becomes a per-route guard on the panel-only routes inside the unified layout — it just checks `panel_access_enabled` and redirects to `/bw/dashboard` with a toast if disabled.
 
-আমি **Step A1 (Reseller portal design unification)** দিয়ে শুরু করতে চাই। Approve করলে এক এক করে সব step finish করব, প্রতিটা step এর পরে preview এ verify করে পরের টায় যাব।
+## Out of scope (do later)
+
+- Wiring real-time client/MikroTik counters into the dashboard panel section (placeholders for now).
+- Public pricing page for the panel trial-to-paid upgrade flow.
+- Mobile redesign of the new merged dashboard beyond the existing responsive grid.
