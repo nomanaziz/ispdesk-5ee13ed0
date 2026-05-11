@@ -82,18 +82,14 @@ export default function BwDashboard() {
   return (
     <div className="space-y-5">
       {/* ====== Section 1: Relationship with Admin (always visible) ====== */}
-      <Card className="bg-gradient-to-r from-primary to-primary/70 text-primary-foreground border-0">
-        <CardContent className="p-6 flex items-start justify-between flex-wrap gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs font-medium text-primary-foreground/80 uppercase tracking-wider">
-              <Sparkles className="h-4 w-4" />
-              {t("আমার অ্যাকাউন্ট", "My Account")}
-            </div>
-            <h1 className="text-2xl font-bold">{customer?.name}</h1>
-            <p className="text-primary-foreground/80 text-sm">
+      <Card className="bg-gradient-to-r from-primary to-primary/70 text-primary-foreground border-0 rounded-2xl">
+        <CardContent className="p-5 flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-xl font-bold">{customer?.name}</h1>
+            <p className="text-primary-foreground/80 text-xs mt-0.5">
               {customer?.contact_person || "—"} · {customer?.mobile || customer?.email || "—"}
             </p>
-            <div className="flex items-center gap-1.5 flex-wrap pt-1">
+            <div className="flex items-center gap-1.5 flex-wrap pt-2">
               {services.map((s) => (
                 <Badge key={s} className="bg-primary-foreground/15 text-primary-foreground border-primary-foreground/30 border text-[10px]">
                   {s}
@@ -101,13 +97,13 @@ export default function BwDashboard() {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
             <div>
-              <div className="text-primary-foreground/60 text-xs uppercase">Customer Code</div>
+              <div className="text-primary-foreground/60 text-[10px] uppercase tracking-wide">Customer Code</div>
               <div className="font-semibold">{customer?.code || "—"}</div>
             </div>
             <div>
-              <div className="text-primary-foreground/60 text-xs uppercase">Status</div>
+              <div className="text-primary-foreground/60 text-[10px] uppercase tracking-wide">Status</div>
               <div className="font-semibold">{panelActive ? "Panel Active" : "Billing Only"}</div>
             </div>
           </div>

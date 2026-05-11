@@ -1,41 +1,44 @@
-## Plan
+## Goal
+Bandwidth admin portal-কে main ERP portal-এর same pattern-এ আনব: sidebar/menu, icon, active submenu indicator, এবং dashboard widgets সব একরকম polished হবে।
 
-1. **Fix MikroTik create/update/delete for Bandwidth Admin**
-   - Stop writing `mikrotik_devices` directly from the BW portal, because BW portal sessions are custom portal tokens and do not satisfy Supabase `auth.uid()` RLS policies.
-   - Add secure `portal-data` actions for BW/POP-scoped MikroTik device management:
-     - list devices for the active panel branch
-     - create device in the customer’s `panel_branch_id`
-     - update/delete/toggle only devices belonging to that branch
-   - Keep panel subscription validation: if `panel_access_enabled` is false or expired, return a controlled error instead of allowing writes.
+## Implementation plan
 
-2. **Fix BW panel pages that show repeated “Not allowed” errors**
-   - Extend the already-started `isPopScopedToken + resolvePopContext` pattern to the POP endpoints reused by BW panel pages, including:
-     - add-client metadata: `get_client_form_meta`
-     - client detail/profile
-     - billing list, daily collection, bill receive
-     - scheduler, employee, SMS/template, dashboard/report/recharge related actions that are used inside `/bw/panel/*`
-   - Replace hardcoded `tok.type === reseller/reseller_sub` checks with branch-scoped checks where BW admin should be allowed.
-   - Make sure every action uses the resolved branch context, not an untrusted branch id from the browser.
+1. **Bandwidth sidebar pattern replace**
+   - `BwCustomerLayout` থেকে পুরনো uploaded/Icons8 icon dependency পুরো সরানো হবে।
+   - Main portal-এর `MenuIconTile` + `tintForLabel` pattern ব্যবহার করা হবে।
+   - Group menu, single menu, submenu—সব জায়গায় Lucide icon + colored square tile থাকবে।
 
-3. **Update BW MikroTik page frontend**
-   - Change `BwPanelMikrotikServers.tsx` to call `portal-data` for create/update/delete/toggle instead of direct Supabase table mutations.
-   - Keep direct reads only if safe, or move reads to the new portal action for consistency.
-   - Show user-friendly Bengali errors such as “প্যানেল active নয়” or “POP branch পাওয়া যায়নি” instead of raw RLS messages.
+2. **Active menu/submenu indicator fix**
+   - Main `AppSidebar` pattern copy করে:
+     - active parent group-এর left vertical indicator থাকবে।
+     - open submenu list-এর left border থাকবে।
+     - selected submenu-এর ছোট horizontal connector line + active vertical marker থাকবে।
+   - এখন যে “দাগ/link” inconsistent আসে সেটি ঠিক করে exact selected state দেখানো হবে।
 
-4. **Fix BW add-client navigation after save**
-   - `AddClient.tsx` currently redirects POP-mode saves to `/pop-admin/clients`; in BW panel context it should redirect back to `/bw/panel/clients`.
-   - Also update the back/navigation behavior where reused POP pages still point to `/pop-admin/*`.
+3. **Menu structure cleanup**
+   - `/bw/*` billing/customer menus এবং `/bw/panel/*` admin-panel menus এক sidebar-এ রাখা হবে।
+   - Panel active না হলে শুধু billing/basic menu থাকবে; active হলে MikroTik, Clients, Billing, Monitoring, Tickets, SMS, Employees, Accounting, Reports menu দেখাবে।
+   - Menu route matching order ঠিক করা হবে, যাতে `/bw/panel/clients/add` ভুলভাবে `/bw/panel/clients` active না দেখায়।
 
-5. **Replace old uploaded Icons8 icons in BW sidebar**
-   - Remove `Icons8Icon` / `hasIcons8Icon` usage from `BwCustomerLayout.tsx`.
-   - Use the same app pattern as the main admin sidebar: Lucide icons rendered through `MenuIconTile` with `tintForLabel`.
-   - Add BW-specific tint labels where needed so Dashboard, Billing, MikroTik, Clients, SMS, Reports, etc. look consistent.
+4. **Header/sidebar visual alignment**
+   - Sidebar background, border, search input, menu spacing, typography, hover/active colors main portal-এর style অনুযায়ী করা হবে।
+   - Mobile drawer behavior unchanged থাকবে, কিন্তু visual pattern same হবে।
 
-6. **Improve BW sidebar active link colors and pattern**
-   - Align active parent and child menu styling with `AppSidebar`: left indicator, semantic `sidebar-*` tokens, clean active background, and readable text.
-   - Keep only active panel menus visible when subscription is active; otherwise keep only billing/admin relationship menus plus the unlock panel CTA.
+5. **Dashboard widget cleanup**
+   - `BwDashboard`-এর oversized/round “সর্দার মতো” cards কমিয়ে main portal-এর compact KPI/MetricTile pattern-এ align করা হবে।
+   - Panel active হলে internal POP metrics section main POP dashboard-এর মতো clean grid layout পাবে।
+   - Unnecessary huge rounded cards/gradient-heavy widgets কমানো হবে।
 
-7. **Validate the flow**
-   - Check `/bw/panel/mikrotik` create-device path no longer hits direct RLS failures.
-   - Check `/bw/panel/clients/add` no longer returns `Not allowed` for `get_client_form_meta`.
-   - Check BW sidebar icons and active colors on `/bw/invoices`, `/bw/dashboard`, and `/bw/panel/mikrotik`.
+6. **Validation**
+   - Routes/menu target cross-check করব: `/bw/dashboard`, `/bw/invoices`, `/bw/service-orders`, `/bw/settings`, এবং সব `/bw/panel/*` routes।
+   - Sidebar icon source আর `Icons8Icon` থাকবে না—সব Lucide + project menu tile pattern হবে।
+   - Active submenu indicator visually consistent কিনা code-level যাচাই করব।
+
+## Files expected to change
+- `src/components/BwCustomerLayout.tsx`
+- `src/pages/bw-customer/BwDashboard.tsx`
+
+## Technical notes
+- No database or edge function change needed.
+- Existing `MenuIconTile` component reused, duplicate styling avoided.
+- Main portal `AppSidebar` active-state classes will be adapted, not rewritten from scratch.
