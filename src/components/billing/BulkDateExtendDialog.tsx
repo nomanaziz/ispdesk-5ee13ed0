@@ -25,7 +25,9 @@ export default function BulkDateExtendDialog({ open, onOpenChange, selectedClien
 
   const mut = useMutation({
     mutationFn: async () => {
-      const updates: Promise<any>[] = [];
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const toEnable: any[] = [];
+
       for (const c of selectedClients) {
         let target: string;
         if (mode === "date") {
@@ -36,9 +38,22 @@ export default function BulkDateExtendDialog({ open, onOpenChange, selectedClien
           base.setDate(base.getDate() + days);
           target = base.toISOString().slice(0, 10);
         }
-        updates.push(Promise.resolve(supabase.from("clients").update({ expire_date: target }).eq("id", c.id)));
+        await supabase.from("clients").update({ expire_date: target }).eq("id", c.id);
+
+        const exp = new Date(target);
+        if (exp.getTime() > today.getTime() && c.mikrotik_id && c.username) {
+          toEnable.push(c);
+        }
       }
-      await Promise.all(updates);
+
+      // Auto-enable MikroTik for clients now in the future
+      for (const c of toEnable) {
+        try {
+          await supabase.functions.invoke("manage-mikrotik-ppp", {
+            body: { mikrotik_id: c.mikrotik_id, username: c.username, client_id: c.id, action: "enable" },
+          });
+        } catch { /* continue, don't fail the whole batch */ }
+      }
 
       if (markBillPaid) {
         const currentMonth = new Date().toISOString().slice(0, 7);
