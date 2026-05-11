@@ -79,7 +79,7 @@ export default function BwServiceOrders() {
         total: 0,
         request_type: mode,
         effective_date: effectiveDate,
-        notes: `[${mode.toUpperCase()}] Requested bandwidth: ${bandwidth}${note ? `\n\n${note}` : ""}`,
+        note: `[${mode.toUpperCase()}] Requested bandwidth: ${bandwidth}${note ? `\n\n${note}` : ""}`,
       } as any);
       if (error) throw error;
     },
