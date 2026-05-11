@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
     if (reseller) {
       if (reseller.password !== password) return json({ error: "Invalid username or password" }, 401);
       if (reseller.portal_enabled === false) return json({ error: "Portal access disabled. Contact admin." }, 403);
-      if (reseller.status && reseller.status !== "Active") {
+      if (reseller.status && reseller.status.toLowerCase() !== "active") {
         return json({ error: "Account is inactive. Please contact support." }, 403);
       }
       const { token, customer, sid } = issueToken({
