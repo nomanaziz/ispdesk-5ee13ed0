@@ -845,6 +845,49 @@ const App = () => (
               <Route path="/bw/panel/clients/scheduler" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelScheduler /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/panel/employees/salary-sheet" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelSalarySheet /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
 
+              {/* BW Panel — extended Clients */}
+              <Route path="/bw/panel/clients/new-request" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelClientNewRequest /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/clients/home" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelHomeClients /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/clients/corporate" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelCorporateClients /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/clients/change-request" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelChangeRequest /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/clients/installation-fee" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelInstallationFee /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+
+              {/* BW Panel — Support */}
+              <Route path="/bw/panel/support/history" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelSupportHistory /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/support/notices" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelSupportNotices /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+
+              {/* BW Panel — Configuration (extended) */}
+              <Route path="/bw/panel/config/connection-types" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelConfigConnectionTypes /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/config/client-types" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelConfigClientTypes /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/config/protocol-types" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelConfigProtocolTypes /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/config/billing-statuses" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelConfigBillingStatuses /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/config/locations" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelConfigLocations /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/config/service-types" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelConfigServiceTypes /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+
+              {/* BW Panel — OLT */}
+              <Route path="/bw/panel/olt-overview" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelOltOverview /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/olt" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelOltDevices /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/olt/power-dashboard" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelOltPower /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/olt/onu" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelOnuList /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/olt/users" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelOltUsers /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/olt/ports" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelOltPorts /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/olt/user-down" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelUserDownCount /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/olt/fiber-down" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelFiberDownFinder /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/olt/sharing" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelOltSharing /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+
+              {/* BW Panel — Network monitoring */}
+              <Route path="/bw/panel/monitoring/live-traffic" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelMonLiveTraffic /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/network/switches" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelMonSwitches /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/monitoring/pop-dass" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelMonPopDass /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/monitoring/pop-ip" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelMonPopIp /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/monitoring/pop-log" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelMonPopLog /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/monitoring/ping-tools" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelMonPingTools /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/monitoring/pop-devices" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelMonPopDevices /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+
+              {/* BW Panel — Device admin */}
+              <Route path="/bw/panel/device-admin" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelDeviceDashboard /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/device-admin/devices" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelDeviceInventory /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+
               {/* Legacy /bw-panel/* → /bw/panel/* redirects */}
               <Route path="/bw-panel" element={<Navigate to="/bw/dashboard" replace />} />
               <Route path="/bw-panel/dashboard" element={<Navigate to="/bw/dashboard" replace />} />
