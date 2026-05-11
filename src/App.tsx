@@ -421,7 +421,7 @@ import {
   BwPanelOltPorts, BwPanelUserDownCount, BwPanelFiberDownFinder, BwPanelOltSharing,
   BwPanelMonOnline, BwPanelMonLiveTraffic, BwPanelMonSwitches, BwPanelMonPopDass,
   BwPanelMonPopIp, BwPanelMonPopLog, BwPanelMonPingTools, BwPanelMonPopDevices,
-  BwPanelDeviceDashboard, BwPanelDeviceInventory, BwPanelMikrotikPppoe,
+  BwPanelDeviceDashboard, BwPanelDeviceInventory,
 } from "@/pages/bw-panel/wrappers";
 
 // Redirect helper: any /reseller/<rest> → /pop-admin/<rest>
