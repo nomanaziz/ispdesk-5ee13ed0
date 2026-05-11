@@ -414,7 +414,7 @@ import {
   BwPanelConfigDepartments, BwPanelConfigDesignations, BwPanelConfigDevices,
   BwPanelClientNewRequest, BwPanelHomeClients, BwPanelCorporateClients, BwPanelChangeRequest,
   BwPanelInstallationFee,
-  BwPanelSupportTickets, BwPanelSupportHistory, BwPanelSupportNotices,
+  BwPanelSupportHistory, BwPanelSupportNotices,
   BwPanelConfigConnectionTypes, BwPanelConfigClientTypes, BwPanelConfigProtocolTypes,
   BwPanelConfigBillingStatuses, BwPanelConfigLocations, BwPanelConfigServiceTypes,
   BwPanelOltOverview, BwPanelOltDevices, BwPanelOltPower, BwPanelOnuList, BwPanelOltUsers,
