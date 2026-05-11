@@ -1,52 +1,85 @@
-আপনার concept পরিষ্কার: Bandwidth Reseller/POP Admin নিজে client business চালাবে, তাই সে নিজের zone, subzone, package, MikroTik profile mapping, employee, bulk import, client list, billing list manage করতে পারবে। এটা Main Admin-এর মতোই হবে, কিন্তু নিজের branch/scope-এর ভিতরে সীমাবদ্ধ থাকবে। MAC Reseller-এর মতো tariff-dependent/locked model এখানে চলবে না।
+# BW Reseller Panel — Mirror Main Admin Sidebar (Reduced Scope)
 
-Plan:
+## Concept
 
-1. BW panel identity/scope ঠিক করা
-- `bw_customer` token থেকে `branch_id` হিসেবে `panel_branch_id` resolve করব, যাতে সব existing POP-scoped admin pages ঠিকমতো BW panel-এ কাজ করে।
-- `usePopScope()`-এ BW panel context properly support করব: `isPopMode=true`, `branchId=panel_branch_id`, কিন্তু `tariffId=null`।
-- Result: Add Client, Zone, Subzone, Billing, Employee, Reports সব একই branch scope পাবে।
+A Bandwidth Reseller is a "mini admin": they buy bandwidth from us, then run their own ISP on our portal — own MikroTiks, own packages/profiles, own clients, own billing, own monitoring. The BW panel must look and work like the main Admin portal — same module groupings, same UX patterns — only with fewer modules (because a BW reseller has 500–1000 users, not 50–70k, and 2–3 employees, not a full HR org).
 
-2. BW panel menu/routes Main Admin/POP Admin pattern অনুযায়ী expand করা
-- BW sidebar-এ missing groups যোগ করব:
-  - Configuration: Zone, Sub Zone, Box, Package, Department, Designation, Device
-  - MikroTik: MikroTik Servers, MikroTik Users/Profile source, Bulk user import
-  - Client: Add Client, Client List, Bulk Client Import, Billing List, Daily Collection, Left Clients, Scheduler
-  - Employee: Add Employee, Employee List, Salary Sheet
-  - Billing/Monitoring/SMS/Reports/Accounting/System যেগুলো already reusable আছে সেগুলো route সহ expose করব।
-- Active menu/submenu highlight main portal style-এ consistent করব, যাতে click করলে selected submenu clearly active থাকে।
+This is **independent from the POP/MAC reseller portal**. They share underlying admin pages (already POP-scoped via `usePopScope()`), but the BW sidebar/menu must NOT be derived from or mixed with the MAC reseller layout.
 
-3. BW reseller-এর নিজস্ব package system বানানো
-- Current POP package page tariff-based (`reseller_tariff_packages`) — এটা BW panel-এর জন্য ভুল।
-- BW panel package page হবে self-owned packages:
-  - package name
-  - monthly price
-  - bandwidth/speed
-  - protocol
-  - MikroTik server
-  - MikroTik profile mapping
-  - status
-- Packages BW reseller-এর own `branch_id`/scope দিয়ে save/filter হবে।
-- Add Client form package dropdown এই own packages থেকেই আসবে; tariff warning/dropdown আর থাকবে না।
+## What the BW Panel Sidebar Should Look Like
 
-4. Add Client form BW reseller model অনুযায়ী ঠিক করা
-- BW panel-এ Add Client package/profile/server locked বা tariff-based হবে না।
-- BW reseller নিজের package নির্বাচন করবে, package থেকে monthly bill/profile/server auto-fill হবে, কিন্তু প্রয়োজন হলে নিজের MikroTik profile mapping অনুযায়ী কাজ করবে।
-- “tariff assigned নেই” warning সম্পূর্ণ remove থাকবে BW panel context-এ।
-- Client insert সরাসরি BW branch scope-এ হবে, prepaid POP wallet/tariff validation ছাড়া।
+Mirror the Admin sidebar, but only the groups/items below. Order follows the main admin pattern (Dashboard → Clients → Billing → Support → Accounting → HR → OLT → Network → Device → Reports → SMS → Configuration → Settings).
 
-5. Bulk import এবং MikroTik user import BW scope-এ চালু করা
-- BW panel bulk import-এ direct admin/global table read না করে portal-data scoped API ব্যবহার করব।
-- MikroTik থেকে unmatched/bulk users আনলে শুধু এই BW reseller-এর MikroTik/branch data দেখাবে।
-- Imported users client list-এ `branch_id=panel_branch_id` সহ save হবে।
+### Groups & items
 
-6. Existing reusable admin pages scoped করা
-- Zone/Subzone/Box pages already partially POP-scoped; BW panel scope ঠিক হলে এগুলো reusable হবে।
-- যেসব pages direct Supabase query করে global data দেখায়, সেগুলো `usePopScope()` দিয়ে branch filter করব।
-- Delete/update operations-এও branch guard রাখব, যেন অন্য admin/POP data modify না হয়।
+**ড্যাশবোর্ড** — Dashboard
 
-7. Validation
-- `/bw/panel/clients/add`-এ warning/package issue verify করব।
-- `/bw/panel/config/zones`, `/bw/panel/config/sub-zones`, `/bw/panel/config/packages` route/menu verify করব।
-- Add Client → package select → client save → client list/billing list-এ scoped result দেখা যাচ্ছে কিনা verify করব।
-- Sidebar menu disappearing/active submenu highlight regression check করব।
+**ক্লায়েন্ট** (All Clients style, trimmed)
+- নতুন রিকোয়েস্ট
+- হোম ক্লায়েন্ট
+- কর্পোরেট ক্লায়েন্ট
+- বিলিং তালিকা
+- দৈনিক বিল কালেকশন
+- ইনস্টলেশন ফি
+- চলে যাওয়া ক্লায়েন্ট
+- শিডিউলার
+- ক্লায়েন্ট যোগ
+- বাল্ক ইম্পোর্ট
+
+**সাপোর্ট ও টিকেটিং**
+- ক্লায়েন্ট সাপোর্ট
+- সাপোর্ট হিস্টরি
+- নোটিশ
+
+**অ্যাকাউন্টিং (basic)** — Income, Expense, Cash Book *(no full chart-of-accounts / journal / trial balance / P&L compare — too heavy for a 500-user reseller)*
+
+**HR (basic)** — কর্মচারী যোগ, কর্মচারী তালিকা, বেতন শীট *(no shifts, ZKTeco, leave, attendance rules, resign rules — only 2–3 staff)*
+
+**OLT ম্যানেজমেন্ট** (full — per screenshot)
+- OLT / ONU ওভারভিউ, OLT ডিভাইস, OLT Power Dashboard, ONU তালিকা, OLT ইউজার, OLT Port Classification, ইউজার ডাউন কাউন্ট, ফাইবার ডাউন ফাইন্ডার, OLT শেয়ারিং
+
+**নেটওয়ার্ক মনিটরিং** (per screenshot)
+- অনলাইন মনিটরিং, Live Traffic, Switch ম্যানেজমেন্ট, POP DASS, POP IP, POP লগ, Ping টুলস, POP ডিভাইস
+
+**ডিভাইস** (per screenshot)
+- ড্যাশবোর্ড, ডিভাইস ইনভেন্টরি, MikroTik PPPoE, MikroTik ইউজার (existing)
+
+**রিপোর্ট (basic)** — বিল কালেকশন, কাস্টমার রিপোর্ট, আর্থিক
+
+**SMS সার্ভিস** — টেমপ্লেট, পাঠান, গেটওয়ে *(already wired)*
+
+**কনফিগারেশন** (per screenshot, full)
+- জোন, সাব জোন, বক্স, কানেকশন টাইপ, ক্লায়েন্ট টাইপ, প্রোটোকল টাইপ, বিলিং স্ট্যাটাস, প্যাকেজ, এলাকা (বিভাগ/জেলা/উপজেলা), সার্ভিস টাইপ, বিভাগ, পদবী, ডিভাইস টাইপ
+
+**সেটিংস** — কোম্পানি সেটিংস
+
+### Explicitly excluded (admin has them, BW doesn't need)
+POP / MAC ক্লায়েন্ট group · ব্যান্ডউইথ ক্লায়েন্ট (sale-side) · ব্যান্ডউইথ ক্রয় · ই-কমার্স · ক্রয় · বিক্রয় ও সার্ভিস (full) · ইনভেন্টরি (full multi-store) · অ্যাসেট · ইভেন্ট ও ছুটি · ওয়েবসাইট প্যানেল · টাস্ক ম্যানেজমেন্ট · নেটওয়ার্ক ডায়াগ্রাম · সিস্টেম · VAS · Full HR (shifts/payroll/attendance/leave) · Full Accounting (journal/balance-sheet/P&L compare/trial balance)
+
+## Implementation
+
+1. **Rebuild `panelGroups` in `src/components/BwCustomerLayout.tsx`** to the structure above. Order, labels, and icons must mirror `menuGroups` from `src/components/AppSidebar.tsx`.
+2. **Add the missing wrappers in `src/pages/bw-panel/wrappers.ts`** (re-export existing admin pages — they're already POP/branch-scoped via `usePopScope()`):
+   - Clients: `NewRequest`, `HomeClients`, `CorporateClients`, `InstallationFee`, `ChangeRequest`
+   - Support: `Tickets`, `SupportHistory`, `Notices`
+   - OLT (full set under `/dashboard/olt*`)
+   - Monitoring (full set under `/dashboard/monitoring/*`, `/dashboard/network/switches`)
+   - Device Admin (`/dashboard/device-admin*`, `/dashboard/mikrotik/servers`)
+   - Config: `ConnectionTypes`, `ClientTypes`, `ProtocolTypes`, `BillingStatuses`, `Locations`, `ServiceTypes`
+   - Reports: `Discount` excluded; keep `BillCollection`, `Customer`, `Financial`
+3. **Register routes in `src/App.tsx`** under `/bw/panel/*` for every new wrapper, all wrapped in `PortalAuthProvider → BwPanelProtectedRoute → BwCustomerLayout`. Use the same path suffixes as admin (e.g. `/bw/panel/olt`, `/bw/panel/monitoring/online`, `/bw/panel/config/connection-types`).
+4. **Scope safety check**: verify each newly wrapped admin page reads its branch from `usePopScope()` (not directly from a global admin context). Pages that bypass scope must be patched to honor `isBwPanel` + `branchId` before being exposed.
+5. **No changes** to MAC reseller portal (`ResellerSidebar.tsx`) — BW and MAC stay independent.
+
+## Out of Scope (separate tickets)
+
+- Per-BW-reseller package isolation in `isp_packages` (needs `owner_branch` migration).
+- Sub-reseller hierarchy under a BW reseller.
+- Trimming module-internal sub-features (e.g. hiding "advanced" tabs inside reused admin pages).
+
+## Validation
+
+- BW panel sidebar visually matches uploaded screenshots for Configuration, Device, Network Monitoring, OLT.
+- Every menu item navigates to a working page rendered inside `BwCustomerLayout`.
+- Active highlight + auto-open group works for every new route.
+- MAC reseller portal sidebar unchanged.
