@@ -1,63 +1,52 @@
-## Plan: BW Reseller Portal Fixes
+আপনার concept পরিষ্কার: Bandwidth Reseller/POP Admin নিজে client business চালাবে, তাই সে নিজের zone, subzone, package, MikroTik profile mapping, employee, bulk import, client list, billing list manage করতে পারবে। এটা Main Admin-এর মতোই হবে, কিন্তু নিজের branch/scope-এর ভিতরে সীমাবদ্ধ থাকবে। MAC Reseller-এর মতো tariff-dependent/locked model এখানে চলবে না।
 
-### 1. Client Support Tickets (BW reseller → Main Admin)
+Plan:
 
-BW reseller is the client himself; he should NOT pick a client. Tickets go upward to main admin as bandwidth-related complaints.
+1. BW panel identity/scope ঠিক করা
+- `bw_customer` token থেকে `branch_id` হিসেবে `panel_branch_id` resolve করব, যাতে সব existing POP-scoped admin pages ঠিকমতো BW panel-এ কাজ করে।
+- `usePopScope()`-এ BW panel context properly support করব: `isPopMode=true`, `branchId=panel_branch_id`, কিন্তু `tariffId=null`।
+- Result: Add Client, Zone, Subzone, Billing, Employee, Reports সব একই branch scope পাবে।
 
-**BW panel side (`/bw/panel/tickets` or `/bw/tickets`):**
-- Remove "select client" UI entirely.
-- New ticket form fields:
-  - Issue Category (dropdown): Internet, FNANGGC, BDX, Facebook, YouTube, Speed, Other
-  - Subject (text)
-  - Description (textarea)
-  - Priority (low/normal/high) — optional
-- Reseller's name + mobile auto-attached from `bw_sale_customers` profile (no input).
-- List view: only this reseller's own tickets with status (open/in-progress/resolved/closed) and admin replies.
-- Replace any "fiber cutting / ONU" type categories — those belong to home-client support, not here.
+2. BW panel menu/routes Main Admin/POP Admin pattern অনুযায়ী expand করা
+- BW sidebar-এ missing groups যোগ করব:
+  - Configuration: Zone, Sub Zone, Box, Package, Department, Designation, Device
+  - MikroTik: MikroTik Servers, MikroTik Users/Profile source, Bulk user import
+  - Client: Add Client, Client List, Bulk Client Import, Billing List, Daily Collection, Left Clients, Scheduler
+  - Employee: Add Employee, Employee List, Salary Sheet
+  - Billing/Monitoring/SMS/Reports/Accounting/System যেগুলো already reusable আছে সেগুলো route সহ expose করব।
+- Active menu/submenu highlight main portal style-এ consistent করব, যাতে click করলে selected submenu clearly active থাকে।
 
-**Main admin side (Support Tickets page):**
-- Add tabs at top of existing Support Tickets page:
-  - **Home Client** (existing tickets)
-  - **Bandwidth Reseller** (new — tickets from `bw_sale_customers`)
-- Bandwidth Reseller tab shows: reseller name, mobile, category, subject, status, created date; click → reply thread.
-- Admin can reply, change status, close.
+3. BW reseller-এর নিজস্ব package system বানানো
+- Current POP package page tariff-based (`reseller_tariff_packages`) — এটা BW panel-এর জন্য ভুল।
+- BW panel package page হবে self-owned packages:
+  - package name
+  - monthly price
+  - bandwidth/speed
+  - protocol
+  - MikroTik server
+  - MikroTik profile mapping
+  - status
+- Packages BW reseller-এর own `branch_id`/scope দিয়ে save/filter হবে।
+- Add Client form package dropdown এই own packages থেকেই আসবে; tariff warning/dropdown আর থাকবে না।
 
-**Data model:**
-- New table `bw_support_tickets` (reseller_id → bw_sale_customers, category, subject, description, priority, status, created_at, updated_at).
-- New table `bw_support_ticket_replies` (ticket_id, sender_type 'reseller'|'admin', sender_id, message, created_at).
-- RLS: reseller sees own; admin sees all.
+4. Add Client form BW reseller model অনুযায়ী ঠিক করা
+- BW panel-এ Add Client package/profile/server locked বা tariff-based হবে না।
+- BW reseller নিজের package নির্বাচন করবে, package থেকে monthly bill/profile/server auto-fill হবে, কিন্তু প্রয়োজন হলে নিজের MikroTik profile mapping অনুযায়ী কাজ করবে।
+- “tariff assigned নেই” warning সম্পূর্ণ remove থাকবে BW panel context-এ।
+- Client insert সরাসরি BW branch scope-এ হবে, prepaid POP wallet/tariff validation ছাড়া।
 
-### 2. MikroTik Add → Auto Status Check
+5. Bulk import এবং MikroTik user import BW scope-এ চালু করা
+- BW panel bulk import-এ direct admin/global table read না করে portal-data scoped API ব্যবহার করব।
+- MikroTik থেকে unmatched/bulk users আনলে শুধু এই BW reseller-এর MikroTik/branch data দেখাবে।
+- Imported users client list-এ `branch_id=panel_branch_id` সহ save হবে।
 
-In `BwPanelMikrotikServers.tsx` (and main `Servers.tsx` if same pattern), after successful insert:
-- Immediately invoke `check-mikrotik-status` edge function with the new `device_id`.
-- Update UI optimistically; show toast "Connecting…" then result.
-- This removes the "unknown" stuck state on freshly added devices.
+6. Existing reusable admin pages scoped করা
+- Zone/Subzone/Box pages already partially POP-scoped; BW panel scope ঠিক হলে এগুলো reusable হবে।
+- যেসব pages direct Supabase query করে global data দেখায়, সেগুলো `usePopScope()` দিয়ে branch filter করব।
+- Delete/update operations-এও branch guard রাখব, যেন অন্য admin/POP data modify না হয়।
 
-### 3. POP Add Client (BW panel) — Remove Tariff Concept
-
-BW reseller manages own packages, not admin tariffs. In `PopAddClient` flow when invoked from BW panel context (`/bw/panel/clients/add`):
-- **Remove** the yellow warning "এই POP-এ এখনো কোনো tariff assign করা হয়নি".
-- **Hide** tariff dropdown entirely.
-- Package selection comes from reseller's own MikroTik profiles / packages, not from admin tariffs.
-- Detection: check `usePopScope` / route prefix `/bw/panel/*` to branch the form behavior.
-
-### Technical Details
-
-**Files to add:**
-- `supabase/migrations/*` — `bw_support_tickets`, `bw_support_ticket_replies` + RLS
-- `src/pages/bw-panel/BwPanelTickets.tsx` — new ticket UI for reseller
-- `src/pages/dashboard/support/AdminBwTicketsTab.tsx` — admin tab content
-
-**Files to edit:**
-- Main Support Tickets admin page → add Tabs wrapper (Home Client / Bandwidth Reseller)
-- `BwPanelMikrotikServers.tsx` → call `check-mikrotik-status` on insert success
-- `PopAddClient.tsx` (or shared `AddClient.tsx`) → conditionally hide tariff section + warning when `isBwPanelContext`
-- Sidebar (`BwCustomerLayout`) → ensure "Support Tickets" menu points to new BW reseller tickets page
-
-**No changes needed to:** main admin client tickets logic, edge function `check-mikrotik-status` itself.
-
-### Validation
-- Reseller creates ticket → admin sees it in Bandwidth Reseller tab → admin replies → reseller sees reply.
-- Add new MikroTik → status flips from "unknown" → "online/offline" within seconds.
-- `/bw/panel/clients/add` → no tariff warning, no tariff dropdown visible.
+7. Validation
+- `/bw/panel/clients/add`-এ warning/package issue verify করব।
+- `/bw/panel/config/zones`, `/bw/panel/config/sub-zones`, `/bw/panel/config/packages` route/menu verify করব।
+- Add Client → package select → client save → client list/billing list-এ scoped result দেখা যাচ্ছে কিনা verify করব।
+- Sidebar menu disappearing/active submenu highlight regression check করব।
