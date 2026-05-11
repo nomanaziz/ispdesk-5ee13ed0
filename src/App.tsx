@@ -412,6 +412,16 @@ import {
   BwPanelBillCollection, BwPanelReportCustomer, BwPanelReportFinancial,
   BwPanelConfigZones, BwPanelConfigSubZones, BwPanelConfigBoxes, BwPanelConfigPackages,
   BwPanelConfigDepartments, BwPanelConfigDesignations, BwPanelConfigDevices,
+  BwPanelClientNewRequest, BwPanelHomeClients, BwPanelCorporateClients, BwPanelChangeRequest,
+  BwPanelInstallationFee,
+  BwPanelSupportTickets, BwPanelSupportHistory, BwPanelSupportNotices,
+  BwPanelConfigConnectionTypes, BwPanelConfigClientTypes, BwPanelConfigProtocolTypes,
+  BwPanelConfigBillingStatuses, BwPanelConfigLocations, BwPanelConfigServiceTypes,
+  BwPanelOltOverview, BwPanelOltDevices, BwPanelOltPower, BwPanelOnuList, BwPanelOltUsers,
+  BwPanelOltPorts, BwPanelUserDownCount, BwPanelFiberDownFinder, BwPanelOltSharing,
+  BwPanelMonOnline, BwPanelMonLiveTraffic, BwPanelMonSwitches, BwPanelMonPopDass,
+  BwPanelMonPopIp, BwPanelMonPopLog, BwPanelMonPingTools, BwPanelMonPopDevices,
+  BwPanelDeviceDashboard, BwPanelDeviceInventory, BwPanelMikrotikPppoe,
 } from "@/pages/bw-panel/wrappers";
 
 // Redirect helper: any /reseller/<rest> → /pop-admin/<rest>
