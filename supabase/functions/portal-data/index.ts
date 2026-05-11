@@ -809,21 +809,13 @@ Deno.serve(async (req) => {
       }
 
       case "get_client_form_meta": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub")
-          return json({ error: "Not allowed" }, 403);
-        const resellerId =
-          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
-        if (!resellerId) return json({ error: "No reseller" }, 400);
-
-        const { data: pop } = await sb
-          .from("branch_managers")
-          .select("id, branch_id, tariff_id, server_id, pop_prefix, pop_code, district_id, upazila_id")
-          .eq("id", resellerId)
-          .maybeSingle();
-        if (!pop) return json({ error: "POP not found" }, 404);
-
-        const branchId = pop.branch_id;
-        const tariffId = pop.tariff_id;
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ error: "প্যানেল সাবস্ক্রিপশন এক্সপায়ার্ড" }, 403);
+        const branchId = scope.branchId;
+        if (!branchId) return json({ error: "POP branch পাওয়া যায়নি" }, 400);
+        const tariffId = scope.tariffId;
+        const pop = scope.pop || {};
 
         const [
           tariff, district, upazila,
@@ -831,70 +823,77 @@ Deno.serve(async (req) => {
           connTypes, clientTypes, billingStatuses, protocolTypes,
           mikrotiks, employees,
           tpkgs,
+          allPackages,
         ] = await Promise.all([
           tariffId
             ? sb.from("reseller_tariffs").select("mikrotik_server_id").eq("id", tariffId).maybeSingle()
             : Promise.resolve({ data: null } as any),
-          pop.district_id
-            ? sb.from("districts").select("name").eq("id", pop.district_id).maybeSingle()
+          (pop as any).district_id
+            ? sb.from("districts").select("name").eq("id", (pop as any).district_id).maybeSingle()
             : Promise.resolve({ data: null } as any),
-          pop.upazila_id
-            ? sb.from("upazilas").select("name").eq("id", pop.upazila_id).maybeSingle()
+          (pop as any).upazila_id
+            ? sb.from("upazilas").select("name").eq("id", (pop as any).upazila_id).maybeSingle()
             : Promise.resolve({ data: null } as any),
-          branchId
-            ? sb.from("zones").select("id, name").eq("status", "active").eq("branch_id", branchId)
-            : Promise.resolve({ data: [] } as any),
-          branchId
-            ? sb.from("sub_zones").select("id, name, zone_id").eq("status", "active").eq("branch_id", branchId)
-            : Promise.resolve({ data: [] } as any),
-          branchId
-            ? sb.from("boxes").select("id, name, zone_id").eq("status", "active").eq("branch_id", branchId)
-            : Promise.resolve({ data: [] } as any),
+          sb.from("zones").select("id, name").eq("status", "active").eq("branch_id", branchId),
+          sb.from("sub_zones").select("id, name, zone_id").eq("status", "active").eq("branch_id", branchId),
+          sb.from("boxes").select("id, name, zone_id").eq("status", "active").eq("branch_id", branchId),
           sb.from("connection_types_config").select("id, name").eq("status", "active"),
           sb.from("client_types").select("id, name").eq("status", "active"),
           sb.from("billing_statuses").select("id, name").eq("status", "active"),
           sb.from("protocol_types").select("id, name").eq("status", "active"),
-          sb.from("mikrotik_devices").select("id, name"),
-          branchId
-            ? sb.from("employees").select("id, name").eq("status", "active").eq("branch_id", branchId)
-            : Promise.resolve({ data: [] } as any),
+          // BW: only this branch's mikrotik servers (admin POP: legacy behaviour shows all)
+          scope.isBw
+            ? sb.from("mikrotik_devices").select("id, name").eq("branch_id", branchId).eq("enabled", true)
+            : sb.from("mikrotik_devices").select("id, name"),
+          sb.from("employees").select("id, name").eq("status", "active").eq("branch_id", branchId),
           tariffId
             ? sb.from("reseller_tariff_packages")
                 .select("id, package_id, selling_rate, mikrotik_profile, mikrotik_server_id, isp_packages(id, name, bandwidth_down, price)")
                 .eq("tariff_id", tariffId)
             : Promise.resolve({ data: [] } as any),
+          // BW: fall back to all active ISP packages (no POP-tariff layer)
+          scope.isBw
+            ? sb.from("isp_packages").select("id, name, bandwidth_down, price").eq("status", "active")
+            : Promise.resolve({ data: [] } as any),
         ]);
 
         const defaultServerId =
-          (tariff as any)?.data?.mikrotik_server_id || pop.server_id || null;
+          (tariff as any)?.data?.mikrotik_server_id || (pop as any).server_id || null;
 
-        // POP-specific selling rates
-        const tpkgRows = ((tpkgs as any).data || []).filter((p: any) => p.isp_packages);
-        let popPriceMap = new Map<string, number>();
-        if (tpkgRows.length) {
-          const { data: pricing } = await sb
-            .from("pop_package_pricing")
-            .select("tariff_package_id, pop_selling_rate")
-            .eq("branch_manager_id", resellerId)
-            .in("tariff_package_id", tpkgRows.map((r: any) => r.id));
-          popPriceMap = new Map(
-            (pricing || []).map((r: any) => [r.tariff_package_id, Number(r.pop_selling_rate ?? 0)]),
-          );
+        let packages: any[];
+        if (scope.isBw) {
+          packages = ((allPackages as any).data || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            bandwidth_down: p.bandwidth_down,
+            price: Number(p.price ?? 0),
+            mikrotik_profile: null,
+            mikrotik_server_id: null,
+          }));
+        } else {
+          const tpkgRows = ((tpkgs as any).data || []).filter((p: any) => p.isp_packages);
+          let popPriceMap = new Map<string, number>();
+          if (tpkgRows.length && scope.popId) {
+            const { data: pricing } = await sb
+              .from("pop_package_pricing")
+              .select("tariff_package_id, pop_selling_rate")
+              .eq("branch_manager_id", scope.popId)
+              .in("tariff_package_id", tpkgRows.map((r: any) => r.id));
+            popPriceMap = new Map(
+              (pricing || []).map((r: any) => [r.tariff_package_id, Number(r.pop_selling_rate ?? 0)]),
+            );
+          }
+          packages = tpkgRows.map((p: any) => ({
+            id: p.isp_packages.id,
+            name: p.isp_packages.name,
+            bandwidth_down: p.isp_packages.bandwidth_down,
+            price: popPriceMap.get(p.id) ?? Number(p.selling_rate ?? 0),
+            mikrotik_profile: p.mikrotik_profile || null,
+            mikrotik_server_id: p.mikrotik_server_id || null,
+          }));
         }
 
-        const packages = tpkgRows.map((p: any) => ({
-          id: p.isp_packages.id,
-          name: p.isp_packages.name,
-          bandwidth_down: p.isp_packages.bandwidth_down,
-          price: popPriceMap.get(p.id) ?? Number(p.selling_rate ?? 0),
-          mikrotik_profile: p.mikrotik_profile || null,
-          mikrotik_server_id: p.mikrotik_server_id || null,
-        }));
-
-        // Generate next client code preview using the same pattern as set_client_code trigger
-        // Format: <pop_code>-<6-digit-seq>. We don't consume the sequence here — use COUNT-based suggestion.
-        const popPrefix = pop.pop_prefix || pop.pop_code || "0000";
-        // Find last code matching prefix to suggest next
+        const popPrefix = (pop as any).pop_prefix || (pop as any).pop_code || (scope.isBw ? "BW" : "0000");
         const { data: lastClient } = await sb
           .from("clients")
           .select("client_id")
@@ -909,7 +908,6 @@ Deno.serve(async (req) => {
         }
         const nextClientCode = `${popPrefix}-${String(nextNum).padStart(6, "0")}`;
 
-        // Server name lookup
         let serverName: string | null = null;
         if (defaultServerId) {
           const srv = ((mikrotiks as any).data || []).find((m: any) => m.id === defaultServerId);
@@ -939,8 +937,7 @@ Deno.serve(async (req) => {
       }
 
       case "check_client_code_unique": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub")
-          return json({ error: "Not allowed" }, 403);
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
         const code = String(payload.client_id || "").trim();
         if (!code) return json({ unique: true });
         const { data } = await sb
