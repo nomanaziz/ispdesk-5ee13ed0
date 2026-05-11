@@ -1121,20 +1121,13 @@ Deno.serve(async (req) => {
       }
 
       case "get_pop_client_profile": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") {
-          return json({ error: "Not allowed" }, 403);
-        }
-        const resellerId =
-          tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ error: "প্যানেল সাবস্ক্রিপশন এক্সপায়ার্ড" }, 403);
+        if (!scope.branchId) return json({ error: "POP branch not found" }, 400);
         const clientId = String(payload.client_id || "");
         if (!clientId) return json({ error: "Client is required" }, 400);
-
-        const { data: pop } = await sb
-          .from("branch_managers")
-          .select("branch_id")
-          .eq("id", resellerId)
-          .maybeSingle();
-        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+        const pop = { branch_id: scope.branchId };
 
         const { data: client, error: cErr } = await sb
           .from("clients")
