@@ -403,12 +403,15 @@ const BwSettings = lazy(() => import("@/pages/bw-customer/BwSettings"));
 // BW Panel pages — now rendered inside the unified BwCustomerLayout
 import BwPanelProtectedRoute from "@/components/BwPanelProtectedRoute";
 import {
-  BwPanelMikrotik, BwPanelClients, BwPanelClientAdd, BwPanelBulkImport,
+  BwPanelMikrotik, BwPanelMikrotikUsers, BwPanelClients, BwPanelClientAdd, BwPanelBulkImport,
+  BwPanelLeftClients, BwPanelScheduler,
   BwPanelBilling, BwPanelDailyCollection, BwPanelTickets, BwPanelOnlineMonitoring,
   BwPanelSmsTemplates, BwPanelSmsSend, BwPanelSmsGateway,
-  BwPanelEmployees, BwPanelAddEmployee,
+  BwPanelEmployees, BwPanelAddEmployee, BwPanelSalarySheet,
   BwPanelIncome, BwPanelExpense, BwPanelCashBook,
   BwPanelBillCollection, BwPanelReportCustomer, BwPanelReportFinancial,
+  BwPanelConfigZones, BwPanelConfigSubZones, BwPanelConfigBoxes, BwPanelConfigPackages,
+  BwPanelConfigDepartments, BwPanelConfigDesignations, BwPanelConfigDevices,
 } from "@/pages/bw-panel/wrappers";
 
 // Redirect helper: any /reseller/<rest> → /pop-admin/<rest>
