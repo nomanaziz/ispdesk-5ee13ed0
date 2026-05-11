@@ -2817,6 +2817,91 @@ Deno.serve(async (req) => {
         return json({ ok: true, updated: allowed.length, enabled });
       }
 
+      // ===== BW Panel: MikroTik device CRUD (service-role; bypasses admin RLS) =====
+      case "bw_panel_list_mikrotik":
+      case "bw_panel_create_mikrotik":
+      case "bw_panel_update_mikrotik":
+      case "bw_panel_delete_mikrotik":
+      case "bw_panel_toggle_mikrotik": {
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ error: "প্যানেল সাবস্ক্রিপশন এক্সপায়ার্ড" }, 403);
+        if (!scope.branchId) return json({ error: "POP branch পাওয়া যায়নি" }, 400);
+        const branchId = scope.branchId;
+
+        if (action === "bw_panel_list_mikrotik") {
+          const { data, error } = await sb
+            .from("mikrotik_devices")
+            .select("*")
+            .eq("branch_id", branchId)
+            .order("order_no", { ascending: true, nullsFirst: false })
+            .order("created_at", { ascending: true });
+          if (error) return json({ error: error.message }, 500);
+          return json({ devices: data || [] });
+        }
+
+        if (action === "bw_panel_create_mikrotik") {
+          const p = payload || {};
+          if (!p.name || !p.ip_address || !p.username) {
+            return json({ error: "name, ip_address, username আবশ্যক" }, 400);
+          }
+          const insertRow: any = {
+            name: p.name,
+            ip_address: p.ip_address,
+            username: p.username,
+            password_encrypted: p.password_encrypted || "",
+            api_port: Number(p.api_port || 8728),
+            version: p.version || "6.43_or_older",
+            timeout: Number(p.timeout || 10),
+            order_no: p.order_no ?? null,
+            status: "unknown",
+            enabled: true,
+            branch_id: branchId,
+            assigned_to_pop_id: scope.popId || null,
+          };
+          const { data, error } = await sb.from("mikrotik_devices").insert(insertRow).select("*").single();
+          if (error) return json({ error: error.message }, 500);
+          return json({ ok: true, device: data });
+        }
+
+        // For update/delete/toggle: enforce branch ownership
+        const id = String(payload.id || "");
+        if (!id) return json({ error: "id আবশ্যক" }, 400);
+        const { data: existing } = await sb
+          .from("mikrotik_devices")
+          .select("id, branch_id, enabled")
+          .eq("id", id)
+          .maybeSingle();
+        if (!existing || existing.branch_id !== branchId) {
+          return json({ error: "ডিভাইস এই branch-এর নয়" }, 403);
+        }
+
+        if (action === "bw_panel_update_mikrotik") {
+          const p = payload || {};
+          const patch: any = {};
+          for (const k of ["name", "ip_address", "username", "password_encrypted", "api_port", "version", "timeout", "order_no"]) {
+            if (k in p) patch[k] = p[k];
+          }
+          const { error } = await sb.from("mikrotik_devices").update(patch).eq("id", id);
+          if (error) return json({ error: error.message }, 500);
+          return json({ ok: true });
+        }
+
+        if (action === "bw_panel_delete_mikrotik") {
+          const { error } = await sb.from("mikrotik_devices").delete().eq("id", id);
+          if (error) return json({ error: error.message }, 500);
+          return json({ ok: true });
+        }
+
+        // toggle
+        const nextEnabled = !existing.enabled;
+        const updates: any = { enabled: nextEnabled };
+        if (!nextEnabled) updates.status = "offline";
+        const { error } = await sb.from("mikrotik_devices").update(updates).eq("id", id);
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true, enabled: nextEnabled });
+      }
+
       default:
         return json({ error: "Unknown action" }, 400);
     }
