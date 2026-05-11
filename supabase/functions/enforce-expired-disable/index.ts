@@ -18,12 +18,15 @@ Deno.serve(async (req) => {
     const today = new Date().toISOString().slice(0, 10);
 
     // Strictly past expire only — remaining=0 (expire_date == today) থাকলে POP manually on/off করতে পারবে
+    // VIP/Personal/Free billing-status বা is_vip=true client কখনই auto-disable হবে না
     const { data: rows, error } = await sb
       .from("clients")
-      .select("id, mikrotik_id, username, expire_date, mikrotik_status")
+      .select("id, mikrotik_id, username, expire_date, mikrotik_status, billing_status, is_vip")
       .lt("expire_date", today)
       .eq("mikrotik_status", "enabled")
-      .not("mikrotik_id", "is", null);
+      .not("mikrotik_id", "is", null)
+      .neq("is_vip", true)
+      .not("billing_status", "in", "(VIP,Personal,Free,vip,personal,free)");
     if (error) throw error;
 
     const ids = (rows ?? []).map((r: any) => r.id);
