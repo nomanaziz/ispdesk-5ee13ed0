@@ -9,7 +9,8 @@ import {
   LayoutDashboard, Receipt, ShoppingCart, LifeBuoy, Settings, LogOut, Menu,
   Sparkles, Search, Activity, Server, Users, UserPlus, FileSpreadsheet,
   Wallet, BarChart3, FileText, MessageSquare, Send, Wifi, TrendingUp,
-  BookOpen, ChevronDown, ChevronRight, Rocket, type LucideIcon,
+  BookOpen, ChevronDown, ChevronRight, Rocket, Cog, MapPin, Box, Package,
+  Layers, Briefcase, BadgeCheck, Cpu, Calendar, History, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -60,8 +61,23 @@ const baseGroups: NavGroup[] = [
 
 const panelGroups: NavGroup[] = [
   {
+    key: "configuration", label: "কনফিগারেশন", en: "Configuration", icon: Cog, tint: "slate", panelOnly: true,
+    items: [
+      { to: "/bw/panel/config/zones", label: "জোন", en: "Zone", icon: MapPin },
+      { to: "/bw/panel/config/sub-zones", label: "সাব জোন", en: "Sub Zone", icon: Layers },
+      { to: "/bw/panel/config/boxes", label: "বক্স", en: "Box", icon: Box },
+      { to: "/bw/panel/config/packages", label: "প্যাকেজ", en: "Package", icon: Package },
+      { to: "/bw/panel/config/departments", label: "বিভাগ", en: "Department", icon: Briefcase },
+      { to: "/bw/panel/config/designations", label: "পদবী", en: "Designation", icon: BadgeCheck },
+      { to: "/bw/panel/config/devices", label: "ডিভাইস", en: "Device", icon: Cpu },
+    ],
+  },
+  {
     key: "mikrotik", label: "মাইক্রোটিক", en: "MikroTik", icon: Server, tint: "emerald", panelOnly: true,
-    items: [{ to: "/bw/panel/mikrotik", label: "MikroTik সার্ভার", en: "MikroTik Servers", icon: Server }],
+    items: [
+      { to: "/bw/panel/mikrotik", label: "MikroTik সার্ভার", en: "MikroTik Servers", icon: Server },
+      { to: "/bw/panel/mikrotik-users", label: "MikroTik ইউজার", en: "MikroTik Users", icon: Users },
+    ],
   },
   {
     key: "client", label: "ক্লায়েন্ট", en: "Clients", icon: Users, tint: "blue", panelOnly: true,
@@ -69,6 +85,8 @@ const panelGroups: NavGroup[] = [
       { to: "/bw/panel/clients/add", label: "ক্লায়েন্ট যোগ", en: "Add Client", icon: UserPlus },
       { to: "/bw/panel/clients/bulk", label: "বাল্ক ইম্পোর্ট", en: "Bulk Import", icon: FileSpreadsheet },
       { to: "/bw/panel/clients", label: "ক্লায়েন্ট তালিকা", en: "Client List", icon: Users },
+      { to: "/bw/panel/clients/left", label: "চলে যাওয়া ক্লায়েন্ট", en: "Left Clients", icon: Users },
+      { to: "/bw/panel/clients/scheduler", label: "শিডিউলার", en: "Scheduler", icon: Calendar },
     ],
   },
   {
@@ -99,6 +117,7 @@ const panelGroups: NavGroup[] = [
     items: [
       { to: "/bw/panel/employees/add", label: "কর্মচারী যোগ", en: "Add Employee", icon: UserPlus },
       { to: "/bw/panel/employees", label: "কর্মচারী তালিকা", en: "Employee List", icon: Users },
+      { to: "/bw/panel/employees/salary-sheet", label: "বেতন শীট", en: "Salary Sheet", icon: FileText },
     ],
   },
   {

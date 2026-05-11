@@ -403,12 +403,15 @@ const BwSettings = lazy(() => import("@/pages/bw-customer/BwSettings"));
 // BW Panel pages — now rendered inside the unified BwCustomerLayout
 import BwPanelProtectedRoute from "@/components/BwPanelProtectedRoute";
 import {
-  BwPanelMikrotik, BwPanelClients, BwPanelClientAdd, BwPanelBulkImport,
+  BwPanelMikrotik, BwPanelMikrotikUsers, BwPanelClients, BwPanelClientAdd, BwPanelBulkImport,
+  BwPanelLeftClients, BwPanelScheduler,
   BwPanelBilling, BwPanelDailyCollection, BwPanelTickets, BwPanelOnlineMonitoring,
   BwPanelSmsTemplates, BwPanelSmsSend, BwPanelSmsGateway,
-  BwPanelEmployees, BwPanelAddEmployee,
+  BwPanelEmployees, BwPanelAddEmployee, BwPanelSalarySheet,
   BwPanelIncome, BwPanelExpense, BwPanelCashBook,
   BwPanelBillCollection, BwPanelReportCustomer, BwPanelReportFinancial,
+  BwPanelConfigZones, BwPanelConfigSubZones, BwPanelConfigBoxes, BwPanelConfigPackages,
+  BwPanelConfigDepartments, BwPanelConfigDesignations, BwPanelConfigDevices,
 } from "@/pages/bw-panel/wrappers";
 
 // Redirect helper: any /reseller/<rest> → /pop-admin/<rest>
@@ -816,6 +819,21 @@ const App = () => (
               <Route path="/bw/panel/reports/customer" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelReportCustomer /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/panel/reports/financial" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelReportFinancial /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/panel/settings" element={<Navigate to="/bw/settings" replace />} />
+
+              {/* BW Panel — Configuration (admin pages, scoped to BW reseller's branch via usePopScope) */}
+              <Route path="/bw/panel/config/zones" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelConfigZones /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/config/sub-zones" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelConfigSubZones /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/config/boxes" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelConfigBoxes /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/config/packages" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelConfigPackages /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/config/departments" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelConfigDepartments /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/config/designations" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelConfigDesignations /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/config/devices" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelConfigDevices /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+
+              {/* BW Panel — extended Client + MikroTik users + employee */}
+              <Route path="/bw/panel/mikrotik-users" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelMikrotikUsers /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/clients/left" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelLeftClients /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/clients/scheduler" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelScheduler /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/employees/salary-sheet" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelSalarySheet /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
 
               {/* Legacy /bw-panel/* → /bw/panel/* redirects */}
               <Route path="/bw-panel" element={<Navigate to="/bw/dashboard" replace />} />

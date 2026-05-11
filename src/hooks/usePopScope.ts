@@ -1,25 +1,46 @@
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 
 /**
- * Detects POP-admin context from the portal session.
- * When `isPopMode` is true, queries should be scoped via `.eq("branch_id", branchId)`.
- * Use across admin pages to make them POP-aware without duplicating components.
+ * Detects POP-admin / Bandwidth-panel context from the portal session.
+ *
+ * - For `reseller` / `reseller_sub` (POP admin): branchId = customer.branch_id, tariff-based.
+ * - For `bw_customer` with active panel subscription: branchId = customer.panel_branch_id,
+ *   tariff-free (BW reseller manages its own packages directly).
+ *
+ * Pages should treat both as POP-scoped (`isPopMode === true`) and use `isBwPanel`
+ * to skip tariff-only behaviour (warnings, locked profile from tariff, etc.).
  */
 export function usePopScope() {
   const { customer } = usePortalAuth();
-  const branchId = (customer as any)?.branch_id || undefined;
-  const popId = customer?.type === "reseller_sub"
-    ? (customer as any)?.parent_reseller_id || undefined
-    : (customer as any)?.sub;
-  const tariffId = (customer as any)?.tariff_id || undefined;
-  const districtId = (customer as any)?.district_id || undefined;
-  const upazilaId = (customer as any)?.upazila_id || undefined;
+  const c: any = customer || {};
+
+  const isBwPanel = c?.type === "bw_customer";
+  const panelActive = isBwPanel
+    ? !!c?.panel_access_enabled && !!c?.panel_subscription_expires_at && c.panel_subscription_expires_at > Date.now()
+    : c?.type === "reseller" || c?.type === "reseller_sub";
+
+  // Pick branchId from the right field per token type.
+  const branchId: string | undefined = (isBwPanel
+    ? (c?.panel_branch_id || c?.branch_id)
+    : c?.branch_id) || undefined;
+
+  const popId: string | undefined = isBwPanel
+    ? (c?.sub || undefined)
+    : c?.type === "reseller_sub"
+      ? (c?.parent_reseller_id || undefined)
+      : c?.sub;
+
+  // BW panel resellers do not use admin-defined tariffs.
+  const tariffId: string | undefined = isBwPanel ? undefined : (c?.tariff_id || undefined);
+  const districtId: string | undefined = c?.district_id || undefined;
+  const upazilaId: string | undefined = c?.upazila_id || undefined;
 
   return {
-    isPopMode: !!branchId,
+    isPopMode: !!branchId && panelActive,
+    isBwPanel,
     branchId,
     popId,
-    popName: customer?.name,
+    popName: c?.name,
     tariffId,
     districtId,
     upazilaId,
