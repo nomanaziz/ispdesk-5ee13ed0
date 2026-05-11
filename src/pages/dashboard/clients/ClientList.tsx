@@ -604,7 +604,8 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                     </TableCell>
                     <TableCell className="text-xs">
                       {(() => {
-                        const exp = c.expire_date ? new Date(c.expire_date) : null;
+                        const eff = c.temp_expire_date || c.expire_date;
+                        const exp = eff ? new Date(eff) : null;
                         const today = new Date(); today.setHours(0,0,0,0);
                         const isExpired = !!(exp && exp.getTime() <= today.getTime());
                         const isOn = c.mikrotik_status === "enabled";
