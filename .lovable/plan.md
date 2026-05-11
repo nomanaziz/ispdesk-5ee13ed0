@@ -1,44 +1,63 @@
-## Goal
-Bandwidth admin portal-কে main ERP portal-এর same pattern-এ আনব: sidebar/menu, icon, active submenu indicator, এবং dashboard widgets সব একরকম polished হবে।
+## Plan: BW Reseller Portal Fixes
 
-## Implementation plan
+### 1. Client Support Tickets (BW reseller → Main Admin)
 
-1. **Bandwidth sidebar pattern replace**
-   - `BwCustomerLayout` থেকে পুরনো uploaded/Icons8 icon dependency পুরো সরানো হবে।
-   - Main portal-এর `MenuIconTile` + `tintForLabel` pattern ব্যবহার করা হবে।
-   - Group menu, single menu, submenu—সব জায়গায় Lucide icon + colored square tile থাকবে।
+BW reseller is the client himself; he should NOT pick a client. Tickets go upward to main admin as bandwidth-related complaints.
 
-2. **Active menu/submenu indicator fix**
-   - Main `AppSidebar` pattern copy করে:
-     - active parent group-এর left vertical indicator থাকবে।
-     - open submenu list-এর left border থাকবে।
-     - selected submenu-এর ছোট horizontal connector line + active vertical marker থাকবে।
-   - এখন যে “দাগ/link” inconsistent আসে সেটি ঠিক করে exact selected state দেখানো হবে।
+**BW panel side (`/bw/panel/tickets` or `/bw/tickets`):**
+- Remove "select client" UI entirely.
+- New ticket form fields:
+  - Issue Category (dropdown): Internet, FNANGGC, BDX, Facebook, YouTube, Speed, Other
+  - Subject (text)
+  - Description (textarea)
+  - Priority (low/normal/high) — optional
+- Reseller's name + mobile auto-attached from `bw_sale_customers` profile (no input).
+- List view: only this reseller's own tickets with status (open/in-progress/resolved/closed) and admin replies.
+- Replace any "fiber cutting / ONU" type categories — those belong to home-client support, not here.
 
-3. **Menu structure cleanup**
-   - `/bw/*` billing/customer menus এবং `/bw/panel/*` admin-panel menus এক sidebar-এ রাখা হবে।
-   - Panel active না হলে শুধু billing/basic menu থাকবে; active হলে MikroTik, Clients, Billing, Monitoring, Tickets, SMS, Employees, Accounting, Reports menu দেখাবে।
-   - Menu route matching order ঠিক করা হবে, যাতে `/bw/panel/clients/add` ভুলভাবে `/bw/panel/clients` active না দেখায়।
+**Main admin side (Support Tickets page):**
+- Add tabs at top of existing Support Tickets page:
+  - **Home Client** (existing tickets)
+  - **Bandwidth Reseller** (new — tickets from `bw_sale_customers`)
+- Bandwidth Reseller tab shows: reseller name, mobile, category, subject, status, created date; click → reply thread.
+- Admin can reply, change status, close.
 
-4. **Header/sidebar visual alignment**
-   - Sidebar background, border, search input, menu spacing, typography, hover/active colors main portal-এর style অনুযায়ী করা হবে।
-   - Mobile drawer behavior unchanged থাকবে, কিন্তু visual pattern same হবে।
+**Data model:**
+- New table `bw_support_tickets` (reseller_id → bw_sale_customers, category, subject, description, priority, status, created_at, updated_at).
+- New table `bw_support_ticket_replies` (ticket_id, sender_type 'reseller'|'admin', sender_id, message, created_at).
+- RLS: reseller sees own; admin sees all.
 
-5. **Dashboard widget cleanup**
-   - `BwDashboard`-এর oversized/round “সর্দার মতো” cards কমিয়ে main portal-এর compact KPI/MetricTile pattern-এ align করা হবে।
-   - Panel active হলে internal POP metrics section main POP dashboard-এর মতো clean grid layout পাবে।
-   - Unnecessary huge rounded cards/gradient-heavy widgets কমানো হবে।
+### 2. MikroTik Add → Auto Status Check
 
-6. **Validation**
-   - Routes/menu target cross-check করব: `/bw/dashboard`, `/bw/invoices`, `/bw/service-orders`, `/bw/settings`, এবং সব `/bw/panel/*` routes।
-   - Sidebar icon source আর `Icons8Icon` থাকবে না—সব Lucide + project menu tile pattern হবে।
-   - Active submenu indicator visually consistent কিনা code-level যাচাই করব।
+In `BwPanelMikrotikServers.tsx` (and main `Servers.tsx` if same pattern), after successful insert:
+- Immediately invoke `check-mikrotik-status` edge function with the new `device_id`.
+- Update UI optimistically; show toast "Connecting…" then result.
+- This removes the "unknown" stuck state on freshly added devices.
 
-## Files expected to change
-- `src/components/BwCustomerLayout.tsx`
-- `src/pages/bw-customer/BwDashboard.tsx`
+### 3. POP Add Client (BW panel) — Remove Tariff Concept
 
-## Technical notes
-- No database or edge function change needed.
-- Existing `MenuIconTile` component reused, duplicate styling avoided.
-- Main portal `AppSidebar` active-state classes will be adapted, not rewritten from scratch.
+BW reseller manages own packages, not admin tariffs. In `PopAddClient` flow when invoked from BW panel context (`/bw/panel/clients/add`):
+- **Remove** the yellow warning "এই POP-এ এখনো কোনো tariff assign করা হয়নি".
+- **Hide** tariff dropdown entirely.
+- Package selection comes from reseller's own MikroTik profiles / packages, not from admin tariffs.
+- Detection: check `usePopScope` / route prefix `/bw/panel/*` to branch the form behavior.
+
+### Technical Details
+
+**Files to add:**
+- `supabase/migrations/*` — `bw_support_tickets`, `bw_support_ticket_replies` + RLS
+- `src/pages/bw-panel/BwPanelTickets.tsx` — new ticket UI for reseller
+- `src/pages/dashboard/support/AdminBwTicketsTab.tsx` — admin tab content
+
+**Files to edit:**
+- Main Support Tickets admin page → add Tabs wrapper (Home Client / Bandwidth Reseller)
+- `BwPanelMikrotikServers.tsx` → call `check-mikrotik-status` on insert success
+- `PopAddClient.tsx` (or shared `AddClient.tsx`) → conditionally hide tariff section + warning when `isBwPanelContext`
+- Sidebar (`BwCustomerLayout`) → ensure "Support Tickets" menu points to new BW reseller tickets page
+
+**No changes needed to:** main admin client tickets logic, edge function `check-mikrotik-status` itself.
+
+### Validation
+- Reseller creates ticket → admin sees it in Bandwidth Reseller tab → admin replies → reseller sees reply.
+- Add new MikroTik → status flips from "unknown" → "online/offline" within seconds.
+- `/bw/panel/clients/add` → no tariff warning, no tariff dropdown visible.
