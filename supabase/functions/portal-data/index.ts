@@ -1259,13 +1259,13 @@ Deno.serve(async (req) => {
       }
 
       case "list_pop_daily_collections": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
-        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ collections: [] });
+        if (!scope.branchId) return json({ collections: [] });
         const fromDate = String(payload.fromDate || new Date().toISOString().slice(0, 10));
         const toDate = String(payload.toDate || new Date().toISOString().slice(0, 10));
-        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
-        if (!pop?.branch_id) return json({ collections: [] });
-        const { data: branchClients } = await sb.from("clients").select("id").eq("branch_id", pop.branch_id);
+        const { data: branchClients } = await sb.from("clients").select("id").eq("branch_id", scope.branchId);
         const clientIds = (branchClients || []).map((c: any) => c.id);
         if (!clientIds.length) return json({ collections: [] });
         const { data, error } = await sb
@@ -1284,10 +1284,11 @@ Deno.serve(async (req) => {
       }
 
       case "receive_pop_bill": {
-        if (tok.type !== "reseller" && tok.type !== "reseller_sub") return json({ error: "Not allowed" }, 403);
-        const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
-        const { data: pop } = await sb.from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
-        if (!pop?.branch_id) return json({ error: "POP branch not found" }, 400);
+        if (!allowPanelOrPop(tok)) return json({ error: "Not allowed" }, 403);
+        const scope = await getScope(sb, tok);
+        if (scope.isBw && !scope.panelActive) return json({ error: "প্যানেল সাবস্ক্রিপশন এক্সপায়ার্ড" }, 403);
+        if (!scope.branchId) return json({ error: "POP branch not found" }, 400);
+        const pop = { branch_id: scope.branchId };
         const clientId = String(payload.client_id || "");
         if (!clientId) return json({ error: "Client is required" }, 400);
         const amount = Number(payload.amount || 0);
