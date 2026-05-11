@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Server } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, FileSpreadsheet, Server } from "lucide-react";
 import PopBulkClientImport from "./PopBulkClientImport";
 import ResellerMikrotikBulkCreate from "../ResellerMikrotikBulkCreate";
 
@@ -10,6 +11,14 @@ type TabKey = "excel" | "mikrotik";
 export default function BulkClientImportHub() {
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Detect which portal we're inside so the back link & breadcrumbs go to the
+  // correct Clients list.
+  const inBwPanel = location.pathname.startsWith("/bw/panel/");
+  const basePath = inBwPanel ? "/bw/panel" : "/pop-admin";
+  const clientsPath = `${basePath}/clients`;
+  const dashboardPath = inBwPanel ? "/bw/dashboard" : `${basePath}/dashboard`;
+  const selfPath = inBwPanel ? `${basePath}/clients/bulk` : `${basePath}/clients/bulk-import`;
 
   const initialTab: TabKey =
     location.pathname.includes("/mikrotik-users/bulk-create")
@@ -23,7 +32,7 @@ export default function BulkClientImportHub() {
     if (params.get("tab") !== tab) {
       params.set("tab", tab);
       navigate(
-        { pathname: "/pop-admin/clients/bulk-import", search: params.toString() },
+        { pathname: selfPath, search: params.toString() },
         { replace: true },
       );
     }
@@ -32,13 +41,26 @@ export default function BulkClientImportHub() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <FileSpreadsheet className="h-6 w-6" /> বাল্ক ক্লায়েন্ট ইম্পোর্ট
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Excel sheet অথবা MikroTik transferred users থেকে একসাথে multiple client তৈরি করুন।
-        </p>
+      {/* Back + breadcrumb header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="space-y-1">
+          <nav className="text-xs text-muted-foreground flex items-center gap-1">
+            <Link to={dashboardPath} className="hover:text-foreground transition-colors">Dashboard</Link>
+            <span>›</span>
+            <Link to={clientsPath} className="hover:text-foreground transition-colors">Clients</Link>
+            <span>›</span>
+            <span className="text-foreground font-medium">Bulk Import</span>
+          </nav>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <FileSpreadsheet className="h-6 w-6" /> বাল্ক ক্লায়েন্ট ইম্পোর্ট
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Excel sheet অথবা MikroTik transferred users থেকে একসাথে multiple client তৈরি করুন।
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate(clientsPath)} className="gap-1.5">
+          <ArrowLeft className="h-4 w-4" /> Back to Clients
+        </Button>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>

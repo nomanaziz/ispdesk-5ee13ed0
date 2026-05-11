@@ -1836,6 +1836,7 @@ export type Database = {
           billing_month: string | null
           created_at: string
           current_service_id: string | null
+          effective_date: string | null
           id: string
           note: string | null
           order_no: string
@@ -1850,6 +1851,7 @@ export type Database = {
           billing_month?: string | null
           created_at?: string
           current_service_id?: string | null
+          effective_date?: string | null
           id?: string
           note?: string | null
           order_no: string
@@ -1864,6 +1866,7 @@ export type Database = {
           billing_month?: string | null
           created_at?: string
           current_service_id?: string | null
+          effective_date?: string | null
           id?: string
           note?: string | null
           order_no?: string
