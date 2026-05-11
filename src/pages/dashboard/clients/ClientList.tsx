@@ -194,8 +194,10 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
       return;
     }
     const action = client.mikrotik_status === "enabled" ? "disable" : "enable";
-    // Guard: expired client কখনই enable হবে না (VIP client এই guard থেকে মুক্ত)
-    if (action === "enable" && !client.is_vip) {
+    // Guard: expired client কখনই enable হবে না।
+    // VIP / Personal / Free / VIP-flag client এই guard থেকে মুক্ত — তাদের কোনো expiry প্রযোজ্য নয়।
+    const exemptStatus = ["personal", "free", "vip"].includes(String(client.billing_status || "").toLowerCase());
+    if (action === "enable" && !client.is_vip && !exemptStatus) {
       const eff = client.temp_expire_date || client.expire_date;
       const exp = eff ? new Date(eff) : null;
       const today = new Date(); today.setHours(0,0,0,0);
