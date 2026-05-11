@@ -4,8 +4,13 @@ import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { getBillingCustomerId } from "@/lib/portalIdentity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, Receipt, Calendar, CheckCircle2, ShoppingCart, LifeBuoy, Bell, MessageSquare, Sparkles } from "lucide-react";
+import {
+  Wallet, Receipt, Calendar, CheckCircle2, ShoppingCart, LifeBuoy,
+  Bell, MessageSquare, Sparkles, AlertTriangle, FileText,
+} from "lucide-react";
 import { Link } from "react-router-dom";
+import KpiCard from "@/components/dashboard/KpiCard";
+import MetricTile from "@/components/dashboard/MetricTile";
 
 const tk = (n: number | null | undefined) =>
   `৳ ${(Number(n) || 0).toLocaleString("en-BD", { maximumFractionDigits: 0 })}`;
@@ -66,57 +71,60 @@ export default function BwDashboard() {
     && customer.panel_subscription_expires_at > Date.now();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">স্বাগতম, {customer?.name} 👋</h1>
-          <p className="text-sm text-muted-foreground">
-            আপনার ব্যান্ডউইথ একাউন্টের সারসংক্ষেপ
-          </p>
-        </div>
+    <div className="space-y-5">
+      {/* Welcome banner */}
+      <Card className="bg-gradient-to-r from-primary to-primary/70 text-primary-foreground border-0">
+        <CardContent className="p-6 flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">{customer?.name}</h1>
+            <p className="text-primary-foreground/80 text-sm mt-1">
+              Bandwidth Customer Dashboard
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-sm">
+              <div className="text-primary-foreground/60 text-xs uppercase">Customer Code</div>
+              <div className="font-semibold">{customer?.code || "—"}</div>
+            </div>
+            {panelActive && (
+              <Badge className="bg-emerald-500/20 text-emerald-50 border-emerald-300/40 border gap-1">
+                <Sparkles className="h-3 w-3" /> Panel Active
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* KPI row */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="Total Due" value={tk(data?.totalDue)} icon={AlertTriangle} tone={(data?.totalDue || 0) > 0 ? "danger" : "success"} />
+        <KpiCard label="This Month Paid" value={tk(data?.monthlyPaid)} icon={CheckCircle2} tone="success" />
+        <KpiCard label="Last Invoice" value={data?.lastInvoice?.invoice_no || "—"} icon={Receipt} tone="primary" caption={tk(data?.lastInvoice?.amount)} />
+        <KpiCard
+          label="Next Due Date"
+          value={data?.lastInvoice?.payment_due_date ? new Date(data.lastInvoice.payment_due_date).toLocaleDateString("en-GB") : "—"}
+          icon={Calendar}
+          tone="warning"
+        />
+      </div>
+
+      {/* Quick navigation */}
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <MetricTile label="Invoices" value={String(data?.invoices?.length ?? 0)} icon={Receipt} tone="violet" to="/bw/invoices" />
+        <MetricTile label="Service Orders" value={String(data?.purchaseOrders?.length ?? 0)} icon={ShoppingCart} tone="indigo" to="/bw/purchase-orders" />
+        <MetricTile label="Open Tickets" value={String(data?.openTickets ?? 0)} icon={LifeBuoy} tone="rose" to="/bw/tickets" />
+        <MetricTile label="Settings" value="⚙" icon={FileText} tone="cyan" to="/bw/settings" />
         {panelActive && (
-          <Badge variant="outline" className="gap-1 border-emerald-500 text-emerald-700">
-            <Sparkles className="h-3 w-3" /> প্যানেল সক্রিয় — {customer?.panel_user_limit} ইউজার
-          </Badge>
+          <MetricTile label="My Panel" value="→" icon={Sparkles} tone="emerald" to="/bw-panel/dashboard" hint="Open" />
         )}
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs"><Wallet className="h-3.5 w-3.5" /> মোট বকেয়া</div>
-            <div className="text-2xl font-bold mt-1 text-rose-600">{tk(data?.totalDue)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs"><CheckCircle2 className="h-3.5 w-3.5" /> এই মাসে পরিশোধ</div>
-            <div className="text-2xl font-bold mt-1 text-emerald-600">{tk(data?.monthlyPaid)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs"><Receipt className="h-3.5 w-3.5" /> শেষ ইনভয়েস</div>
-            <div className="text-lg font-semibold mt-1 truncate">{data?.lastInvoice?.invoice_no || "—"}</div>
-            <div className="text-xs text-muted-foreground">{tk(data?.lastInvoice?.amount)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs"><Calendar className="h-3.5 w-3.5" /> পরবর্তী Due</div>
-            <div className="text-lg font-semibold mt-1">
-              {data?.lastInvoice?.payment_due_date ? new Date(data.lastInvoice.payment_due_date).toLocaleDateString("en-GB") : "—"}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-4">
-        {/* Recent invoices */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2"><Receipt className="h-4 w-4" /> সাম্প্রতিক ইনভয়েস</CardTitle>
+      {/* Recent invoices + Tickets */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="rounded-2xl">
+          <CardHeader className="pb-2 flex-row items-center gap-2 space-y-0">
+            <Receipt className="h-4 w-4 text-primary" />
+            <CardTitle className="text-base">সাম্প্রতিক ইনভয়েস</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {(data?.invoices || []).slice(0, 5).map((inv: any) => (
@@ -143,10 +151,10 @@ export default function BwDashboard() {
           </CardContent>
         </Card>
 
-        {/* Purchase orders */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> সার্ভিস অর্ডার</CardTitle>
+        <Card className="rounded-2xl">
+          <CardHeader className="pb-2 flex-row items-center gap-2 space-y-0">
+            <ShoppingCart className="h-4 w-4 text-primary" />
+            <CardTitle className="text-base">সার্ভিস অর্ডার</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {(data?.purchaseOrders || []).map((po: any) => (
@@ -171,10 +179,10 @@ export default function BwDashboard() {
           </CardContent>
         </Card>
 
-        {/* Tickets summary */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2"><LifeBuoy className="h-4 w-4" /> সাপোর্ট টিকেট</CardTitle>
+        <Card className="rounded-2xl">
+          <CardHeader className="pb-2 flex-row items-center gap-2 space-y-0">
+            <LifeBuoy className="h-4 w-4 text-rose-500" />
+            <CardTitle className="text-base">সাপোর্ট টিকেট</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
@@ -189,10 +197,10 @@ export default function BwDashboard() {
           </CardContent>
         </Card>
 
-        {/* Notices placeholder */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2"><Bell className="h-4 w-4" /> নোটিশ ও মেসেজ</CardTitle>
+        <Card className="rounded-2xl">
+          <CardHeader className="pb-2 flex-row items-center gap-2 space-y-0">
+            <Bell className="h-4 w-4 text-primary" />
+            <CardTitle className="text-base">নোটিশ ও মেসেজ</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-sm text-muted-foreground text-center py-6 flex flex-col items-center gap-2">
