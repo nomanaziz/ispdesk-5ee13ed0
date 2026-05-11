@@ -400,10 +400,8 @@ const BwPurchaseOrders = lazy(() => import("@/pages/bw-customer/BwPurchaseOrders
 const BwTickets = lazy(() => import("@/pages/bw-customer/BwTickets"));
 const BwSettings = lazy(() => import("@/pages/bw-customer/BwSettings"));
 
-// BW Independent Panel (Layer 2 — only when panel subscription is active)
+// BW Panel pages — now rendered inside the unified BwCustomerLayout
 import BwPanelProtectedRoute from "@/components/BwPanelProtectedRoute";
-import BwPanelLayout from "@/components/BwPanelLayout";
-const BwPanelDashboard = lazy(() => import("@/pages/bw-panel/BwPanelDashboard"));
 import {
   BwPanelMikrotik, BwPanelClients, BwPanelClientAdd, BwPanelBulkImport,
   BwPanelBilling, BwPanelDailyCollection, BwPanelTickets, BwPanelOnlineMonitoring,
@@ -411,12 +409,17 @@ import {
   BwPanelEmployees, BwPanelAddEmployee,
   BwPanelIncome, BwPanelExpense, BwPanelCashBook,
   BwPanelBillCollection, BwPanelReportCustomer, BwPanelReportFinancial,
-  BwPanelSettings,
 } from "@/pages/bw-panel/wrappers";
 
 // Redirect helper: any /reseller/<rest> → /pop-admin/<rest>
 const LegacyResellerRedirect = () => {
   const path = window.location.pathname.replace(/^\/reseller/, "/pop-admin");
+  return <Navigate to={path + window.location.search + window.location.hash} replace />;
+};
+
+// Redirect helper: any /bw-panel/<rest> → /bw/panel/<rest>
+const LegacyBwPanelRedirect = () => {
+  const path = window.location.pathname.replace(/^\/bw-panel/, "/bw/panel");
   return <Navigate to={path + window.location.search + window.location.hash} replace />;
 };
 
