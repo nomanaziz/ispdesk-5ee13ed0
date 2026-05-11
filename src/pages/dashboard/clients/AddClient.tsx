@@ -24,7 +24,7 @@ export default function AddClient() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const location = useLocation();
-  const { isPopMode, branchId, popId, tariffId, popName, districtId, upazilaId } = usePopScope();
+  const { isPopMode, isBwPanel, branchId, popId, tariffId, popName, districtId, upazilaId } = usePopScope();
   const prefill = location.state?.prefill;
   const requestId = location.state?.request_id;
   const editMode = location.state?.editMode === true;
@@ -590,7 +590,7 @@ export default function AddClient() {
         </div>
       </div>
 
-      {isPopMode && !tariffId && (
+      {isPopMode && !tariffId && !isBwPanel && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
           <AlertTriangle className="h-4 w-4 mt-0.5 text-amber-600 shrink-0" />
           <div>
@@ -993,8 +993,8 @@ export default function AddClient() {
           </div>
           <div>
             <Label>প্রোফাইল</Label>
-            <Select value={form.profile} onValueChange={v => setField("profile", v)} disabled={loadingProfiles || isPopMode}>
-              <SelectTrigger><SelectValue placeholder={loadingProfiles ? "লোড হচ্ছে..." : isPopMode ? "প্যাকেজ থেকে স্বয়ংক্রিয়" : mikrotikProfiles.length > 0 ? "প্রোফাইল নির্বাচন" : "প্রথমে সার্ভার নির্বাচন"} /></SelectTrigger>
+            <Select value={form.profile} onValueChange={v => setField("profile", v)} disabled={loadingProfiles || (isPopMode && !isBwPanel)}>
+              <SelectTrigger><SelectValue placeholder={loadingProfiles ? "লোড হচ্ছে..." : (isPopMode && !isBwPanel) ? "প্যাকেজ থেকে স্বয়ংক্রিয়" : mikrotikProfiles.length > 0 ? "প্রোফাইল নির্বাচন" : "প্রথমে সার্ভার নির্বাচন"} /></SelectTrigger>
               <SelectContent>
                 {/* Preserve existing profile if not yet in fetched list (edit mode / loading) */}
                 {form.profile && !mikrotikProfiles.some(p => p.name === form.profile) && (
@@ -1005,7 +1005,7 @@ export default function AddClient() {
                 ))}
               </SelectContent>
             </Select>
-            {isPopMode && (
+            {isPopMode && !isBwPanel && (
               <p className="text-xs text-muted-foreground mt-1">প্যাকেজ অনুযায়ী tariff থেকে লক করা</p>
             )}
           </div>
