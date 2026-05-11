@@ -10,7 +10,10 @@ import {
   Sparkles, Search, Activity, Server, Users, UserPlus, FileSpreadsheet,
   Wallet, BarChart3, FileText, MessageSquare, Send, Wifi, TrendingUp,
   BookOpen, ChevronDown, ChevronRight, Rocket, Cog, MapPin, Box, Package,
-  Layers, Briefcase, BadgeCheck, Cpu, Calendar, History, type LucideIcon,
+  Layers, Briefcase, BadgeCheck, Cpu, Calendar, History, Building2, CreditCard,
+  DollarSign, UserX, RefreshCw, Bell, Headphones, Cable, Shield, Tag, Wrench,
+  Network, Monitor, ScrollText, Globe, List, Radio, ShieldCheck, FileBarChart,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
