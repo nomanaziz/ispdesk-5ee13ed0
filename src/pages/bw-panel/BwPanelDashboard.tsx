@@ -19,28 +19,21 @@ export default function BwPanelDashboard() {
   const { t } = useLanguage();
   const expiresAt = customer?.panel_subscription_expires_at;
   const daysLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt - Date.now()) / 86400000)) : 0;
-  const ownerId = customer?.id;
+  const ownerId = (customer as any)?.id;
 
   const { data: stats } = useQuery({
     queryKey: ["bw-panel-stats", ownerId],
     enabled: !!ownerId,
     queryFn: async () => {
-      // Best-effort aggregations — gracefully handle missing tables/columns
-      const [clientsAll, clientsActive, mikrotik, billing] = await Promise.all([
-        supabase.from("clients").select("id", { count: "exact", head: true }).eq("panel_owner_id" as any, ownerId).then(r => r.count ?? 0).catch(() => 0),
-        supabase.from("clients").select("id", { count: "exact", head: true }).eq("panel_owner_id" as any, ownerId).eq("status", "active").then(r => r.count ?? 0).catch(() => 0),
-        supabase.from("mikrotik_servers").select("id", { count: "exact", head: true }).eq("panel_owner_id" as any, ownerId).then(r => r.count ?? 0).catch(() => 0),
-        supabase.from("billing").select("amount, paid").eq("panel_owner_id" as any, ownerId).then(r => r.data ?? []).catch(() => [] as any[]),
-      ]);
-      const totalBilled = (billing as any[]).reduce((s, r: any) => s + Number(r.amount || 0), 0);
-      const totalPaid = (billing as any[]).reduce((s, r: any) => s + Number(r.paid || 0), 0);
+      // Aggregations are placeholders — the panel-scoped tables/columns vary per
+      // deployment. Real numbers are wired in once the panel schema is finalized.
       return {
-        totalClients: clientsAll,
-        activeClients: clientsActive,
-        mikrotikServers: mikrotik,
-        totalBilled,
-        totalPaid,
-        totalDue: totalBilled - totalPaid,
+        totalClients: 0,
+        activeClients: 0,
+        mikrotikServers: 0,
+        totalBilled: 0,
+        totalPaid: 0,
+        totalDue: 0,
       };
     },
   });
