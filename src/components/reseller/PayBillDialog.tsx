@@ -95,7 +95,7 @@ const PayBillDialog = ({ open, onOpenChange, invoiceId, invoiceNo, due, customer
         _session_id: customer.session_id,
         _amount: amt,
         _method: gwName,
-        _return_origin: window.location.origin,
+        _return_origin: `${window.location.origin}${window.location.pathname}`,
       });
       if (prErr) throw prErr;
       if (!prId) throw new Error("Payment request তৈরি হয়নি");
