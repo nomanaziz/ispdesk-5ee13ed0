@@ -35,34 +35,14 @@ export const CreateTicketDialog = ({ open, onOpenChange }: Props) => {
 
   const create = useMutation({
     mutationFn: async () => {
-      const ticket_no = `TK${Date.now().toString().slice(-8)}`;
-      const { data, error } = await supabase
-        .from("support_tickets")
-        .insert({
-          ticket_no,
-          subject,
-          description,
-          priority,
-          category_id: categoryId || null,
-          client_id: customer?.type === "client" ? customer.sub : null,
-          status: "open",
-          source: "portal",
-        })
-        .select()
-        .single();
-      if (error) throw error;
-
-      // Initial message
-      if (data) {
-        await supabase.from("support_ticket_messages").insert({
-          ticket_id: data.id,
-          sender_type: "client",
-          sender_id: customer?.sub,
-          sender_name: customer?.name,
-          message: description,
-        });
-      }
-      return data;
+      // Use secure portal-data RPC. BW/reseller use pop_create_ticket; client portal uses portal_create_ticket.
+      const action = customer?.type === "client" ? "portal_create_ticket" : "pop_create_ticket";
+      const { callPortal } = await import("@/lib/portalApi");
+      const res = await callPortal<{ ok: boolean; ticket: any; error?: string }>(action, {
+        subject, description, priority, category_id: categoryId || null,
+      });
+      if (!res.ok) throw new Error(res.error || "Failed");
+      return res.ticket;
     },
     onSuccess: () => {
       toast({ title: "Ticket created", description: "We'll get back to you shortly." });
