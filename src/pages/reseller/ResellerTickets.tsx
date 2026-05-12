@@ -71,16 +71,10 @@ const ResellerTickets = () => {
 
   const { data: tickets = [] } = useQuery({
     queryKey: ["pop-support-tickets", branchId],
-    enabled: !!branchId && clients.length >= 0,
+    enabled: !!branchId,
     queryFn: async () => {
-      const ids = Array.from(clientIdSet);
-      if (ids.length === 0) return [];
-      const { data } = await supabase
-        .from("support_tickets")
-        .select("*")
-        .in("client_id", ids)
-        .order("created_at", { ascending: false });
-      return data || [];
+      const res = await callPortal<{ tickets: any[] }>("portal_list_tickets");
+      return res.tickets || [];
     },
   });
 
@@ -443,18 +437,7 @@ const PopTicketConversation = ({
 
   const send = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("support_ticket_messages").insert({
-        ticket_id: ticket.id,
-        sender_type: "agent",
-        sender_id: customer?.sub,
-        sender_name: customer?.name || "POP Admin",
-        message: reply,
-      });
-      if (error) throw error;
-      // bump status to pending if currently open
-      if (ticket.status === "open") {
-        await supabase.from("support_tickets").update({ status: "pending" }).eq("id", ticket.id);
-      }
+      await callPortal("pop_reply_ticket", { ticket_id: ticket.id, message: reply });
     },
     onSuccess: () => {
       setReply("");
@@ -466,13 +449,7 @@ const PopTicketConversation = ({
 
   const setStatus = useMutation({
     mutationFn: async (status: string) => {
-      const patch: any = { status };
-      if (status === "solved") {
-        patch.solved_at = new Date().toISOString();
-        patch.solved_by = customer?.sub;
-      }
-      const { error } = await supabase.from("support_tickets").update(patch).eq("id", ticket.id);
-      if (error) throw error;
+      await callPortal("pop_set_ticket_status", { ticket_id: ticket.id, status });
     },
     onSuccess: () => {
       toast.success("Status updated");

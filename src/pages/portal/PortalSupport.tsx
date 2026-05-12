@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import {
   GradientHeader, PillTabs, ListRow,
@@ -31,10 +31,8 @@ const PortalSupport = () => {
   const { data: tickets = [], isLoading } = useQuery({
     queryKey: ["portal-tickets", customer?.sub],
     queryFn: async () => {
-      let q = supabase.from("support_tickets").select("*").order("created_at", { ascending: false });
-      if (customer?.type === "client") q = q.eq("client_id", customer!.sub);
-      const { data } = await q;
-      return data || [];
+      const res = await callPortal<{ tickets: any[] }>("portal_list_tickets");
+      return res.tickets || [];
     },
     enabled: !!customer?.sub,
   });
