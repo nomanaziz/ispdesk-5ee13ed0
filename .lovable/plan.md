@@ -1,82 +1,88 @@
-## Goal
+## লক্ষ্য
 
-Two fixes on the BW reseller portal:
-
-1. **Pay Bill dialog** must show real payment gateways from admin settings — online gateways first (priority), manual gateways (bKash/Nagad personal, Bank) showing the receiving account number + Transaction ID + sender number fields.
-2. **Service Orders** page must show the reseller's *current* services (from their active recurring/invoice) and allow per-service Upgrade / Downgrade / Discontinue requests, with a 30-day-minimum effective date for downgrade & discontinue.
-
-No new tables — reuse existing schema.
+User চাচ্ছেন reference screenshot গুলোর মতো **section-wise visual separation** — Header card, **Filter card**, **Data table card** আলাদা আলাদা card-এ; এবং প্রতিটি table-এ **Column visibility toggle** (user নিজে যেগুলো চায় না সেগুলো hide করতে পারবে)। Design break না করে **একটাই reusable pattern** সব list page-এ প্রয়োগ হবে।
 
 ---
 
-## Part A — Pay Bill dialog (`src/components/reseller/PayBillDialog.tsx`)
+## Approach — একটাই pattern, সব table-এ
 
-### Behavior
+প্রতিটি list page এ তিনটে section card থাকবে:
 
-- Load `system_settings.payment_gateways` (already used by admin) and split:
-  - **Online** = `SSLCommerz`, `bKash Merchant`, `Nagad Merchant`, `RechargeServer` (any active one)
-  - **Manual** = `bKash Personal`, `Nagad Personal`, `Rocket Personal`, `Bank Transfer`
-- Show **Online section first** with a banner: *"দ্রুততম — সরাসরি পেমেন্ট"*. Each active online gateway = a primary button.
-- Show **Manual section below** with header *"Online ব্যর্থ হলে নিচের যেকোনো একটিতে পাঠান"*. Each manual gateway shows its **receiving number** (from `gateway.fields.account_number` / `merchant_number` / `wallet_number`) with a copy button.
-- When a **manual** method is selected, require:
-  - Amount (prefilled with due)
-  - Sender number (mobile from which money was sent)
-  - Transaction ID
-  - Optional note
-  - Submit → `bw_sale_collections` row with `payment_method`, `note` containing TrxID + sender number, `status='pending'` (existing flow). Toast: *"Pending approval"*.
-- When an **online** gateway is clicked:
-  - `SSLCommerz` → invoke existing `sslcommerz-payment` edge function with `{ amount, invoice_id, customer_id }` and redirect to returned `gatewayPageURL`.
-  - `bKash Merchant` → invoke `bkash-payment` with action `create`, redirect to `bkashURL`.
-  - `Nagad Merchant` → invoke `nagad-payment`, redirect to `paymentURL`.
-  - `RechargeServer` → invoke `rechargeserver-payment` and follow its return URL.
-  - Persist a row in `public_payment_requests` (`billing_id` = reseller, `purpose='bw_invoice:<id>'`) so the existing `payment-callback` function can credit `bw_sale_collections` as approved on success.
-- If **no online gateway is active**, hide the online section and show only manual.
+```text
+┌─ PageHeader (icon + title + description + action buttons) ──┐
+└─────────────────────────────────────────────────────────────┘
+┌─ FilterBar Card  [▼ collapse]  [⟳ reset] ──────────────────┐
+│  Search │ Filter A │ Filter B │ ...                         │
+└─────────────────────────────────────────────────────────────┘
+┌─ DataTable Card  ([⚙] columns toggle, top-right) ──────────┐
+│  Table rows...                                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
-### Files
-
-- `src/components/reseller/PayBillDialog.tsx` — rewrite UI into two sections; add gateway loader hook.
-- `src/hooks/usePaymentGateways.ts` *(new)* — small hook returning `{ online: [], manual: [] }` from `system_settings.payment_gateways`.
-
-No DB migration needed.
+পুরো page rewrite **নয়** — শুধু wrapping pattern বদলাবে। যেখানে আগে inline filters ছিল সেগুলো `<FilterBar>` এ মোড়ানো হবে; table-এর আগে `<DataTableCard>` মোড়ানো হবে।
 
 ---
 
-## Part B — Service Orders (`src/pages/bw-customer/BwPurchaseOrders.tsx`)
+## নতুন reusable components
 
-### Behavior
+### 1. `src/components/common/FilterBar.tsx`
+- Card wrapper, soft amber/muted header strip ("FILTER BILLS" লেখা ছবির মতো)
+- Title (default "Filters"), funnel icon
+- Right side: collapse toggle + Reset button (optional)
+- Children = filter inputs grid
 
-- Load reseller's **current services** = `bw_sale_recurring_items` joined to active `bw_sale_recurring` for `pop_id = billingId` (status `active`). Each row = one service line (item_name, unit e.g. Mbps, current quantity, rate).
-- Render a **"Current Order"** card listing each service:
-  ```
-  Bandwidth Internet · 160 Mbps · ৳18,000/mo   [Upgrade] [Downgrade] [Discontinue]
-  ```
-- Empty state only when truly no recurring service exists.
-- Clicking an action opens the request dialog **prefilled with that service**:
-  - **Upgrade**: new MB input (must be > current), effective date (default today, no minimum), note. Banner: instant after approval, prorated bill.
-  - **Downgrade**: new MB input (must be < current), effective date with **min = today + 30 days** (calendar enforces and rejects earlier dates), note. Banner explains 30-day rule.
-  - **Discontinue**: no MB input, effective date with **min = today + 30 days**, mandatory reason note. Banner warns service will stop on that date.
-- Submit creates `bw_purchase_orders` row:
-  - `request_type` = `upgrade` | `downgrade` | `discontinue`
-  - `current_service_id` = recurring_item id
-  - `effective_date`
-  - `note` carrying `[TYPE] item_name: 160 → 100 Mbps` + user note
-  - plus a single `bw_purchase_order_items` row capturing the requested quantity/unit so admin can read it cleanly.
-- Below, keep the existing **All Orders** table (already works via `bw_purchase_orders` query). Add the request_type badge color for `discontinue` (red).
+### 2. `src/components/common/DataTableCard.tsx`
+- Card wrapper for table
+- Header row: title + total count badge + right-side `[⚙ Columns]` button
+- `[⚙ Columns]` opens DropdownMenu with checkbox per column → toggle visibility
+- Children = `<Table>...</Table>`
 
-### Admin side (already exists)
+### 3. `src/hooks/useColumnVisibility.ts`
+```ts
+useColumnVisibility(storageKey, columns: { key, label, defaultVisible? }[])
+→ { visible: Record<key, boolean>, toggle, reset, isVisible(key) }
+```
+- localStorage এ persist (per-user, per-page)
+- Helper `<ColumnsToggle>` component already used by DataTableCard internally
 
-`bw_purchase_orders` is rendered in the admin POP/BW area; the new `discontinue` value just needs to be displayed as another badge. No schema change — `request_type` is plain text.
-
-### Files
-
-- `src/pages/bw-customer/BwPurchaseOrders.tsx` — add current-services card, per-service action buttons, discontinue mode in dialog, calendar `min` date.
-- (Optional) `src/pages/bw-panel/BwPanelPurchaseOrders.tsx` if it filters request_type — extend to show `discontinue`.
-
-No DB migration needed.
+### 4. (Optional) `src/components/common/SectionShell.tsx`
+- Page-level `<div className="space-y-4">` wrapper যাতে spacing consistent থাকে
 
 ---
 
-## Out of scope
+## Pages প্রথমে যেগুলোতে apply হবে
 
-- Building admin approval UI for discontinue beyond status change (already handled by existing approve/reject on `bw_purchase_orders`).
-- Real online-gateway credentials configuration (admin already has `PopPaymentGateways` page).
+User priority অনুযায়ী **list/filter আছে এমন page**:
+
+1. `src/pages/dashboard/clients/ClientList.tsx`
+2. `src/pages/dashboard/billing/BillingList.tsx`
+3. `src/pages/dashboard/billing/DailyCollection.tsx`
+4. `src/pages/dashboard/monitoring/OnlineClientMonitoring.tsx`
+5. `src/pages/dashboard/clients/LeftClients.tsx`
+6. `src/pages/dashboard/clients/CorporateClients.tsx` ও `HomeClients.tsx`
+
+প্রতিটিতে শুধু:
+- Existing filter JSX → `<FilterBar>...</FilterBar>` এ মোড়ানো
+- Existing table JSX → `<DataTableCard title="..." count={n} columnsKey="..." columns={[...]}>` এ মোড়ানো
+- Table cell render এ `{isVisible('col_x') && <TableCell>...}` guard বসানো (header + body উভয়ত)
+
+বাকি list pages পরে একই pattern এ migrate করব (এই plan-এ scope: উপরের ৬টা)।
+
+---
+
+## Visual rules (design break না করে)
+
+- নতুন color tokens না, existing `--card`, `--muted`, `--border` ব্যবহার
+- FilterBar header strip: `bg-muted/60` + small funnel icon (image-279 এর মতো)
+- DataTableCard header: existing card header style, ডানে gear icon + "Columns" text
+- Mobile: filter card collapsible by default (chevron toggle)
+
+---
+
+## Out of scope এই turn-এ
+
+- Column **reorder** (drag-drop) — শুধু show/hide এই plan-এ
+- Saved filter presets
+- Server-side column persistence (localStorage যথেষ্ট)
+
+User approve করলে components তৈরি করে উপরের ৬টা page-এ apply করব।
