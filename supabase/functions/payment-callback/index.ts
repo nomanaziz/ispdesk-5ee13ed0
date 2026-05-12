@@ -163,12 +163,24 @@ Deno.serve(async (req) => {
     .select("*, clients(name)").eq("id", requestId).maybeSingle();
 
   const portalUrl = (s: string) => {
+    if ((pr as any)?.purpose === "bw_invoice" || (pr as any)?.bw_invoice_id) {
+      const raw = (pr as any)?.return_origin;
+      if (raw) {
+        try {
+          const u = new URL(raw);
+          if (!u.host.endsWith("supabase.co")) return `${u.protocol}//${u.host}${u.pathname}?payment=${s}`;
+        } catch { /* ignore */ }
+      }
+      const base = resolveBase(raw);
+      return `${base}/bw/invoices/${(pr as any)?.bw_invoice_id || ""}?payment=${s}`;
+    }
     const base = resolveBase((pr as any)?.return_origin);
     const billPart = pr?.billing_id ? `/portal/bill/${pr.billing_id}` : `/portal/bills`;
     return `${base}${billPart}?payment=${s}`;
   };
 
   if (!pr) return redirect(portalUrl("failed"));
+  if (pr.status === "approved") return redirect(portalUrl("success"));
 
   let verified = false;
   let gatewayData: any = formData;
