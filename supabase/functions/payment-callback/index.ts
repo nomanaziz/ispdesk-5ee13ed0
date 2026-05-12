@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
   const requestId = url.searchParams.get("request_id") || "";
   const popRechargeId = url.searchParams.get("pop_recharge_id") || "";
   let status = url.searchParams.get("status") || "";
-  let trxId = url.searchParams.get("trxID") || url.searchParams.get("tran_id") || "";
+  let trxId = url.searchParams.get("trxID") || url.searchParams.get("tran_id") || url.searchParams.get("transaction_id") || url.searchParams.get("invoice_id") || "";
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
       const fd = await req.formData();
       fd.forEach((v, k) => { formData[k] = v.toString(); });
       status = formData.status || status;
-      trxId = formData.tran_id || trxId;
+      trxId = formData.trxID || formData.tran_id || formData.transaction_id || formData.invoice_id || trxId;
     }
   }
 
@@ -163,12 +163,24 @@ Deno.serve(async (req) => {
     .select("*, clients(name)").eq("id", requestId).maybeSingle();
 
   const portalUrl = (s: string) => {
+    if ((pr as any)?.purpose === "bw_invoice" || (pr as any)?.bw_invoice_id) {
+      const raw = (pr as any)?.return_origin;
+      if (raw) {
+        try {
+          const u = new URL(raw);
+          if (!u.host.endsWith("supabase.co")) return `${u.protocol}//${u.host}${u.pathname}?payment=${s}`;
+        } catch { /* ignore */ }
+      }
+      const base = resolveBase(raw);
+      return `${base}/bw/invoices/${(pr as any)?.bw_invoice_id || ""}?payment=${s}`;
+    }
     const base = resolveBase((pr as any)?.return_origin);
     const billPart = pr?.billing_id ? `/portal/bill/${pr.billing_id}` : `/portal/bills`;
     return `${base}${billPart}?payment=${s}`;
   };
 
   if (!pr) return redirect(portalUrl("failed"));
+  if (pr.status === "approved") return redirect(portalUrl("success"));
 
   let verified = false;
   let gatewayData: any = formData;
@@ -184,7 +196,7 @@ Deno.serve(async (req) => {
       gatewayData = await ex.json();
       verified = gatewayData.statusCode === "0000" || gatewayData.transactionStatus === "Completed";
       trxId = gatewayData.trxID || trxId;
-    } else if (gateway === "sslcommerz" && (status === "VALID" || status === "VALIDATED" || formData.status === "VALID")) {
+    } else if (gateway === "sslcommerz" && (status === "VALID" || status === "VALIDATED" || status === "success" || formData.status === "VALID" || formData.val_id || url.searchParams.get("val_id"))) {
       const val = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/sslcommerz-payment`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
@@ -220,6 +232,40 @@ Deno.serve(async (req) => {
     status: "approved", gateway_response: gatewayData, trx_id: trxId,
     approved_at: new Date().toISOString(),
   }).eq("id", pr.id);
+
+  // BW reseller / bandwidth-customer invoice flow
+  if ((pr as any).purpose === "bw_invoice" && (pr as any).bw_invoice_id) {
+    const { data: inv } = await supabase.from("bw_sales_invoices")
+      .select("id, customer_id, amount, total_amount, paid_amount, discount")
+      .eq("id", (pr as any).bw_invoice_id)
+      .maybeSingle();
+    if (!inv || ((pr as any).bw_customer_id && inv.customer_id !== (pr as any).bw_customer_id)) {
+      await supabase.from("public_payment_requests").update({ status: "failed", admin_note: "BW invoice/customer mismatch" }).eq("id", pr.id);
+      return redirect(portalUrl("failed"));
+    }
+
+    const total = Number(inv.total_amount || inv.amount || 0);
+    const newPaid = Number(inv.paid_amount || 0) + Number(pr.amount || 0);
+    const newDue = Math.max(0, total - Number(inv.discount || 0) - newPaid);
+
+    await supabase.from("bw_sale_collections").insert({
+      invoice_id: inv.id,
+      customer_id: inv.customer_id,
+      amount: pr.amount,
+      balance_due: newDue,
+      payment_method: gateway,
+      note: `Online payment via ${gateway}${trxId ? ` TrxID ${trxId}` : ""}`,
+      status: "approved",
+    });
+
+    await supabase.from("bw_sales_invoices").update({
+      paid_amount: newPaid,
+      due: newDue,
+      status: newDue <= 0 ? "paid" : "partial",
+    }).eq("id", inv.id);
+
+    return redirect(portalUrl("success"));
+  }
 
   // Client self-recharge flow
   if (pr.purpose === "client_recharge" && pr.client_id && pr.recharge_days) {

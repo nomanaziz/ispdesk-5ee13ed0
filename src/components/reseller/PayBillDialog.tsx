@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import { usePaymentGateways } from "@/hooks/usePaymentGateways";
 import { Copy, Zap, Hand, Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -29,7 +30,18 @@ const fnEndpoint = (name: string) => {
   }
 };
 
+const gatewaySlug = (name: string) => {
+  switch (name) {
+    case "SSLCommerz": return "sslcommerz";
+    case "bKash Merchant": return "bkash";
+    case "Nagad Merchant": return "nagad";
+    case "RechargeServer": return "rechargeserver";
+    default: return "";
+  }
+};
+
 const PayBillDialog = ({ open, onOpenChange, invoiceId, invoiceNo, due, customerId, onPaid }: Props) => {
+  const { customer } = usePortalAuth();
   const { online, manual, isLoading } = usePaymentGateways();
   const [selected, setSelected] = useState<string>("");
   const [amount, setAmount] = useState(String(due));
@@ -69,37 +81,41 @@ const PayBillDialog = ({ open, onOpenChange, invoiceId, invoiceNo, due, customer
   const startOnline = async (gwName: string) => {
     const amt = Number(amount);
     if (!amt || amt <= 0) return toast.error("সঠিক amount দিন");
+    if (!customer?.session_id || !customer?.username || !customer?.type) {
+      return toast.error("সেশন মেয়াদ শেষ — আবার লগইন করুন");
+    }
     setBusy(gwName);
     try {
-      // 1. Create payment request row
       const tran_id = `BW-${invoiceNo}-${Date.now().toString().slice(-6)}`;
-      const { data: pr, error: prErr } = await supabase
-        .from("public_payment_requests")
-        .insert({
-          billing_id: customerId,
-          amount: amt,
-          method: gwName,
-          purpose: `bw_invoice:${invoiceId}`,
-          status: "pending",
-        } as any)
-        .select("id")
-        .single();
+      const { data: prId, error: prErr } = await supabase.rpc("create_bw_invoice_payment_request", {
+        _invoice_id: invoiceId,
+        _customer_id: customerId,
+        _username: customer.username,
+        _user_type: customer.type,
+        _session_id: customer.session_id,
+        _amount: amt,
+        _method: gwName,
+        _return_origin: `${window.location.origin}${window.location.pathname}`,
+      });
       if (prErr) throw prErr;
+      if (!prId) throw new Error("Payment request তৈরি হয়নি");
 
-      // 2. Call gateway edge function
       const fn = fnEndpoint(gwName);
-      const origin = window.location.origin;
-      const success_url = `${origin}/bw/invoices/${invoiceId}?pay=success`;
-      const fail_url = `${origin}/bw/invoices/${invoiceId}?pay=fail`;
+      const slug = gatewaySlug(gwName);
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const fnBase = `https://${projectId}.supabase.co/functions/v1`;
+      const callback = `${fnBase}/payment-callback?gateway=${slug}&request_id=${prId}`;
+      const success_url = `${callback}&status=success`;
+      const fail_url = `${callback}&status=failed`;
 
       const { data, error } = await supabase.functions.invoke(fn, {
         body: {
           action: "create",
           amount: amt,
           tran_id,
-          payment_request_id: pr.id,
+          payment_request_id: prId,
           request_id: tran_id,
-          callback_url: success_url,
+          callback_url: callback,
           success_url, fail_url, cancel_url: fail_url,
           product_name: `Invoice ${invoiceNo}`,
         },

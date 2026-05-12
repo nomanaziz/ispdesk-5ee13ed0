@@ -1886,13 +1886,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "bw_purchase_orders_reseller_id_fkey"
-            columns: ["reseller_id"]
-            isOneToOne: false
-            referencedRelation: "branch_managers"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "bw_purchase_orders_target_service_id_fkey"
             columns: ["target_service_id"]
             isOneToOne: false
@@ -7810,7 +7803,9 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           billing_id: string | null
-          client_id: string
+          bw_customer_id: string | null
+          bw_invoice_id: string | null
+          client_id: string | null
           created_at: string
           gateway_payment_id: string | null
           gateway_response: Json | null
@@ -7819,6 +7814,7 @@ export type Database = {
           note: string | null
           purpose: string
           recharge_days: number | null
+          return_origin: string | null
           sender_number: string | null
           status: string
           trx_id: string | null
@@ -7829,7 +7825,9 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           billing_id?: string | null
-          client_id: string
+          bw_customer_id?: string | null
+          bw_invoice_id?: string | null
+          client_id?: string | null
           created_at?: string
           gateway_payment_id?: string | null
           gateway_response?: Json | null
@@ -7838,6 +7836,7 @@ export type Database = {
           note?: string | null
           purpose?: string
           recharge_days?: number | null
+          return_origin?: string | null
           sender_number?: string | null
           status?: string
           trx_id?: string | null
@@ -7848,7 +7847,9 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           billing_id?: string | null
-          client_id?: string
+          bw_customer_id?: string | null
+          bw_invoice_id?: string | null
+          client_id?: string | null
           created_at?: string
           gateway_payment_id?: string | null
           gateway_response?: Json | null
@@ -7857,6 +7858,7 @@ export type Database = {
           note?: string | null
           purpose?: string
           recharge_days?: number | null
+          return_origin?: string | null
           sender_number?: string | null
           status?: string
           trx_id?: string | null
@@ -7867,6 +7869,20 @@ export type Database = {
             columns: ["billing_id"]
             isOneToOne: false
             referencedRelation: "billing"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_payment_requests_bw_customer_id_fkey"
+            columns: ["bw_customer_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sale_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_payment_requests_bw_invoice_id_fkey"
+            columns: ["bw_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "bw_sales_invoices"
             referencedColumns: ["id"]
           },
           {
@@ -11507,6 +11523,19 @@ export type Database = {
       charge_pop_for_client_activation: {
         Args: { _client_id: string; _mikrotik_client_id?: string }
         Returns: undefined
+      }
+      create_bw_invoice_payment_request: {
+        Args: {
+          _amount: number
+          _customer_id: string
+          _invoice_id: string
+          _method: string
+          _return_origin?: string
+          _session_id: string
+          _user_type: string
+          _username: string
+        }
+        Returns: string
       }
       create_bw_portal_service_order: {
         Args: {
