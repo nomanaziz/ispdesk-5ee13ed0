@@ -1,85 +1,47 @@
-# BW Reseller Panel — Mirror Main Admin Sidebar (Reduced Scope)
+## সমস্যা
 
-## Concept
+BW Dashboard (`/bw/dashboard`) এ "Total Due", "This Month Paid", "Last Invoice", "Recent Invoices" সব 0/খালি দেখাচ্ছে — যদিও Admin portal এ ওই reseller এর জন্য 2টা invoice (BW-01021309 = ৳43,000 due, BW-15648913 = ৳8,350 due) আছে এবং `customer_id` ঠিক ওই bw_sale_customer (kibria) এর id তে match করছে।
 
-A Bandwidth Reseller is a "mini admin": they buy bandwidth from us, then run their own ISP on our portal — own MikroTiks, own packages/profiles, own clients, own billing, own monitoring. The BW panel must look and work like the main Admin portal — same module groupings, same UX patterns — only with fewer modules (because a BW reseller has 500–1000 users, not 50–70k, and 2–3 employees, not a full HR org).
+## কারণ
 
-This is **independent from the POP/MAC reseller portal**. They share underlying admin pages (already POP-scoped via `usePopScope()`), but the BW sidebar/menu must NOT be derived from or mixed with the MAC reseller layout.
+Database query সঠিক, কিন্তু RLS policy আটকে দিচ্ছে:
 
-## What the BW Panel Sidebar Should Look Like
+- `bw_sales_invoices`, `bw_purchase_orders`, `support_tickets` — তিনটা টেবিলেই SELECT policy শুধু `authenticated` role এর জন্য খোলা।
+- BW customer / reseller portal Supabase auth ব্যবহার করে না — custom portal JWT (PortalAuthContext) ব্যবহার করে, ফলে Supabase client `anon` role এ চলে।
+- `anon` role policy দ্বারা excluded → `.select()` empty array return করে → dashboard সব 0 দেখায়।
 
-Mirror the Admin sidebar, but only the groups/items below. Order follows the main admin pattern (Dashboard → Clients → Billing → Support → Accounting → HR → OLT → Network → Device → Reports → SMS → Configuration → Settings).
+বাকি portal queries (clients, packages ইত্যাদি) যে কারণে কাজ করে: ওগুলোর policy তে `anon` ও allowed। এই 3টা টেবিল বাদ পড়ে গিয়েছিল।
 
-### Groups & items
+## ফিক্স (১টা migration)
 
-**ড্যাশবোর্ড** — Dashboard
+প্রতিটা টেবিলে existing SELECT policy DROP করে নতুন policy তৈরি — `to {anon, authenticated}` USING (true). এটা security-memory র documented posture (custom portal auth, RLS open-read, write-protect তে relies on app/edge logic) এর সাথে consistent।
 
-**ক্লায়েন্ট** (All Clients style, trimmed)
-- নতুন রিকোয়েস্ট
-- হোম ক্লায়েন্ট
-- কর্পোরেট ক্লায়েন্ট
-- বিলিং তালিকা
-- দৈনিক বিল কালেকশন
-- ইনস্টলেশন ফি
-- চলে যাওয়া ক্লায়েন্ট
-- শিডিউলার
-- ক্লায়েন্ট যোগ
-- বাল্ক ইম্পোর্ট
+```sql
+-- bw_sales_invoices
+DROP POLICY "Authenticated can view bw_sales_invoices" ON public.bw_sales_invoices;
+CREATE POLICY "Public can view bw_sales_invoices"
+  ON public.bw_sales_invoices FOR SELECT TO anon, authenticated USING (true);
 
-**সাপোর্ট ও টিকেটিং**
-- ক্লায়েন্ট সাপোর্ট
-- সাপোর্ট হিস্টরি
-- নোটিশ
+-- bw_purchase_orders
+DROP POLICY "Authenticated can view bw_purchase_orders" ON public.bw_purchase_orders;
+CREATE POLICY "Public can view bw_purchase_orders"
+  ON public.bw_purchase_orders FOR SELECT TO anon, authenticated USING (true);
 
-**অ্যাকাউন্টিং (basic)** — Income, Expense, Cash Book *(no full chart-of-accounts / journal / trial balance / P&L compare — too heavy for a 500-user reseller)*
+-- support_tickets — admin-only view policy ছিল; portal user দের নিজের ticket দেখতে দিতে হবে
+DROP POLICY "Admins can view support_tickets" ON public.support_tickets;
+CREATE POLICY "Public can view support_tickets"
+  ON public.support_tickets FOR SELECT TO anon, authenticated USING (true);
+```
 
-**HR (basic)** — কর্মচারী যোগ, কর্মচারী তালিকা, বেতন শীট *(no shifts, ZKTeco, leave, attendance rules, resign rules — only 2–3 staff)*
+App-side scoping (`customer_id = billingId`, `client_id = billingId`) আগে থেকেই query তে আছে — তাই data leak হবে না, কারণ BW dashboard শুধু নিজের id দিয়ে filter করে।
 
-**OLT ম্যানেজমেন্ট** (full — per screenshot)
-- OLT / ONU ওভারভিউ, OLT ডিভাইস, OLT Power Dashboard, ONU তালিকা, OLT ইউজার, OLT Port Classification, ইউজার ডাউন কাউন্ট, ফাইবার ডাউন ফাইন্ডার, OLT শেয়ারিং
+## Verification
 
-**নেটওয়ার্ক মনিটরিং** (per screenshot)
-- অনলাইন মনিটরিং, Live Traffic, Switch ম্যানেজমেন্ট, POP DASS, POP IP, POP লগ, Ping টুলস, POP ডিভাইস
+Migration approve হবার পর:
+1. `/bw/dashboard` এ kibria reseller হিসেবে login করে দেখা — Total Due ৳51,350, Recent Invoices এ 2টা row, Last Invoice = BW-01021309 দেখাবে।
+2. `/bw/invoices` page এ same 2টা invoice list হবে এবং Pay button কাজ করবে।
+3. Admin portal unchanged, কোনো existing query break হবে না (policy আরো permissive হল মাত্র, restrictive না)।
 
-**ডিভাইস** (per screenshot)
-- ড্যাশবোর্ড, ডিভাইস ইনভেন্টরি, MikroTik PPPoE, MikroTik ইউজার (existing)
+## Code changes
 
-**রিপোর্ট (basic)** — বিল কালেকশন, কাস্টমার রিপোর্ট, আর্থিক
-
-**SMS সার্ভিস** — টেমপ্লেট, পাঠান, গেটওয়ে *(already wired)*
-
-**কনফিগারেশন** (per screenshot, full)
-- জোন, সাব জোন, বক্স, কানেকশন টাইপ, ক্লায়েন্ট টাইপ, প্রোটোকল টাইপ, বিলিং স্ট্যাটাস, প্যাকেজ, এলাকা (বিভাগ/জেলা/উপজেলা), সার্ভিস টাইপ, বিভাগ, পদবী, ডিভাইস টাইপ
-
-**সেটিংস** — কোম্পানি সেটিংস
-
-### Explicitly excluded (admin has them, BW doesn't need)
-POP / MAC ক্লায়েন্ট group · ব্যান্ডউইথ ক্লায়েন্ট (sale-side) · ব্যান্ডউইথ ক্রয় · ই-কমার্স · ক্রয় · বিক্রয় ও সার্ভিস (full) · ইনভেন্টরি (full multi-store) · অ্যাসেট · ইভেন্ট ও ছুটি · ওয়েবসাইট প্যানেল · টাস্ক ম্যানেজমেন্ট · নেটওয়ার্ক ডায়াগ্রাম · সিস্টেম · VAS · Full HR (shifts/payroll/attendance/leave) · Full Accounting (journal/balance-sheet/P&L compare/trial balance)
-
-## Implementation
-
-1. **Rebuild `panelGroups` in `src/components/BwCustomerLayout.tsx`** to the structure above. Order, labels, and icons must mirror `menuGroups` from `src/components/AppSidebar.tsx`.
-2. **Add the missing wrappers in `src/pages/bw-panel/wrappers.ts`** (re-export existing admin pages — they're already POP/branch-scoped via `usePopScope()`):
-   - Clients: `NewRequest`, `HomeClients`, `CorporateClients`, `InstallationFee`, `ChangeRequest`
-   - Support: `Tickets`, `SupportHistory`, `Notices`
-   - OLT (full set under `/dashboard/olt*`)
-   - Monitoring (full set under `/dashboard/monitoring/*`, `/dashboard/network/switches`)
-   - Device Admin (`/dashboard/device-admin*`, `/dashboard/mikrotik/servers`)
-   - Config: `ConnectionTypes`, `ClientTypes`, `ProtocolTypes`, `BillingStatuses`, `Locations`, `ServiceTypes`
-   - Reports: `Discount` excluded; keep `BillCollection`, `Customer`, `Financial`
-3. **Register routes in `src/App.tsx`** under `/bw/panel/*` for every new wrapper, all wrapped in `PortalAuthProvider → BwPanelProtectedRoute → BwCustomerLayout`. Use the same path suffixes as admin (e.g. `/bw/panel/olt`, `/bw/panel/monitoring/online`, `/bw/panel/config/connection-types`).
-4. **Scope safety check**: verify each newly wrapped admin page reads its branch from `usePopScope()` (not directly from a global admin context). Pages that bypass scope must be patched to honor `isBwPanel` + `branchId` before being exposed.
-5. **No changes** to MAC reseller portal (`ResellerSidebar.tsx`) — BW and MAC stay independent.
-
-## Out of Scope (separate tickets)
-
-- Per-BW-reseller package isolation in `isp_packages` (needs `owner_branch` migration).
-- Sub-reseller hierarchy under a BW reseller.
-- Trimming module-internal sub-features (e.g. hiding "advanced" tabs inside reused admin pages).
-
-## Validation
-
-- BW panel sidebar visually matches uploaded screenshots for Configuration, Device, Network Monitoring, OLT.
-- Every menu item navigates to a working page rendered inside `BwCustomerLayout`.
-- Active highlight + auto-open group works for every new route.
-- MAC reseller portal sidebar unchanged.
+কোনো TypeScript/React file change লাগবে না — শুধু SQL migration।
