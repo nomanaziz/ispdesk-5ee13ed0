@@ -19,6 +19,8 @@ export default function CustomerView() {
   const [customer, setCustomer] = useState<any>(null);
   const [pop, setPop] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [latestInvoiceNo, setLatestInvoiceNo] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null);
 
@@ -35,6 +37,23 @@ export default function CustomerView() {
       }
       const { data: inv } = await supabase.from("bw_sales_invoices").select("*").eq("customer_id", c.id).order("created_at", { ascending: false });
       if (inv) setInvoices(inv);
+
+      // Derive current services from latest invoice items
+      const latest = (inv || [])[0];
+      if (latest) {
+        setLatestInvoiceNo(latest.invoice_no || "");
+        const { data: its } = await supabase.from("bw_invoice_items").select("*").eq("invoice_id", latest.id).order("sort_order");
+        // De-duplicate by service_name (keep first)
+        const seen = new Set<string>();
+        const uniq: any[] = [];
+        for (const it of (its || [])) {
+          const key = (it.service_name || it.item_name || "").trim().toLowerCase();
+          if (key && !seen.has(key)) { seen.add(key); uniq.push(it); }
+        }
+        setServices(uniq);
+      } else {
+        setServices([]);
+      }
     }
     setLoading(false);
   }
