@@ -59,16 +59,21 @@ const PayBillDialog = ({ open, onOpenChange, invoiceId, invoiceNo, due, customer
     if (!amt || amt <= 0) return toast.error("সঠিক amount দিন");
     if (!sender.trim()) return toast.error("Sender number দিন");
     if (!trxId.trim()) return toast.error("Transaction ID দিন");
+    if (!customer?.session_id || !customer?.username || !customer?.type) {
+      return toast.error("সেশন মেয়াদ শেষ — আবার লগইন করুন");
+    }
     setBusy("manual");
-    const noteText = `TrxID: ${trxId} | From: ${sender}${note ? ` | ${note}` : ""}`;
-    const { error } = await supabase.from("bw_sale_collections").insert({
-      invoice_id: invoiceId,
-      customer_id: customerId,
-      amount: amt,
-      balance_due: Math.max(0, due - amt),
-      payment_method: selected,
-      note: noteText,
-      status: "pending",
+    const { error } = await supabase.rpc("create_bw_invoice_manual_payment", {
+      _invoice_id: invoiceId,
+      _customer_id: customerId,
+      _username: customer.username,
+      _user_type: customer.type,
+      _session_id: customer.session_id,
+      _amount: amt,
+      _method: selected,
+      _sender_number: sender.trim() || null,
+      _trx_id: trxId.trim() || null,
+      _note: note.trim() || null,
     });
     setBusy("");
     if (error) return toast.error(error.message);
