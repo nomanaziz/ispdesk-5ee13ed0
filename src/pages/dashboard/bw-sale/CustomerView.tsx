@@ -19,6 +19,8 @@ export default function CustomerView() {
   const [customer, setCustomer] = useState<any>(null);
   const [pop, setPop] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [latestInvoiceNo, setLatestInvoiceNo] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null);
 
@@ -35,6 +37,23 @@ export default function CustomerView() {
       }
       const { data: inv } = await supabase.from("bw_sales_invoices").select("*").eq("customer_id", c.id).order("created_at", { ascending: false });
       if (inv) setInvoices(inv);
+
+      // Derive current services from latest invoice items
+      const latest = (inv || [])[0];
+      if (latest) {
+        setLatestInvoiceNo(latest.invoice_no || "");
+        const { data: its } = await supabase.from("bw_invoice_items").select("*").eq("invoice_id", latest.id).order("sort_order");
+        // De-duplicate by service_name (keep first)
+        const seen = new Set<string>();
+        const uniq: any[] = [];
+        for (const it of (its || [])) {
+          const key = (it.service_name || it.item_name || "").trim().toLowerCase();
+          if (key && !seen.has(key)) { seen.add(key); uniq.push(it); }
+        }
+        setServices(uniq);
+      } else {
+        setServices([]);
+      }
     }
     setLoading(false);
   }
@@ -103,6 +122,7 @@ export default function CustomerView() {
             <TabsList className="w-full overflow-x-auto justify-start">
               <TabsTrigger value="personal">Personal Info</TabsTrigger>
               <TabsTrigger value="transmission">Transmission</TabsTrigger>
+              <TabsTrigger value="services">Services</TabsTrigger>
               <TabsTrigger value="invoices">Invoices</TabsTrigger>
             </TabsList>
 
@@ -151,6 +171,65 @@ export default function CustomerView() {
                         <Badge key={i} variant="outline">{ip || "—"}</Badge>
                       ))}</div>
                     ) : <span className="text-sm">—</span>}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="services">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center justify-between">
+                    <span>Current Services</span>
+                    {latestInvoiceNo && (
+                      <span className="text-xs text-muted-foreground font-normal">
+                        Source: <span className="font-mono">{latestInvoiceNo}</span>
+                      </span>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto rounded border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="w-10">SN</TableHead>
+                          <TableHead>Service</TableHead>
+                          <TableHead className="text-right">Bandwidth (Mbps)</TableHead>
+                          <TableHead className="text-right">Rate</TableHead>
+                          <TableHead className="text-right">Monthly Amount</TableHead>
+                          <TableHead>Period</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {services.length === 0 ? (
+                          <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">কোনো সক্রিয় সার্ভিস পাওয়া যায়নি</TableCell></TableRow>
+                        ) : services.map((s, i) => {
+                          const bw = Number(s.bandwidth_mbps ?? s.quantity ?? 0);
+                          const from = s.period_start || s.from_date;
+                          const to = s.period_end || s.to_date;
+                          return (
+                            <TableRow key={s.id}>
+                              <TableCell>{i + 1}</TableCell>
+                              <TableCell className="font-medium">{s.service_name || s.item_name || "—"}</TableCell>
+                              <TableCell className="text-right">{bw.toLocaleString()}</TableCell>
+                              <TableCell className="text-right">৳{Number(s.rate || 0).toLocaleString()}</TableCell>
+                              <TableCell className="text-right font-semibold">৳{Number(s.amount || 0).toLocaleString()}</TableCell>
+                              <TableCell className="text-xs">{from || "—"} → {to || "—"}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {services.length > 0 && (
+                          <TableRow className="bg-muted/30 font-semibold">
+                            <TableCell colSpan={2} className="text-right">Total:</TableCell>
+                            <TableCell className="text-right">{services.reduce((a, s) => a + Number(s.bandwidth_mbps ?? s.quantity ?? 0), 0).toLocaleString()}</TableCell>
+                            <TableCell />
+                            <TableCell className="text-right">৳{services.reduce((a, s) => a + Number(s.amount || 0), 0).toLocaleString()}</TableCell>
+                            <TableCell />
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
                 </CardContent>
               </Card>

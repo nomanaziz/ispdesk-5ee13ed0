@@ -26,7 +26,7 @@ interface CurrentService {
   id: string;
   label: string;
   amount: number;
-  bandwidth?: string;
+  bandwidthMbps: number;
   source: string;
 }
 
@@ -41,29 +41,40 @@ export default function BwServiceOrders() {
   const [effectiveDate, setEffectiveDate] = useState("");
   const [note, setNote] = useState("");
 
-  // Current services derived from the most recent invoice(s)
+  // Current services derived from latest invoice's line items
   const { data: currentServices = [] } = useQuery<CurrentService[]>({
     queryKey: ["bw-current-services", billingId],
     enabled: !!billingId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: invs } = await supabase
         .from("bw_sales_invoices")
-        .select("id, invoice_no, total_amount, amount, billing_month, notes, special_note")
+        .select("id, invoice_no")
         .eq("customer_id", billingId!)
         .order("created_at", { ascending: false })
         .limit(1);
-      const inv = (data || [])[0];
+      const inv = (invs || [])[0];
       if (!inv) return [];
-      const text = `${inv.notes || ""} ${inv.special_note || ""}`;
-      const m = text.match(/(\d+)\s*(Mbps|MB|Mb)/i);
-      const bw = m ? `${m[1]} ${m[2]}` : undefined;
-      return [{
-        id: inv.id,
-        label: bw ? `Internet Bandwidth — ${bw}` : `Internet Bandwidth (${inv.invoice_no})`,
-        amount: Number(inv.total_amount || inv.amount || 0),
-        bandwidth: bw,
-        source: inv.invoice_no,
-      }];
+      const { data: items } = await supabase
+        .from("bw_invoice_items")
+        .select("*")
+        .eq("invoice_id", inv.id)
+        .order("sort_order");
+      const seen = new Set<string>();
+      const out: CurrentService[] = [];
+      for (const it of items || []) {
+        const name = (it.service_name || it.item_name || "").trim();
+        const key = name.toLowerCase();
+        if (!name || seen.has(key)) continue;
+        seen.add(key);
+        out.push({
+          id: it.id,
+          label: name,
+          amount: Number(it.amount || 0),
+          bandwidthMbps: Number(it.bandwidth_mbps ?? it.quantity ?? 0),
+          source: inv.invoice_no,
+        });
+      }
+      return out;
     },
   });
 
@@ -105,7 +116,7 @@ export default function BwServiceOrders() {
       if (mode === "discontinue" && !note.trim()) throw new Error("কারণ লিখুন");
 
       const order_no = `SO-${Date.now().toString().slice(-8)}`;
-      const cur = activeService.bandwidth || `(${activeService.source})`;
+      const cur = activeService.bandwidthMbps ? `${activeService.bandwidthMbps} Mbps` : `(${activeService.source})`;
       const target = mode === "discontinue" ? "STOP" : bandwidth;
       const summary = `[${mode.toUpperCase()}] ${activeService.label}: ${cur} → ${target}`;
 
@@ -177,9 +188,13 @@ export default function BwServiceOrders() {
                 <div key={s.id} className="border rounded-md p-3 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="font-semibold">{s.label}</div>
-                    <div className="text-xs text-muted-foreground">
-                      মাসিক: <span className="font-semibold text-foreground">{tk(s.amount)}</span>
-                      {" · "}সর্বশেষ ইনভয়েস: <span className="font-mono">{s.source}</span>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Current Capacity:{" "}
+                      <span className="font-semibold text-foreground">
+                        {s.bandwidthMbps ? `${s.bandwidthMbps.toLocaleString()} Mbps` : "—"}
+                      </span>
+                      {" · "}মাসিক: <span className="font-semibold text-foreground">{tk(s.amount)}</span>
+                      {" · "}ইনভয়েস: <span className="font-mono">{s.source}</span>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -263,7 +278,12 @@ export default function BwServiceOrders() {
             </DialogTitle>
             <DialogDescription>
               {activeService && (
-                <>সার্ভিস: <strong>{activeService.label}</strong></>
+                <>
+                  সার্ভিস: <strong>{activeService.label}</strong>
+                  {activeService.bandwidthMbps ? (
+                    <> — Current: <strong>{activeService.bandwidthMbps} Mbps</strong></>
+                  ) : null}
+                </>
               )}
             </DialogDescription>
           </DialogHeader>
