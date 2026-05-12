@@ -454,153 +454,153 @@ export default function BillingList() {
       <BulkThanaChangeDialog open={thanaOpen} onOpenChange={setThanaOpen} selectedClientIds={[...selectedIds]} invalidateKey="billing-list" />
 
       {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox
-                      checked={paginated.length > 0 && selectedIds.size === paginated.length}
-                      onCheckedChange={toggleSelectAll}
-                    />
-                  </TableHead>
-                  <TableHead className="w-10">ক্রম</TableHead>
-                  <TableHead>ক্লায়েন্ট কোড</TableHead>
-                  <TableHead>ID/IP</TableHead>
-                  <TableHead>কাস্টমার নাম</TableHead>
-                  <TableHead>মোবাইল</TableHead>
-                  <TableHead>জোন</TableHead>
-                  <TableHead>প্যাকেজ</TableHead>
-                  <TableHead>স্পিড</TableHead>
-                  <TableHead>Exp Date</TableHead>
-                  {isPrepaidPop && <TableHead className="text-center">R.Days</TableHead>}
-                  <TableHead>স্ট্যাটাস</TableHead>
-                  <TableHead className="text-right">মাসিক বিল</TableHead>
-                  <TableHead className="text-right">পরিশোধিত</TableHead>
-                  <TableHead className="text-right">বকেয়া</TableHead>
-                  <TableHead className="text-right">অগ্রিম</TableHead>
-                  <TableHead>পরিশোধের তারিখ</TableHead>
-                  <TableHead>বিল স্ট্যাটাস</TableHead>
-                  <TableHead>MikroTik স্ট্যাটাস</TableHead>
-                  {isPopMode && <TableHead className="text-center">Auto Recharge</TableHead>}
-                  <TableHead>অ্যাকশন</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow><TableCell colSpan={isPrepaidPop ? (isPopMode ? 21 : 20) : 19} className="text-center py-8 text-muted-foreground">লোড হচ্ছে...</TableCell></TableRow>
-                ) : paginated.length === 0 ? (
-                  <TableRow><TableCell colSpan={isPrepaidPop ? (isPopMode ? 21 : 20) : 19} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
-                ) : paginated.map((c: any, i: number) => {
-                  const b = c.currentBill;
-                  const paidAmt = Number(c.totalPaid || 0);
-                  const dueAmt = Number(c.totalDue || 0);
-                  const derived = getBillStatus(b);
-                  const isPaid = derived === "paid";
-                  const isPartial = derived === "partial";
-                  return (
-                    <TableRow key={c.id} data-state={selectedIds.has(c.id) ? "selected" : undefined}>
-                      <TableCell>
-                        <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
-                      </TableCell>
-                      <TableCell>{(page - 1) * perPage + i + 1}</TableCell>
-                      <TableCell className="font-mono text-xs">
-                        <span className="inline-flex items-center gap-1.5">
-                          <span className={`inline-block h-2 w-2 rounded-full ${c.isOnlineLive ? "bg-green-500" : "bg-gray-400"}`} />
-                          {c.client_id}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-xs">{c.username || c.remote_address || "-"}</TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-1">
-                          {c.is_vip && <Crown className="h-3 w-3 text-purple-500" />}
-                          <span>{c.name}</span>
-                          {c.is_vip && (
-                            <Badge variant="outline" className="ml-1 h-4 px-1 text-[9px] bg-purple-500/10 text-purple-600 border-purple-500/30">
-                              VIP
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{c.contact || "-"}</TableCell>
-                      <TableCell>{c.zone?.name || "-"}</TableCell>
-                      <TableCell>{c.package?.name || "-"}</TableCell>
-                      <TableCell>{c.speed || "-"}</TableCell>
-                      <TableCell>
-                        <BillingDatePopover client={c} />
-                      </TableCell>
-                      {isPrepaidPop && (
-                        <TableCell className="text-center">
-                          <RemainingDaysCell client={c} />
-                        </TableCell>
-                      )}
-                      <TableCell>
-                        <Badge variant={c.status === "active" ? "default" : c.status === "left" ? "destructive" : "secondary"} className="text-xs capitalize">
-                          {c.status}
+      <DataTableCard
+        title="বিলিং তালিকা"
+        count={filtered.length}
+        columns={BILLING_LIST_COLUMNS}
+        isVisible={isVisible}
+        toggle={toggle}
+        reset={resetCols}
+        bodyClassName="p-0"
+      >
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={paginated.length > 0 && selectedIds.size === paginated.length}
+                  onCheckedChange={toggleSelectAll}
+                />
+              </TableHead>
+              {isVisible("sl") && <TableHead className="w-10">ক্রম</TableHead>}
+              <TableHead>ক্লায়েন্ট কোড</TableHead>
+              {isVisible("username") && <TableHead>ID/IP</TableHead>}
+              <TableHead>কাস্টমার নাম</TableHead>
+              {isVisible("contact") && <TableHead>মোবাইল</TableHead>}
+              {isVisible("zone") && <TableHead>জোন</TableHead>}
+              {isVisible("package") && <TableHead>প্যাকেজ</TableHead>}
+              {isVisible("speed") && <TableHead>স্পিড</TableHead>}
+              {isVisible("expire_date") && <TableHead>Exp Date</TableHead>}
+              {isPrepaidPop && isVisible("remaining_days") && <TableHead className="text-center">R.Days</TableHead>}
+              {isVisible("status") && <TableHead>স্ট্যাটাস</TableHead>}
+              <TableHead className="text-right">মাসিক বিল</TableHead>
+              {isVisible("paid") && <TableHead className="text-right">পরিশোধিত</TableHead>}
+              <TableHead className="text-right">বকেয়া</TableHead>
+              {isVisible("advance") && <TableHead className="text-right">অগ্রিম</TableHead>}
+              {isVisible("pay_date") && <TableHead>পরিশোধের তারিখ</TableHead>}
+              {isVisible("bill_status") && <TableHead>বিল স্ট্যাটাস</TableHead>}
+              {isVisible("mikrotik_status") && <TableHead>MikroTik</TableHead>}
+              {isPopMode && isVisible("auto_recharge") && <TableHead className="text-center">Auto Recharge</TableHead>}
+              <TableHead>অ্যাকশন</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow><TableCell colSpan={22} className="text-center py-8 text-muted-foreground">লোড হচ্ছে...</TableCell></TableRow>
+            ) : paginated.length === 0 ? (
+              <TableRow><TableCell colSpan={22} className="text-center py-8 text-muted-foreground">কোনো ডাটা পাওয়া যায়নি</TableCell></TableRow>
+            ) : paginated.map((c: any, i: number) => {
+              const b = c.currentBill;
+              const paidAmt = Number(c.totalPaid || 0);
+              const dueAmt = Number(c.totalDue || 0);
+              const derived = getBillStatus(b);
+              const isPaid = derived === "paid";
+              const isPartial = derived === "partial";
+              return (
+                <TableRow key={c.id} data-state={selectedIds.has(c.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
+                  </TableCell>
+                  {isVisible("sl") && <TableCell>{(page - 1) * perPage + i + 1}</TableCell>}
+                  <TableCell className="font-mono text-xs">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className={`inline-block h-2 w-2 rounded-full ${c.isOnlineLive ? "bg-green-500" : "bg-gray-400"}`} />
+                      {c.client_id}
+                    </span>
+                  </TableCell>
+                  {isVisible("username") && <TableCell className="text-xs">{c.username || c.remote_address || "-"}</TableCell>}
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-1">
+                      {c.is_vip && <Crown className="h-3 w-3 text-purple-500" />}
+                      <span>{c.name}</span>
+                      {c.is_vip && (
+                        <Badge variant="outline" className="ml-1 h-4 px-1 text-[9px] bg-purple-500/10 text-purple-600 border-purple-500/30">
+                          VIP
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">{Number(c.monthly_bill || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-right">{paidAmt.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="font-semibold">{dueAmt.toLocaleString()}</div>
-                        {c.overdueMonths >= 2 && (
-                          <Badge variant="destructive" className="text-[9px] h-4 px-1 mt-0.5">{c.overdueMonths} মাস</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">{Number(b?.advance || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-xs">{b?.pay_date || "-"}</TableCell>
-                      <TableCell>
-                        {isPaid ? (
-                          <Badge className="text-[10px] h-6 flex items-center bg-emerald-500/20 text-emerald-600 border-emerald-500/30" variant="outline">পরিশোধিত</Badge>
-                        ) : isPartial ? (
-                          <div className="flex items-center gap-1">
-                            <Badge className="text-[10px] h-6 flex items-center bg-amber-500/20 text-amber-600 border-amber-500/30" variant="outline">আংশিক</Badge>
-                            <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
-                              পরিশোধ
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1">
-                            <Badge variant="destructive" className="text-[10px] h-6 flex items-center">বকেয়া</Badge>
-                            <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
-                              পরিশোধ
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <MikrotikToggle client={c} queryClient={queryClient} />
-                      </TableCell>
-                      {isPopMode && (
-                        <TableCell className="text-center">
-                          <AutoRechargeToggle client={c} queryClient={queryClient} />
-                        </TableCell>
                       )}
-                      <TableCell>
-                        <ClientActionButtons client={c} mode="billing" invalidateKey="billing-list" />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-              {paginated.length > 0 && (
-                <TableFooter>
-                    <TableRow>
-                      <TableCell colSpan={isPrepaidPop ? 12 : 11} className="text-right">পেজ মোট ({paginated.length} জন):</TableCell>
-                      <TableCell className="text-right">{pageTotals.monthly.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{pageTotals.paid.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{pageTotals.due.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{pageTotals.advance.toLocaleString()}</TableCell>
-                    <TableCell colSpan={isPopMode ? 5 : 4} />
-                  </TableRow>
-                </TableFooter>
-              )}
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                    </div>
+                  </TableCell>
+                  {isVisible("contact") && <TableCell>{c.contact || "-"}</TableCell>}
+                  {isVisible("zone") && <TableCell>{c.zone?.name || "-"}</TableCell>}
+                  {isVisible("package") && <TableCell>{c.package?.name || "-"}</TableCell>}
+                  {isVisible("speed") && <TableCell>{c.speed || "-"}</TableCell>}
+                  {isVisible("expire_date") && (
+                    <TableCell>
+                      <BillingDatePopover client={c} />
+                    </TableCell>
+                  )}
+                  {isPrepaidPop && isVisible("remaining_days") && (
+                    <TableCell className="text-center">
+                      <RemainingDaysCell client={c} />
+                    </TableCell>
+                  )}
+                  {isVisible("status") && (
+                    <TableCell>
+                      <Badge variant={c.status === "active" ? "default" : c.status === "left" ? "destructive" : "secondary"} className="text-xs capitalize">
+                        {c.status}
+                      </Badge>
+                    </TableCell>
+                  )}
+                  <TableCell className="text-right">{Number(c.monthly_bill || 0).toLocaleString()}</TableCell>
+                  {isVisible("paid") && <TableCell className="text-right">{paidAmt.toLocaleString()}</TableCell>}
+                  <TableCell className="text-right">
+                    <div className="font-semibold">{dueAmt.toLocaleString()}</div>
+                    {c.overdueMonths >= 2 && (
+                      <Badge variant="destructive" className="text-[9px] h-4 px-1 mt-0.5">{c.overdueMonths} মাস</Badge>
+                    )}
+                  </TableCell>
+                  {isVisible("advance") && <TableCell className="text-right">{Number(b?.advance || 0).toLocaleString()}</TableCell>}
+                  {isVisible("pay_date") && <TableCell className="text-xs">{b?.pay_date || "-"}</TableCell>}
+                  {isVisible("bill_status") && (
+                    <TableCell>
+                      {isPaid ? (
+                        <Badge className="text-[10px] h-6 flex items-center bg-emerald-500/20 text-emerald-600 border-emerald-500/30" variant="outline">পরিশোধিত</Badge>
+                      ) : isPartial ? (
+                        <div className="flex items-center gap-1">
+                          <Badge className="text-[10px] h-6 flex items-center bg-amber-500/20 text-amber-600 border-amber-500/30" variant="outline">আংশিক</Badge>
+                          <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
+                            পরিশোধ
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <Badge variant="destructive" className="text-[10px] h-6 flex items-center">বকেয়া</Badge>
+                          <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
+                            পরিশোধ
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  )}
+                  {isVisible("mikrotik_status") && (
+                    <TableCell>
+                      <MikrotikToggle client={c} queryClient={queryClient} />
+                    </TableCell>
+                  )}
+                  {isPopMode && isVisible("auto_recharge") && (
+                    <TableCell className="text-center">
+                      <AutoRechargeToggle client={c} queryClient={queryClient} />
+                    </TableCell>
+                  )}
+                  <TableCell>
+                    <ClientActionButtons client={c} mode="billing" invalidateKey="billing-list" />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </DataTableCard>
 
       {/* Pagination */}
       <div className="flex items-center justify-between">
