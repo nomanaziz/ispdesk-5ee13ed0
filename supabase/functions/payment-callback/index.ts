@@ -196,7 +196,7 @@ Deno.serve(async (req) => {
       gatewayData = await ex.json();
       verified = gatewayData.statusCode === "0000" || gatewayData.transactionStatus === "Completed";
       trxId = gatewayData.trxID || trxId;
-    } else if (gateway === "sslcommerz" && (status === "VALID" || status === "VALIDATED" || formData.status === "VALID")) {
+    } else if (gateway === "sslcommerz" && (status === "VALID" || status === "VALIDATED" || status === "success" || formData.status === "VALID" || formData.val_id || url.searchParams.get("val_id"))) {
       const val = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/sslcommerz-payment`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
