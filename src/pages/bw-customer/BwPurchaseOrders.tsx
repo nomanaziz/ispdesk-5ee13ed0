@@ -188,9 +188,13 @@ export default function BwServiceOrders() {
                 <div key={s.id} className="border rounded-md p-3 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="font-semibold">{s.label}</div>
-                    <div className="text-xs text-muted-foreground">
-                      মাসিক: <span className="font-semibold text-foreground">{tk(s.amount)}</span>
-                      {" · "}সর্বশেষ ইনভয়েস: <span className="font-mono">{s.source}</span>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Current Capacity:{" "}
+                      <span className="font-semibold text-foreground">
+                        {s.bandwidthMbps ? `${s.bandwidthMbps.toLocaleString()} Mbps` : "—"}
+                      </span>
+                      {" · "}মাসিক: <span className="font-semibold text-foreground">{tk(s.amount)}</span>
+                      {" · "}ইনভয়েস: <span className="font-mono">{s.source}</span>
                     </div>
                   </div>
                   <div className="flex gap-2">
