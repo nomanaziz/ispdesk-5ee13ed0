@@ -1,32 +1,45 @@
-আমি ডাটাবেসে `BW-01021309` চেক করেছি: ইনভয়েসে ৩টা line item আছে — IIG 100 Mbps ৳16,000, FNA 400 Mbps ৳12,000, Google Cache (GGC) 600 Mbps ৳15,000; মোট ৳43,000। UI-তে না দেখানোর কারণ হলো portal user custom login token ব্যবহার করে, Supabase authenticated session না; তাই `bw_invoice_items` এবং `system_settings` query RLS-এর কারণে empty/error হয়ে যাচ্ছে, কিন্তু code error দেখাচ্ছে না।
+Root cause found:
+- `public_payment_requests` is built for normal client bills: `client_id` is required and `billing_id` points to `billing.id`.
+- BW invoice payment is incorrectly inserting a BW customer id into `billing_id` and no `client_id`, so RLS/FK blocks it.
+- `bw_purchase_orders.reseller_id` currently has an FK to `branch_managers.id`, but BW bandwidth customers/invoices use `bw_sale_customers.id`. That is why service upgrade/downgrade and RechargeServer paths hit `bw_purchase_orders_reseller_id_fkey`.
 
-## Plan
+Implementation plan:
 
-1. **Invoice service items visible করা**
-   - `bw_invoice_items` সরাসরি frontend থেকে query না করে একটি safe database RPC/view ব্যবহার করব।
-   - `/bw/invoices/:id` invoice detail page এবং print page এই safe source থেকে line items নেবে।
-   - Empty হলে silent “No items” না দেখিয়ে actual error/empty state পরিষ্কারভাবে দেখাবে।
+1. Database migration
+- Update `public_payment_requests` so it can safely represent BW invoice payments:
+  - allow BW invoice payment requests without a normal `clients.id`
+  - add/link BW invoice and BW customer identity fields where needed
+  - keep admin-only viewing/updating rules for existing requests
+- Replace the incorrect `bw_purchase_orders.reseller_id` FK behavior:
+  - remove the hard FK to `branch_managers.id` because this table is now used by BW customers too
+  - validate portal identity inside the secure RPC instead of relying on the wrong FK
+- Update/create secure RPCs:
+  - `create_bw_portal_service_order(...)` validates portal session and validates the customer against `bw_sale_customers` / `branch_managers` based on user type before inserting
+  - `create_bw_invoice_payment_request(...)` creates BW invoice payment requests via `SECURITY DEFINER`, so the browser does not directly insert into RLS-protected payment tables
 
-2. **Service Orders page fix করা**
-   - `BwPurchaseOrders.tsx` latest invoice fetch করার পর একই safe invoice-items source ব্যবহার করবে।
-   - ফলে “কোনো সক্রিয় ইনভয়েস/সার্ভিস পাওয়া যায়নি” দেখাবে না; IIG/FNA/GGC সহ current capacity, monthly amount, invoice no দেখাবে।
-   - Upgrade / Downgrade / Discontinue button আগের মতো প্রতি service row-তে থাকবে।
+2. Frontend payment fix
+- Update `src/components/reseller/PayBillDialog.tsx`:
+  - stop direct insert into `public_payment_requests`
+  - call the new `create_bw_invoice_payment_request` RPC
+  - send gateway success/cancel URLs to `payment-callback` with `request_id`, `gateway`, and status, instead of returning directly to the invoice page without backend verification
 
-3. **Payment gateway fix করা**
-   - `usePaymentGateways.ts` আর `system_settings` সরাসরি read করবে না।
-   - আগে থেকে থাকা secure RPC `public_payment_gateways()` ব্যবহার করবে, যেটা active + website-visible gateway গুলো safe fields সহ return করে।
-   - এতে reseller/BW portal-এ bKash Personal, Nagad Personal, RechargeServer ইত্যাদি দেখা যাবে; personal number থাকলে number দেখাবে।
+3. Edge function callback fix
+- Update `supabase/functions/payment-callback/index.ts`:
+  - detect BW invoice payment requests
+  - verify RechargeServer/bKash/Nagad/SSLCommerz response
+  - update `public_payment_requests` status
+  - insert approved payment into `bw_sale_collections`
+  - update `bw_sales_invoices.paid_amount`, `due`, and payment status
+  - redirect back to `/bw/invoices/:id` or `/reseller/invoices/:id` with success/fail
 
-4. **Query error handling যোগ করা**
-   - Invoice item বা gateway query fail করলে empty ধরে “admin contact” দেখাবে না।
-   - Console/log-friendly error এবং user-facing clear message থাকবে, যাতে পরেরবার একই issue silent না থাকে।
+4. Service upgrade/downgrade fix
+- Update the service order RPC/migration so upgrade, downgrade, discontinue inserts no longer depend on the wrong `branch_managers` FK.
+- Keep `src/pages/bw-customer/BwPurchaseOrders.tsx` using the RPC, but adjust if the RPC return/signature changes.
 
-## Technical details
-
-- Required DB change: add/grant a safe read function for BW invoice item lines, because portal users are anonymous to Supabase RLS.
-- Frontend files to update:
-  - `src/hooks/usePaymentGateways.ts`
-  - `src/pages/bw-customer/BwPurchaseOrders.tsx`
-  - `src/pages/reseller/ResellerInvoiceDetail.tsx`
-  - `src/pages/reseller/ResellerInvoicePrint.tsx`
-- No invoice data migration needed; `BW-01021309` data already exists.
+5. Verification
+- Confirm policies/functions exist in Supabase.
+- Test with the current failing BW customer invoice (`ddbb78b2-992a-4ae8-968a-ed563848419b`) and customer (`cad4c1ce-37db-4636-a5b9-80dee92e6b66`).
+- Verify:
+  - RechargeServer checkout starts without RLS error
+  - callback records payment against BW invoice
+  - upgrade/downgrade/discontinue creates order without FK error
