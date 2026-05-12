@@ -115,6 +115,11 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
   const [transferToPopOpen, setTransferToPopOpen] = useState(false);
   const [commentClient, setCommentClient] = useState<any | null>(null);
 
+  const { isVisible, toggle, reset: resetCols } = useColumnVisibility(
+    `client-list-${lockedClientType || "all"}`,
+    CLIENT_LIST_COLUMNS,
+  );
+
   const { data: clients, isLoading } = useQuery({
     queryKey: ["clients-list", branchId || "all", isPopMode ? "pop" : "admin"],
     queryFn: async () => {
