@@ -278,7 +278,12 @@ export default function BwServiceOrders() {
             </DialogTitle>
             <DialogDescription>
               {activeService && (
-                <>সার্ভিস: <strong>{activeService.label}</strong></>
+                <>
+                  সার্ভিস: <strong>{activeService.label}</strong>
+                  {activeService.bandwidthMbps ? (
+                    <> — Current: <strong>{activeService.bandwidthMbps} Mbps</strong></>
+                  ) : null}
+                </>
               )}
             </DialogDescription>
           </DialogHeader>
