@@ -11524,6 +11524,21 @@ export type Database = {
         Args: { _client_id: string; _mikrotik_client_id?: string }
         Returns: undefined
       }
+      create_bw_invoice_manual_payment: {
+        Args: {
+          _amount: number
+          _customer_id: string
+          _invoice_id: string
+          _method: string
+          _note?: string
+          _sender_number?: string
+          _session_id: string
+          _trx_id?: string
+          _user_type: string
+          _username: string
+        }
+        Returns: string
+      }
       create_bw_invoice_payment_request: {
         Args: {
           _amount: number
