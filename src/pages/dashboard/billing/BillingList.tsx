@@ -34,6 +34,32 @@ import { toast } from "sonner";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
 import { getBillStatus } from "@/lib/billingStatus";
+import { DataTableCard } from "@/components/common/DataTableCard";
+import { useColumnVisibility, type ColumnDef } from "@/hooks/useColumnVisibility";
+
+const BILLING_LIST_COLUMNS: ColumnDef[] = [
+  { key: "select", label: "Select", required: true },
+  { key: "sl", label: "ক্রম" },
+  { key: "client_id", label: "ক্লায়েন্ট কোড", required: true },
+  { key: "username", label: "ID / IP" },
+  { key: "name", label: "কাস্টমার নাম", required: true },
+  { key: "contact", label: "মোবাইল" },
+  { key: "zone", label: "জোন" },
+  { key: "package", label: "প্যাকেজ" },
+  { key: "speed", label: "স্পিড", defaultVisible: false },
+  { key: "expire_date", label: "Exp Date" },
+  { key: "remaining_days", label: "R.Days (POP)" },
+  { key: "status", label: "স্ট্যাটাস" },
+  { key: "monthly_bill", label: "মাসিক বিল", required: true },
+  { key: "paid", label: "পরিশোধিত" },
+  { key: "due", label: "বকেয়া", required: true },
+  { key: "advance", label: "অগ্রিম", defaultVisible: false },
+  { key: "pay_date", label: "পরিশোধের তারিখ", defaultVisible: false },
+  { key: "bill_status", label: "বিল স্ট্যাটাস" },
+  { key: "mikrotik_status", label: "MikroTik" },
+  { key: "auto_recharge", label: "Auto Recharge (POP)" },
+  { key: "actions", label: "অ্যাকশন", required: true },
+];
 
 const currentMonth = () => {
   const d = new Date();
