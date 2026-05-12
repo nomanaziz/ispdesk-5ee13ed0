@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { callPortal } from "@/lib/portalApi";
 import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import {
   GradientHeader, PillTabs, ListRow,
