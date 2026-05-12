@@ -85,6 +85,10 @@ export default function BillingList() {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const { isVisible, toggle, reset: resetCols } = useColumnVisibility(
+    "billing-list",
+    BILLING_LIST_COLUMNS,
+  );
 
   // R.Days column shows for any reseller (POP) mode
   const isPrepaidPop = isPopMode;
