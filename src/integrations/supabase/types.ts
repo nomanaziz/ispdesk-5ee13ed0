@@ -11508,6 +11508,21 @@ export type Database = {
         Args: { _client_id: string; _mikrotik_client_id?: string }
         Returns: undefined
       }
+      create_bw_portal_service_order: {
+        Args: {
+          _current_mbps?: number
+          _customer_id: string
+          _effective_date?: string
+          _note?: string
+          _request_type: string
+          _service_name: string
+          _session_id: string
+          _target_mbps?: number
+          _user_type: string
+          _username: string
+        }
+        Returns: Json
+      }
       create_public_payment_request: {
         Args: {
           _amount: number
@@ -11534,6 +11549,16 @@ export type Database = {
         Returns: string
       }
       generate_license_key: { Args: never; Returns: string }
+      get_bw_portal_invoice_detail: {
+        Args: {
+          _customer_id?: string
+          _invoice_id: string
+          _session_id?: string
+          _user_type?: string
+          _username?: string
+        }
+        Returns: Json
+      }
       get_important_link_password: {
         Args: { _link_id: string }
         Returns: string
