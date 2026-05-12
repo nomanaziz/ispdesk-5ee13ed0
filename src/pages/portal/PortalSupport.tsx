@@ -31,10 +31,8 @@ const PortalSupport = () => {
   const { data: tickets = [], isLoading } = useQuery({
     queryKey: ["portal-tickets", customer?.sub],
     queryFn: async () => {
-      let q = supabase.from("support_tickets").select("*").order("created_at", { ascending: false });
-      if (customer?.type === "client") q = q.eq("client_id", customer!.sub);
-      const { data } = await q;
-      return data || [];
+      const res = await callPortal<{ tickets: any[] }>("portal_list_tickets");
+      return res.tickets || [];
     },
     enabled: !!customer?.sub,
   });
