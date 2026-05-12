@@ -686,7 +686,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
             </TableRow>
           </TableFooter>
         </Table>
-      </div>
+      </DataTableCard>
 
       {/* Pagination */}
       <div className="flex items-center justify-between">
