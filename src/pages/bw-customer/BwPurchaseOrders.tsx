@@ -109,37 +109,31 @@ export default function BwServiceOrders() {
   const submit = useMutation({
     mutationFn: async () => {
       if (!billingId || !mode || !activeService) throw new Error("Not ready");
+      if (!customer?.session_id || !customer?.username || !customer?.type) {
+        throw new Error("সেশন মেয়াদ শেষ — আবার লগইন করুন");
+      }
       if (mode !== "discontinue" && !bandwidth.trim()) throw new Error("নতুন ব্যান্ডউইথ দিন");
       if ((mode === "downgrade" || mode === "discontinue") && effectiveDate < minDownDate) {
         throw new Error("কমপক্ষে ৩০ দিন পরের তারিখ দিন");
       }
       if (mode === "discontinue" && !note.trim()) throw new Error("কারণ লিখুন");
 
-      const order_no = `SO-${Date.now().toString().slice(-8)}`;
-      const cur = activeService.bandwidthMbps ? `${activeService.bandwidthMbps} Mbps` : `(${activeService.source})`;
-      const target = mode === "discontinue" ? "STOP" : bandwidth;
-      const summary = `[${mode.toUpperCase()}] ${activeService.label}: ${cur} → ${target}`;
+      const targetMbps =
+        mode === "discontinue" ? 0 : Number(bandwidth.replace(/[^\d.]/g, "")) || 0;
 
-      const { data: order, error } = await supabase.from("bw_purchase_orders").insert({
-        reseller_id: billingId,
-        order_no,
-        status: "pending",
-        total: 0,
-        request_type: mode,
-        effective_date: effectiveDate,
-        note: `${summary}${note ? `\n\n${note}` : ""}`,
-      } as any).select("id").single();
+      const { error } = await supabase.rpc("create_bw_portal_service_order", {
+        _customer_id: billingId,
+        _username: customer.username,
+        _user_type: customer.type,
+        _session_id: customer.session_id,
+        _request_type: mode,
+        _service_name: activeService.label,
+        _current_mbps: activeService.bandwidthMbps || null,
+        _target_mbps: targetMbps || null,
+        _effective_date: effectiveDate || null,
+        _note: note || null,
+      });
       if (error) throw error;
-
-      await supabase.from("bw_purchase_order_items").insert({
-        order_id: order.id,
-        item_name: activeService.label,
-        description: summary,
-        unit: "Mbps",
-        quantity: mode === "discontinue" ? 0 : Number(bandwidth.replace(/[^\d.]/g, "")) || 0,
-        rate: 0,
-        total: 0,
-      } as any);
     },
     onSuccess: () => {
       toast.success("অনুরোধ জমা হয়েছে");
