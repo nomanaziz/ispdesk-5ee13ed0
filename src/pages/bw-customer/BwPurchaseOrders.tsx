@@ -116,7 +116,7 @@ export default function BwServiceOrders() {
       if (mode === "discontinue" && !note.trim()) throw new Error("কারণ লিখুন");
 
       const order_no = `SO-${Date.now().toString().slice(-8)}`;
-      const cur = activeService.bandwidth || `(${activeService.source})`;
+      const cur = activeService.bandwidthMbps ? `${activeService.bandwidthMbps} Mbps` : `(${activeService.source})`;
       const target = mode === "discontinue" ? "STOP" : bandwidth;
       const summary = `[${mode.toUpperCase()}] ${activeService.label}: ${cur} → ${target}`;
 
