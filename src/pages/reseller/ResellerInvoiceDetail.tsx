@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { usePortalAuth } from "@/contexts/PortalAuthContext";
+import { getBillingCustomerId } from "@/lib/portalIdentity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -12,24 +14,30 @@ const ResellerInvoiceDetail = () => {
   const { id = "" } = useParams();
   const location = useLocation();
   const base = location.pathname.startsWith("/bw") ? "/bw/invoices" : "/reseller/invoices";
+  const { customer } = usePortalAuth();
+  const billingId = getBillingCustomerId(customer);
+
   const { data } = useQuery({
-    queryKey: ["reseller-invoice-detail", id],
+    queryKey: ["reseller-invoice-detail", id, billingId, customer?.session_id],
     enabled: !!id,
     queryFn: async () => {
-      const [inv, items, payments] = await Promise.all([
-        supabase
-          .from("bw_sales_invoices")
-          .select("*, bw_sale_customers(customer_name, customer_code, address, mobile, email)")
-          .eq("id", id)
-          .maybeSingle(),
-        supabase.from("bw_invoice_items").select("*").eq("invoice_id", id).order("sort_order"),
-        supabase
-          .from("bw_sale_collections")
-          .select("*")
-          .eq("invoice_id", id)
-          .order("receive_date", { ascending: false }),
-      ]);
-      return { inv: inv.data, items: items.data || [], payments: payments.data || [] };
+      const { data, error } = await supabase.rpc("get_bw_portal_invoice_detail", {
+        _invoice_id: id,
+        _customer_id: billingId || null,
+        _username: customer?.username || null,
+        _user_type: customer?.type || null,
+        _session_id: customer?.session_id || null,
+      });
+      if (error) {
+        console.error("get_bw_portal_invoice_detail failed:", error);
+        return { inv: null, items: [], payments: [] };
+      }
+      const payload = (data as any) || {};
+      return {
+        inv: payload.invoice || null,
+        items: (payload.items as any[]) || [],
+        payments: (payload.payments as any[]) || [],
+      };
     },
   });
 
@@ -67,8 +75,8 @@ const ResellerInvoiceDetail = () => {
               </div>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-3 text-sm">
-              <Field label="Customer" v={(inv.bw_sale_customers as any)?.customer_name} />
-              <Field label="Customer Code" v={(inv.bw_sale_customers as any)?.customer_code} />
+              <Field label="Customer" v={inv.customer_name} />
+              <Field label="Customer Code" v={inv.customer_code} />
               <Field label="Month" v={inv.month} />
               <Field label="Amount" v={`৳ ${Number(inv.amount || 0).toLocaleString()}`} />
               <Field label="Paid" v={`৳ ${Number(inv.paid_amount || 0).toLocaleString()}`} />
@@ -103,12 +111,12 @@ const ResellerInvoiceDetail = () => {
                   )}
                   {data?.items.map((it: any) => (
                     <TableRow key={it.id}>
-                      <TableCell className="font-medium">{it.service_name}</TableCell>
-                      <TableCell className="text-right">{Number(it.bandwidth_mbps)}</TableCell>
+                      <TableCell className="font-medium">{it.service_name || it.item_name || "—"}</TableCell>
+                      <TableCell className="text-right">{Number(it.bandwidth_mbps || 0)}</TableCell>
                       <TableCell className="text-right">৳ {Number(it.rate || 0).toLocaleString()}</TableCell>
                       <TableCell>{it.period_start ? format(new Date(it.period_start), "dd MMM yyyy") : "—"}</TableCell>
                       <TableCell>{it.period_end ? format(new Date(it.period_end), "dd MMM yyyy") : "—"}</TableCell>
-                      <TableCell className="text-right">{it.days}/{it.total_days_in_month}</TableCell>
+                      <TableCell className="text-right">{it.days || 0}/{it.total_days_in_month || 0}</TableCell>
                       <TableCell className="text-right font-medium">৳ {Number(it.amount || 0).toLocaleString()}</TableCell>
                     </TableRow>
                   ))}
