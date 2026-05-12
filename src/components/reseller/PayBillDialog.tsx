@@ -102,7 +102,6 @@ const PayBillDialog = ({ open, onOpenChange, invoiceId, invoiceNo, due, customer
 
       const fn = fnEndpoint(gwName);
       const slug = gatewaySlug(gwName);
-      const origin = window.location.origin;
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const fnBase = `https://${projectId}.supabase.co/functions/v1`;
       const callback = `${fnBase}/payment-callback?gateway=${slug}&request_id=${prId}`;
