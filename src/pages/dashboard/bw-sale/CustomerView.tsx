@@ -122,6 +122,7 @@ export default function CustomerView() {
             <TabsList className="w-full overflow-x-auto justify-start">
               <TabsTrigger value="personal">Personal Info</TabsTrigger>
               <TabsTrigger value="transmission">Transmission</TabsTrigger>
+              <TabsTrigger value="services">Services</TabsTrigger>
               <TabsTrigger value="invoices">Invoices</TabsTrigger>
             </TabsList>
 
