@@ -38,6 +38,30 @@ import RemainingDaysCell from "@/components/billing/RemainingDaysCell";
 import ClientCommentDialog from "@/components/clients/ClientCommentDialog";
 import BulkClientRechargeDialog from "@/components/reseller/BulkClientRechargeDialog";
 import TransferClientsToPopDialog from "@/components/clients/TransferClientsToPopDialog";
+import { DataTableCard } from "@/components/common/DataTableCard";
+import { useColumnVisibility, type ColumnDef } from "@/hooks/useColumnVisibility";
+
+const CLIENT_LIST_COLUMNS: ColumnDef[] = [
+  { key: "select", label: "Select", required: true },
+  { key: "client_id", label: "ক্লায়েন্ট কোড", required: true },
+  { key: "username", label: "ID / IP" },
+  { key: "password", label: "পাসওয়ার্ড", defaultVisible: false },
+  { key: "name", label: "কাস্টমার নাম", required: true },
+  { key: "contact", label: "মোবাইল" },
+  { key: "zone", label: "জোন" },
+  { key: "package", label: "প্যাকেজ / স্পিড" },
+  { key: "monthly_bill", label: "মাসিক বিল" },
+  { key: "expire_date", label: "Exp Date" },
+  { key: "remaining_days", label: "R.Days (POP)" },
+  { key: "connection_type", label: "কানেকশন টাইপ", defaultVisible: false },
+  { key: "client_type", label: "কাস্টমার টাইপ", defaultVisible: false },
+  { key: "remote_address", label: "রিমোট অ্যাড্রেস", defaultVisible: false },
+  { key: "mac_address", label: "MAC অ্যাড্রেস", defaultVisible: false },
+  { key: "server", label: "সার্ভার" },
+  { key: "billing_status", label: "বিল স্ট্যাটাস" },
+  { key: "mikrotik_status", label: "MikroTik স্ট্যাটাস" },
+  { key: "actions", label: "অ্যাকশন", required: true },
+];
 
 interface ClientListProps {
   /** When set, locks the client_type filter to this value and hides the dropdown.
@@ -90,6 +114,11 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
   const [bulkRechargeOpen, setBulkRechargeOpen] = useState(false);
   const [transferToPopOpen, setTransferToPopOpen] = useState(false);
   const [commentClient, setCommentClient] = useState<any | null>(null);
+
+  const { isVisible, toggle, reset: resetCols } = useColumnVisibility(
+    `client-list-${lockedClientType || "all"}`,
+    CLIENT_LIST_COLUMNS,
+  );
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ["clients-list", branchId || "all", isPopMode ? "pop" : "admin"],
@@ -473,37 +502,43 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
       </div>
 
       {/* Table */}
-      <div className="border rounded-lg overflow-x-auto">
+      <DataTableCard
+        title="ক্লায়েন্ট তালিকা"
+        count={filtered.length}
+        columns={CLIENT_LIST_COLUMNS}
+        isVisible={isVisible}
+        toggle={toggle}
+        reset={resetCols}
+      >
         <Table>
           <TableHeader>
             <TableRow className="bg-primary/10">
               <TableHead className="w-8"><Checkbox checked={paginated.length > 0 && selectedIds.size === paginated.length} onCheckedChange={toggleAll} /></TableHead>
               <TableHead className="text-xs">ক্লা. কোড</TableHead>
-              <TableHead className="text-xs">ID/IP</TableHead>
-              <TableHead className="text-xs">পাসওয়ার্ড</TableHead>
+              {isVisible("username") && <TableHead className="text-xs">ID/IP</TableHead>}
+              {isVisible("password") && <TableHead className="text-xs">পাসওয়ার্ড</TableHead>}
               <TableHead className="text-xs">কাস্টমার নাম</TableHead>
-              <TableHead className="text-xs">মোবাইল</TableHead>
-              <TableHead className="text-xs">জোন</TableHead>
-              <TableHead className="text-xs">প্যাকেজ/স্পিড</TableHead>
-              <TableHead className="text-xs">মাসিক বিল</TableHead>
-              <TableHead className="text-xs">Exp Date</TableHead>
-              {isPopMode && <TableHead className="text-xs text-center">R.Days</TableHead>}
-              
-              <TableHead className="text-xs">কানেকশন টাইপ</TableHead>
-              <TableHead className="text-xs">কাস্টমার টাইপ</TableHead>
-              <TableHead className="text-xs">রিমোট অ্যাড্রেস</TableHead>
-              <TableHead className="text-xs">MAC অ্যাড্রেস</TableHead>
-              <TableHead className="text-xs">সার্ভার</TableHead>
-              <TableHead className="text-xs">বিল স্ট্যাটাস</TableHead>
-              <TableHead className="text-xs">MikroTik স্ট্যাটাস</TableHead>
+              {isVisible("contact") && <TableHead className="text-xs">মোবাইল</TableHead>}
+              {isVisible("zone") && <TableHead className="text-xs">জোন</TableHead>}
+              {isVisible("package") && <TableHead className="text-xs">প্যাকেজ/স্পিড</TableHead>}
+              {isVisible("monthly_bill") && <TableHead className="text-xs">মাসিক বিল</TableHead>}
+              {isVisible("expire_date") && <TableHead className="text-xs">Exp Date</TableHead>}
+              {isPopMode && isVisible("remaining_days") && <TableHead className="text-xs text-center">R.Days</TableHead>}
+              {isVisible("connection_type") && <TableHead className="text-xs">কানেকশন টাইপ</TableHead>}
+              {isVisible("client_type") && <TableHead className="text-xs">কাস্টমার টাইপ</TableHead>}
+              {isVisible("remote_address") && <TableHead className="text-xs">রিমোট অ্যাড্রেস</TableHead>}
+              {isVisible("mac_address") && <TableHead className="text-xs">MAC অ্যাড্রেস</TableHead>}
+              {isVisible("server") && <TableHead className="text-xs">সার্ভার</TableHead>}
+              {isVisible("billing_status") && <TableHead className="text-xs">বিল স্ট্যাটাস</TableHead>}
+              {isVisible("mikrotik_status") && <TableHead className="text-xs">MikroTik স্ট্যাটাস</TableHead>}
               <TableHead className="text-xs">অ্যাকশন</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={17} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={20} className="text-center py-8">লোড হচ্ছে...</TableCell></TableRow>
             ) : paginated.length === 0 ? (
-              <TableRow><TableCell colSpan={17} className="text-center py-8">কোনো ক্লায়েন্ট পাওয়া যায়নি</TableCell></TableRow>
+              <TableRow><TableCell colSpan={20} className="text-center py-8">কোনো ক্লায়েন্ট পাওয়া যায়নি</TableCell></TableRow>
             ) : (
               paginated.map((c: any) => {
                 const expireBadge = getExpireBadge(c.expire_date, c.is_vip);
@@ -550,79 +585,91 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <div className={cn("h-2 w-2 rounded-full shrink-0", c.is_online ? "bg-green-500" : "bg-gray-400")} />
-                        <span>{c.username || c.user_id || "-"}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      <div className="flex items-center gap-1">
-                        <span>{showPasswords[c.id] ? (c.password || "****") : "••••"}</span>
-                        <button onClick={() => togglePassword(c.id)} className="text-muted-foreground hover:text-foreground">
-                          {showPasswords[c.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                        </button>
-                      </div>
-                    </TableCell>
+                    {isVisible("username") && (
+                      <TableCell className="text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <div className={cn("h-2 w-2 rounded-full shrink-0", c.is_online ? "bg-green-500" : "bg-gray-400")} />
+                          <span>{c.username || c.user_id || "-"}</span>
+                        </div>
+                      </TableCell>
+                    )}
+                    {isVisible("password") && (
+                      <TableCell className="text-xs">
+                        <div className="flex items-center gap-1">
+                          <span>{showPasswords[c.id] ? (c.password || "****") : "••••"}</span>
+                          <button onClick={() => togglePassword(c.id)} className="text-muted-foreground hover:text-foreground">
+                            {showPasswords[c.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                          </button>
+                        </div>
+                      </TableCell>
+                    )}
                     <TableCell className="text-xs font-medium">
                       <div className="flex items-center gap-1">
                         {c.is_vip && <Crown className="h-3 w-3 text-purple-500" />}
                         {c.name}
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs">{c.contact}</TableCell>
-                    <TableCell className="text-xs">{c.zones?.name || "-"}</TableCell>
-                    <TableCell className="text-xs">
-                      {c.isp_packages ? `${c.isp_packages.name}/${c.isp_packages.bandwidth_down}Mb` : "-"}
-                    </TableCell>
-                    <TableCell className="text-xs">{c.monthly_bill || 0}</TableCell>
-                    <TableCell className="text-xs">
-                      {c.is_vip ? (
-                        <Badge variant="outline" className={`text-[10px] cursor-default ${expireBadge.color}`}>
-                          <Crown className="h-2.5 w-2.5 mr-0.5" /> VIP
-                        </Badge>
-                      ) : (
-                        <ExpireCell
-                          client={c}
-                          onSaveRecurring={(day) => updateExpireMutation.mutate({ id: c.id, date: buildExpireDateFromDay(day) })}
-                          onSaveTemp={(date, note) => updateTempExpireMutation.mutate({ id: c.id, date, note })}
-                        />
-                      )}
-                    </TableCell>
-                    {isPopMode && (
+                    {isVisible("contact") && <TableCell className="text-xs">{c.contact}</TableCell>}
+                    {isVisible("zone") && <TableCell className="text-xs">{c.zones?.name || "-"}</TableCell>}
+                    {isVisible("package") && (
+                      <TableCell className="text-xs">
+                        {c.isp_packages ? `${c.isp_packages.name}/${c.isp_packages.bandwidth_down}Mb` : "-"}
+                      </TableCell>
+                    )}
+                    {isVisible("monthly_bill") && <TableCell className="text-xs">{c.monthly_bill || 0}</TableCell>}
+                    {isVisible("expire_date") && (
+                      <TableCell className="text-xs">
+                        {c.is_vip ? (
+                          <Badge variant="outline" className={`text-[10px] cursor-default ${expireBadge.color}`}>
+                            <Crown className="h-2.5 w-2.5 mr-0.5" /> VIP
+                          </Badge>
+                        ) : (
+                          <ExpireCell
+                            client={c}
+                            onSaveRecurring={(day) => updateExpireMutation.mutate({ id: c.id, date: buildExpireDateFromDay(day) })}
+                            onSaveTemp={(date, note) => updateTempExpireMutation.mutate({ id: c.id, date, note })}
+                          />
+                        )}
+                      </TableCell>
+                    )}
+                    {isPopMode && isVisible("remaining_days") && (
                       <TableCell className="text-center">
                         <RemainingDaysCell client={c} invalidateKey="clients-list" />
                       </TableCell>
                     )}
-                    <TableCell className="text-xs">{c.connection_type || "-"}</TableCell>
-                    <TableCell className="text-xs">{c.client_type || "-"}</TableCell>
-                    <TableCell className="text-xs">{c.remote_address || "-"}</TableCell>
-                    <TableCell className="text-xs font-mono text-[10px]">{c.mac_address || "-"}</TableCell>
-                    <TableCell className="text-xs">{c.mikrotik_device?.name || c.server_name || "-"}</TableCell>
-                    <TableCell className="text-xs">
-                      <Badge variant={c.billing_status === "Active" ? "default" : "secondary"} className="text-[10px]">
-                        {c.billing_status || "Active"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {(() => {
-                        const eff = c.temp_expire_date || c.expire_date;
-                        const exp = eff ? new Date(eff) : null;
-                        const today = new Date(); today.setHours(0,0,0,0);
-                        const exemptStatus = ["personal", "free", "vip"].includes(String(c.billing_status || "").toLowerCase());
-                        const isExpired = !c.is_vip && !exemptStatus && !!(exp && exp.getTime() <= today.getTime());
-                        const isOn = c.mikrotik_status === "enabled";
-                        return (
-                          <Switch
-                            checked={isOn}
-                            disabled={togglingId === c.id || !c.mikrotik_id || (isExpired && !isOn)}
-                            onCheckedChange={() => handleToggleMikrotik(c)}
-                            className="scale-75"
-                            title={isExpired && !isOn ? "Expired — আগে recharge করুন" : (!c.mikrotik_id ? "MikroTik সংযুক্ত নেই" : undefined)}
-                          />
-                        );
-                      })()}
-                    </TableCell>
+                    {isVisible("connection_type") && <TableCell className="text-xs">{c.connection_type || "-"}</TableCell>}
+                    {isVisible("client_type") && <TableCell className="text-xs">{c.client_type || "-"}</TableCell>}
+                    {isVisible("remote_address") && <TableCell className="text-xs">{c.remote_address || "-"}</TableCell>}
+                    {isVisible("mac_address") && <TableCell className="text-xs font-mono text-[10px]">{c.mac_address || "-"}</TableCell>}
+                    {isVisible("server") && <TableCell className="text-xs">{c.mikrotik_device?.name || c.server_name || "-"}</TableCell>}
+                    {isVisible("billing_status") && (
+                      <TableCell className="text-xs">
+                        <Badge variant={c.billing_status === "Active" ? "default" : "secondary"} className="text-[10px]">
+                          {c.billing_status || "Active"}
+                        </Badge>
+                      </TableCell>
+                    )}
+                    {isVisible("mikrotik_status") && (
+                      <TableCell className="text-xs">
+                        {(() => {
+                          const eff = c.temp_expire_date || c.expire_date;
+                          const exp = eff ? new Date(eff) : null;
+                          const today = new Date(); today.setHours(0,0,0,0);
+                          const exemptStatus = ["personal", "free", "vip"].includes(String(c.billing_status || "").toLowerCase());
+                          const isExpired = !c.is_vip && !exemptStatus && !!(exp && exp.getTime() <= today.getTime());
+                          const isOn = c.mikrotik_status === "enabled";
+                          return (
+                            <Switch
+                              checked={isOn}
+                              disabled={togglingId === c.id || !c.mikrotik_id || (isExpired && !isOn)}
+                              onCheckedChange={() => handleToggleMikrotik(c)}
+                              className="scale-75"
+                              title={isExpired && !isOn ? "Expired — আগে recharge করুন" : (!c.mikrotik_id ? "MikroTik সংযুক্ত নেই" : undefined)}
+                            />
+                          );
+                        })()}
+                      </TableCell>
+                    )}
                     <TableCell className="text-xs">
                       <ClientActionButtons client={c} mode="client" invalidateKey="clients-list" />
                     </TableCell>
@@ -639,7 +686,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
             </TableRow>
           </TableFooter>
         </Table>
-      </div>
+      </DataTableCard>
 
       {/* Pagination */}
       <div className="flex items-center justify-between">
