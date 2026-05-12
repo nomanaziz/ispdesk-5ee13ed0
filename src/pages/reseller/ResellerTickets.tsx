@@ -71,16 +71,10 @@ const ResellerTickets = () => {
 
   const { data: tickets = [] } = useQuery({
     queryKey: ["pop-support-tickets", branchId],
-    enabled: !!branchId && clients.length >= 0,
+    enabled: !!branchId,
     queryFn: async () => {
-      const ids = Array.from(clientIdSet);
-      if (ids.length === 0) return [];
-      const { data } = await supabase
-        .from("support_tickets")
-        .select("*")
-        .in("client_id", ids)
-        .order("created_at", { ascending: false });
-      return data || [];
+      const res = await callPortal<{ tickets: any[] }>("portal_list_tickets");
+      return res.tickets || [];
     },
   });
 
