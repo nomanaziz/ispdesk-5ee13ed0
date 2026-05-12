@@ -35,12 +35,14 @@ export function usePaymentGateways() {
   const { data, isLoading } = useQuery({
     queryKey: ["public-payment-gateways"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("system_settings")
-        .select("setting_value")
-        .eq("setting_key", "payment_gateways")
-        .maybeSingle();
-      return ((data?.setting_value as any[]) || []) as PaymentGateway[];
+      // Use the SECURITY DEFINER RPC so portal (anon) users can read
+      // active + website-visible gateways without needing system_settings RLS.
+      const { data, error } = await supabase.rpc("public_payment_gateways");
+      if (error) {
+        console.error("public_payment_gateways RPC failed:", error);
+        return [] as PaymentGateway[];
+      }
+      return ((data as any[]) || []) as PaymentGateway[];
     },
   });
 
