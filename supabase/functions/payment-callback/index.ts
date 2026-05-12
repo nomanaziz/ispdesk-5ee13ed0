@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
   const requestId = url.searchParams.get("request_id") || "";
   const popRechargeId = url.searchParams.get("pop_recharge_id") || "";
   let status = url.searchParams.get("status") || "";
-  let trxId = url.searchParams.get("trxID") || url.searchParams.get("tran_id") || "";
+  let trxId = url.searchParams.get("trxID") || url.searchParams.get("tran_id") || url.searchParams.get("transaction_id") || url.searchParams.get("invoice_id") || "";
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
       const fd = await req.formData();
       fd.forEach((v, k) => { formData[k] = v.toString(); });
       status = formData.status || status;
-      trxId = formData.tran_id || trxId;
+      trxId = formData.trxID || formData.tran_id || formData.transaction_id || formData.invoice_id || trxId;
     }
   }
 
