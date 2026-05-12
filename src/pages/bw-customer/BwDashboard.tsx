@@ -46,10 +46,14 @@ export default function BwDashboard() {
           .eq("reseller_id", billingId!)
           .order("created_at", { ascending: false })
           .limit(5),
-        supabase
-          .from("support_tickets")
-          .select("id, status")
-          .eq("client_id", billingId!),
+        // Tickets via secure portal-data RPC (support_tickets is no longer publicly readable).
+        (async () => {
+          try {
+            const { callPortal } = await import("@/lib/portalApi");
+            const r = await callPortal<{ tickets: any[] }>("portal_list_tickets");
+            return { data: (r.tickets || []).map((t: any) => ({ id: t.id, status: t.status })) };
+          } catch { return { data: [] as any[] }; }
+        })(),
       ]);
 
       const invoices = invRes.data || [];
