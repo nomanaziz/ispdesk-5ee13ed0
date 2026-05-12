@@ -2902,6 +2902,130 @@ Deno.serve(async (req) => {
         return json({ ok: true, enabled: nextEnabled });
       }
 
+      // ===== Support tickets — secure portal access (replaces direct anon SELECT/UPDATE/INSERT) =====
+      case "portal_list_tickets": {
+        // Self-scoped list. client → own client_id. bw_customer → own sub. reseller(_sub) → all clients in their POP branch.
+        if (tok.type === "client" || tok.type === "bw_customer") {
+          const id = tok.sub;
+          const { data, error } = await sb
+            .from("support_tickets")
+            .select("*")
+            .eq("client_id", id)
+            .order("created_at", { ascending: false });
+          if (error) return json({ error: error.message }, 500);
+          return json({ tickets: data || [] });
+        }
+        if (tok.type === "reseller" || tok.type === "reseller_sub") {
+          const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+          const { data: pop } = await sb
+            .from("branch_managers").select("branch_id").eq("id", resellerId).maybeSingle();
+          if (!pop?.branch_id) return json({ tickets: [] });
+          const { data: clients } = await sb
+            .from("clients").select("id").eq("branch_id", pop.branch_id);
+          const ids = (clients || []).map((c: any) => c.id);
+          if (ids.length === 0) return json({ tickets: [] });
+          const { data, error } = await sb
+            .from("support_tickets").select("*").in("client_id", ids)
+            .order("created_at", { ascending: false });
+          if (error) return json({ error: error.message }, 500);
+          return json({ tickets: data || [] });
+        }
+        return json({ error: "Not allowed" }, 403);
+      }
+
+      case "portal_create_ticket": {
+        // Used by client portal CreateTicketDialog. (BW/reseller use pop_create_ticket.)
+        if (tok.type !== "client") return json({ error: "Not allowed" }, 403);
+        const subject = String(payload.subject || "").trim();
+        const description = String(payload.description || "");
+        const priority = String(payload.priority || "normal");
+        const categoryId = payload.category_id || null;
+        if (!subject) return json({ error: "subject required" }, 400);
+        const ticket_no = `TK${Date.now().toString().slice(-8)}`;
+        const { data: ticket, error } = await sb
+          .from("support_tickets")
+          .insert({
+            ticket_no, subject, description, priority,
+            category_id: categoryId, client_id: tok.sub,
+            status: "open", source: "portal", created_by: null,
+          })
+          .select().single();
+        if (error) return json({ error: error.message }, 500);
+        if (ticket) {
+          await sb.from("support_ticket_messages").insert({
+            ticket_id: ticket.id, sender_type: "client", sender_id: tok.sub,
+            sender_name: tok.name || "Client", message: description || subject,
+          });
+        }
+        return json({ ok: true, ticket });
+      }
+
+      case "pop_reply_ticket": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub" && tok.type !== "bw_customer") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const ticketId = String(payload.ticket_id || "");
+        const message = String(payload.message || "").trim();
+        if (!ticketId || !message) return json({ error: "ticket_id and message required" }, 400);
+        // Verify ticket belongs to this user's scope
+        const { data: tk2 } = await sb.from("support_tickets")
+          .select("id, status, client_id").eq("id", ticketId).maybeSingle();
+        if (!tk2) return json({ error: "Ticket not found" }, 404);
+        if (tok.type === "bw_customer") {
+          if (tk2.client_id !== tok.sub) return json({ error: "Forbidden" }, 403);
+        } else {
+          const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+          const { data: pop } = await sb.from("branch_managers")
+            .select("branch_id").eq("id", resellerId).maybeSingle();
+          const { data: client } = await sb.from("clients")
+            .select("branch_id").eq("id", tk2.client_id).maybeSingle();
+          if (!pop?.branch_id || !client || client.branch_id !== pop.branch_id) {
+            return json({ error: "Forbidden" }, 403);
+          }
+        }
+        const { error: mErr } = await sb.from("support_ticket_messages").insert({
+          ticket_id: ticketId, sender_type: "agent",
+          sender_id: tok.sub, sender_name: tok.name || "POP Admin", message,
+        });
+        if (mErr) return json({ error: mErr.message }, 500);
+        if (tk2.status === "open") {
+          await sb.from("support_tickets").update({ status: "pending" }).eq("id", ticketId);
+        }
+        return json({ ok: true });
+      }
+
+      case "pop_set_ticket_status": {
+        if (tok.type !== "reseller" && tok.type !== "reseller_sub" && tok.type !== "bw_customer") {
+          return json({ error: "Not allowed" }, 403);
+        }
+        const ticketId = String(payload.ticket_id || "");
+        const status = String(payload.status || "");
+        if (!ticketId || !status) return json({ error: "ticket_id and status required" }, 400);
+        const { data: tk2 } = await sb.from("support_tickets")
+          .select("id, client_id").eq("id", ticketId).maybeSingle();
+        if (!tk2) return json({ error: "Ticket not found" }, 404);
+        if (tok.type === "bw_customer") {
+          if (tk2.client_id !== tok.sub) return json({ error: "Forbidden" }, 403);
+        } else {
+          const resellerId = tok.type === "reseller_sub" ? (tok as any).parent_reseller_id : tok.sub;
+          const { data: pop } = await sb.from("branch_managers")
+            .select("branch_id").eq("id", resellerId).maybeSingle();
+          const { data: client } = await sb.from("clients")
+            .select("branch_id").eq("id", tk2.client_id).maybeSingle();
+          if (!pop?.branch_id || !client || client.branch_id !== pop.branch_id) {
+            return json({ error: "Forbidden" }, 403);
+          }
+        }
+        const patch: any = { status };
+        if (status === "solved") {
+          patch.solved_at = new Date().toISOString();
+          patch.solved_by = tok.sub;
+        }
+        const { error } = await sb.from("support_tickets").update(patch).eq("id", ticketId);
+        if (error) return json({ error: error.message }, 500);
+        return json({ ok: true });
+      }
+
       default:
         return json({ error: "Unknown action" }, 400);
     }
