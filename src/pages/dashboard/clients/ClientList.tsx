@@ -38,6 +38,30 @@ import RemainingDaysCell from "@/components/billing/RemainingDaysCell";
 import ClientCommentDialog from "@/components/clients/ClientCommentDialog";
 import BulkClientRechargeDialog from "@/components/reseller/BulkClientRechargeDialog";
 import TransferClientsToPopDialog from "@/components/clients/TransferClientsToPopDialog";
+import { DataTableCard } from "@/components/common/DataTableCard";
+import { useColumnVisibility, type ColumnDef } from "@/hooks/useColumnVisibility";
+
+const CLIENT_LIST_COLUMNS: ColumnDef[] = [
+  { key: "select", label: "Select", required: true },
+  { key: "client_id", label: "ক্লায়েন্ট কোড", required: true },
+  { key: "username", label: "ID / IP" },
+  { key: "password", label: "পাসওয়ার্ড", defaultVisible: false },
+  { key: "name", label: "কাস্টমার নাম", required: true },
+  { key: "contact", label: "মোবাইল" },
+  { key: "zone", label: "জোন" },
+  { key: "package", label: "প্যাকেজ / স্পিড" },
+  { key: "monthly_bill", label: "মাসিক বিল" },
+  { key: "expire_date", label: "Exp Date" },
+  { key: "remaining_days", label: "R.Days (POP)" },
+  { key: "connection_type", label: "কানেকশন টাইপ", defaultVisible: false },
+  { key: "client_type", label: "কাস্টমার টাইপ", defaultVisible: false },
+  { key: "remote_address", label: "রিমোট অ্যাড্রেস", defaultVisible: false },
+  { key: "mac_address", label: "MAC অ্যাড্রেস", defaultVisible: false },
+  { key: "server", label: "সার্ভার" },
+  { key: "billing_status", label: "বিল স্ট্যাটাস" },
+  { key: "mikrotik_status", label: "MikroTik স্ট্যাটাস" },
+  { key: "actions", label: "অ্যাকশন", required: true },
+];
 
 interface ClientListProps {
   /** When set, locks the client_type filter to this value and hides the dropdown.
