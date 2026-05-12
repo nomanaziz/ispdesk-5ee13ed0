@@ -2,26 +2,37 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { usePortalAuth } from "@/contexts/PortalAuthContext";
+import { getBillingCustomerId } from "@/lib/portalIdentity";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Printer } from "lucide-react";
 import { format } from "date-fns";
 
 const ResellerInvoicePrint = () => {
   const { id = "" } = useParams();
+  const { customer } = usePortalAuth();
+  const billingId = getBillingCustomerId(customer);
 
   const { data } = useQuery({
-    queryKey: ["reseller-invoice-print", id],
+    queryKey: ["reseller-invoice-print", id, billingId, customer?.session_id],
     enabled: !!id,
     queryFn: async () => {
-      const [inv, items] = await Promise.all([
-        supabase
-          .from("bw_sales_invoices")
-          .select("*, bw_sale_customers(customer_name, customer_code, address, mobile, email)")
-          .eq("id", id)
-          .maybeSingle(),
-        supabase.from("bw_invoice_items").select("*").eq("invoice_id", id).order("sort_order"),
-      ]);
-      return { inv: inv.data, items: items.data || [] };
+      const { data, error } = await supabase.rpc("get_bw_portal_invoice_detail", {
+        _invoice_id: id,
+        _customer_id: billingId || null,
+        _username: customer?.username || null,
+        _user_type: customer?.type || null,
+        _session_id: customer?.session_id || null,
+      });
+      if (error) {
+        console.error("get_bw_portal_invoice_detail failed:", error);
+        return { inv: null, items: [] };
+      }
+      const payload = (data as any) || {};
+      return {
+        inv: payload.invoice || null,
+        items: (payload.items as any[]) || [],
+      };
     },
   });
 
@@ -30,7 +41,6 @@ const ResellerInvoicePrint = () => {
   }, [data]);
 
   const inv = data?.inv;
-  const cust = (inv?.bw_sale_customers as any) || {};
 
   const subtotal = (data?.items || []).reduce((s: number, it: any) => s + Number(it.amount || 0), 0);
   const due = Number(inv?.due ?? Math.max(0, Number(inv?.total_amount || inv?.amount || 0) - Number(inv?.paid_amount || 0) - Number(inv?.discount || 0)));
@@ -63,10 +73,10 @@ const ResellerInvoicePrint = () => {
         <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
           <div>
             <div className="text-gray-500 text-xs uppercase">Bill To</div>
-            <div className="font-semibold">{cust.customer_name || "—"}</div>
-            <div>{cust.customer_code || ""}</div>
-            <div>{cust.address || ""}</div>
-            <div>{cust.mobile || ""}</div>
+            <div className="font-semibold">{inv?.customer_name || "—"}</div>
+            <div>{inv?.customer_code || ""}</div>
+            <div>{inv?.customer_address || ""}</div>
+            <div>{inv?.customer_mobile || ""}</div>
           </div>
           <div className="text-right">
             <div className="text-gray-500 text-xs uppercase">Amount Due</div>
@@ -88,14 +98,14 @@ const ResellerInvoicePrint = () => {
           <tbody>
             {(data?.items || []).map((it: any) => (
               <tr key={it.id} className="border-b">
-                <td className="p-2 font-medium">{it.service_name}</td>
+                <td className="p-2 font-medium">{it.service_name || it.item_name || "—"}</td>
                 <td className="p-2 text-xs">
                   {it.period_start ? format(new Date(it.period_start), "dd MMM") : "—"} —{" "}
                   {it.period_end ? format(new Date(it.period_end), "dd MMM yyyy") : "—"}
                 </td>
-                <td className="p-2 text-right">{Number(it.bandwidth_mbps)}</td>
+                <td className="p-2 text-right">{Number(it.bandwidth_mbps || 0)}</td>
                 <td className="p-2 text-right">৳ {Number(it.rate || 0).toLocaleString()}</td>
-                <td className="p-2 text-right">{it.days}/{it.total_days_in_month}</td>
+                <td className="p-2 text-right">{it.days || 0}/{it.total_days_in_month || 0}</td>
                 <td className="p-2 text-right">৳ {Number(it.amount || 0).toLocaleString()}</td>
               </tr>
             ))}
