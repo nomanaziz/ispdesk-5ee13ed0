@@ -32,7 +32,7 @@ const shortcuts: Shortcut[] = [
   { to: "/pop-admin/billing/list", icon: Receipt, bn: "বিল রিসিভ", en: "Bill Receive", tone: "bg-blue-500/10 text-blue-600", icons8: "documents" },
   { to: "/pop-admin/billing/list?tab=approval", icon: CheckCircle2, bn: "বিল অনুমোদন", en: "Bill Approval", tone: "bg-emerald-500/10 text-emerald-600", icons8: "checked" },
   { to: "/pop-admin/clients/add", icon: UserPlus, bn: "ক্লায়েন্ট যোগ", en: "Add Client", tone: "bg-violet-500/10 text-violet-600", icons8: "add-user-male" },
-  { to: "/pop-admin/tickets", icon: LifeBuoy, bn: "টিকেট", en: "Tickets", tone: "bg-orange-500/10 text-orange-600", icons8: "online-support" },
+  
   { to: "/pop-admin/fund-history/credit?action=recharge", icon: Wallet, bn: "ফান্ড রিচার্জ", en: "Fund Recharge", tone: "bg-pink-500/10 text-pink-600", icons8: "wallet" },
   { to: "/pop-admin/fund-history/debit", icon: ArrowDownCircle, bn: "ডেবিট হিস্ট্রি", en: "Debit History", tone: "bg-rose-500/10 text-rose-600", icons8: "data-transfer" },
   { to: "/pop-admin/fund-history/credit", icon: History, bn: "রিচার্জ লগ", en: "Recharge Log", tone: "bg-cyan-500/10 text-cyan-600", icons8: "coins" },
