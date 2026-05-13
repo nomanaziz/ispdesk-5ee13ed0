@@ -234,27 +234,6 @@ const ResellerDashboard = () => {
         </Card>
       </div>
 
-      {/* Tickets summary */}
-      <Card className="rounded-2xl">
-        <CardHeader className="pb-2 flex-row items-center gap-2 space-y-0">
-          <MessageSquare className="h-4 w-4 text-primary" />
-          <CardTitle className="text-base">Recent Support Tickets</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-1.5">
-          {!(internal?.tickets || []).length && (
-            <p className="text-sm text-muted-foreground text-center py-4">No tickets</p>
-          )}
-          {internal?.tickets?.map((t: any) => (
-            <div key={t.id} className="flex items-center justify-between text-sm border-b last:border-0 py-2">
-              <div>
-                <div className="font-medium">{t.subject}</div>
-                <div className="text-xs text-muted-foreground font-mono">{t.ticket_no}</div>
-              </div>
-              <Badge variant={t.status === "solved" ? "default" : "secondary"}>{t.status}</Badge>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
     </div>
   );
 };
