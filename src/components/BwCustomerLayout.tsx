@@ -53,10 +53,6 @@ const baseGroups: NavGroup[] = [
     items: [{ to: "/bw/service-orders", label: "সার্ভিস অর্ডার", en: "Service Orders", icon: ShoppingCart }],
   },
   {
-    key: "tickets", label: "সাপোর্ট টিকেট", en: "Support Tickets", icon: LifeBuoy, tint: "rose",
-    items: [{ to: "/bw/tickets", label: "সাপোর্ট টিকেট", en: "Support Tickets", icon: LifeBuoy }],
-  },
-  {
     key: "settings", label: "কোম্পানি সেটিংস", en: "Company Settings", icon: Settings, tint: "slate",
     items: [{ to: "/bw/settings", label: "কোম্পানি সেটিংস", en: "Company Settings", icon: Settings }],
   },
