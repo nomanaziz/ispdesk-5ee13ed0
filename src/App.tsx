@@ -900,7 +900,7 @@ const App = () => (
               <Route path="/pop-admin/invoices" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerLayout><ResellerInvoices /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/invoices/:id" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerLayout><ResellerInvoiceDetail /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/invoices/:id/print" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerInvoicePrint /></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/tickets" element={<PortalAuthProvider><ResellerProtectedRoute require="tickets"><ResellerLayout><ResellerTickets /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/tickets" element={<Navigate to="/pop-admin/dashboard" replace />} />
               <Route path="/pop-admin/users" element={<PortalAuthProvider><ResellerProtectedRoute require="users"><ResellerLayout><ResellerUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/settings" element={<PortalAuthProvider><ResellerProtectedRoute require="settings"><ResellerLayout><ResellerSettings /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/notes" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><PopNotes /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
