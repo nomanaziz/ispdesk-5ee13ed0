@@ -21,7 +21,7 @@ export function MobileBottomTabs() {
     { to: "/pop-admin/billing/list", icon: Receipt, bn: "বিলিং", en: "Billing", matchPrefix: "/pop-admin/billing", icons8: "documents" },
     { to: "/pop-admin/billing/daily-collection", icon: Wallet, bn: "সংগ্রহ", en: "Collection", icons8: "coins" },
     { to: "/pop-admin/monitoring/online", icon: Wifi, bn: "মনিটর", en: "Monitor", matchPrefix: "/pop-admin/monitoring", icons8: "wi-fi-connected" },
-    { to: "/pop-admin/tickets", icon: LifeBuoy, bn: "সাপোর্ট", en: "Support", icons8: "online-support" },
+    
   ];
 
   return (

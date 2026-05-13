@@ -178,20 +178,6 @@ export default function PopMobileHome() {
         </CardContent>
       </Card>
 
-      {/* Tickets */}
-      <Card>
-        <CardContent className="p-3">
-          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            {t("টিকেট", "Tickets")}
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <TicketStat label={t("মোট", "Total")} value={internal?.ticketsTotal ?? 0} tone="text-foreground" />
-            <TicketStat label={t("পেন্ডিং", "Pending")} value={internal?.pending ?? 0} tone="text-orange-600" />
-            <TicketStat label={t("প্রসেস", "Process")} value={internal?.processing ?? 0} tone="text-blue-600" />
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Zone chart */}
       <Card>
         <CardContent className="p-3">
