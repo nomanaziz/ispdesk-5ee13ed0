@@ -131,7 +131,6 @@ export default function BwDashboard() {
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <MetricTile label="Invoices" value={String(data?.invoices?.length ?? 0)} icon={Receipt} tone="violet" to="/bw/invoices" />
         <MetricTile label="Service Orders" value={String(data?.purchaseOrders?.length ?? 0)} icon={ShoppingCart} tone="indigo" to="/bw/service-orders" />
-        <MetricTile label="Open Tickets" value={String(data?.openTickets ?? 0)} icon={LifeBuoy} tone="rose" to="/bw/tickets" />
         <MetricTile label="Settings" value="⚙" icon={SettingsIcon} tone="cyan" to="/bw/settings" />
       </div>
 
