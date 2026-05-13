@@ -77,10 +77,8 @@ const panelGroups: NavGroup[] = [
     ],
   },
   {
-    key: "support", label: "সাপোর্ট ও টিকেটিং", en: "Support & Tickets", icon: Headphones, tint: "rose", panelOnly: true,
+    key: "support", label: "নোটিশ", en: "Notices", icon: Bell, tint: "rose", panelOnly: true,
     items: [
-      { to: "/bw/panel/tickets", label: "ক্লায়েন্ট সাপোর্ট", en: "Client Support", icon: Headphones },
-      { to: "/bw/panel/support/history", label: "সাপোর্ট হিস্টরি", en: "Support History", icon: History },
       { to: "/bw/panel/support/notices", label: "নোটিশ", en: "Notices", icon: Bell },
     ],
   },
