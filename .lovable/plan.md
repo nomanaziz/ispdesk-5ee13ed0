@@ -1,45 +1,26 @@
-Root cause found:
-- `public_payment_requests` is built for normal client bills: `client_id` is required and `billing_id` points to `billing.id`.
-- BW invoice payment is incorrectly inserting a BW customer id into `billing_id` and no `client_id`, so RLS/FK blocks it.
-- `bw_purchase_orders.reseller_id` currently has an FK to `branch_managers.id`, but BW bandwidth customers/invoices use `bw_sale_customers.id`. That is why service upgrade/downgrade and RechargeServer paths hit `bw_purchase_orders_reseller_id_fkey`.
+আমি এইভাবে ঠিক করব:
 
-Implementation plan:
+1. **POP/Bandwidth admin portal থেকে আলাদা support-ticket option সরাব**
+   - `/pop-admin` sidebar থেকে “Support Tickets / Client Tickets” group remove করব।
+   - mobile POP home থেকে “Tickets” shortcut এবং ticket summary card/query remove করব।
+   - `/pop-admin/tickets` route-এ কেউ direct ঢুকলে dashboard-এ redirect করব, যাতে আলাদা ticketing page আর না থাকে।
+   - permission UI-তে “Support Tickets” আলাদা permission থাকলে সেটাও লুকাব/অকার্যকর করব, যেন reseller sub-user setup-এ confusing option না থাকে।
 
-1. Database migration
-- Update `public_payment_requests` so it can safely represent BW invoice payments:
-  - allow BW invoice payment requests without a normal `clients.id`
-  - add/link BW invoice and BW customer identity fields where needed
-  - keep admin-only viewing/updating rules for existing requests
-- Replace the incorrect `bw_purchase_orders.reseller_id` FK behavior:
-  - remove the hard FK to `branch_managers.id` because this table is now used by BW customers too
-  - validate portal identity inside the secure RPC instead of relying on the wrong FK
-- Update/create secure RPCs:
-  - `create_bw_portal_service_order(...)` validates portal session and validates the customer against `bw_sale_customers` / `branch_managers` based on user type before inserting
-  - `create_bw_invoice_payment_request(...)` creates BW invoice payment requests via `SECURITY DEFINER`, so the browser does not directly insert into RLS-protected payment tables
+2. **BW customer panel-এর duplicate support-ticket menu সরাব**
+   - bandwidth customer/base portal-এ already billing/service-order/support overlap আছে, তাই “Support Tickets” standalone group remove করব।
+   - BW panel mode-এর “Client Support / Support History” আলাদা section থাকলে সেটাও remove বা redirect করব, কারণ আপনি বলেছেন support ticketing এবং bandwidth একই flow হিসেবে রাখতে হবে।
 
-2. Frontend payment fix
-- Update `src/components/reseller/PayBillDialog.tsx`:
-  - stop direct insert into `public_payment_requests`
-  - call the new `create_bw_invoice_payment_request` RPC
-  - send gateway success/cancel URLs to `payment-callback` with `request_id`, `gateway`, and status, instead of returning directly to the invoice page without backend verification
+3. **Manual bKash payment request admin-এর কাছে visible করব**
+   - এখন reseller invoice-এর manual payment RPC `create_bw_invoice_manual_payment` pending row তৈরি করছে `bw_sale_collections` টেবিলে। কিন্তু admin-এর “BW Sale → Collection” এবং invoice detail page পড়ে `bw_sale_payments` থেকে। তাই request দেখা যাচ্ছে না।
+   - RPC পরিবর্তন করব যাতে manual payment request সরাসরি `bw_sale_payments`-এ `approved=false` হিসেবে যায়।
+   - sender number, TrxID, note, method এগুলো `receipt_no`, `paid_by`, `remarks/description`-এ সংরক্ষণ করব, যাতে admin বুঝতে পারে কে manual payment request দিয়েছে।
+   - admin collection page-এ pending filter/list-এ এগুলো visible থাকবে এবং existing Approve/Delete buttons দিয়েই approve করা যাবে।
 
-3. Edge function callback fix
-- Update `supabase/functions/payment-callback/index.ts`:
-  - detect BW invoice payment requests
-  - verify RechargeServer/bKash/Nagad/SSLCommerz response
-  - update `public_payment_requests` status
-  - insert approved payment into `bw_sale_collections`
-  - update `bw_sales_invoices.paid_amount`, `due`, and payment status
-  - redirect back to `/bw/invoices/:id` or `/reseller/invoices/:id` with success/fail
+4. **পুরনো pending request হারিয়ে না যায় সেটা দেখব**
+   - যদি আগের manual requests `bw_sale_collections.status='pending'` হিসেবে থেকে থাকে, সেগুলো admin-visible `bw_sale_payments` pending row-তে migrate/backfill করার ব্যবস্থা রাখব।
+   - duplicate না হয় এমন guard ব্যবহার করব।
 
-4. Service upgrade/downgrade fix
-- Update the service order RPC/migration so upgrade, downgrade, discontinue inserts no longer depend on the wrong `branch_managers` FK.
-- Keep `src/pages/bw-customer/BwPurchaseOrders.tsx` using the RPC, but adjust if the RPC return/signature changes.
-
-5. Verification
-- Confirm policies/functions exist in Supabase.
-- Test with the current failing BW customer invoice (`ddbb78b2-992a-4ae8-968a-ed563848419b`) and customer (`cad4c1ce-37db-4636-a5b9-80dee92e6b66`).
-- Verify:
-  - RechargeServer checkout starts without RLS error
-  - callback records payment against BW invoice
-  - upgrade/downgrade/discontinue creates order without FK error
+5. **শেষে verify করব**
+   - reseller/BW portal থেকে ticket menu/card আর দেখা যাচ্ছে না।
+   - manual bKash payment submit করলে admin BW Sale → Collection-এ Pending হিসেবে দেখা যায়।
+   - approve করলে invoice payment history এবং due calculation ঠিক থাকে।
