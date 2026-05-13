@@ -804,7 +804,7 @@ const App = () => (
               <Route path="/bw/invoices/:id/print" element={<PortalAuthProvider><BwProtectedRoute><ResellerInvoicePrint /></BwProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/service-orders" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwPurchaseOrders /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/purchase-orders" element={<Navigate to="/bw/service-orders" replace />} />
-              <Route path="/bw/tickets" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwTickets /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/tickets" element={<Navigate to="/bw/dashboard" replace />} />
               <Route path="/bw/settings" element={<PortalAuthProvider><BwProtectedRoute><BwCustomerLayout><BwSettings /></BwCustomerLayout></BwProtectedRoute></PortalAuthProvider>} />
 
               {/* BW Panel (Layer 2) — same shell, gated per-route by panel subscription */}
@@ -816,7 +816,7 @@ const App = () => (
               <Route path="/bw/panel/billing" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelBilling /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/panel/billing/daily" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelDailyCollection /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/panel/monitoring/online" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelOnlineMonitoring /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
-              <Route path="/bw/panel/tickets" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelTickets /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/tickets" element={<Navigate to="/bw/dashboard" replace />} />
               <Route path="/bw/panel/sms/templates" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelSmsTemplates /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/panel/sms/send" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelSmsSend /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
               <Route path="/bw/panel/sms/gateway" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelSmsGateway /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
@@ -853,7 +853,7 @@ const App = () => (
               <Route path="/bw/panel/clients/installation-fee" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelInstallationFee /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
 
               {/* BW Panel — Support */}
-              <Route path="/bw/panel/support/history" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelSupportHistory /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
+              <Route path="/bw/panel/support/history" element={<Navigate to="/bw/dashboard" replace />} />
               <Route path="/bw/panel/support/notices" element={<PortalAuthProvider><BwPanelProtectedRoute><BwCustomerLayout><BwPanelSupportNotices /></BwCustomerLayout></BwPanelProtectedRoute></PortalAuthProvider>} />
 
               {/* BW Panel — Configuration (extended) */}
@@ -900,7 +900,7 @@ const App = () => (
               <Route path="/pop-admin/invoices" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerLayout><ResellerInvoices /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/invoices/:id" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerLayout><ResellerInvoiceDetail /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/invoices/:id/print" element={<PortalAuthProvider><ResellerProtectedRoute require="invoices"><ResellerInvoicePrint /></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/tickets" element={<PortalAuthProvider><ResellerProtectedRoute require="tickets"><ResellerLayout><ResellerTickets /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/tickets" element={<Navigate to="/pop-admin/dashboard" replace />} />
               <Route path="/pop-admin/users" element={<PortalAuthProvider><ResellerProtectedRoute require="users"><ResellerLayout><ResellerUsers /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/settings" element={<PortalAuthProvider><ResellerProtectedRoute require="settings"><ResellerLayout><ResellerSettings /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/notes" element={<PortalAuthProvider><ResellerProtectedRoute require="dashboard"><ResellerLayout><PopNotes /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />

@@ -69,12 +69,6 @@ const groups: ResellerGroup[] = [
     ],
   },
   {
-    key: "support", label: "সাপোর্ট টিকেট", labelEn: "Support Tickets", icon: LifeBuoy, tint: "rose",
-    items: [
-      { url: "/pop-admin/tickets", title: "ক্লায়েন্ট টিকেট", titleEn: "Client Tickets", icon: LifeBuoy },
-    ],
-  },
-  {
     key: "sms", label: "এসএমএস সার্ভিস", labelEn: "SMS Service", icon: MessageSquare, tint: "sky",
     items: [
       { url: "/pop-admin/sms/templates", title: "টেমপ্লেট", titleEn: "Templates", icon: FileText },

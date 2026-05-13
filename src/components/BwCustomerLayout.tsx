@@ -53,10 +53,6 @@ const baseGroups: NavGroup[] = [
     items: [{ to: "/bw/service-orders", label: "সার্ভিস অর্ডার", en: "Service Orders", icon: ShoppingCart }],
   },
   {
-    key: "tickets", label: "সাপোর্ট টিকেট", en: "Support Tickets", icon: LifeBuoy, tint: "rose",
-    items: [{ to: "/bw/tickets", label: "সাপোর্ট টিকেট", en: "Support Tickets", icon: LifeBuoy }],
-  },
-  {
     key: "settings", label: "কোম্পানি সেটিংস", en: "Company Settings", icon: Settings, tint: "slate",
     items: [{ to: "/bw/settings", label: "কোম্পানি সেটিংস", en: "Company Settings", icon: Settings }],
   },
@@ -81,10 +77,8 @@ const panelGroups: NavGroup[] = [
     ],
   },
   {
-    key: "support", label: "সাপোর্ট ও টিকেটিং", en: "Support & Tickets", icon: Headphones, tint: "rose", panelOnly: true,
+    key: "support", label: "নোটিশ", en: "Notices", icon: Bell, tint: "rose", panelOnly: true,
     items: [
-      { to: "/bw/panel/tickets", label: "ক্লায়েন্ট সাপোর্ট", en: "Client Support", icon: Headphones },
-      { to: "/bw/panel/support/history", label: "সাপোর্ট হিস্টরি", en: "Support History", icon: History },
       { to: "/bw/panel/support/notices", label: "নোটিশ", en: "Notices", icon: Bell },
     ],
   },

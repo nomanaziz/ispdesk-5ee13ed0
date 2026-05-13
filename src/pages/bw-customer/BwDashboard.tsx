@@ -131,7 +131,6 @@ export default function BwDashboard() {
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <MetricTile label="Invoices" value={String(data?.invoices?.length ?? 0)} icon={Receipt} tone="violet" to="/bw/invoices" />
         <MetricTile label="Service Orders" value={String(data?.purchaseOrders?.length ?? 0)} icon={ShoppingCart} tone="indigo" to="/bw/service-orders" />
-        <MetricTile label="Open Tickets" value={String(data?.openTickets ?? 0)} icon={LifeBuoy} tone="rose" to="/bw/tickets" />
         <MetricTile label="Settings" value="⚙" icon={SettingsIcon} tone="cyan" to="/bw/settings" />
       </div>
 
@@ -260,26 +259,8 @@ export default function BwDashboard() {
         </Card>
       )}
 
-      {/* Tickets + Notices */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="rounded-2xl">
-          <CardHeader className="pb-2 flex-row items-center gap-2 space-y-0">
-            <LifeBuoy className="h-4 w-4 text-rose-500" />
-            <CardTitle className="text-base">{t("সাপোর্ট টিকেট", "Support Tickets")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-3xl font-bold">{data?.openTickets || 0}</div>
-                <div className="text-xs text-muted-foreground">{t("খোলা টিকেট", "Open tickets")}</div>
-              </div>
-              <Link to="/bw/tickets">
-                <Badge variant="secondary">{t("মোট", "Total")}: {data?.ticketCount || 0}</Badge>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
+      {/* Notices */}
+      <div className="grid gap-4">
         <Card className="rounded-2xl">
           <CardHeader className="pb-2 flex-row items-center gap-2 space-y-0">
             <Bell className="h-4 w-4 text-primary" />
