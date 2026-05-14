@@ -852,6 +852,7 @@ export default function AddClient() {
               <p className="text-xs text-muted-foreground mt-1">POP প্রোফাইল থেকে স্বয়ংক্রিয়</p>
             )}
           </div>
+          {!isBwPanel && (
           <div data-field="protocol_type">
             <Label>প্রোটোকল টাইপ *</Label>
             <Select value={form.protocol_type} onValueChange={v => setField("protocol_type", v)} disabled={isPopMode}>
@@ -865,6 +866,7 @@ export default function AddClient() {
               <p className="text-xs text-muted-foreground mt-1">POP-এর জন্য PPPoE লক করা</p>
             )}
           </div>
+          )}
           <div data-field="zone_id">
             <Label>জোন *</Label>
             <Select value={form.zone_id} onValueChange={v => { setField("zone_id", v); setField("sub_zone_id", ""); setField("box_id", ""); }}>
