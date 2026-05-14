@@ -1129,6 +1129,7 @@ export default function AddClient() {
             <Label>VIP ক্লায়েন্ট?</Label>
             <Switch checked={form.is_vip} onCheckedChange={v => setField("is_vip", v)} />
           </div>
+          {!isBwPanel && (
           <div className="md:col-span-2">
             <Label>সংযোগ দিয়েছেন (একাধিক টেকনিশিয়ান নির্বাচন করুন)</Label>
             <div className="border rounded-md p-2 max-h-32 overflow-y-auto space-y-1 bg-background">
@@ -1155,6 +1156,7 @@ export default function AddClient() {
               </p>
             )}
           </div>
+          )}
         </div>
       </div>
 
