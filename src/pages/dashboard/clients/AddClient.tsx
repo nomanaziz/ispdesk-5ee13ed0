@@ -882,6 +882,7 @@ export default function AddClient() {
               </p>
             )}
           </div>
+          {!isBwPanel && (<>
           <div>
             <Label>সাব জোন</Label>
             <Select value={form.sub_zone_id} onValueChange={v => setField("sub_zone_id", v)}>
@@ -958,6 +959,7 @@ export default function AddClient() {
             <Label>ক্রয়ের তারিখ</Label>
             <Input type="date" value={form.purchase_date} onChange={e => setField("purchase_date", e.target.value)} />
           </div>
+          </>)}
         </div>
       </div>
 
