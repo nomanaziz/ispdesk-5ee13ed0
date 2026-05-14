@@ -1019,6 +1019,7 @@ export default function AddClient() {
               <p className="text-xs text-muted-foreground mt-1">প্যাকেজ অনুযায়ী tariff থেকে লক করা</p>
             )}
           </div>
+          {!isBwPanel && (<>
           <div data-field="client_type">
             <Label>ক্লায়েন্ট টাইপ *</Label>
             <Select value={form.client_type} onValueChange={v => setField("client_type", v)}>
@@ -1042,6 +1043,7 @@ export default function AddClient() {
               </SelectContent>
             </Select>
           </div>
+          </>)}
           {form.protocol_type === "Static" ? (
             <>
               <div data-field="static_ip">
