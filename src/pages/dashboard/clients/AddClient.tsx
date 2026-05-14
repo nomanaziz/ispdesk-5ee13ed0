@@ -602,7 +602,7 @@ export default function AddClient() {
         </div>
       )}
 
-      {isPopMode && (
+      {isPopMode && !isBwPanel && (
         <div className="rounded-lg border bg-card p-4 text-sm">
           <p className="font-semibold mb-2">📋 ক্লায়েন্ট তৈরির চেকলিস্ট (Client create checklist)</p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1.5">
