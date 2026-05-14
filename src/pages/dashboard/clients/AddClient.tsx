@@ -350,12 +350,14 @@ export default function AddClient() {
     if (form.contact && !/^01\d{9}$/.test(String(form.contact).trim())) {
       e.contact = "১১ সংখ্যার বৈধ নম্বর দিন (01... দিয়ে শুরু)";
     }
-    req("nid_number", "NID/জন্ম সনদ নম্বর আবশ্যক");
+    if (!isBwPanel) req("nid_number", "NID/জন্ম সনদ নম্বর আবশ্যক");
     req("zone_id", "জোন নির্বাচন করুন");
     if (!isPopMode) req("mikrotik_id", "সার্ভার নির্বাচন করুন");
-    req("protocol_type", "প্রোটোকল টাইপ আবশ্যক");
-    req("connection_type", "কানেকশন টাইপ আবশ্যক");
-    req("client_type", "ক্লায়েন্ট টাইপ আবশ্যক");
+    if (!isBwPanel) {
+      req("protocol_type", "প্রোটোকল টাইপ আবশ্যক");
+      req("connection_type", "কানেকশন টাইপ আবশ্যক");
+      req("client_type", "ক্লায়েন্ট টাইপ আবশ্যক");
+    }
     req("package_id", "প্যাকেজ নির্বাচন করুন");
     if (form.protocol_type === "Static") {
       req("static_ip", "Static IP আবশ্যক");
@@ -577,12 +579,12 @@ export default function AddClient() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
-            {isPopMode ? `POP — ${popName || ""}` : "ক্লায়েন্ট"}{" "}
+            {isBwPanel ? `BW POP — ${popName || ""}` : isPopMode ? `POP — ${popName || ""}` : "ক্লায়েন্ট"}{" "}
             <span className="text-sm font-normal text-muted-foreground">
-              {editMode ? "ক্লায়েন্ট সম্পাদনা" : "নতুন ক্লায়েন্ট যোগ"}
+              {editMode ? "ক্লায়েন্ট সম্পাদনা" : isBwPanel ? "নতুন ক্লায়েন্ট যোগ (Simplified)" : "নতুন ক্লায়েন্ট যোগ"}
             </span>
           </h1>
-          {isPopMode && (
+          {isPopMode && !isBwPanel && (
             <p className="text-xs text-muted-foreground mt-1">
               নতুন ক্লায়েন্ট — সার্ভার, প্রোফাইল ও জেলা/উপজেলা স্বয়ংক্রিয় POP প্রোফাইল থেকে
             </p>
@@ -600,7 +602,7 @@ export default function AddClient() {
         </div>
       )}
 
-      {isPopMode && (
+      {isPopMode && !isBwPanel && (
         <div className="rounded-lg border bg-card p-4 text-sm">
           <p className="font-semibold mb-2">📋 ক্লায়েন্ট তৈরির চেকলিস্ট (Client create checklist)</p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1.5">
@@ -760,6 +762,7 @@ export default function AddClient() {
             <Input value={form.contact} onChange={e => setField("contact", e.target.value)} className={errClass("contact")} inputMode="tel" maxLength={11} />
             {errors.contact && <p className="text-xs text-destructive mt-1">{errors.contact}</p>}
           </div>
+          {!isBwPanel && (
           <div>
             <Label>জেলা {isPopMode ? "" : "(জোন থেকে)"}</Label>
             <Input
@@ -768,6 +771,7 @@ export default function AddClient() {
               placeholder={isPopMode ? "POP প্রোফাইল থেকে" : (form.zone_id ? "জোনে জেলা সেট নেই" : "জোন নির্বাচন করুন")}
             />
           </div>
+          )}
           <div className="md:row-span-2">
             <Label>বর্তমান ঠিকানা</Label>
             <Textarea value={form.address} onChange={e => setField("address", e.target.value)} className="h-full min-h-[80px]" />
@@ -780,6 +784,7 @@ export default function AddClient() {
             <Label>ফোন নম্বর</Label>
             <Input value={form.phone_number} onChange={e => setField("phone_number", e.target.value)} />
           </div>
+          {!isBwPanel && (
           <div>
             <Label>উপজেলা/থানা {isPopMode ? "" : "(জোন থেকে)"}</Label>
             <Input
@@ -791,6 +796,7 @@ export default function AddClient() {
               <p className="text-xs text-muted-foreground mt-1">বিভাগ: {selectedZone.divisions.name}</p>
             )}
           </div>
+          )}
           <div>
             <Label>ইমেইল ঠিকানা</Label>
             <Input type="email" value={form.email} onChange={e => setField("email", e.target.value)} />
@@ -846,6 +852,7 @@ export default function AddClient() {
               <p className="text-xs text-muted-foreground mt-1">POP প্রোফাইল থেকে স্বয়ংক্রিয়</p>
             )}
           </div>
+          {!isBwPanel && (
           <div data-field="protocol_type">
             <Label>প্রোটোকল টাইপ *</Label>
             <Select value={form.protocol_type} onValueChange={v => setField("protocol_type", v)} disabled={isPopMode}>
@@ -859,6 +866,7 @@ export default function AddClient() {
               <p className="text-xs text-muted-foreground mt-1">POP-এর জন্য PPPoE লক করা</p>
             )}
           </div>
+          )}
           <div data-field="zone_id">
             <Label>জোন *</Label>
             <Select value={form.zone_id} onValueChange={v => { setField("zone_id", v); setField("sub_zone_id", ""); setField("box_id", ""); }}>
@@ -874,6 +882,7 @@ export default function AddClient() {
               </p>
             )}
           </div>
+          {!isBwPanel && (<>
           <div>
             <Label>সাব জোন</Label>
             <Select value={form.sub_zone_id} onValueChange={v => setField("sub_zone_id", v)}>
@@ -950,6 +959,7 @@ export default function AddClient() {
             <Label>ক্রয়ের তারিখ</Label>
             <Input type="date" value={form.purchase_date} onChange={e => setField("purchase_date", e.target.value)} />
           </div>
+          </>)}
         </div>
       </div>
 
@@ -1009,6 +1019,7 @@ export default function AddClient() {
               <p className="text-xs text-muted-foreground mt-1">প্যাকেজ অনুযায়ী tariff থেকে লক করা</p>
             )}
           </div>
+          {!isBwPanel && (<>
           <div data-field="client_type">
             <Label>ক্লায়েন্ট টাইপ *</Label>
             <Select value={form.client_type} onValueChange={v => setField("client_type", v)}>
@@ -1032,6 +1043,7 @@ export default function AddClient() {
               </SelectContent>
             </Select>
           </div>
+          </>)}
           {form.protocol_type === "Static" ? (
             <>
               <div data-field="static_ip">
@@ -1117,6 +1129,7 @@ export default function AddClient() {
             <Label>VIP ক্লায়েন্ট?</Label>
             <Switch checked={form.is_vip} onCheckedChange={v => setField("is_vip", v)} />
           </div>
+          {!isBwPanel && (
           <div className="md:col-span-2">
             <Label>সংযোগ দিয়েছেন (একাধিক টেকনিশিয়ান নির্বাচন করুন)</Label>
             <div className="border rounded-md p-2 max-h-32 overflow-y-auto space-y-1 bg-background">
@@ -1143,6 +1156,7 @@ export default function AddClient() {
               </p>
             )}
           </div>
+          )}
         </div>
       </div>
 
