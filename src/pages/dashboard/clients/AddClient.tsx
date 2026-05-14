@@ -784,6 +784,7 @@ export default function AddClient() {
             <Label>ফোন নম্বর</Label>
             <Input value={form.phone_number} onChange={e => setField("phone_number", e.target.value)} />
           </div>
+          {!isBwPanel && (
           <div>
             <Label>উপজেলা/থানা {isPopMode ? "" : "(জোন থেকে)"}</Label>
             <Input
@@ -795,6 +796,7 @@ export default function AddClient() {
               <p className="text-xs text-muted-foreground mt-1">বিভাগ: {selectedZone.divisions.name}</p>
             )}
           </div>
+          )}
           <div>
             <Label>ইমেইল ঠিকানা</Label>
             <Input type="email" value={form.email} onChange={e => setField("email", e.target.value)} />
