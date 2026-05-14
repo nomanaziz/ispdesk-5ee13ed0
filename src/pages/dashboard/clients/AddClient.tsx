@@ -762,6 +762,7 @@ export default function AddClient() {
             <Input value={form.contact} onChange={e => setField("contact", e.target.value)} className={errClass("contact")} inputMode="tel" maxLength={11} />
             {errors.contact && <p className="text-xs text-destructive mt-1">{errors.contact}</p>}
           </div>
+          {!isBwPanel && (
           <div>
             <Label>জেলা {isPopMode ? "" : "(জোন থেকে)"}</Label>
             <Input
@@ -770,6 +771,7 @@ export default function AddClient() {
               placeholder={isPopMode ? "POP প্রোফাইল থেকে" : (form.zone_id ? "জোনে জেলা সেট নেই" : "জোন নির্বাচন করুন")}
             />
           </div>
+          )}
           <div className="md:row-span-2">
             <Label>বর্তমান ঠিকানা</Label>
             <Textarea value={form.address} onChange={e => setField("address", e.target.value)} className="h-full min-h-[80px]" />
