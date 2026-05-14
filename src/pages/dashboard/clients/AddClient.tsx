@@ -579,12 +579,12 @@ export default function AddClient() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
-            {isPopMode ? `POP — ${popName || ""}` : "ক্লায়েন্ট"}{" "}
+            {isBwPanel ? `BW POP — ${popName || ""}` : isPopMode ? `POP — ${popName || ""}` : "ক্লায়েন্ট"}{" "}
             <span className="text-sm font-normal text-muted-foreground">
-              {editMode ? "ক্লায়েন্ট সম্পাদনা" : "নতুন ক্লায়েন্ট যোগ"}
+              {editMode ? "ক্লায়েন্ট সম্পাদনা" : isBwPanel ? "নতুন ক্লায়েন্ট যোগ (Simplified)" : "নতুন ক্লায়েন্ট যোগ"}
             </span>
           </h1>
-          {isPopMode && (
+          {isPopMode && !isBwPanel && (
             <p className="text-xs text-muted-foreground mt-1">
               নতুন ক্লায়েন্ট — সার্ভার, প্রোফাইল ও জেলা/উপজেলা স্বয়ংক্রিয় POP প্রোফাইল থেকে
             </p>
