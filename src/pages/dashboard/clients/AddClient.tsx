@@ -350,12 +350,14 @@ export default function AddClient() {
     if (form.contact && !/^01\d{9}$/.test(String(form.contact).trim())) {
       e.contact = "১১ সংখ্যার বৈধ নম্বর দিন (01... দিয়ে শুরু)";
     }
-    req("nid_number", "NID/জন্ম সনদ নম্বর আবশ্যক");
+    if (!isBwPanel) req("nid_number", "NID/জন্ম সনদ নম্বর আবশ্যক");
     req("zone_id", "জোন নির্বাচন করুন");
     if (!isPopMode) req("mikrotik_id", "সার্ভার নির্বাচন করুন");
-    req("protocol_type", "প্রোটোকল টাইপ আবশ্যক");
-    req("connection_type", "কানেকশন টাইপ আবশ্যক");
-    req("client_type", "ক্লায়েন্ট টাইপ আবশ্যক");
+    if (!isBwPanel) {
+      req("protocol_type", "প্রোটোকল টাইপ আবশ্যক");
+      req("connection_type", "কানেকশন টাইপ আবশ্যক");
+      req("client_type", "ক্লায়েন্ট টাইপ আবশ্যক");
+    }
     req("package_id", "প্যাকেজ নির্বাচন করুন");
     if (form.protocol_type === "Static") {
       req("static_ip", "Static IP আবশ্যক");
