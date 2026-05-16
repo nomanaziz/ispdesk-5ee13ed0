@@ -1,65 +1,71 @@
-# Simplified BW POP Client Form
 
-BW Panel reseller (`isBwPanel === true`) এই form-টা use করে নিজের POP-এর under-এ PPPoE end-user create করতে। কিন্তু এখন `AddClient.tsx` admin-এর সব heavy field দেখায় — Client Type, Connection Type, multiple admin-config dropdowns, district/upazila editor — যা BW POP-এর জন্য irrelevant। এর ফলে "Protocol Type Missing", "Billing Status Missing" warning আসে, কারণ BW Panel admin-এর config tables ছোঁয় না।
+# BW Panel Sidebar — Simplification Plan
 
-## লক্ষ্য
+BW reseller (POP admin) এর সাইডবার থেকে অপ্রয়োজনীয় menu item বাদ দেওয়া হবে। সব পরিবর্তন শুধু `src/components/BwCustomerLayout.tsx` এর `panelGroups` array তে — কোনো backend / route / page ফাইল পরিবর্তন হবে না (পেজগুলো থাকবে, শুধু sidebar থেকে link সরে যাবে)।
 
-BW Panel mode-এ form-কে শুধু POP-এর জন্য দরকারি field-এ সীমিত করা। Admin / Reseller (tariff-based) form unchanged থাকবে।
+---
 
-## Scope (শুধু `isBwPanel === true` হলে)
+## 1) ক্লায়েন্ট গ্রুপ — কেটে দেওয়া হবে
 
-### দেখাবে (essential only)
-- Client Name *
-- Mobile *
-- Client Code (auto-generate, editable)
-- PPPoE Username *
-- Password *
-- Zone * (POP-এর own zones)
-- Package * (POP-এর own packages)
-- MikroTik Server * (POP-এর own servers)
-- Profile (package থেকে auto, editable)
-- Monthly Bill * (package থেকে auto)
-- Joining Date
-- Address (optional, single-line)
-- NID (optional)
-- Remarks (optional)
+**বাদ যাবে (image-281 এ cross করা):**
+- নতুন রিকোয়েস্ট
+- হোম ক্লায়েন্ট
+- কর্পোরেট ক্লায়েন্ট
+- ইনস্টলেশন ফি
+- চলে যাওয়া ক্লায়েন্ট
+- শিডিউলার
+- পরিবর্তন রিকোয়েস্ট
+- ক্লায়েন্ট যোগ (Add Client menu — list থেকে "Add" button দিয়েই add হবে)
 
-### লুকাবে
-- Client Type dropdown
-- Connection Type dropdown
-- Protocol Type dropdown → background-এ default `"PPPoE"` set হবে
-- Billing Status dropdown → background-এ default `"Active"` set হবে
-- Branch selector (POP-এর `branch_id` auto)
-- District / Upazila / Division (POP profile থেকে auto)
-- Employee/assigned-to dropdown
-- Sub-zone, Box (optional — POP চাইলে পরে edit করতে পারবে)
-- "Missing config" warning banner (line 593) — BW Panel-এ irrelevant
-- Checklist banner (line 603-onwards) — BW Panel mode-এ পুরো hide
+**থাকবে (final list, এই order এ):**
+- ক্লায়েন্ট তালিকা — সব ক্লায়েন্ট (Home + Corporate একসাথে), filter দিয়ে আলাদা দেখা যাবে
+- বাল্ক ইম্পোর্ট
+- বিলিং তালিকা
+- দৈনিক বিল কালেকশন
+- মাইক্রোটিক ইউজার (Device গ্রুপে already আছে, তাই এখানে থাকবে না)
 
-## Technical changes
+> "ক্লায়েন্ট তালিকা" বনাম "হোম ক্লায়েন্ট" — Home page টা শুধু `client_type=Home` filter করা version। সাধারণ list এই দুটোই দেখায়, তাই আলাদা home menu লাগে না।
 
-File: `src/pages/dashboard/clients/AddClient.tsx`
+---
 
-1. **Default values** — initial form state-এ `isBwPanel` হলে `protocol_type: "PPPoE"`, `billing_status: "Active"` set করো।
-2. **Validation** (`handleSubmit`, ~line 321-355) — `isBwPanel` হলে protocol_type / billing_status / client_type / connection_type / mikrotik_id-এর required check skip বা auto-fill করো (mikrotik server টা required রাখব, কারণ PPP create করতে লাগে)।
-3. **Render guards** — প্রতিটা hide-list field-এর JSX block-কে `{!isBwPanel && (...)}` দিয়ে wrap করো:
-   - Client Type, Connection Type, Protocol Type, Billing Status select blocks
-   - District / Upazila / Division readonly inputs (line ~764-795)
-   - Employee/assigned-to block
-   - Sub-zone / Box selects
-4. **Warning banner** (line 593) — condition থেকে `!isBwPanel` add করা আছে, ঠিক আছে।
-5. **Checklist banner** (line 603) — condition `{isPopMode && !isBwPanel && (...)}` করো, যাতে BW Panel-এ চেকলিস্ট পুরো না দেখায় (BW Panel-এর জন্য কোনো admin-config dependency নেই)।
-6. **Header** — `isBwPanel` হলে title `"নতুন ক্লায়েন্ট যোগ করুন (BW POP)"` দাও, যাতে clear হয় simplified form।
+## 2) OLT ম্যানেজমেন্ট — অনেক simplify
 
-## Out of scope
+**বাদ যাবে (image-282 এ cross করা + অতিরিক্ত):**
+- OLT / ONU ওভারভিউ
+- OLT Power Dashboard
+- OLT ইউজার
+- OLT Port Classification
+- ফাইবার ডাউন ফাইন্ডার
+- OLT শেয়ারিং
+- OLT ডিভাইস (পরিবর্তে System / Configuration থেকে manage হবে; user বলেছে "শুধু অণু add করবে")
 
-- Admin / regular reseller (tariff-based) form-এ কোনো change নাই।
-- `QuickCreateClientDialog` already simple — ছোঁব না।
-- Database schema / RLS / portal API — কোনো change নাই, শুধু UI।
-- Checklist collapsed behavior (admin/reseller-এর জন্য) — আগের সিদ্ধান্ত অনুযায়ী আলাদা করে handle হবে, এই plan-এ নয়।
+**থাকবে (simplified):**
+- **ONU তালিকা** — প্রতি ONU এর: MAC/serial, status (online/offline), current RX power, last seen
+- **ইউজার ডাউন কাউন্ট** — offline ONU সংখ্যা + কারণ (Power Off / Fiber Cut / Unknown)
 
-## QA
+> ONU add করার option থাকবে "ONU তালিকা" পেজের ভিতরেই — আলাদা menu না।
 
-- BW Panel session-এ `/bw/panel/clients/add` খুললে শুধু simplified field দেখা যাবে, কোনো warning/checklist থাকবে না।
-- Form submit করলে backend-এ `protocol_type=PPPoE`, `billing_status=Active`, `branch_id=<POP branch>` সঠিকভাবে যাবে।
-- Admin `/dashboard/clients/add` এবং reseller `/pop-admin/clients/add` form আগের মতোই full থাকবে।
+---
+
+## 3) নেটওয়ার্ক মনিটরিং — অর্ধেক বন্ধ
+
+**বাদ যাবে (image-283 এ cross করা):**
+- Switch ম্যানেজমেন্ট
+- POP DASS
+- POP IP
+- POP লগ
+- Ping টুলস
+- POP ডিভাইস
+
+**থাকবে:**
+- অনলাইন মনিটরিং (online clients + কোন user কত traffic টানছে)
+- Live Traffic
+
+---
+
+## Technical Notes
+
+- File: `src/components/BwCustomerLayout.tsx` → `panelGroups` array এর তিনটি গ্রুপ (`client`, `olt`, `monitoring`) এর `items[]` কাটছাঁট।
+- পেজ ফাইল / route registration / Add Client form — কিছুই touch হবে না। ভবিষ্যতে দরকার হলে আবার menu তে যোগ করা যাবে।
+- কোনো DB migration বা edge function পরিবর্তন নেই।
+- পরীক্ষা: BW customer (panel active) দিয়ে login করে sidebar visually verify করব।
