@@ -62,18 +62,10 @@ const panelGroups: NavGroup[] = [
   {
     key: "client", label: "ক্লায়েন্ট", en: "Clients", icon: Users, tint: "blue", panelOnly: true,
     items: [
-      { to: "/bw/panel/clients/new-request", label: "নতুন রিকোয়েস্ট", en: "New Request", icon: MessageSquare },
-      { to: "/bw/panel/clients/home", label: "হোম ক্লায়েন্ট", en: "Home Clients", icon: UserPlus },
-      { to: "/bw/panel/clients/corporate", label: "কর্পোরেট ক্লায়েন্ট", en: "Corporate Clients", icon: Building2 },
+      { to: "/bw/panel/clients", label: "ক্লায়েন্ট তালিকা", en: "Client List", icon: Users },
+      { to: "/bw/panel/clients/bulk", label: "বাল্ক ইম্পোর্ট", en: "Bulk Import", icon: FileSpreadsheet },
       { to: "/bw/panel/billing", label: "বিলিং তালিকা", en: "Billing List", icon: CreditCard },
       { to: "/bw/panel/billing/daily", label: "দৈনিক বিল কালেকশন", en: "Daily Collection", icon: Wallet },
-      { to: "/bw/panel/clients/installation-fee", label: "ইনস্টলেশন ফি", en: "Installation Fee", icon: DollarSign },
-      { to: "/bw/panel/clients/left", label: "চলে যাওয়া ক্লায়েন্ট", en: "Left Clients", icon: UserX },
-      { to: "/bw/panel/clients/scheduler", label: "শিডিউলার", en: "Scheduler", icon: Calendar },
-      { to: "/bw/panel/clients/change-request", label: "পরিবর্তন রিকোয়েস্ট", en: "Change Request", icon: RefreshCw },
-      { to: "/bw/panel/clients/add", label: "ক্লায়েন্ট যোগ", en: "Add Client", icon: UserPlus },
-      { to: "/bw/panel/clients/bulk", label: "বাল্ক ইম্পোর্ট", en: "Bulk Import", icon: FileSpreadsheet },
-      { to: "/bw/panel/clients", label: "ক্লায়েন্ট তালিকা", en: "Client List", icon: Users },
     ],
   },
   {
@@ -101,15 +93,8 @@ const panelGroups: NavGroup[] = [
   {
     key: "olt", label: "OLT ম্যানেজমেন্ট", en: "OLT Management", icon: Cpu, tint: "indigo", panelOnly: true,
     items: [
-      { to: "/bw/panel/olt-overview", label: "OLT / ONU ওভারভিউ", en: "OLT / ONU Overview", icon: Cpu },
-      { to: "/bw/panel/olt", label: "OLT ডিভাইস", en: "OLT Devices", icon: Server },
-      { to: "/bw/panel/olt/power-dashboard", label: "OLT Power Dashboard", en: "OLT Power Dashboard", icon: Activity },
       { to: "/bw/panel/olt/onu", label: "ONU তালিকা", en: "ONU List", icon: List },
-      { to: "/bw/panel/olt/users", label: "OLT ইউজার", en: "OLT Users", icon: Users },
-      { to: "/bw/panel/olt/ports", label: "OLT Port Classification", en: "OLT Port Classification", icon: Network },
       { to: "/bw/panel/olt/user-down", label: "ইউজার ডাউন কাউন্ট", en: "User Down Count", icon: UserX },
-      { to: "/bw/panel/olt/fiber-down", label: "ফাইবার ডাউন ফাইন্ডার", en: "Fiber Down Finder", icon: Cable },
-      { to: "/bw/panel/olt/sharing", label: "OLT শেয়ারিং", en: "OLT Sharing", icon: Layers },
     ],
   },
   {
@@ -117,12 +102,6 @@ const panelGroups: NavGroup[] = [
     items: [
       { to: "/bw/panel/monitoring/online", label: "অনলাইন মনিটরিং", en: "Online Monitoring", icon: Wifi },
       { to: "/bw/panel/monitoring/live-traffic", label: "Live Traffic", en: "Live Traffic", icon: Activity },
-      { to: "/bw/panel/network/switches", label: "Switch ম্যানেজমেন্ট", en: "Switch Management", icon: Network },
-      { to: "/bw/panel/monitoring/pop-dass", label: "POP DASS", en: "POP DASS", icon: Monitor },
-      { to: "/bw/panel/monitoring/pop-ip", label: "POP IP", en: "POP IP", icon: Globe },
-      { to: "/bw/panel/monitoring/pop-log", label: "POP লগ", en: "POP Log", icon: ScrollText },
-      { to: "/bw/panel/monitoring/ping-tools", label: "Ping টুলস", en: "Ping Tools", icon: Wifi },
-      { to: "/bw/panel/monitoring/pop-devices", label: "POP ডিভাইস", en: "POP Devices", icon: Radio },
     ],
   },
   {
