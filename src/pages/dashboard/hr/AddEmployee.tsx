@@ -46,6 +46,7 @@ const initialForm = {
   department_id: "",
   position_id: "",
   payroll_template_id: "",
+  default_shift_id: "",
   salary: "",
   show_on_website: false,
   image_url: "",
@@ -122,6 +123,14 @@ export default function AddEmployee() {
     },
   });
 
+  const { data: shifts } = useQuery({
+    queryKey: ["shifts-active-employee"],
+    queryFn: async () => {
+      const { data } = await supabase.from("shifts").select("id,name,start_time,end_time").eq("status", "active").order("name");
+      return data || [];
+    },
+  });
+
   // Fetch HR settings for auto ID
   const { data: hrSettings } = useQuery({
     queryKey: ["hr-settings-employee-id"],
@@ -180,6 +189,7 @@ export default function AddEmployee() {
             department_id: data.department_id || "",
             position_id: data.position_id || "",
             payroll_template_id: data.payroll_template_id || "",
+            default_shift_id: (data as any).default_shift_id || "",
             salary: data.salary?.toString() || "",
             show_on_website: data.show_on_website || false,
             image_url: data.image_url || "",
@@ -220,7 +230,7 @@ export default function AddEmployee() {
       delete payload.district_id;
       // Nullify empty uuid / date / time / numeric fields to avoid Postgres syntax errors
       const nullableKeys = [
-        "department_id", "position_id", "zkteco_device_id", "payroll_template_id",
+        "department_id", "position_id", "zkteco_device_id", "payroll_template_id", "default_shift_id",
         "default_in_time", "default_out_time",
         "date_of_birth", "joining_date",
         "passing_year",
@@ -461,8 +471,17 @@ export default function AddEmployee() {
                   <SelectContent>{(payrollTemplates || []).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>শিফট</Label>
+                <Select value={form.default_shift_id} onValueChange={(v) => set("default_shift_id", v)}>
+                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+                  <SelectContent>{(shifts || []).map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name} ({s.start_time?.slice(0,5)}–{s.end_time?.slice(0,5)})</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
               <div><Label>বেতন (৳)</Label><Input type="number" value={form.salary} onChange={(e) => set("salary", e.target.value)} placeholder="0" /></div>
-              <div className="flex items-center gap-3 pt-6">
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center gap-3">
                 <Switch checked={form.show_on_website} onCheckedChange={(v) => set("show_on_website", v)} />
                 <Label>ওয়েবসাইটে দেখান</Label>
               </div>

@@ -1,0 +1,1 @@
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS default_shift_id uuid REFERENCES public.shifts(id) ON DELETE SET NULL;

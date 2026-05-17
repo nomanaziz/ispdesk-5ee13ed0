@@ -4426,6 +4426,7 @@ export type Database = {
           date_of_birth: string | null
           default_in_time: string | null
           default_out_time: string | null
+          default_shift_id: string | null
           department_id: string | null
           device_user_id: string | null
           district: string | null
@@ -4474,6 +4475,7 @@ export type Database = {
           date_of_birth?: string | null
           default_in_time?: string | null
           default_out_time?: string | null
+          default_shift_id?: string | null
           department_id?: string | null
           device_user_id?: string | null
           district?: string | null
@@ -4522,6 +4524,7 @@ export type Database = {
           date_of_birth?: string | null
           default_in_time?: string | null
           default_out_time?: string | null
+          default_shift_id?: string | null
           department_id?: string | null
           device_user_id?: string | null
           district?: string | null
@@ -4569,6 +4572,13 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_default_shift_id_fkey"
+            columns: ["default_shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
             referencedColumns: ["id"]
           },
           {

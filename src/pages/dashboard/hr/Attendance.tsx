@@ -28,7 +28,7 @@ export default function Attendance() {
   const { data: employees } = useQuery({
     queryKey: ["employees-active"],
     queryFn: async () => {
-      const { data } = await supabase.from("employees").select("*, departments(name)").eq("status", "active").order("name");
+      const { data } = await supabase.from("employees").select("*, departments(name), shifts:default_shift_id(id,name,start_time,end_time)").eq("status", "active").order("name");
       return data || [];
     },
   });
@@ -48,7 +48,9 @@ export default function Attendance() {
         const { error } = await supabase.from("attendance").update({ [field]: value } as any).eq("id", existing.id);
         if (error) throw error;
       } else {
+        const emp: any = employees?.find((e: any) => e.id === employee_id);
         const payload: any = { employee_id, date: selectedDate, [field]: value };
+        if (emp?.default_shift_id) payload.shift_id = emp.default_shift_id;
         const { error } = await supabase.from("attendance").insert(payload);
         if (error) throw error;
       }
@@ -65,12 +67,14 @@ export default function Attendance() {
         (e: any) => !attendance?.find((a: any) => a.employee_id === e.id)
       );
       for (const emp of unmarked) {
-        const { error } = await supabase.from("attendance").insert({
+        const payload: any = {
           employee_id: emp.id,
           date: selectedDate,
           status: "present",
-          check_in: "09:00",
-        } as any);
+          check_in: (emp as any).shifts?.start_time?.slice(0, 5) || "09:00",
+        };
+        if ((emp as any).default_shift_id) payload.shift_id = (emp as any).default_shift_id;
+        const { error } = await supabase.from("attendance").insert(payload);
         if (error) throw error;
       }
     },
@@ -128,6 +132,7 @@ export default function Attendance() {
                     <TableHead>কর্মী আইডি</TableHead>
                     <TableHead>নাম</TableHead>
                     <TableHead>ডিপার্টমেন্ট</TableHead>
+                    <TableHead>শিফট</TableHead>
                     <TableHead>চেক-ইন</TableHead>
                     <TableHead>চেক-আউট</TableHead>
                     <TableHead>স্ট্যাটাস</TableHead>
@@ -136,7 +141,7 @@ export default function Attendance() {
                 </TableHeader>
                 <TableBody>
                   {(employees || []).length === 0 && (
-                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">কোনো সক্রিয় কর্মী নেই</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">কোনো সক্রিয় কর্মী নেই</TableCell></TableRow>
                   )}
                   {(employees || []).map((emp: any) => {
                     const att = getAttendance(emp.id);
@@ -145,6 +150,13 @@ export default function Attendance() {
                         <TableCell className="font-mono">{emp.employee_id}</TableCell>
                         <TableCell className="font-medium">{emp.name}</TableCell>
                         <TableCell>{emp.departments?.name || "—"}</TableCell>
+                        <TableCell>
+                          {emp.shifts?.name ? (
+                            <Badge variant="outline" className="text-[11px]">
+                              {emp.shifts.name} ({emp.shifts.start_time?.slice(0,5)}–{emp.shifts.end_time?.slice(0,5)})
+                            </Badge>
+                          ) : <span className="text-muted-foreground text-xs">—</span>}
+                        </TableCell>
                         <TableCell>
                           <Input
                             type="time"
