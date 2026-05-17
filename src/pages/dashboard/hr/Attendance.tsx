@@ -132,6 +132,7 @@ export default function Attendance() {
                     <TableHead>কর্মী আইডি</TableHead>
                     <TableHead>নাম</TableHead>
                     <TableHead>ডিপার্টমেন্ট</TableHead>
+                    <TableHead>শিফট</TableHead>
                     <TableHead>চেক-ইন</TableHead>
                     <TableHead>চেক-আউট</TableHead>
                     <TableHead>স্ট্যাটাস</TableHead>
