@@ -67,12 +67,14 @@ export default function Attendance() {
         (e: any) => !attendance?.find((a: any) => a.employee_id === e.id)
       );
       for (const emp of unmarked) {
-        const { error } = await supabase.from("attendance").insert({
+        const payload: any = {
           employee_id: emp.id,
           date: selectedDate,
           status: "present",
-          check_in: "09:00",
-        } as any);
+          check_in: (emp as any).shifts?.start_time?.slice(0, 5) || "09:00",
+        };
+        if ((emp as any).default_shift_id) payload.shift_id = (emp as any).default_shift_id;
+        const { error } = await supabase.from("attendance").insert(payload);
         if (error) throw error;
       }
     },
