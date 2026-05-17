@@ -138,6 +138,33 @@ export default function BillingList() {
       }
 
       const monthKey = filters.month; // YYYY-MM
+      const monthStart = `${monthKey}-01`;
+      const nextMonthDate = new Date(`${monthStart}T00:00:00`);
+      nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
+      const monthEnd = nextMonthDate.toISOString().slice(0, 10);
+
+      // Fetch bill_collections for selected month so paid amount reflects actual receives
+      // even when billing row doesn't exist or billing_id is missing on the collection.
+      const clientIds = (data || []).map((c: any) => c.id).filter(Boolean);
+      const collectedByClient = new Map<string, { paid: number; discount: number; lastDate: string | null }>();
+      if (clientIds.length > 0 && !isPopMode) {
+        const { data: cols } = await supabase
+          .from("bill_collections")
+          .select("client_id, amount, discount, created_at")
+          .in("client_id", clientIds)
+          .eq("status", "approved")
+          .gte("created_at", `${monthStart}T00:00:00`)
+          .lt("created_at", `${monthEnd}T00:00:00`);
+        (cols || []).forEach((r: any) => {
+          const cur = collectedByClient.get(r.client_id) || { paid: 0, discount: 0, lastDate: null };
+          cur.paid += Number(r.amount || 0);
+          cur.discount += Number(r.discount || 0);
+          const d = String(r.created_at || "").slice(0, 10);
+          if (!cur.lastDate || d > cur.lastDate) cur.lastDate = d;
+          collectedByClient.set(r.client_id, cur);
+        });
+      }
+
       return (data || []).map((c: any) => {
         const allBills = c.billing || [];
         const bill = allBills.find((b: any) => {
@@ -145,16 +172,64 @@ export default function BillingList() {
           const m = String(b.month).slice(0, 7);
           return m === monthKey;
         });
-        const totalDue = allBills.reduce((s: number, b: any) => s + Math.max(0, Number(b.due || 0)), 0);
-        const totalPaid = allBills.reduce((s: number, b: any) => s + Number(b.paid || 0), 0);
-        const unpaidMonths = allBills.filter((b: any) => Number(b.due || 0) > 0).length;
+
         const monthly = Number(c.monthly_bill || 0);
+        const collected = collectedByClient.get(c.id);
+        const collectedThisMonth = Number(collected?.paid || 0);
+        const collectedDiscount = Number(collected?.discount || 0);
+
+        // Build/merge a current-month bill view that includes payments recorded
+        // through bill_collections even when the billing row is missing.
+        let currentBill: any = bill;
+        if (currentBill) {
+          const billAmount = Number(currentBill.amount || monthly);
+          const billPaid = Math.max(Number(currentBill.paid || 0), collectedThisMonth);
+          const billDiscount = Math.max(Number(currentBill.discount || 0), collectedDiscount);
+          const computedDue = Math.max(0, billAmount - billPaid - billDiscount);
+          const billDue = Math.min(Number(currentBill.due ?? computedDue), computedDue);
+          currentBill = {
+            ...currentBill,
+            amount: billAmount,
+            paid: billPaid,
+            discount: billDiscount,
+            due: billDue,
+            pay_date: currentBill.pay_date || collected?.lastDate || null,
+            status: billDue <= 0 ? "paid" : billPaid > 0 ? "partial" : "unpaid",
+          };
+        } else if (collectedThisMonth > 0 || monthly > 0) {
+          const amount = monthly;
+          const paid = collectedThisMonth;
+          const discount = collectedDiscount;
+          const due = Math.max(0, amount - paid - discount);
+          currentBill = {
+            id: null,
+            month: monthStart,
+            amount,
+            paid,
+            discount,
+            due,
+            advance: 0,
+            vat: 0,
+            status: due <= 0 && paid > 0 ? "paid" : paid > 0 ? "partial" : "unpaid",
+            pay_date: collected?.lastDate || null,
+            virtual: true,
+          };
+        }
+
+        // Totals across all months — but ensure current-month paid reflects collections too.
+        const otherBills = allBills.filter((b: any) => String(b?.month || "").slice(0, 7) !== monthKey);
+        const otherDue = otherBills.reduce((s: number, b: any) => s + Math.max(0, Number(b.due || 0)), 0);
+        const otherPaid = otherBills.reduce((s: number, b: any) => s + Number(b.paid || 0), 0);
+        const totalDue = otherDue + (currentBill ? Math.max(0, Number(currentBill.due || 0)) : 0);
+        const totalPaid = otherPaid + (currentBill ? Number(currentBill.paid || 0) : 0);
+        const unpaidMonths = otherBills.filter((b: any) => Number(b.due || 0) > 0).length
+          + (currentBill && Number(currentBill.due || 0) > 0 ? 1 : 0);
         const overdueMonths = monthly > 0 ? Math.floor(totalDue / monthly) : 0;
         const isOverdue = totalDue >= 1 && totalDue > monthly;
-        const effectiveBill = bill || (totalDue <= 0 && allBills.length > 0 ? allBills[0] : null);
+
         return {
           ...c,
-          currentBill: effectiveBill,
+          currentBill: currentBill || null,
           totalDue,
           totalPaid,
           unpaidMonths,
