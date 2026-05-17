@@ -283,7 +283,11 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
 
       toast.success("বিল রিসিভ সম্পন্ন হয়েছে");
       queryClient.invalidateQueries({ queryKey: [invalidateKey || "billing-list"] });
+      queryClient.invalidateQueries({ queryKey: ["billing-list"] });
       queryClient.invalidateQueries({ queryKey: ["bill-collections"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+      queryClient.invalidateQueries({ queryKey: ["client-profile", client.id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats-v3"] });
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e.message || "বিল রিসিভ ব্যর্থ হয়েছে");
