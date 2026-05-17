@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,12 +15,12 @@ import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-const STEPS = ["ব্যক্তিগত তথ্য", "যোগাযোগ তথ্য", "নেটওয়ার্ক ও পণ্য তথ্য", "সেবা তথ্য"];
+const todayISO = () => new Date().toISOString().slice(0, 10);
 
 const defaultForm = {
   name: "", contact: "", email: "", address: "", zone_id: "", subzone_id: "",
-  customer_type: "", connection_type_id: "", package_id: "", monthly_bill: 0,
-  billing_date: 1, otc_charge: 0, notes: "", schedule_date: "",
+  customer_type: "Home", connection_type_id: "", package_id: "", monthly_bill: 0,
+  billing_date: 1, otc_enabled: false, otc_charge: 0, notes: "", schedule_date: "",
   gender: "", father_name: "", nid_number: "",
 };
 
@@ -42,7 +42,7 @@ export default function NewRequest() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [step, setStep] = useState(0);
+  
   const [form, setForm] = useState({ ...defaultForm });
   const [editId, setEditId] = useState<string | null>(null);
   const [filterFromDate, setFilterFromDate] = useState("");
@@ -208,7 +208,7 @@ export default function NewRequest() {
   // --- Handlers ---
   const closeDialog = () => {
     setDialogOpen(false);
-    setStep(0);
+    
     setForm({ ...defaultForm });
     setEditId(null);
   };
@@ -217,10 +217,12 @@ export default function NewRequest() {
     setForm({
       name: item.name || "", contact: item.contact || "", email: item.email || "",
       address: item.address || "", zone_id: item.zone_id || "", subzone_id: item.subzone_id || "",
-      customer_type: item.customer_type || "", connection_type_id: item.connection_type_id || "",
+      customer_type: item.customer_type || "Home", connection_type_id: item.connection_type_id || "",
       package_id: item.package_id || "", monthly_bill: item.monthly_bill || 0,
-      billing_date: item.billing_date || 1, otc_charge: item.otc_charge || 0,
-      notes: item.notes || "", schedule_date: item.schedule_date || "",
+      billing_date: item.billing_date || 1,
+      otc_enabled: Number(item.otc_charge || 0) > 0,
+      otc_charge: item.otc_charge || 0,
+      notes: item.notes || "", schedule_date: item.schedule_date || todayISO(),
       gender: "", father_name: "", nid_number: "",
     });
     setEditId(item.id);
@@ -287,11 +289,42 @@ export default function NewRequest() {
   }, [requests, search, filterSetupStatus, filterFromDate, filterToDate]);
 
   const handleSubmit = () => {
-    if (!form.name) { toast.error("নাম আবশ্যক"); return; }
-    upsertMutation.mutate(form);
+    if (!form.name.trim()) { toast.error("কাস্টমারের নাম আবশ্যক"); return; }
+    if (!/^01\d{9}$/.test(form.contact.trim())) { toast.error("সঠিক মোবাইল নম্বর দিন (01 দিয়ে শুরু, ১১ সংখ্যা)"); return; }
+    if (!form.customer_type) { toast.error("কাস্টমার টাইপ নির্বাচন করুন"); return; }
+    if (!form.connection_type_id) { toast.error("কানেকশন টাইপ নির্বাচন করুন"); return; }
+    if (!form.package_id) { toast.error("প্যাকেজ নির্বাচন করুন"); return; }
+    if (!form.schedule_date) { toast.error("শিডিউল তারিখ আবশ্যক"); return; }
+    if (form.schedule_date < todayISO()) { toast.error("পেছনের তারিখ নির্বাচন করা যাবে না"); return; }
+    if (form.otc_enabled && (!form.otc_charge || Number(form.otc_charge) <= 0)) {
+      toast.error("OTC Amount দিন"); return;
+    }
+    const payload = { ...form, otc_charge: form.otc_enabled ? Number(form.otc_charge) : 0 };
+    upsertMutation.mutate(payload);
   };
 
   const setField = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }));
+
+  // Auto-fill defaults when dialog opens for a new request and data is loaded
+  useEffect(() => {
+    if (!dialogOpen || editId) return;
+    setForm(prev => {
+      const next = { ...prev };
+      if (!next.schedule_date) next.schedule_date = todayISO();
+      if (!next.customer_type) next.customer_type = "Home";
+      if (!next.connection_type_id && connectionTypes && connectionTypes.length) {
+        const fiber = connectionTypes.find((c: any) => /optical|fiber|ফাইবার/i.test(c.name));
+        next.connection_type_id = (fiber || connectionTypes[0]).id;
+      }
+      if (!next.package_id && packages && packages.length) {
+        const p500 = packages.find((p: any) => Number(p.price) === 500);
+        const chosen = p500 || packages[0];
+        next.package_id = chosen.id;
+        next.monthly_bill = chosen.price;
+      }
+      return next;
+    });
+  }, [dialogOpen, editId, connectionTypes, packages]);
 
   const filteredEmployees = useMemo(() => {
     if (!employeeSearch) return employees || [];
@@ -499,164 +532,84 @@ export default function NewRequest() {
         </Table>
       </div>
 
-      {/* Multi-step Create/Edit Dialog */}
+      {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={v => { if (!v) closeDialog(); }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editId ? "রিকোয়েস্ট সম্পাদনা" : "নতুন ক্লায়েন্ট রিকোয়েস্ট"}</DialogTitle>
           </DialogHeader>
 
-          {/* Step Indicator */}
-          <div className="flex gap-1 mb-4">
-            {STEPS.map((s, idx) => (
-              <button key={idx} onClick={() => setStep(idx)}
-                className={`flex-1 text-xs py-2 rounded-md transition-colors ${idx === step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
-                {idx + 1}. {s}
-              </button>
-            ))}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <Label>কাস্টমারের নাম *</Label>
+              <Input value={form.name} onChange={e => setField("name", e.target.value)} placeholder="পুরো নাম" />
+            </div>
+            <div>
+              <Label>মোবাইল নম্বর *</Label>
+              <Input value={form.contact} onChange={e => setField("contact", e.target.value)} placeholder="01XXXXXXXXX" maxLength={11} />
+            </div>
+            <div>
+              <Label>শিডিউল তারিখ *</Label>
+              <Input type="date" min={todayISO()} value={form.schedule_date}
+                onChange={e => setField("schedule_date", e.target.value)} />
+            </div>
+            <div className="col-span-2">
+              <Label>ঠিকানা</Label>
+              <Textarea value={form.address} onChange={e => setField("address", e.target.value)} placeholder="বিস্তারিত ঠিকানা" rows={2} />
+            </div>
+            <div>
+              <Label>কাস্টমার টাইপ *</Label>
+              <Select value={form.customer_type} onValueChange={v => setField("customer_type", v)}>
+                <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Home">Home</SelectItem>
+                  <SelectItem value="Corporate">Corporate</SelectItem>
+                  <SelectItem value="Business">Business</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>কানেকশন টাইপ *</Label>
+              <Select value={form.connection_type_id} onValueChange={v => setField("connection_type_id", v)}>
+                <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+                <SelectContent>
+                  {connectionTypes?.map(ct => <SelectItem key={ct.id} value={ct.id}>{ct.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <Label>প্যাকেজ *</Label>
+              <Select value={form.package_id} onValueChange={v => {
+                setField("package_id", v);
+                const pkg = packages?.find(p => p.id === v);
+                if (pkg) setField("monthly_bill", pkg.price);
+              }}>
+                <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+                <SelectContent>
+                  {packages?.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.bandwidth_down}Mbps) - ৳{p.price}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2 flex items-center gap-2 pt-1">
+              <Checkbox id="otc-enabled" checked={form.otc_enabled}
+                onCheckedChange={(v) => setField("otc_enabled", v === true)} />
+              <Label htmlFor="otc-enabled" className="cursor-pointer">OTC (কানেকশন চার্জ) আছে?</Label>
+            </div>
+            {form.otc_enabled && (
+              <div className="col-span-2">
+                <Label>OTC Amount *</Label>
+                <Input type="number" min={1} value={form.otc_charge}
+                  onChange={e => setField("otc_charge", Number(e.target.value))}
+                  placeholder="টাকার পরিমাণ" />
+              </div>
+            )}
           </div>
 
-          {step === 0 && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <Label>কাস্টমারের নাম *</Label>
-                <Input value={form.name} onChange={e => setField("name", e.target.value)} placeholder="পুরো নাম" />
-              </div>
-              <div>
-                <Label>জেন্ডার</Label>
-                <Select value={form.gender} onValueChange={v => setField("gender", v)}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Male">পুরুষ</SelectItem>
-                    <SelectItem value="Female">মহিলা</SelectItem>
-                    <SelectItem value="Other">অন্যান্য</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>NID নম্বর</Label>
-                <Input value={form.nid_number} onChange={e => setField("nid_number", e.target.value)} placeholder="NID/জন্ম সনদ নম্বর" />
-              </div>
-              <div>
-                <Label>পিতার নাম</Label>
-                <Input value={form.father_name} onChange={e => setField("father_name", e.target.value)} />
-              </div>
-              <div>
-                <Label>ইমেইল</Label>
-                <Input type="email" value={form.email} onChange={e => setField("email", e.target.value)} />
-              </div>
-            </div>
-          )}
-
-          {step === 1 && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>মোবাইল নম্বর *</Label>
-                <Input value={form.contact} onChange={e => setField("contact", e.target.value)} placeholder="01XXXXXXXXX" />
-              </div>
-              <div>
-                <Label>ইমেইল</Label>
-                <Input type="email" value={form.email} onChange={e => setField("email", e.target.value)} />
-              </div>
-              <div className="col-span-2">
-                <Label>ঠিকানা</Label>
-                <Textarea value={form.address} onChange={e => setField("address", e.target.value)} placeholder="বিস্তারিত ঠিকানা" />
-              </div>
-              <div>
-                <Label>জোন</Label>
-                <Select value={form.zone_id} onValueChange={v => { setField("zone_id", v); setField("subzone_id", ""); }}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    {zones?.map(z => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>সাবজোন</Label>
-                <Select value={form.subzone_id} onValueChange={v => setField("subzone_id", v)}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    {filteredSubZones?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>কাস্টমার টাইপ</Label>
-                <Select value={form.customer_type} onValueChange={v => setField("customer_type", v)}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Home">Home</SelectItem>
-                    <SelectItem value="Corporate">Corporate</SelectItem>
-                    <SelectItem value="Business">Business</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>কানেকশন টাইপ</Label>
-                <Select value={form.connection_type_id} onValueChange={v => setField("connection_type_id", v)}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    {connectionTypes?.map(ct => <SelectItem key={ct.id} value={ct.id}>{ct.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>প্যাকেজ</Label>
-                <Select value={form.package_id} onValueChange={v => {
-                  setField("package_id", v);
-                  const pkg = packages?.find(p => p.id === v);
-                  if (pkg) setField("monthly_bill", pkg.price);
-                }}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    {packages?.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.bandwidth_down}Mbps) - ৳{p.price}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>OTC (কানেকশন চার্জ)</Label>
-                <Input type="number" value={form.otc_charge} onChange={e => setField("otc_charge", Number(e.target.value))} />
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>মাসিক বিল (৳)</Label>
-                <Input type="number" value={form.monthly_bill} onChange={e => setField("monthly_bill", Number(e.target.value))} />
-              </div>
-              <div>
-                <Label>বিলিং তারিখ</Label>
-                <Input type="number" min={1} max={28} value={form.billing_date} onChange={e => setField("billing_date", Number(e.target.value))} />
-              </div>
-              <div>
-                <Label>শিডিউল তারিখ</Label>
-                <Input type="date" value={form.schedule_date} onChange={e => setField("schedule_date", e.target.value)} />
-              </div>
-              <div className="col-span-2">
-                <Label>নোট</Label>
-                <Textarea value={form.notes} onChange={e => setField("notes", e.target.value)} placeholder="অতিরিক্ত তথ্য..." />
-              </div>
-            </div>
-          )}
-
           <div className="flex justify-between mt-4">
-            <Button variant="outline" onClick={() => step > 0 ? setStep(step - 1) : closeDialog()}>
-              {step > 0 ? "পূর্ববর্তী" : "বাতিল"}
+            <Button variant="outline" onClick={closeDialog}>বাতিল</Button>
+            <Button onClick={handleSubmit} disabled={upsertMutation.isPending}>
+              {upsertMutation.isPending ? "সেভ হচ্ছে..." : editId ? "আপডেট" : "সেভ করুন"}
             </Button>
-            {step < STEPS.length - 1 ? (
-              <Button onClick={() => setStep(step + 1)}>পরবর্তী</Button>
-            ) : (
-              <Button onClick={handleSubmit} disabled={upsertMutation.isPending}>
-                {upsertMutation.isPending ? "সেভ হচ্ছে..." : editId ? "আপডেট" : "সেভ করুন"}
-              </Button>
-            )}
           </div>
         </DialogContent>
       </Dialog>
