@@ -120,30 +120,87 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
           overpay_mode: isOverpayment ? overpayMode : undefined,
         });
       } else {
-        const newPaid = alreadyPaid + totalReceived;
-        const increaseAmount = isOverpayment && overpayMode === "increase";
-        const effectiveBillAmount = increaseAmount ? newPaid : monthlyBill;
-        const newDue = Math.max(0, effectiveBillAmount - newPaid);
-        const newAdvance = !increaseAmount && newPaid > monthlyBill ? newPaid - monthlyBill : 0;
-        const newStatus = newDue <= 0 ? "paid" : "partial";
-        const finalRemarks = isAdvance ? `Advance Pay. ${remarks}`.trim() : remarks;
+        // Fetch ALL unpaid/partial bills for this client (oldest first) and allocate received amount
+        const { data: openBills } = await supabase
+          .from("billing")
+          .select("id, month, amount, paid, due")
+          .eq("client_id", client.id)
+          .gt("due", 0)
+          .order("month", { ascending: true });
 
-        if (billing?.id) {
-          const updatePayload: any = {
+        let bills = openBills || [];
+        // Ensure the bill the user clicked on is included even if its due is 0 (e.g. already partial-paid current month with extra coming in)
+        if (billing?.id && !bills.find((b: any) => b.id === billing.id)) {
+          bills = [...bills, billing as any];
+        }
+
+        let remaining = totalReceived;
+        const increaseAmount = isOverpayment && overpayMode === "increase";
+        let lastBillId: string | null = null;
+        let lastBillNewDue = 0;
+
+        for (const b of bills) {
+          if (remaining <= 0 && !increaseAmount) break;
+          const billAmount = Number(b.amount || 0);
+          const billPaid = Number(b.paid || 0);
+          const billDue = Math.max(0, billAmount - billPaid);
+          const apply = Math.min(billDue, remaining);
+          const newPaid = billPaid + apply;
+          const newDue = Math.max(0, billAmount - newPaid);
+          const newStatus = newDue <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
+          await supabase.from("billing").update({
             paid: newPaid,
             due: newDue,
-            advance: newAdvance,
             status: newStatus,
             pay_date: receivedDate,
             payment_method: paymentMethod,
             collected_by: receivedBy || null,
-            discount: discount,
-            vat: applyVat ? vatAmount : 0,
-          };
-          if (increaseAmount) updatePayload.amount = effectiveBillAmount;
-          const { error } = await supabase.from("billing").update(updatePayload).eq("id", billing.id);
-          if (error) throw error;
+          }).eq("id", b.id);
+          remaining -= apply;
+          lastBillId = b.id;
+          lastBillNewDue = newDue;
         }
+
+        // Handle overpayment: either increase last bill amount or store as advance on current bill
+        if (remaining > 0) {
+          const targetId = billing?.id || lastBillId;
+          if (targetId) {
+            if (increaseAmount) {
+              const { data: cur } = await supabase.from("billing").select("amount, paid").eq("id", targetId).maybeSingle();
+              const newAmount = Number(cur?.amount || 0) + remaining;
+              const newPaid = Number(cur?.paid || 0) + remaining;
+              await supabase.from("billing").update({
+                amount: newAmount,
+                paid: newPaid,
+                due: 0,
+                status: "paid",
+                pay_date: receivedDate,
+                payment_method: paymentMethod,
+                collected_by: receivedBy || null,
+              }).eq("id", targetId);
+            } else {
+              // advance
+              const { data: cur } = await supabase.from("billing").select("advance").eq("id", targetId).maybeSingle();
+              await supabase.from("billing").update({
+                advance: Number(cur?.advance || 0) + remaining,
+                pay_date: receivedDate,
+              }).eq("id", targetId);
+            }
+          }
+          remaining = 0;
+        }
+
+        // Apply discount/vat metadata to the current-month bill (or last touched bill)
+        const metaBillId = billing?.id || lastBillId;
+        if (metaBillId && (discount > 0 || (applyVat && vatAmount > 0))) {
+          await supabase.from("billing").update({
+            discount,
+            vat: applyVat ? vatAmount : 0,
+          }).eq("id", metaBillId);
+        }
+
+        const newDue = lastBillNewDue;
+        const finalRemarks = isAdvance ? `Advance Pay. ${remarks}`.trim() : remarks;
 
         const { error: collectionError } = await supabase.from("bill_collections").insert({
           client_id: client.id,
