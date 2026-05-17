@@ -369,13 +369,13 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
           <div className="border rounded-lg overflow-hidden">
             <table className="w-full text-xs">
               <thead>
-                <tr className="bg-muted/50">
-                  <th className="p-2 text-left">প্রদেয়</th>
-                  <th className="p-2 text-left">ছাড়</th>
-                  <th className="p-2 text-left">গৃহীত</th>
-                  <th className="p-2 text-left">VAT</th>
-                  <th className="p-2 text-left">মোট</th>
-                  <th className="p-2 text-left">ব্যালেন্স</th>
+                <tr className="bg-muted border-b border-border">
+                  <th className="p-2 text-left text-foreground font-semibold">প্রদেয়</th>
+                  <th className="p-2 text-left text-foreground font-semibold">ছাড়</th>
+                  <th className="p-2 text-left text-foreground font-semibold">গৃহীত</th>
+                  <th className="p-2 text-left text-foreground font-semibold">VAT</th>
+                  <th className="p-2 text-left text-foreground font-semibold">মোট</th>
+                  <th className="p-2 text-left text-foreground font-semibold">ব্যালেন্স</th>
                 </tr>
               </thead>
               <tbody>
