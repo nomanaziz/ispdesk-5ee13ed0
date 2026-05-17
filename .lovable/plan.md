@@ -1,71 +1,34 @@
+এই billing problem fix করার plan:
 
-# BW Panel Sidebar — Simplification Plan
+1. **Paid bill list থেকে সাথে সাথে সরানো**
+   - Bill receive করার পর `billing-list` query ঠিকভাবে refresh হবে।
+   - যদি user `বকেয়া / অপরিশোধিত / আংশিক / overdue` filter-এ থাকে, payment complete হলে client আর ওই list-এ থাকবে না।
+   - Current month-এর paid/due হিসাব current bill থেকে দেখাবে, আর total due আলাদা থাকবে যাতে আগের মাসের due confuse না করে।
 
-BW reseller (POP admin) এর সাইডবার থেকে অপ্রয়োজনীয় menu item বাদ দেওয়া হবে। সব পরিবর্তন শুধু `src/components/BwCustomerLayout.tsx` এর `panelGroups` array তে — কোনো backend / route / page ফাইল পরিবর্তন হবে না (পেজগুলো থাকবে, শুধু sidebar থেকে link সরে যাবে)।
+2. **পুরো client billing sync ঠিক করা**
+   - এখনকার “ক্লায়েন্ট সিঙ্ক” শুধু MikroTik online/offline sync করছে। এটা বদলে এমন করব যাতে sync শেষে billing client list + bill detail refresh হয়।
+   - Admin mode-এ query invalidation/refetch হবে: billing list, daily collection, dashboard stats, bill collections।
+   - POP mode-এ portal function থেকে returned full client billing data refresh হবে।
+   - Sync button text/feedback এমন হবে যাতে বোঝা যায় client billing data refresh হচ্ছে, শুধু MikroTik না।
 
----
+3. **Payment distribution logic natural করা**
+   - এক client-এর একাধিক মাসের due থাকলে টাকা oldest due bill থেকে আগে কাটবে।
+   - পুরো টাকা দিলে আগের মাস + current month সব paid হবে, current month-এর paid/due/status ঠিক update হবে।
+   - Partial payment হলে যে bill পর্যন্ত টাকা গেছে সেগুলো paid/partial/unpaid হিসেবে update হবে।
+   - Bill collection ও income entry amount actual received amount হিসেবেই থাকবে।
 
-## 1) ক্লায়েন্ট গ্রুপ — কেটে দেওয়া হবে
+4. **Bill receive popup text visibility fix**
+   - popup-এর table header (`প্রদেয়`, `ছাড়`, `গৃহীত`, `VAT`, `মোট`, `ব্যালেন্স`) foreground/text color দিয়ে readable করা হবে।
+   - Light/dark theme দুই জায়গাতেই যেন white-on-white না হয় সেটা semantic token দিয়ে fix করব।
 
-**বাদ যাবে (image-281 এ cross করা):**
-- নতুন রিকোয়েস্ট
-- হোম ক্লায়েন্ট
-- কর্পোরেট ক্লায়েন্ট
-- ইনস্টলেশন ফি
-- চলে যাওয়া ক্লায়েন্ট
-- শিডিউলার
-- পরিবর্তন রিকোয়েস্ট
-- ক্লায়েন্ট যোগ (Add Client menu — list থেকে "Add" button দিয়েই add হবে)
+5. **Same fix admin + POP flow-এ apply**
+   - Frontend admin receive dialog update করব।
+   - POP portal-এর `receive_pop_bill` edge function-এও same oldest-due payment allocation logic apply করব, কারণ POP reseller panel সেখান দিয়ে bill receive করে।
 
-**থাকবে (final list, এই order এ):**
-- ক্লায়েন্ট তালিকা — সব ক্লায়েন্ট (Home + Corporate একসাথে), filter দিয়ে আলাদা দেখা যাবে
-- বাল্ক ইম্পোর্ট
-- বিলিং তালিকা
-- দৈনিক বিল কালেকশন
-- মাইক্রোটিক ইউজার (Device গ্রুপে already আছে, তাই এখানে থাকবে না)
+**Technical files expected:**
+- `src/components/billing/BillReceiveDialog.tsx`
+- `src/pages/dashboard/billing/BillingList.tsx`
+- `src/components/billing/BulkActionButtons.tsx` অথবা sync label ব্যবহারকারী component
+- `supabase/functions/portal-data/index.ts`
 
-> "ক্লায়েন্ট তালিকা" বনাম "হোম ক্লায়েন্ট" — Home page টা শুধু `client_type=Home` filter করা version। সাধারণ list এই দুটোই দেখায়, তাই আলাদা home menu লাগে না।
-
----
-
-## 2) OLT ম্যানেজমেন্ট — অনেক simplify
-
-**বাদ যাবে (image-282 এ cross করা + অতিরিক্ত):**
-- OLT / ONU ওভারভিউ
-- OLT Power Dashboard
-- OLT ইউজার
-- OLT Port Classification
-- ফাইবার ডাউন ফাইন্ডার
-- OLT শেয়ারিং
-- OLT ডিভাইস (পরিবর্তে System / Configuration থেকে manage হবে; user বলেছে "শুধু অণু add করবে")
-
-**থাকবে (simplified):**
-- **ONU তালিকা** — প্রতি ONU এর: MAC/serial, status (online/offline), current RX power, last seen
-- **ইউজার ডাউন কাউন্ট** — offline ONU সংখ্যা + কারণ (Power Off / Fiber Cut / Unknown)
-
-> ONU add করার option থাকবে "ONU তালিকা" পেজের ভিতরেই — আলাদা menu না।
-
----
-
-## 3) নেটওয়ার্ক মনিটরিং — অর্ধেক বন্ধ
-
-**বাদ যাবে (image-283 এ cross করা):**
-- Switch ম্যানেজমেন্ট
-- POP DASS
-- POP IP
-- POP লগ
-- Ping টুলস
-- POP ডিভাইস
-
-**থাকবে:**
-- অনলাইন মনিটরিং (online clients + কোন user কত traffic টানছে)
-- Live Traffic
-
----
-
-## Technical Notes
-
-- File: `src/components/BwCustomerLayout.tsx` → `panelGroups` array এর তিনটি গ্রুপ (`client`, `olt`, `monitoring`) এর `items[]` কাটছাঁট।
-- পেজ ফাইল / route registration / Add Client form — কিছুই touch হবে না। ভবিষ্যতে দরকার হলে আবার menu তে যোগ করা যাবে।
-- কোনো DB migration বা edge function পরিবর্তন নেই।
-- পরীক্ষা: BW customer (panel active) দিয়ে login করে sidebar visually verify করব।
+No schema change needed.

@@ -350,15 +350,24 @@ export default function BillingList() {
   const [syncing, setSyncing] = useState(false);
   const handleSyncClients = async () => {
     setSyncing(true);
-    toast.info("ক্লায়েন্ট সিঙ্ক হচ্ছে...");
+    toast.info("ক্লায়েন্ট ও বিলিং সিঙ্ক হচ্ছে...");
     try {
-      const { data, error } = await supabase.functions.invoke("fetch-mikrotik-ppp", {
-        body: { action: "sync-online", device_id: "all" },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success(`সিঙ্ক সম্পন্ন — Online: ${data?.online || 0}, Offline: ${data?.offline || 0}${data?.status_synced ? `, Status synced: ${data.status_synced}` : ""}`);
+      // 1) MikroTik online/offline + status sync (admin only — POP mode skips RPC call)
+      if (!isPopMode) {
+        const { data, error } = await supabase.functions.invoke("fetch-mikrotik-ppp", {
+          body: { action: "sync-online", device_id: "all" },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        toast.success(`সিঙ্ক সম্পন্ন — Online: ${data?.online || 0}, Offline: ${data?.offline || 0}${data?.status_synced ? `, Status synced: ${data.status_synced}` : ""}`);
+      } else {
+        toast.success("বিলিং তথ্য রিফ্রেশ হয়েছে");
+      }
+      // 2) Refresh full billing + client table from DB (covers paid bills, dues, etc.)
       queryClient.invalidateQueries({ queryKey: ["billing-list"] });
+      queryClient.invalidateQueries({ queryKey: ["bill-collections"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats-v3"] });
     } catch (err: any) {
       toast.error(err.message || "সিঙ্ক ব্যর্থ হয়েছে");
     } finally {

@@ -1306,38 +1306,80 @@ Deno.serve(async (req) => {
           .maybeSingle();
         if (!client) return json({ error: "Client not found" }, 404);
 
-        let bill = null as any;
-        if (payload.billing_id) {
-          const { data } = await sb.from("billing").select("*").eq("id", payload.billing_id).eq("client_id", clientId).maybeSingle();
-          bill = data;
-        } else {
-          const monthStart = `${receivedDate.slice(0, 7)}-01`;
-          const nextMonth = new Date(new Date(monthStart).getFullYear(), new Date(monthStart).getMonth() + 1, 1).toISOString().slice(0, 10);
-          const { data } = await sb.from("billing").select("*").eq("client_id", clientId).gte("month", monthStart).lt("month", nextMonth).order("month", { ascending: false }).limit(1).maybeSingle();
-          bill = data;
+        // Fetch all open (due > 0) bills for this client, oldest first
+        const { data: openBills } = await sb
+          .from("billing")
+          .select("id, month, amount, paid, due")
+          .eq("client_id", clientId)
+          .gt("due", 0)
+          .order("month", { ascending: true });
+
+        let bills = (openBills || []) as any[];
+
+        // Also include explicit billing_id if not in list
+        if (payload.billing_id && !bills.find((b: any) => b.id === payload.billing_id)) {
+          const { data } = await sb.from("billing").select("id, month, amount, paid, due").eq("id", payload.billing_id).eq("client_id", clientId).maybeSingle();
+          if (data) bills = [...bills, data];
         }
 
-        const monthlyBill = Number(bill?.amount ?? client.monthly_bill ?? 0);
-        const alreadyPaid = Number(bill?.paid || 0);
-        const newPaid = alreadyPaid + totalReceived;
-        const newDue = Math.max(0, monthlyBill - newPaid);
-        const newAdvance = newPaid > monthlyBill ? newPaid - monthlyBill : 0;
-        const newStatus = newDue <= 0 ? "paid" : "partial";
+        // If no open bill exists, auto-create current month bill from monthly_bill
+        if (bills.length === 0) {
+          const monthly = Number(client.monthly_bill || 0);
+          if (monthly > 0) {
+            const monthStart = `${receivedDate.slice(0, 7)}-01`;
+            const { data: ins } = await sb.from("billing").insert({
+              bill_id: `BILL-${client.client_id}-${receivedDate.slice(0, 7)}`,
+              client_id: clientId,
+              branch_id: pop.branch_id,
+              month: monthStart,
+              amount: monthly,
+              due: monthly,
+              paid: 0,
+              status: "unpaid",
+              generated: true,
+            }).select("id, month, amount, paid, due").single();
+            if (ins) bills = [ins as any];
+          }
+        }
 
-        if (bill?.id) {
-          const { error } = await sb.from("billing").update({
+        let remaining = totalReceived;
+        let lastBillId: string | null = null;
+        for (const b of bills) {
+          if (remaining <= 0) break;
+          const billAmount = Number(b.amount || 0);
+          const billPaid = Number(b.paid || 0);
+          const billDue = Math.max(0, billAmount - billPaid);
+          const apply = Math.min(billDue, remaining);
+          const newPaid = billPaid + apply;
+          const newDue = Math.max(0, billAmount - newPaid);
+          const newStatus = newDue <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
+          await sb.from("billing").update({
             paid: newPaid,
             due: newDue,
-            advance: newAdvance,
             status: newStatus,
             pay_date: receivedDate,
             payment_method: paymentMethod,
             collected_by: payload.received_by || tok.sub,
-            discount,
-            vat,
-          }).eq("id", bill.id);
-          if (error) return json({ error: error.message }, 500);
+          }).eq("id", b.id);
+          remaining -= apply;
+          lastBillId = b.id;
         }
+
+        // Overpayment → advance on last bill
+        if (remaining > 0 && lastBillId) {
+          const { data: cur } = await sb.from("billing").select("advance").eq("id", lastBillId).maybeSingle();
+          await sb.from("billing").update({
+            advance: Number(cur?.advance || 0) + remaining,
+          }).eq("id", lastBillId);
+        }
+
+        // discount/vat metadata applied to billing_id or last bill
+        const metaBillId = payload.billing_id || lastBillId;
+        if (metaBillId && (discount > 0 || vat > 0)) {
+          await sb.from("billing").update({ discount, vat }).eq("id", metaBillId);
+        }
+
+        const bill = lastBillId ? { id: lastBillId } : null;
 
         const { error: collectionError } = await sb.from("bill_collections").insert({
           client_id: client.id,
