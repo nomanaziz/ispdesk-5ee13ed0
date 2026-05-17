@@ -532,164 +532,84 @@ export default function NewRequest() {
         </Table>
       </div>
 
-      {/* Multi-step Create/Edit Dialog */}
+      {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={v => { if (!v) closeDialog(); }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editId ? "রিকোয়েস্ট সম্পাদনা" : "নতুন ক্লায়েন্ট রিকোয়েস্ট"}</DialogTitle>
           </DialogHeader>
 
-          {/* Step Indicator */}
-          <div className="flex gap-1 mb-4">
-            {STEPS.map((s, idx) => (
-              <button key={idx} onClick={() => setStep(idx)}
-                className={`flex-1 text-xs py-2 rounded-md transition-colors ${idx === step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
-                {idx + 1}. {s}
-              </button>
-            ))}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <Label>কাস্টমারের নাম *</Label>
+              <Input value={form.name} onChange={e => setField("name", e.target.value)} placeholder="পুরো নাম" />
+            </div>
+            <div>
+              <Label>মোবাইল নম্বর *</Label>
+              <Input value={form.contact} onChange={e => setField("contact", e.target.value)} placeholder="01XXXXXXXXX" maxLength={11} />
+            </div>
+            <div>
+              <Label>শিডিউল তারিখ *</Label>
+              <Input type="date" min={todayISO()} value={form.schedule_date}
+                onChange={e => setField("schedule_date", e.target.value)} />
+            </div>
+            <div className="col-span-2">
+              <Label>ঠিকানা</Label>
+              <Textarea value={form.address} onChange={e => setField("address", e.target.value)} placeholder="বিস্তারিত ঠিকানা" rows={2} />
+            </div>
+            <div>
+              <Label>কাস্টমার টাইপ *</Label>
+              <Select value={form.customer_type} onValueChange={v => setField("customer_type", v)}>
+                <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Home">Home</SelectItem>
+                  <SelectItem value="Corporate">Corporate</SelectItem>
+                  <SelectItem value="Business">Business</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>কানেকশন টাইপ *</Label>
+              <Select value={form.connection_type_id} onValueChange={v => setField("connection_type_id", v)}>
+                <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+                <SelectContent>
+                  {connectionTypes?.map(ct => <SelectItem key={ct.id} value={ct.id}>{ct.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <Label>প্যাকেজ *</Label>
+              <Select value={form.package_id} onValueChange={v => {
+                setField("package_id", v);
+                const pkg = packages?.find(p => p.id === v);
+                if (pkg) setField("monthly_bill", pkg.price);
+              }}>
+                <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+                <SelectContent>
+                  {packages?.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.bandwidth_down}Mbps) - ৳{p.price}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2 flex items-center gap-2 pt-1">
+              <Checkbox id="otc-enabled" checked={form.otc_enabled}
+                onCheckedChange={(v) => setField("otc_enabled", v === true)} />
+              <Label htmlFor="otc-enabled" className="cursor-pointer">OTC (কানেকশন চার্জ) আছে?</Label>
+            </div>
+            {form.otc_enabled && (
+              <div className="col-span-2">
+                <Label>OTC Amount *</Label>
+                <Input type="number" min={1} value={form.otc_charge}
+                  onChange={e => setField("otc_charge", Number(e.target.value))}
+                  placeholder="টাকার পরিমাণ" />
+              </div>
+            )}
           </div>
 
-          {step === 0 && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <Label>কাস্টমারের নাম *</Label>
-                <Input value={form.name} onChange={e => setField("name", e.target.value)} placeholder="পুরো নাম" />
-              </div>
-              <div>
-                <Label>জেন্ডার</Label>
-                <Select value={form.gender} onValueChange={v => setField("gender", v)}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Male">পুরুষ</SelectItem>
-                    <SelectItem value="Female">মহিলা</SelectItem>
-                    <SelectItem value="Other">অন্যান্য</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>NID নম্বর</Label>
-                <Input value={form.nid_number} onChange={e => setField("nid_number", e.target.value)} placeholder="NID/জন্ম সনদ নম্বর" />
-              </div>
-              <div>
-                <Label>পিতার নাম</Label>
-                <Input value={form.father_name} onChange={e => setField("father_name", e.target.value)} />
-              </div>
-              <div>
-                <Label>ইমেইল</Label>
-                <Input type="email" value={form.email} onChange={e => setField("email", e.target.value)} />
-              </div>
-            </div>
-          )}
-
-          {step === 1 && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>মোবাইল নম্বর *</Label>
-                <Input value={form.contact} onChange={e => setField("contact", e.target.value)} placeholder="01XXXXXXXXX" />
-              </div>
-              <div>
-                <Label>ইমেইল</Label>
-                <Input type="email" value={form.email} onChange={e => setField("email", e.target.value)} />
-              </div>
-              <div className="col-span-2">
-                <Label>ঠিকানা</Label>
-                <Textarea value={form.address} onChange={e => setField("address", e.target.value)} placeholder="বিস্তারিত ঠিকানা" />
-              </div>
-              <div>
-                <Label>জোন</Label>
-                <Select value={form.zone_id} onValueChange={v => { setField("zone_id", v); setField("subzone_id", ""); }}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    {zones?.map(z => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>সাবজোন</Label>
-                <Select value={form.subzone_id} onValueChange={v => setField("subzone_id", v)}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    {filteredSubZones?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>কাস্টমার টাইপ</Label>
-                <Select value={form.customer_type} onValueChange={v => setField("customer_type", v)}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Home">Home</SelectItem>
-                    <SelectItem value="Corporate">Corporate</SelectItem>
-                    <SelectItem value="Business">Business</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>কানেকশন টাইপ</Label>
-                <Select value={form.connection_type_id} onValueChange={v => setField("connection_type_id", v)}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    {connectionTypes?.map(ct => <SelectItem key={ct.id} value={ct.id}>{ct.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>প্যাকেজ</Label>
-                <Select value={form.package_id} onValueChange={v => {
-                  setField("package_id", v);
-                  const pkg = packages?.find(p => p.id === v);
-                  if (pkg) setField("monthly_bill", pkg.price);
-                }}>
-                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                  <SelectContent>
-                    {packages?.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.bandwidth_down}Mbps) - ৳{p.price}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>OTC (কানেকশন চার্জ)</Label>
-                <Input type="number" value={form.otc_charge} onChange={e => setField("otc_charge", Number(e.target.value))} />
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>মাসিক বিল (৳)</Label>
-                <Input type="number" value={form.monthly_bill} onChange={e => setField("monthly_bill", Number(e.target.value))} />
-              </div>
-              <div>
-                <Label>বিলিং তারিখ</Label>
-                <Input type="number" min={1} max={28} value={form.billing_date} onChange={e => setField("billing_date", Number(e.target.value))} />
-              </div>
-              <div>
-                <Label>শিডিউল তারিখ</Label>
-                <Input type="date" value={form.schedule_date} onChange={e => setField("schedule_date", e.target.value)} />
-              </div>
-              <div className="col-span-2">
-                <Label>নোট</Label>
-                <Textarea value={form.notes} onChange={e => setField("notes", e.target.value)} placeholder="অতিরিক্ত তথ্য..." />
-              </div>
-            </div>
-          )}
-
           <div className="flex justify-between mt-4">
-            <Button variant="outline" onClick={() => step > 0 ? setStep(step - 1) : closeDialog()}>
-              {step > 0 ? "পূর্ববর্তী" : "বাতিল"}
+            <Button variant="outline" onClick={closeDialog}>বাতিল</Button>
+            <Button onClick={handleSubmit} disabled={upsertMutation.isPending}>
+              {upsertMutation.isPending ? "সেভ হচ্ছে..." : editId ? "আপডেট" : "সেভ করুন"}
             </Button>
-            {step < STEPS.length - 1 ? (
-              <Button onClick={() => setStep(step + 1)}>পরবর্তী</Button>
-            ) : (
-              <Button onClick={handleSubmit} disabled={upsertMutation.isPending}>
-                {upsertMutation.isPending ? "সেভ হচ্ছে..." : editId ? "আপডেট" : "সেভ করুন"}
-              </Button>
-            )}
           </div>
         </DialogContent>
       </Dialog>
