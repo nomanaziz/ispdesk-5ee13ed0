@@ -48,7 +48,9 @@ export default function Attendance() {
         const { error } = await supabase.from("attendance").update({ [field]: value } as any).eq("id", existing.id);
         if (error) throw error;
       } else {
+        const emp: any = employees?.find((e: any) => e.id === employee_id);
         const payload: any = { employee_id, date: selectedDate, [field]: value };
+        if (emp?.default_shift_id) payload.shift_id = emp.default_shift_id;
         const { error } = await supabase.from("attendance").insert(payload);
         if (error) throw error;
       }
