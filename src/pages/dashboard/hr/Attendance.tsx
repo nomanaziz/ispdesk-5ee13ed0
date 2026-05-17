@@ -28,7 +28,7 @@ export default function Attendance() {
   const { data: employees } = useQuery({
     queryKey: ["employees-active"],
     queryFn: async () => {
-      const { data } = await supabase.from("employees").select("*, departments(name)").eq("status", "active").order("name");
+      const { data } = await supabase.from("employees").select("*, departments(name), shifts:default_shift_id(id,name,start_time,end_time)").eq("status", "active").order("name");
       return data || [];
     },
   });
