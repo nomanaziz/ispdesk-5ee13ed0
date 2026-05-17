@@ -46,6 +46,7 @@ const initialForm = {
   department_id: "",
   position_id: "",
   payroll_template_id: "",
+  default_shift_id: "",
   salary: "",
   show_on_website: false,
   image_url: "",
