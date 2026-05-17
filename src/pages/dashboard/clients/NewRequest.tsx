@@ -208,7 +208,7 @@ export default function NewRequest() {
   // --- Handlers ---
   const closeDialog = () => {
     setDialogOpen(false);
-    setStep(0);
+    
     setForm({ ...defaultForm });
     setEditId(null);
   };
