@@ -123,6 +123,14 @@ export default function AddEmployee() {
     },
   });
 
+  const { data: shifts } = useQuery({
+    queryKey: ["shifts-active-employee"],
+    queryFn: async () => {
+      const { data } = await supabase.from("shifts").select("id,name,start_time,end_time").eq("status", "active").order("name");
+      return data || [];
+    },
+  });
+
   // Fetch HR settings for auto ID
   const { data: hrSettings } = useQuery({
     queryKey: ["hr-settings-employee-id"],
