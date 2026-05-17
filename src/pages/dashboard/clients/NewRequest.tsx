@@ -289,11 +289,42 @@ export default function NewRequest() {
   }, [requests, search, filterSetupStatus, filterFromDate, filterToDate]);
 
   const handleSubmit = () => {
-    if (!form.name) { toast.error("নাম আবশ্যক"); return; }
-    upsertMutation.mutate(form);
+    if (!form.name.trim()) { toast.error("কাস্টমারের নাম আবশ্যক"); return; }
+    if (!/^01\d{9}$/.test(form.contact.trim())) { toast.error("সঠিক মোবাইল নম্বর দিন (01 দিয়ে শুরু, ১১ সংখ্যা)"); return; }
+    if (!form.customer_type) { toast.error("কাস্টমার টাইপ নির্বাচন করুন"); return; }
+    if (!form.connection_type_id) { toast.error("কানেকশন টাইপ নির্বাচন করুন"); return; }
+    if (!form.package_id) { toast.error("প্যাকেজ নির্বাচন করুন"); return; }
+    if (!form.schedule_date) { toast.error("শিডিউল তারিখ আবশ্যক"); return; }
+    if (form.schedule_date < todayISO()) { toast.error("পেছনের তারিখ নির্বাচন করা যাবে না"); return; }
+    if (form.otc_enabled && (!form.otc_charge || Number(form.otc_charge) <= 0)) {
+      toast.error("OTC Amount দিন"); return;
+    }
+    const payload = { ...form, otc_charge: form.otc_enabled ? Number(form.otc_charge) : 0 };
+    upsertMutation.mutate(payload);
   };
 
   const setField = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }));
+
+  // Auto-fill defaults when dialog opens for a new request and data is loaded
+  useEffect(() => {
+    if (!dialogOpen || editId) return;
+    setForm(prev => {
+      const next = { ...prev };
+      if (!next.schedule_date) next.schedule_date = todayISO();
+      if (!next.customer_type) next.customer_type = "Home";
+      if (!next.connection_type_id && connectionTypes && connectionTypes.length) {
+        const fiber = connectionTypes.find((c: any) => /optical|fiber|ফাইবার/i.test(c.name));
+        next.connection_type_id = (fiber || connectionTypes[0]).id;
+      }
+      if (!next.package_id && packages && packages.length) {
+        const p500 = packages.find((p: any) => Number(p.price) === 500);
+        const chosen = p500 || packages[0];
+        next.package_id = chosen.id;
+        next.monthly_bill = chosen.price;
+      }
+      return next;
+    });
+  }, [dialogOpen, editId, connectionTypes, packages]);
 
   const filteredEmployees = useMemo(() => {
     if (!employeeSearch) return employees || [];
