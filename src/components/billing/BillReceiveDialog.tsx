@@ -380,7 +380,7 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
               </thead>
               <tbody>
                 <tr>
-                  <td className="p-2 font-medium">৳{monthlyBill}</td>
+                  <td className="p-2 font-medium text-foreground">৳{totalOutstanding}</td>
                   <td className="p-2"><Input type="number" value={discount} onChange={e => setDiscount(Number(e.target.value))} className="h-7 w-20 text-xs" min={0} /></td>
                   <td className="p-2"><Input type="number" value={receivedAmount} onChange={e => setReceivedAmount(Number(e.target.value))} className="h-7 w-24 text-xs" min={0} /></td>
                   <td className="p-2"><div className="flex items-center gap-1"><Checkbox checked={applyVat} onCheckedChange={(v) => setApplyVat(!!v)} /><Input type="number" value={vatAmount} onChange={e => setVatAmount(Number(e.target.value))} className="h-7 w-16 text-xs" min={0} disabled={!applyVat} /></div></td>
