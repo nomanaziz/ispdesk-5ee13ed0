@@ -222,7 +222,7 @@ export default function AddEmployee() {
       delete payload.district_id;
       // Nullify empty uuid / date / time / numeric fields to avoid Postgres syntax errors
       const nullableKeys = [
-        "department_id", "position_id", "zkteco_device_id", "payroll_template_id",
+        "department_id", "position_id", "zkteco_device_id", "payroll_template_id", "default_shift_id",
         "default_in_time", "default_out_time",
         "date_of_birth", "joining_date",
         "passing_year",
