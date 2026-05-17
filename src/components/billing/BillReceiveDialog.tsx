@@ -33,7 +33,13 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
 
   const monthlyBill = Number(billing?.amount ?? client?.monthly_bill ?? 0);
   const alreadyPaid = Number(billing?.paid || 0);
-  const dueAmount = monthlyBill - alreadyPaid;
+  // Total outstanding across ALL months (not just current) — natural billing flow
+  const allBills: any[] = Array.isArray(client?.billing) ? client.billing : [];
+  const totalOutstanding = Math.max(
+    monthlyBill - alreadyPaid,
+    allBills.reduce((s, b) => s + Number(b?.due || 0), 0)
+  );
+  const dueAmount = totalOutstanding;
 
   const [receivedDate, setReceivedDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [receivedAmount, setReceivedAmount] = useState(dueAmount > 0 ? dueAmount : monthlyBill);
