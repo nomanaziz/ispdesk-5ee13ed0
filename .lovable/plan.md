@@ -1,32 +1,32 @@
-## লক্ষ্য
+## Plan: Billing List-এ paid/received amount ঠিক করা
 
-নতুন client এর প্রথম মাসের prorated bill এ যেই বড় fraction (যেমন 370.97) আসছে সেটা বন্ধ করা। নিয়ম:
-- দশমিকের পরের অংশ ≥ 0.50 হলে → পরের পূর্ণ সংখ্যা (370.97 → 371)
-- < 0.50 হলে → আগের পূর্ণ সংখ্যা (370.05 → 370)
+### সমস্যা
+- Daily Collection-এ এই মাসে ৫টা approved collection আছে, মোট ৳2500।
+- এর মধ্যে ৪টা collection-এর `billing_id` নেই, তাই Billing List current month bill row খুঁজে পাচ্ছে না।
+- ফলে যাদের টাকা receive হয়েছে তাদের Billing List-এ `পরিশোধিত = 0`, `বকেয়া = 0`/ভুল status দেখাচ্ছে।
 
-মানে standard `Math.round()`. Bill amount integer হিসাবে store ও display হবে, কোন fractional taka থাকবে না।
+### Fix
+1. **Billing List data calculation ঠিক করা**
+   - Billing List current month-এর জন্য শুধু `billing` table-এর `paid/due` নয়, একই মাসের `bill_collections` থেকেও client-wise collection যোগ করবে।
+   - current month collection থাকলে `পরিশোধিত` কলামে সেই amount দেখাবে।
+   - due calculation হবে: `monthly_bill - current_month_collected - discount`, minimum `0`।
+   - due `0` হলে bill status হবে `পরিশোধিত/Paid`; সেখানে `বকেয়া` badge/button থাকবে না।
 
-## কোথায় পরিবর্তন
+2. **No bill row but payment received case handle করা**
+   - যদি current month billing row না থাকে কিন্তু bill collection থাকে, তাহলে UI-তে virtual current bill বানিয়ে দেখাবে:
+     - `paid = collected_this_month`
+     - `due = 0` যদি monthly bill fully covered হয়
+     - `status = paid`
+   - এতে screenshot-এর `abc/e/kabir/moron` type clients paid দেখাবে।
 
-দুটি জায়গায় prorated bill তৈরি হয়:
+3. **Daily Collection receive flow future-proof করা**
+   - Daily Collection থেকে bill receive করলে current month bill না থাকলে আগে bill row তৈরি করবে, তারপর payment apply করবে।
+   - এতে ভবিষ্যতে `bill_collections.billing_id` null থাকবে না এবং Billing List/Daily Collection দুই page একই data দেখাবে।
 
-1. **`supabase/functions/portal-data/index.ts` (line ~1060)** — POP portal থেকে নতুন client তৈরি করার সময় ১ম মাসের bill।
-   - বর্তমান: `Math.round((monthly / totalDays) * daysRemaining * 100) / 100` (2 decimal)
-   - নতুন: `Math.round((monthly / totalDays) * daysRemaining)` (integer)
-   - `amount` এবং `due` দুটাই integer হিসেবে insert হবে।
+4. **POP/admin path consistent রাখা**
+   - admin billing list direct Supabase query দিয়ে collection যোগ করবে।
+   - POP mode-এ প্রয়োজন হলে `portal-data` response-এ same month collection include করা হবে, যাতে reseller portal-এও একই logic চলে।
 
-2. **`src/lib/bandwidthBilling.ts` (line ~164, `proratedFirstMonthBill`)** — admin side helper।
-   - বর্তমান: `Math.round(((monthlyPrice / total) * daysRemaining) * 100) / 100`
-   - নতুন: `Math.round((monthlyPrice / total) * daysRemaining)`
-
-## প্রভাব
-
-- নতুন তৈরি হওয়া bill এ আর fraction আসবে না।
-- `BillReceiveDialog` এ যে 370.97 / 0.97000... দেখাচ্ছিল সেটা integer হয়ে যাবে (যেমন 371) — আলাদা UI fix লাগবে না কারণ value-ই integer হবে।
-- পুরনো ভাবে যেসব bill ইতিমধ্যে fraction এ store হয়ে আছে (shipon এর 370.97), সেগুলো এই code change এ change হবে না। দরকার হলে user কে জিজ্ঞেস করব ওগুলোকেও round করে দিতে এক-শট migration দিয়ে।
-
-## যা পরিবর্তন হবে না
-
-- Bandwidth reseller side এর per-MB cost calculation (`perDayCost`, `costForMbps`) — সেগুলো internal calc, final invoice আলাদা পথে round হয়।
-- VAT, discount বা payment receive logic — অপরিবর্তিত।
-- Monthly recurring bill (যেটা package price থেকে সরাসরি আসে) — already integer।
+5. **Verification**
+   - database read দিয়ে confirm করব যে current month collection amount Billing List-এর paid amount হিসেবে গণনা হচ্ছে।
+   - Billing List UI-তে paid clients-এর জন্য `পরিশোধিত` badge থাকবে এবং `বকেয়া/পরিশোধ` button থাকবে না।
