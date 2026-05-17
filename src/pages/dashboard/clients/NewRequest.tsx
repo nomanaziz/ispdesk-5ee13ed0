@@ -15,12 +15,12 @@ import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-const STEPS = ["ব্যক্তিগত তথ্য", "যোগাযোগ তথ্য", "নেটওয়ার্ক ও পণ্য তথ্য", "সেবা তথ্য"];
+const todayISO = () => new Date().toISOString().slice(0, 10);
 
 const defaultForm = {
   name: "", contact: "", email: "", address: "", zone_id: "", subzone_id: "",
-  customer_type: "", connection_type_id: "", package_id: "", monthly_bill: 0,
-  billing_date: 1, otc_charge: 0, notes: "", schedule_date: "",
+  customer_type: "Home", connection_type_id: "", package_id: "", monthly_bill: 0,
+  billing_date: 1, otc_enabled: false, otc_charge: 0, notes: "", schedule_date: "",
   gender: "", father_name: "", nid_number: "",
 };
 
