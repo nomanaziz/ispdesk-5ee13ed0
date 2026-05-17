@@ -680,9 +680,36 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
           </TableBody>
           <TableFooter>
             <TableRow className="bg-primary/10 font-semibold">
-              <TableCell colSpan={8} className="text-xs">মোট: {filtered.length} জন</TableCell>
-              <TableCell className="text-xs">৳ {filtered.reduce((s: number, c: any) => s + Number(c.monthly_bill || 0), 0).toLocaleString()}</TableCell>
-              <TableCell colSpan={9}></TableCell>
+              {(() => {
+                // Before মাসিক বিল: checkbox + ক্লা.কোড + কাস্টমার নাম (always 3) + visibility-dependent
+                const beforeCols = 3
+                  + (isVisible("username") ? 1 : 0)
+                  + (isVisible("password") ? 1 : 0)
+                  + (isVisible("contact") ? 1 : 0)
+                  + (isVisible("zone") ? 1 : 0)
+                  + (isVisible("package") ? 1 : 0);
+                // After মাসিক বিল up to action (action always present)
+                const afterCols = (isVisible("expire_date") ? 1 : 0)
+                  + (isPopMode && isVisible("remaining_days") ? 1 : 0)
+                  + (isVisible("connection_type") ? 1 : 0)
+                  + (isVisible("client_type") ? 1 : 0)
+                  + (isVisible("remote_address") ? 1 : 0)
+                  + (isVisible("mac_address") ? 1 : 0)
+                  + (isVisible("server") ? 1 : 0)
+                  + (isVisible("billing_status") ? 1 : 0)
+                  + (isVisible("mikrotik_status") ? 1 : 0)
+                  + 1; // action
+                const total = filtered.reduce((s: number, c: any) => s + Number(c.monthly_bill || 0), 0);
+                return (
+                  <>
+                    <TableCell colSpan={beforeCols} className="text-xs">মোট: {filtered.length} জন</TableCell>
+                    {isVisible("monthly_bill") ? (
+                      <TableCell className="text-xs">৳ {total.toLocaleString()}</TableCell>
+                    ) : null}
+                    <TableCell colSpan={afterCols}></TableCell>
+                  </>
+                );
+              })()}
             </TableRow>
           </TableFooter>
         </Table>
