@@ -92,8 +92,8 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
   }, [open, billing, dueAmount, monthlyBill, user?.id, customer?.sub]);
 
   const totalReceived = receivedAmount - discount + (applyVat ? vatAmount : 0);
-  const balanceDue = monthlyBill - alreadyPaid - totalReceived;
-  const isOverpayment = totalReceived > (monthlyBill - alreadyPaid);
+  const balanceDue = totalOutstanding - totalReceived;
+  const isOverpayment = totalReceived > totalOutstanding;
   const isAdvance = balanceDue < 0 && overpayMode === "advance";
 
   const handleSubmit = async () => {
