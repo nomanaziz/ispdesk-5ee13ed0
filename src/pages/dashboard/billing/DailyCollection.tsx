@@ -115,6 +115,7 @@ export default function DailyCollection() {
 
       const now = new Date();
       const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const monthKey = monthStart.slice(0, 7);
       const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10);
       const { data: billingRows } = await supabase
         .from("billing")
@@ -125,7 +126,24 @@ export default function DailyCollection() {
         .order("month", { ascending: false })
         .limit(1);
 
-      const billing = billingRows?.[0];
+      let billing = billingRows?.[0];
+      // Auto-create current month bill if missing so Billing List reflects this receive
+      if (!billing) {
+        const billAmount = Number(selectedClient.monthly_bill || 0);
+        const { data: newBill, error: createErr } = await supabase.from("billing").insert({
+          bill_id: `BILL-${selectedClient.client_id}-${monthKey}`,
+          client_id: selectedClient.id,
+          month: monthStart,
+          amount: billAmount,
+          due: billAmount,
+          paid: 0,
+          status: "unpaid",
+          generated: true,
+        }).select("id, amount, paid, due, discount").maybeSingle();
+        if (createErr) throw createErr;
+        billing = newBill || undefined;
+      }
+
       let billingId = billing?.id || null;
       if (billing) {
         const newPaid = Number(billing.paid || 0) + amount;
