@@ -471,8 +471,17 @@ export default function AddEmployee() {
                   <SelectContent>{(payrollTemplates || []).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>শিফট</Label>
+                <Select value={form.default_shift_id} onValueChange={(v) => set("default_shift_id", v)}>
+                  <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+                  <SelectContent>{(shifts || []).map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name} ({s.start_time?.slice(0,5)}–{s.end_time?.slice(0,5)})</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
               <div><Label>বেতন (৳)</Label><Input type="number" value={form.salary} onChange={(e) => set("salary", e.target.value)} placeholder="0" /></div>
-              <div className="flex items-center gap-3 pt-6">
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center gap-3">
                 <Switch checked={form.show_on_website} onCheckedChange={(v) => set("show_on_website", v)} />
                 <Label>ওয়েবসাইটে দেখান</Label>
               </div>
