@@ -1057,7 +1057,7 @@ Deno.serve(async (req) => {
           const monthly = buyPrice;
           const isProrated = joinDay > 1;
           const amount = isProrated
-            ? Math.round((monthly / totalDays) * daysRemaining * 100) / 100
+            ? Math.round((monthly / totalDays) * daysRemaining)
             : monthly;
           const monthKey = `${y}-${String(m).padStart(2, "0")}`;
           const billId = `BILL-${p.client_id}-${monthKey}`;

@@ -161,7 +161,7 @@ export function proRateFirstMonth(
   const total = daysInMonth(y, m);
   const joinDay = join.getDate();
   const daysRemaining = total - joinDay + 1;
-  const amount = Math.round(((Number(monthlyPrice) / total) * daysRemaining) * 100) / 100;
+  const amount = Math.round((Number(monthlyPrice) / total) * daysRemaining);
   const monthStr = `${y}-${String(m).padStart(2, "0")}`;
   return {
     amount,

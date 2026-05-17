@@ -1,34 +1,32 @@
-এই billing problem fix করার plan:
+## লক্ষ্য
 
-1. **Paid bill list থেকে সাথে সাথে সরানো**
-   - Bill receive করার পর `billing-list` query ঠিকভাবে refresh হবে।
-   - যদি user `বকেয়া / অপরিশোধিত / আংশিক / overdue` filter-এ থাকে, payment complete হলে client আর ওই list-এ থাকবে না।
-   - Current month-এর paid/due হিসাব current bill থেকে দেখাবে, আর total due আলাদা থাকবে যাতে আগের মাসের due confuse না করে।
+নতুন client এর প্রথম মাসের prorated bill এ যেই বড় fraction (যেমন 370.97) আসছে সেটা বন্ধ করা। নিয়ম:
+- দশমিকের পরের অংশ ≥ 0.50 হলে → পরের পূর্ণ সংখ্যা (370.97 → 371)
+- < 0.50 হলে → আগের পূর্ণ সংখ্যা (370.05 → 370)
 
-2. **পুরো client billing sync ঠিক করা**
-   - এখনকার “ক্লায়েন্ট সিঙ্ক” শুধু MikroTik online/offline sync করছে। এটা বদলে এমন করব যাতে sync শেষে billing client list + bill detail refresh হয়।
-   - Admin mode-এ query invalidation/refetch হবে: billing list, daily collection, dashboard stats, bill collections।
-   - POP mode-এ portal function থেকে returned full client billing data refresh হবে।
-   - Sync button text/feedback এমন হবে যাতে বোঝা যায় client billing data refresh হচ্ছে, শুধু MikroTik না।
+মানে standard `Math.round()`. Bill amount integer হিসাবে store ও display হবে, কোন fractional taka থাকবে না।
 
-3. **Payment distribution logic natural করা**
-   - এক client-এর একাধিক মাসের due থাকলে টাকা oldest due bill থেকে আগে কাটবে।
-   - পুরো টাকা দিলে আগের মাস + current month সব paid হবে, current month-এর paid/due/status ঠিক update হবে।
-   - Partial payment হলে যে bill পর্যন্ত টাকা গেছে সেগুলো paid/partial/unpaid হিসেবে update হবে।
-   - Bill collection ও income entry amount actual received amount হিসেবেই থাকবে।
+## কোথায় পরিবর্তন
 
-4. **Bill receive popup text visibility fix**
-   - popup-এর table header (`প্রদেয়`, `ছাড়`, `গৃহীত`, `VAT`, `মোট`, `ব্যালেন্স`) foreground/text color দিয়ে readable করা হবে।
-   - Light/dark theme দুই জায়গাতেই যেন white-on-white না হয় সেটা semantic token দিয়ে fix করব।
+দুটি জায়গায় prorated bill তৈরি হয়:
 
-5. **Same fix admin + POP flow-এ apply**
-   - Frontend admin receive dialog update করব।
-   - POP portal-এর `receive_pop_bill` edge function-এও same oldest-due payment allocation logic apply করব, কারণ POP reseller panel সেখান দিয়ে bill receive করে।
+1. **`supabase/functions/portal-data/index.ts` (line ~1060)** — POP portal থেকে নতুন client তৈরি করার সময় ১ম মাসের bill।
+   - বর্তমান: `Math.round((monthly / totalDays) * daysRemaining * 100) / 100` (2 decimal)
+   - নতুন: `Math.round((monthly / totalDays) * daysRemaining)` (integer)
+   - `amount` এবং `due` দুটাই integer হিসেবে insert হবে।
 
-**Technical files expected:**
-- `src/components/billing/BillReceiveDialog.tsx`
-- `src/pages/dashboard/billing/BillingList.tsx`
-- `src/components/billing/BulkActionButtons.tsx` অথবা sync label ব্যবহারকারী component
-- `supabase/functions/portal-data/index.ts`
+2. **`src/lib/bandwidthBilling.ts` (line ~164, `proratedFirstMonthBill`)** — admin side helper।
+   - বর্তমান: `Math.round(((monthlyPrice / total) * daysRemaining) * 100) / 100`
+   - নতুন: `Math.round((monthlyPrice / total) * daysRemaining)`
 
-No schema change needed.
+## প্রভাব
+
+- নতুন তৈরি হওয়া bill এ আর fraction আসবে না।
+- `BillReceiveDialog` এ যে 370.97 / 0.97000... দেখাচ্ছিল সেটা integer হয়ে যাবে (যেমন 371) — আলাদা UI fix লাগবে না কারণ value-ই integer হবে।
+- পুরনো ভাবে যেসব bill ইতিমধ্যে fraction এ store হয়ে আছে (shipon এর 370.97), সেগুলো এই code change এ change হবে না। দরকার হলে user কে জিজ্ঞেস করব ওগুলোকেও round করে দিতে এক-শট migration দিয়ে।
+
+## যা পরিবর্তন হবে না
+
+- Bandwidth reseller side এর per-MB cost calculation (`perDayCost`, `costForMbps`) — সেগুলো internal calc, final invoice আলাদা পথে round হয়।
+- VAT, discount বা payment receive logic — অপরিবর্তিত।
+- Monthly recurring bill (যেটা package price থেকে সরাসরি আসে) — already integer।
