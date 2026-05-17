@@ -1,6 +1,6 @@
 // Shared helper for deriving the effective bill status across the app.
 // Same rule used by the main admin daily-collection / billing-list:
-//   - paid    : due <= 0 AND paid > 0
+//   - paid    : due <= 0
 //   - partial : paid > 0 AND due > 0
 //   - unpaid  : paid <= 0 AND due > 0   (also used for "no bill row")
 //
@@ -25,7 +25,7 @@ export function getBillStatus(bill: BillLike | null | undefined): BillStatus {
   const amount = Number(bill.amount || 0);
   const due = bill.due != null ? Number(bill.due) : Math.max(0, amount - paid);
 
-  if (paid > 0 && due <= 0) return "paid";
+  if (due <= 0) return "paid";
   if (paid > 0 && due > 0) return "partial";
   if (paid <= 0 && (due > 0 || amount > 0)) return "unpaid";
 
