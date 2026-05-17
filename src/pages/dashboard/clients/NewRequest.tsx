@@ -217,10 +217,12 @@ export default function NewRequest() {
     setForm({
       name: item.name || "", contact: item.contact || "", email: item.email || "",
       address: item.address || "", zone_id: item.zone_id || "", subzone_id: item.subzone_id || "",
-      customer_type: item.customer_type || "", connection_type_id: item.connection_type_id || "",
+      customer_type: item.customer_type || "Home", connection_type_id: item.connection_type_id || "",
       package_id: item.package_id || "", monthly_bill: item.monthly_bill || 0,
-      billing_date: item.billing_date || 1, otc_charge: item.otc_charge || 0,
-      notes: item.notes || "", schedule_date: item.schedule_date || "",
+      billing_date: item.billing_date || 1,
+      otc_enabled: Number(item.otc_charge || 0) > 0,
+      otc_charge: item.otc_charge || 0,
+      notes: item.notes || "", schedule_date: item.schedule_date || todayISO(),
       gender: "", father_name: "", nid_number: "",
     });
     setEditId(item.id);
