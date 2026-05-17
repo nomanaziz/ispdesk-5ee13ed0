@@ -1,32 +1,25 @@
-## Plan: Billing List-এ paid/received amount ঠিক করা
+## পরিবর্তন
 
-### সমস্যা
-- Daily Collection-এ এই মাসে ৫টা approved collection আছে, মোট ৳2500।
-- এর মধ্যে ৪টা collection-এর `billing_id` নেই, তাই Billing List current month bill row খুঁজে পাচ্ছে না।
-- ফলে যাদের টাকা receive হয়েছে তাদের Billing List-এ `পরিশোধিত = 0`, `বকেয়া = 0`/ভুল status দেখাচ্ছে।
+### ১. All Clients পেজ — মাসিক বিল কলামের নিচে total
 
-### Fix
-1. **Billing List data calculation ঠিক করা**
-   - Billing List current month-এর জন্য শুধু `billing` table-এর `paid/due` নয়, একই মাসের `bill_collections` থেকেও client-wise collection যোগ করবে।
-   - current month collection থাকলে `পরিশোধিত` কলামে সেই amount দেখাবে।
-   - due calculation হবে: `monthly_bill - current_month_collected - discount`, minimum `0`।
-   - due `0` হলে bill status হবে `পরিশোধিত/Paid`; সেখানে `বকেয়া` badge/button থাকবে না।
+`src/pages/dashboard/clients/ClientList.tsx` এর `TableFooter` (লাইন ৬৮১–৬৮৭) বর্তমানে hardcoded `colSpan={8}` ব্যবহার করছে, যার কারণে total amount ভুল কলামে (Exp Date এর নিচে) দেখাচ্ছে। কলাম visibility dynamic হওয়ায় static colSpan ব্যবহার করা যাবে না।
 
-2. **No bill row but payment received case handle করা**
-   - যদি current month billing row না থাকে কিন্তু bill collection থাকে, তাহলে UI-তে virtual current bill বানিয়ে দেখাবে:
-     - `paid = collected_this_month`
-     - `due = 0` যদি monthly bill fully covered হয়
-     - `status = paid`
-   - এতে screenshot-এর `abc/e/kabir/moron` type clients paid দেখাবে।
+ঠিক করব:
+- মাসিক বিল কলামের *আগে* দৃশ্যমান কলামগুলোর সংখ্যা গণনা করে dynamic `colSpan` সেট করব (checkbox + ক্লা.কোড + কাস্টমার নাম + visibility-dependent: username, password, contact, zone, package)।
+- মাসিক বিল cell-এ total `৳ X,XXX` রাখব।
+- মাসিক বিলের *পরে* দৃশ্যমান কলামগুলোর সংখ্যা গণনা করে অবশিষ্ট colSpan সেট করব।
 
-3. **Daily Collection receive flow future-proof করা**
-   - Daily Collection থেকে bill receive করলে current month bill না থাকলে আগে bill row তৈরি করবে, তারপর payment apply করবে।
-   - এতে ভবিষ্যতে `bill_collections.billing_id` null থাকবে না এবং Billing List/Daily Collection দুই page একই data দেখাবে।
+ফলাফল: total ৳6,500 ঠিক মাসিক বিল কলামের নিচে আসবে।
 
-4. **POP/admin path consistent রাখা**
-   - admin billing list direct Supabase query দিয়ে collection যোগ করবে।
-   - POP mode-এ প্রয়োজন হলে `portal-data` response-এ same month collection include করা হবে, যাতে reseller portal-এও একই logic চলে।
+### ২. Billing List — footer-এ total calculation
 
-5. **Verification**
-   - database read দিয়ে confirm করব যে current month collection amount Billing List-এর paid amount হিসেবে গণনা হচ্ছে।
-   - Billing List UI-তে paid clients-এর জন্য `পরিশোধিত` badge থাকবে এবং `বকেয়া/পরিশোধ` button থাকবে না।
+`src/pages/dashboard/billing/BillingList.tsx`-এ এখন কোনো `TableFooter` নেই। `TableBody` (লাইন ৬৮৬) বন্ধ হওয়ার পরে একটি `TableFooter` যোগ করব যা দেখাবে:
+- **মোট মাসিক বিল** = `filtered.reduce((s, c) => s + Number(c.monthly_bill || 0), 0)`
+- **মোট পরিশোধিত** = `filtered.reduce((s, c) => s + Number(c.totalPaid || 0), 0)`
+- **মোট বকেয়া** = `filtered.reduce((s, c) => s + Number(c.totalDue || 0), 0)`
+
+কলাম alignment-ও dynamic colSpan দিয়ে করব যাতে সংখ্যাগুলো ঠিক "মাসিক বিল", "পরিশোধিত", "বকেয়া" কলামের নিচে আসে। বাকি কলামগুলো খালি colSpan cell দিয়ে পূরণ করব।
+
+### Files
+- `src/pages/dashboard/clients/ClientList.tsx` — footer colSpan dynamic
+- `src/pages/dashboard/billing/BillingList.tsx` — নতুন TableFooter যোগ
