@@ -42,7 +42,7 @@ export default function NewRequest() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [step, setStep] = useState(0);
+  
   const [form, setForm] = useState({ ...defaultForm });
   const [editId, setEditId] = useState<string | null>(null);
   const [filterFromDate, setFilterFromDate] = useState("");
