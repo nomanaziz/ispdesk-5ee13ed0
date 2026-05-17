@@ -33,12 +33,11 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
 
   const monthlyBill = Number(billing?.amount ?? client?.monthly_bill ?? 0);
   const alreadyPaid = Number(billing?.paid || 0);
-  // Total outstanding across ALL months (not just current) — natural billing flow
+  // Due is the source of truth: due 0 means the bill is already paid.
   const allBills: any[] = Array.isArray(client?.billing) ? client.billing : [];
-  const totalOutstanding = Math.max(
-    monthlyBill - alreadyPaid,
-    allBills.reduce((s, b) => s + Number(b?.due || 0), 0)
-  );
+  const totalOutstanding = allBills.length > 0
+    ? allBills.reduce((s, b) => s + Math.max(0, Number(b?.due || 0)), 0)
+    : Math.max(0, Number(billing?.due ?? monthlyBill - alreadyPaid));
   const dueAmount = totalOutstanding;
 
   const [receivedDate, setReceivedDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -143,10 +142,10 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
           if (remaining <= 0 && !increaseAmount) break;
           const billAmount = Number(b.amount || 0);
           const billPaid = Number(b.paid || 0);
-          const billDue = Math.max(0, billAmount - billPaid);
+          const billDue = b.due != null ? Math.max(0, Number(b.due || 0)) : Math.max(0, billAmount - billPaid);
           const apply = Math.min(billDue, remaining);
           const newPaid = billPaid + apply;
-          const newDue = Math.max(0, billAmount - newPaid);
+          const newDue = Math.max(0, billDue - apply);
           const newStatus = newDue <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
           await supabase.from("billing").update({
             paid: newPaid,
