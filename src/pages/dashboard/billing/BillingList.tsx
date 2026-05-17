@@ -684,6 +684,44 @@ export default function BillingList() {
               );
             })}
           </TableBody>
+          <TableFooter>
+            <TableRow className="bg-primary/10 font-semibold">
+              {(() => {
+                const totalBill = filtered.reduce((s: number, c: any) => s + Number(c.monthly_bill || 0), 0);
+                const totalPaid = filtered.reduce((s: number, c: any) => s + Number(c.totalPaid || 0), 0);
+                const totalDue = filtered.reduce((s: number, c: any) => s + Number(c.totalDue || 0), 0);
+                // Before মাসিক বিল: checkbox + ক্লায়েন্ট কোড + কাস্টমার নাম (3 always) + visibles
+                const beforeCols = 3
+                  + (isVisible("sl") ? 1 : 0)
+                  + (isVisible("username") ? 1 : 0)
+                  + (isVisible("contact") ? 1 : 0)
+                  + (isVisible("zone") ? 1 : 0)
+                  + (isVisible("package") ? 1 : 0)
+                  + (isVisible("speed") ? 1 : 0)
+                  + (isVisible("expire_date") ? 1 : 0)
+                  + (isPrepaidPop && isVisible("remaining_days") ? 1 : 0)
+                  + (isVisible("status") ? 1 : 0);
+                // After বকেয়া
+                const afterCols = (isVisible("advance") ? 1 : 0)
+                  + (isVisible("pay_date") ? 1 : 0)
+                  + (isVisible("bill_status") ? 1 : 0)
+                  + (isVisible("mikrotik_status") ? 1 : 0)
+                  + (isPopMode && isVisible("auto_recharge") ? 1 : 0)
+                  + 1; // action
+                return (
+                  <>
+                    <TableCell colSpan={beforeCols} className="text-xs">মোট: {filtered.length} জন</TableCell>
+                    <TableCell className="text-right text-xs">৳ {totalBill.toLocaleString()}</TableCell>
+                    {isVisible("paid") && (
+                      <TableCell className="text-right text-xs text-emerald-600">৳ {totalPaid.toLocaleString()}</TableCell>
+                    )}
+                    <TableCell className="text-right text-xs text-red-600">৳ {totalDue.toLocaleString()}</TableCell>
+                    <TableCell colSpan={afterCols}></TableCell>
+                  </>
+                );
+              })()}
+            </TableRow>
+          </TableFooter>
         </Table>
       </DataTableCard>
 
