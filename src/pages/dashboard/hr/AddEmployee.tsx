@@ -181,6 +181,7 @@ export default function AddEmployee() {
             department_id: data.department_id || "",
             position_id: data.position_id || "",
             payroll_template_id: data.payroll_template_id || "",
+            default_shift_id: (data as any).default_shift_id || "",
             salary: data.salary?.toString() || "",
             show_on_website: data.show_on_website || false,
             image_url: data.image_url || "",
