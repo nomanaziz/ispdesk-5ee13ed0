@@ -1,49 +1,31 @@
-# New Client Request ফর্ম — Mandatory ফিল্ড ও Default সেট
+# কর্মী Edit-এ Shift Assignment
 
-বর্তমান ফর্মটি ৪-ধাপের wizard যেখানে অনেক ঐচ্ছিক ফিল্ড আছে। আপনার চাহিদা অনুযায়ী এটিকে সরল, single-screen ফর্মে রূপান্তর করা হবে, শুধু প্রয়োজনীয় ফিল্ড এবং সঠিক default সহ।
+কর্মী সম্পাদনা (HR & Payroll → AddEmployee) ফর্মে একটি **শিফট (Shift)** সিলেক্টর যোগ করব, যা Shift Management থেকে আসা শিফটগুলো দেখাবে। সেই কর্মীর জন্য নির্বাচিত শিফট তাদের উপস্থিতি (Attendance) রেকর্ডে default হিসেবে assign হবে।
 
-## পরিবর্তনসমূহ (`src/pages/dashboard/clients/NewRequest.tsx`)
+## পরিবর্তন
 
-### ডায়ালগ ফর্মের ফিল্ড (multi-step বাদ → একটিই screen)
+### 1. Database (migration)
+- `employees` টেবিলে নতুন কলাম: `default_shift_id uuid` (nullable, `shifts.id`-এর FK)
 
-| ফিল্ড | আবশ্যক? | Default |
-|---|---|---|
-| কাস্টমারের নাম | ✅ আবশ্যক | — |
-| মোবাইল নম্বর | ✅ আবশ্যক (01 দিয়ে শুরু, ১১ digit) | — |
-| ঠিকানা | ঐচ্ছিক | — |
-| কাস্টমার টাইপ | ✅ | **Home** |
-| কানেকশন টাইপ | ✅ | **Optical Fiber** (config থেকে নাম মিলিয়ে auto-select; না পেলে প্রথমটি) |
-| প্যাকেজ | ✅ | **৫০০ টাকা প্যাকেজ** (price=500 খুঁজে; না পেলে প্রথমটি) — select করলে monthly_bill auto-fill |
-| OTC আছে? | চেকবক্স | **off** |
-| OTC Amount | OTC checked হলেই দেখাবে ও আবশ্যক | — |
-| শিডিউল তারিখ | ✅ | **আজকের তারিখ**; `min={today}` দিয়ে back-date ব্লক |
+### 2. `src/pages/dashboard/hr/AddEmployee.tsx`
+- `defaultForm`-এ `default_shift_id: ""` যোগ
+- `shifts` লোড করার জন্য `useQuery` — `supabase.from("shifts").select("id,name,start_time,end_time").eq("status","active").order("name")`
+- Edit লোডের সময় ও save-allowed fields-এ `default_shift_id` যুক্ত
+- Department/Position/Payroll Template-এর পাশে একটি নতুন `<Select>` — **"শিফট"** label, প্রতিটি option-এ `name (start–end)` দেখাবে
+- কর্মীর জন্য default শিফট সেট করা হলে Shift Management থেকে আলাদা assign করার দরকার নেই (Attendance fallback হিসেবে ব্যবহার হবে)
 
-### Validation (`handleSubmit`)
-- নাম খালি → "নাম আবশ্যক"
-- মোবাইল regex `/^01\d{9}$/` না মিললে → "সঠিক মোবাইল নম্বর দিন"
-- কাস্টমার টাইপ / কানেকশন টাইপ / প্যাকেজ / শিডিউল তারিখ খালি → error toast
-- OTC checked কিন্তু amount ≤ 0 → error
-- শিডিউল তারিখ < আজ → error
+### 3. `src/pages/dashboard/hr/Attendance.tsx`
+- Employees query-তে `default_shift_id` সহ select করব
+- `upsertMutation` ও `bulkMarkPresent`-এ নতুন attendance row insert করার সময় employee-এর `default_shift_id` থাকলে সেটি `shift_id` হিসেবে সেট হবে
+- টেবিলে নতুন কলাম **"শিফট"** যোগ — employee-এর default shift নাম দেখাবে (read-only badge)
 
-### Default-loading logic
-- `defaultForm` থেকে initialize-এর পর `useEffect` দিয়ে যখন `packages` ও `connectionTypes` লোড হয় এবং ফর্ম খালি থাকে, তখন:
-  - `customer_type` = `"Home"`
-  - `connection_type_id` = `connectionTypes.find(c => /optical|fiber/i.test(c.name))?.id ?? connectionTypes[0]?.id`
-  - `package_id` = `packages.find(p => Number(p.price)===500)?.id ?? packages[0]?.id`, এবং `monthly_bill` সেই প্যাকেজের price থেকে
-  - `schedule_date` = `new Date().toISOString().slice(0,10)`
-
-### UI পরিবর্তন
-- `STEPS` array, step indicator, "পূর্ববর্তী/পরবর্তী" নেভিগেশন বাদ
-- DialogContent-এ ২-column grid layout
-- শিডিউল তারিখ `<Input type="date" min={todayISO}>` 
-- OTC: `<Checkbox>` + ticked হলে নিচে `<Input type="number">`
-- Submit button সরাসরি — "সেভ করুন"
-
-### যেগুলো অপরিবর্তিত
-- টেবিল, ফিল্টার, assign employee dialog, status/phy update, "Convert to Client" flow, সব mutation এবং DB কলাম একই থাকবে
-- `gender / nid / father_name / email / zone / subzone / notes / billing_date` ফিল্ডগুলি ফর্ম থেকে সরিয়ে নেওয়া হবে (DB পেলোডে এগুলো null/default পাঠানো হবে যাতে existing schema break না হয়)
+### যা অপরিবর্তিত
+- `ShiftManagement.tsx` — তারিখভিত্তিক per-day shift override (`employee_shift_assignments`) আগের মতই কাজ করবে; default শিফট না থাকলে বা override থাকলে সেটি priority পাবে
+- বাকি AddEmployee ফিল্ড, validation, user access section সব আগের মতো
 
 ## প্রভাবিত ফাইল
-- `src/pages/dashboard/clients/NewRequest.tsx` (একমাত্র)
+- migration (new): `employees.default_shift_id` কলাম যোগ
+- `src/pages/dashboard/hr/AddEmployee.tsx`
+- `src/pages/dashboard/hr/Attendance.tsx`
 
-Approve করলে আমি সরাসরি এই পরিবর্তনগুলো প্রয়োগ করব।
+Approve করলে migration আগে চালাব, তারপর কোড আপডেট করব।
