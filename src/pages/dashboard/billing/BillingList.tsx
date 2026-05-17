@@ -145,15 +145,16 @@ export default function BillingList() {
           const m = String(b.month).slice(0, 7);
           return m === monthKey;
         });
-        const totalDue = allBills.reduce((s: number, b: any) => s + Number(b.due || 0), 0);
+        const totalDue = allBills.reduce((s: number, b: any) => s + Math.max(0, Number(b.due || 0)), 0);
         const totalPaid = allBills.reduce((s: number, b: any) => s + Number(b.paid || 0), 0);
         const unpaidMonths = allBills.filter((b: any) => Number(b.due || 0) > 0).length;
         const monthly = Number(c.monthly_bill || 0);
         const overdueMonths = monthly > 0 ? Math.floor(totalDue / monthly) : 0;
         const isOverdue = totalDue >= 1 && totalDue > monthly;
+        const effectiveBill = bill || (totalDue <= 0 && allBills.length > 0 ? allBills[0] : null);
         return {
           ...c,
-          currentBill: bill || null,
+          currentBill: effectiveBill,
           totalDue,
           totalPaid,
           unpaidMonths,

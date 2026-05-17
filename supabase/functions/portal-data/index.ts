@@ -1348,10 +1348,10 @@ Deno.serve(async (req) => {
           if (remaining <= 0) break;
           const billAmount = Number(b.amount || 0);
           const billPaid = Number(b.paid || 0);
-          const billDue = Math.max(0, billAmount - billPaid);
+          const billDue = b.due != null ? Math.max(0, Number(b.due || 0)) : Math.max(0, billAmount - billPaid);
           const apply = Math.min(billDue, remaining);
           const newPaid = billPaid + apply;
-          const newDue = Math.max(0, billAmount - newPaid);
+          const newDue = Math.max(0, billDue - apply);
           const newStatus = newDue <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
           await sb.from("billing").update({
             paid: newPaid,

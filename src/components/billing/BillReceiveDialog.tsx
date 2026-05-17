@@ -33,12 +33,11 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
 
   const monthlyBill = Number(billing?.amount ?? client?.monthly_bill ?? 0);
   const alreadyPaid = Number(billing?.paid || 0);
-  // Total outstanding across ALL months (not just current) — natural billing flow
+  // Due is the source of truth: due 0 means the bill is already paid.
   const allBills: any[] = Array.isArray(client?.billing) ? client.billing : [];
-  const totalOutstanding = Math.max(
-    monthlyBill - alreadyPaid,
-    allBills.reduce((s, b) => s + Number(b?.due || 0), 0)
-  );
+  const totalOutstanding = allBills.length > 0
+    ? allBills.reduce((s, b) => s + Math.max(0, Number(b?.due || 0)), 0)
+    : Math.max(0, Number(billing?.due ?? monthlyBill - alreadyPaid));
   const dueAmount = totalOutstanding;
 
   const [receivedDate, setReceivedDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -143,10 +142,10 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
           if (remaining <= 0 && !increaseAmount) break;
           const billAmount = Number(b.amount || 0);
           const billPaid = Number(b.paid || 0);
-          const billDue = Math.max(0, billAmount - billPaid);
+          const billDue = b.due != null ? Math.max(0, Number(b.due || 0)) : Math.max(0, billAmount - billPaid);
           const apply = Math.min(billDue, remaining);
           const newPaid = billPaid + apply;
-          const newDue = Math.max(0, billAmount - newPaid);
+          const newDue = Math.max(0, billDue - apply);
           const newStatus = newDue <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
           await supabase.from("billing").update({
             paid: newPaid,
@@ -372,14 +371,14 @@ export default function BillReceiveDialog({ open, onOpenChange, client, billing,
 
           <div className="border rounded-lg overflow-hidden">
             <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-muted border-b border-border">
-                  <th className="p-2 text-left text-foreground font-semibold">প্রদেয়</th>
-                  <th className="p-2 text-left text-foreground font-semibold">ছাড়</th>
-                  <th className="p-2 text-left text-foreground font-semibold">গৃহীত</th>
-                  <th className="p-2 text-left text-foreground font-semibold">VAT</th>
-                  <th className="p-2 text-left text-foreground font-semibold">মোট</th>
-                  <th className="p-2 text-left text-foreground font-semibold">ব্যালেন্স</th>
+              <thead className="bg-muted text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="p-2 text-left font-semibold !text-muted-foreground">প্রদেয়</th>
+                  <th className="p-2 text-left font-semibold !text-muted-foreground">ছাড়</th>
+                  <th className="p-2 text-left font-semibold !text-muted-foreground">গৃহীত</th>
+                  <th className="p-2 text-left font-semibold !text-muted-foreground">VAT</th>
+                  <th className="p-2 text-left font-semibold !text-muted-foreground">মোট</th>
+                  <th className="p-2 text-left font-semibold !text-muted-foreground">ব্যালেন্স</th>
                 </tr>
               </thead>
               <tbody>
