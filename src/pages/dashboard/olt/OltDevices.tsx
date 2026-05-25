@@ -166,7 +166,7 @@ export default function OltDevices() {
 
   const syncOne = async (oltId: string): Promise<{ ok: boolean; msg: string; count?: number }> => {
     try {
-      const { data, error } = await supabase.functions.invoke("snmp-poll-device", { body: { olt_id: oltId } });
+      const { data, error } = await supabase.functions.invoke("snmp-poll-device", { body: { device_id: oltId } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       const count = data?.processed ?? data?.inserted ?? data?.onu_count ?? 0;
