@@ -14,8 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Plus, Server, Wifi, WifiOff, Cpu, Pencil, Trash2, Search, Download, Loader2,
-  Router, CheckCircle2, AlertCircle, Circle,
+  Router, CheckCircle2, AlertCircle, Circle, Users,
 } from "lucide-react";
+import ResellerAccessDialog from "@/components/olt/ResellerAccessDialog";
 import { z } from "zod";
 
 const vendors = ["huawei", "zte", "bdcom", "vsol", "dbc", "syrotech", "solitine", "corelink", "c-data", "ecom", "hsgq", "phyhome"] as const;
