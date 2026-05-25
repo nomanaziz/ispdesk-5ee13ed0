@@ -209,6 +209,10 @@ export default function OltDevices() {
       snmp_port: d.snmp_port ?? 161, snmp_community: d.snmp_community || "public",
       snmp_version: d.snmp_version || "v2c", brand_model: d.brand_model || "",
       olt_version: d.olt_version || "",
+      data_source_priority: d.data_source_priority || "agent_first",
+      agent_enabled: d.agent_enabled ?? true,
+      snmp_fallback_enabled: d.snmp_fallback_enabled ?? true,
+      agent_stale_seconds: d.agent_stale_seconds ?? 180,
     });
     setOpen(true);
   };
