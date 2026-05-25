@@ -51,29 +51,23 @@ Deno.serve(async (req) => {
 
     // Try managed_devices first, fall back to olt_devices (some OLTs were created directly)
     let target_ip: string | null = null;
-    let snmp_enabled = true;
-    let snmp_port = 161;
-    let snmp_community = "public";
-    let snmp_version = "v2c";
+    let mgmt_port = 23;
     let device_name = "";
 
     const { data: mg } = await supabase
       .from("device_admin_managed_devices")
-      .select("name, ip_address, snmp_enabled, snmp_ip, snmp_port, snmp_community, snmp_version")
+      .select("name, ip_address, port, snmp_ip")
       .eq("id", device_id)
       .maybeSingle();
 
     if (mg) {
       device_name = mg.name;
       target_ip = mg.snmp_ip || mg.ip_address;
-      snmp_enabled = mg.snmp_enabled ?? true;
-      snmp_port = mg.snmp_port ?? 161;
-      snmp_community = mg.snmp_community ?? "public";
-      snmp_version = mg.snmp_version ?? "v2c";
+      mgmt_port = mg.port ?? 23;
     } else {
       const { data: olt } = await supabase
         .from("olt_devices")
-        .select("name, ip_address, snmp_enabled, snmp_ip, snmp_port, snmp_community, snmp_version")
+        .select("name, ip_address, port, telnet_port, snmp_ip")
         .eq("id", device_id)
         .maybeSingle();
       if (!olt) {
@@ -83,27 +77,20 @@ Deno.serve(async (req) => {
       }
       device_name = olt.name;
       target_ip = olt.snmp_ip || olt.ip_address;
-      snmp_enabled = olt.snmp_enabled ?? true;
-      snmp_port = olt.snmp_port ?? 161;
-      snmp_community = olt.snmp_community ?? "public";
-      snmp_version = olt.snmp_version ?? "v2c";
+      mgmt_port = olt.telnet_port ?? olt.port ?? 23;
     }
 
-    if (!snmp_enabled) {
-      return new Response(JSON.stringify({ error: "SNMP disabled for this device" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
     if (!target_ip) {
       return new Response(JSON.stringify({ error: "no IP configured" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const probe = await snmpProbe(target_ip, snmp_port, snmp_community, snmp_version);
+    // Try device's configured mgmt port first, then common OLT mgmt ports
+    const ports = Array.from(new Set([mgmt_port, 23, 22, 80, 443])).filter((p) => p > 0);
+    const probe = await probeReachable(target_ip, ports);
     const now = new Date().toISOString();
 
-    // Update olt_devices (the mirror or direct row)
     if (probe.ok) {
       await supabase.from("olt_devices").update({
         status: "online",
@@ -115,22 +102,21 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({
         ok: true,
         status: "online",
-        name: probe.name || device_name,
-        msg: `Online — sysName: ${probe.name || "(no name)"}`,
+        msg: `Online — TCP port ${probe.port} responded`,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } else {
       await supabase.from("olt_devices").update({
         status: "offline",
-        last_offline_reason: probe.error || "SNMP unreachable",
+        last_offline_reason: `TCP unreachable on ${ports.join(",")}`,
         last_data_source: "snmp",
       }).eq("id", device_id);
       return new Response(JSON.stringify({
         ok: false,
         status: "offline",
-        error: probe.error,
-        msg: `Offline — ${probe.error}`,
+        msg: `Offline — no response on ports ${ports.join(",")}`,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
   } catch (err) {
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
