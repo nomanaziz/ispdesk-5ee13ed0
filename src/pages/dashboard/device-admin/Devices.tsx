@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Router, Cpu, Network, Users, Database, UserPlus, UserX, Plus, Search, Trash2, AlertTriangle, Wifi, Server as ServerIcon, HardDrive } from "lucide-react";
+import { Router, Cpu, Network, Users, Database, UserPlus, UserX, Plus, Search, Trash2, AlertTriangle, Wifi, Server as ServerIcon, HardDrive, Pencil } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
 import { DeployUserDialog } from "@/components/device-admin/DeployUserDialog";
 import { AddDeviceDialog } from "@/components/device-admin/AddDeviceDialog";
 import { DeviceInspectorDialog } from "@/components/device-admin/DeviceInspectorDialog";
