@@ -358,6 +358,19 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
                   </Select>
                 </div>
               )}
+              {form.category === "olt" && !["huawei", "zte", "nokia"].includes(form.vendor) && (
+                <div className="space-y-1.5 col-span-2">
+                  <Label>PON Type *</Label>
+                  <Select value={form.pon_type} onValueChange={(v) => set("pon_type", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="epon">EPON</SelectItem>
+                      <SelectItem value="gpon">GPON</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">এই vendor সাধারণত fixed-config; device কোন type সেটা select করুন।</p>
+                </div>
+              )}
             </div>
           </>
         )}
