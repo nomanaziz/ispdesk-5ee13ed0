@@ -14,8 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Plus, Server, Wifi, WifiOff, Cpu, Pencil, Trash2, Search, Download, Loader2,
-  Router, CheckCircle2, AlertCircle, Circle,
+  Router, CheckCircle2, AlertCircle, Circle, Users,
 } from "lucide-react";
+import ResellerAccessDialog from "@/components/olt/ResellerAccessDialog";
 import { z } from "zod";
 
 const vendors = ["huawei", "zte", "bdcom", "vsol", "dbc", "syrotech", "solitine", "corelink", "c-data", "ecom", "hsgq", "phyhome"] as const;
@@ -62,6 +63,7 @@ export default function OltDevices() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [accessOlt, setAccessOlt] = useState<{ id: string; name: string } | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -327,6 +329,9 @@ export default function OltDevices() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" title="Reseller Access" onClick={() => setAccessOlt({ id: d.id, name: d.name })}>
+                            <Users className="h-4 w-4 text-blue-500" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => openEdit(d)}><Pencil className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => { if (confirm("মুছে ফেলতে চান?")) delMut.mutate(d.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
@@ -502,6 +507,8 @@ export default function OltDevices() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ResellerAccessDialog open={!!accessOlt} onOpenChange={(v) => !v && setAccessOlt(null)} olt={accessOlt} />
     </div>
   );
 }
