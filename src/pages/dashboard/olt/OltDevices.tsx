@@ -39,7 +39,7 @@ const formSchema = z.object({
 const emptyForm = {
   name: "", ip_address: "", port: 23, telnet_port: 23,
   connection_type: "telnet" as "telnet" | "ssh",
-  vendor: "huawei" as typeof vendors[number], username: "", password_encrypted: "",
+  vendor: "huawei" as typeof vendors[number], pon_type: "mixed" as "epon" | "gpon" | "mixed", username: "", password_encrypted: "",
   branch_id: null as string | null, mikrotik_id: null as string | null, description: "",
   snmp_enabled: false, snmp_ip: "", snmp_port: 161, snmp_community: "public",
   snmp_version: "v2c", brand_model: "", olt_version: "",
