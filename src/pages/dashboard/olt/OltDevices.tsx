@@ -22,6 +22,9 @@ import { z } from "zod";
 
 const vendors = ["huawei", "zte", "bdcom", "vsol", "dbc", "syrotech", "solitine", "corelink", "c-data", "ecom", "hsgq", "phyhome"] as const;
 const PRIMARY_VENDORS = new Set(["huawei", "zte", "bdcom"]);
+// Chassis-based vendors support both EPON & GPON on same chassis → no fixed pon_type.
+// Other (Chinese fixed-config) vendors are single-type per device → must pick.
+const CHASSIS_VENDORS = new Set(["huawei", "zte", "nokia"]);
 
 const ipRegex = /^(25[0-5]|2[0-4]\d|[01]?\d?\d)(\.(25[0-5]|2[0-4]\d|[01]?\d?\d)){3}$/;
 
