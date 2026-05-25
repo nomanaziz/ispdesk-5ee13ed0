@@ -473,7 +473,7 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>বাতিল</Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>যোগ করুন</Button>
+          <Button onClick={() => save.mutate()} disabled={save.isPending}>{isEdit ? "সেভ করুন" : "যোগ করুন"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
