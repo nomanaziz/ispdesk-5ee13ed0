@@ -101,6 +101,8 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
     agent_stale_seconds: 180,
     // Server-specific
     os_type: "linux",
+    // OLT
+    pon_type: "gpon" as "epon" | "gpon" | "mixed",
   });
 
   // Load existing row for edit mode
@@ -133,6 +135,7 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
         agent_enabled: !!data.agent_enabled,
         data_source_priority: data.data_source_priority || "snmp_first",
         agent_stale_seconds: data.agent_stale_seconds || 180,
+        pon_type: (data.pon_type as any) || "mixed",
       }));
     })();
   }, [open, isEdit, editDevice]);
@@ -232,6 +235,7 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
           data_source_priority: form.data_source_priority,
           agent_stale_seconds: form.agent_stale_seconds,
           fallback_protocol: fallback,
+          pon_type: form.category === "olt" ? form.pon_type : null,
         }).eq("id", selfId!);
         if (error) throw error;
       } else if (form.category === "router" && form.vendor === "mikrotik" && usesApi) {
@@ -269,6 +273,7 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
           data_source_priority: form.data_source_priority,
           agent_stale_seconds: form.agent_stale_seconds,
           fallback_protocol: fallback,
+          pon_type: form.category === "olt" ? form.pon_type : null,
         });
         if (error) throw error;
       }
@@ -351,6 +356,19 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
                       {protocols.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+              {form.category === "olt" && !["huawei", "zte", "nokia"].includes(form.vendor) && (
+                <div className="space-y-1.5 col-span-2">
+                  <Label>PON Type *</Label>
+                  <Select value={form.pon_type} onValueChange={(v) => set("pon_type", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="epon">EPON</SelectItem>
+                      <SelectItem value="gpon">GPON</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">এই vendor সাধারণত fixed-config; device কোন type সেটা select করুন।</p>
                 </div>
               )}
             </div>

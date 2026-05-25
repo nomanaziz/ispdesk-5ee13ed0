@@ -22,6 +22,9 @@ import { z } from "zod";
 
 const vendors = ["huawei", "zte", "bdcom", "vsol", "dbc", "syrotech", "solitine", "corelink", "c-data", "ecom", "hsgq", "phyhome"] as const;
 const PRIMARY_VENDORS = new Set(["huawei", "zte", "bdcom"]);
+// Chassis-based vendors support both EPON & GPON on same chassis → no fixed pon_type.
+// Other (Chinese fixed-config) vendors are single-type per device → must pick.
+const CHASSIS_VENDORS = new Set(["huawei", "zte", "nokia"]);
 
 const ipRegex = /^(25[0-5]|2[0-4]\d|[01]?\d?\d)(\.(25[0-5]|2[0-4]\d|[01]?\d?\d)){3}$/;
 
@@ -36,7 +39,7 @@ const formSchema = z.object({
 const emptyForm = {
   name: "", ip_address: "", port: 23, telnet_port: 23,
   connection_type: "telnet" as "telnet" | "ssh",
-  vendor: "huawei" as typeof vendors[number], username: "", password_encrypted: "",
+  vendor: "huawei" as typeof vendors[number], pon_type: "mixed" as "epon" | "gpon" | "mixed", username: "", password_encrypted: "",
   branch_id: null as string | null, mikrotik_id: null as string | null, description: "",
   snmp_enabled: false, snmp_ip: "", snmp_port: 161, snmp_community: "public",
   snmp_version: "v2c", brand_model: "", olt_version: "",
@@ -131,6 +134,7 @@ export default function OltDevices() {
         name: form.name.trim(), ip_address: form.ip_address.trim(), port: form.port,
         telnet_port: form.telnet_port,
         connection_type: form.connection_type, vendor: form.vendor,
+        pon_type: CHASSIS_VENDORS.has(form.vendor) ? "mixed" : form.pon_type,
         username: form.username || null, password_encrypted: form.password_encrypted || null,
         branch_id: form.branch_id || null, mikrotik_id: form.mikrotik_id || null,
         description: form.description || null,
@@ -250,7 +254,7 @@ export default function OltDevices() {
       name: d.name, ip_address: d.ip_address, port: d.port,
       telnet_port: d.telnet_port ?? 23,
       connection_type: d.connection_type,
-      vendor: d.vendor, username: d.username || "", password_encrypted: d.password_encrypted || "",
+      vendor: d.vendor, pon_type: (d.pon_type as any) || (CHASSIS_VENDORS.has(d.vendor) ? "mixed" : "gpon"), username: d.username || "", password_encrypted: d.password_encrypted || "",
       branch_id: d.branch_id, mikrotik_id: d.mikrotik_id, description: d.description || "",
       snmp_enabled: d.snmp_enabled || false, snmp_ip: d.snmp_ip || "",
       snmp_port: d.snmp_port ?? 161, snmp_community: d.snmp_community || "public",
@@ -451,6 +455,19 @@ export default function OltDevices() {
                   </Select>
                 </div>
               </div>
+              {!CHASSIS_VENDORS.has(form.vendor) && (
+                <div>
+                  <Label>PON Type *</Label>
+                  <Select value={form.pon_type} onValueChange={(v) => setForm((f) => ({ ...f, pon_type: v as any }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="epon">EPON</SelectItem>
+                      <SelectItem value="gpon">GPON</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1">এই vendor সাধারণত fixed-config; device কোন type সেটা select করুন।</p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div><Label>Brand / Model</Label><Input placeholder="e.g. MA5608T" value={form.brand_model} onChange={(e) => setForm((f) => ({ ...f, brand_model: e.target.value }))} /></div>
                 <div><Label>OLT Version</Label><Input placeholder="e.g. V800R013" value={form.olt_version} onChange={(e) => setForm((f) => ({ ...f, olt_version: e.target.value }))} /></div>
