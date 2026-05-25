@@ -1,131 +1,123 @@
-# OLT/ONU NexOLT-style Mobile App + Reseller Scope
+# OID Library + Device Inventory SNMP Fix
 
-পুরো OLT/ONU module-কে NexOLT app-এর মত mobile-first design এ rebuild করব, একই সাথে desktop responsive রাখব, এবং reseller-দের জন্য admin-assigned OLT access যোগ করব।
+দুটো আলাদা কিন্তু সম্পর্কিত কাজ:
 
-## নতুন routes
+## 1. Device Inventory dialog ফিক্স (`AddDeviceDialog.tsx`)
 
-```
-/m/olt                        → OLT list (NexOLT home screen)
-/m/olt/:id                    → Overview tab (Connected to / CPU / Memory / Uptime / Device Info)
-/m/olt/:id/onus               → ONU List tab (PON filter, All/Online/Offline tabs, ONU cards)
-/m/olt/:id/onus/:onuId        → ONU detail sheet (Info + Action tabs)
-/m/olt/:id/more               → Advanced Diagnostics grid (Uplink, PON, MAC Table, Down, Health, Reader)
-/m/olt/calculator             → Optical Power & Splitter Calculator (modal-style)
-/m/olt/mac-table              → Global MAC table viewer
-```
+বর্তমান সমস্যা: `device-admin/devices`-এ "নতুন ডিভাইস যোগ" form-এ protocol radio শুধু **SSH / Telnet** — SNMP option নাই, SNMP community / version / SNMP port আলাদা করে নেওয়ার কোনো ফিল্ড নাই।
 
-Bottom tab bar প্রতি OLT screen-এ: **Overview · ONU List · More** (image-293/295 অনুসারে)। Top-level `/m/olt` screen-এ shortcut + calculator + settings আইকন (image-296)।
+পরিবর্তন:
 
-Desktop responsive: existing `/dashboard/olt/*` pages-গুলো একই data hooks share করবে, mobile route থাকলে phone থেকে auto-redirect হবে `/m/olt`-এ।
+- **Protocol selector**-এ তৃতীয় option যোগ: `SNMP` (এবং চাইলে `SNMP + SSH fallback`, `SNMP + Telnet fallback`)। RadioGroup → Select-এ রূপান্তর কারণ ৪টা হয়ে যাচ্ছে।
+- নতুন collapsible section **"SNMP কনফিগ"** — protocol-এ SNMP/fallback সিলেক্ট হলে দেখাবে:
+  - SNMP IP (ফাঁকা রাখলে main IP)
+  - SNMP Port (default 161)
+  - Community string (default `public`)
+  - Version: v1 / v2c / v3
+  - Vendor OID Profile dropdown (নিচের লাইব্রেরি থেকে আসবে)
+- নতুন collapsible section **"Agent (optional)"**:
+  - Use polling agent (toggle)
+  - Agent priority: `snmp_first` / `agent_first` / `snmp_only` / `agent_only`
+  - Agent stale seconds (default 180)
+- Vendor list বাড়ানো — শুধু `cisco/juniper/huawei/bdcom/cdata/generic` না, পুরো লিস্ট: `vsol, bdcom, dbc, syrotech, solitine, corelink, c-data, ecom, lightx, hsgq, phyhome, tbs, huawei, hbdpon, mikrotik, zte, cisco, juniper, generic`।
+- Mutation update: নতুন কলাম গুলোয় insert করবে (নিচের migration-এ যোগ হবে)।
 
-## Screens — design details
+## 2. OID Library (নতুন feature)
 
-### 1. `/m/olt` — OLT List (image-296 style)
-- Top bar: brand name + `+` (Add OLT) + calculator + settings আইকন
-- Filter chips row: **ALL / Search / Vendor chips** (BDCOM, BDPON, VSOL, C-DATA, MikroTik...)
-- OLT card: brand logo box (left), name + vendor·protocol (right), live status dot, `×` quick action
-- Long-press → action sheet (Edit / Delete / Assign to reseller)
+কোথায় add হবে: নতুন পেজ `/dashboard/device-admin/oid-library` (sidebar-এ "OID Library" menu)। এখান থেকে admin OID profile manage করবে এবং device form-এ সেটা select করবে।
 
-### 2. `/m/olt/:id` Overview (image-293)
-- Gradient hero card: brand logo + "Connected to {alias}" + Total ONUs `{online}/{total}` + CPU% / Memory% / Uptime tiles
-- Device Information card: Serial / HW / FW / MAC / Model / Software time
-- System Information card: System Name / System Time / License limit
-- 4 action buttons: **Refresh Information** (blue), **Disconnect from OLT** (red), **Save Configuration** (green), **Reboot OLT** (orange)
+### Database (migration)
 
-### 3. `/m/olt/:id/onus` ONU List (image-292)
-- PON dropdown (PON1, PON2...) + refresh + search icon row
-- 3-tab pill: **All ({n}) / Online ({n}) / Offline ({n})**
-- ONU card layout:
-  - ONU icon (left) — distinct icon per status (online: blue/yellow port, offline: greyed)
-  - **Name** = MAC-based name (fallback to PPPoE user থাকলে username)
-  - Sub-line: `interface` (GPON0/1:5)
-  - Right: **Online/Offline** pill (green/red)
-  - Divider line
-  - Bottom row: `MAC | Model` left, `RX Power: -19.71 dBm` right
-  - Offline এ red border + extra row: **Reason: {last_offline_reason}**, **Distance: {distance} m**
+নতুন দুটো table:
 
-### 4. `/m/olt/:id/onus/:onuId` ONU Detail (image-297, 298)
-- Bottom sheet (mobile) / dialog (desktop), title `ONU Details: {name}` + pencil edit icon
-- 2-tab pill: **INFO / ACTION**
-- INFO tab fields: ONU ID, MAC Address, Status, **Distance**, Alive Time, Last Register, Vendor ID, Model ID, ONU Type, Ethernet Count, WiFi Count, Response Time, Temperature, Receive Power
-- ACTION tab buttons (gradient): **Reboot ONU** (orange), **Bind Profile** (blue), **ONU MAC Table** (green), **ONU Port Status** (purple)
+**`device_vendor_profiles`** — প্রতি vendor-এর একটা profile (system seed + custom):
+- `vendor_key` (text, unique) — e.g. `vsol`, `bdcom_olt`, `mikrotik_router`
+- `display_name`, `device_category` (olt / router / switch / onu)
+- `is_system` (bool — seeded profile edit করা যাবে না, শুধু clone)
+- `notes`
 
-### 5. `/m/olt/:id/more` Advanced Diagnostics (image-295)
-- 2-column tile grid: Uplink Ports, PON Ports, MAC Table, ONU Down Detection, ONU Health, ONU Reader, NEXSYNC (agent sync)
+**`device_oid_mappings`** — profile-এর ভেতরের OID গুলো:
+- `profile_id` (FK)
+- `metric_key` (text) — standard set: `system_name`, `system_uptime`, `cpu_usage`, `memory_usage`, `temperature`, `onu_rx_power`, `onu_tx_power`, `onu_status`, `onu_distance`, `onu_serial`, `onu_mac`, `port_admin_status`, `port_oper_status`, `mac_fdb`, `interface_in_octets`, `interface_out_octets` ইত্যাদি
+- `oid` (text) — e.g. `1.3.6.1.2.1.1.5.0`
+- `oid_type` (`scalar` | `walk` | `table`)
+- `value_transform` (text, nullable) — e.g. `divide:10`, `dbm_signed`, `hex_to_mac`
+- `description`
 
-### 6. `/m/olt/calculator` Optical Link Calculator (image-294)
-- 2-tab: **SPLITTER / DISTANCE**
-- Splitter: Input Power (dBm) + Splitter Type dropdown (10:90, 20:80, 30:70, 40:60, 50:50, 1:2, 1:4, 1:8, 1:16, 1:32, 1:64) → result cards with output dBm
-- Distance: Input Power + Distance (km) + Cable loss (dB/km, default 0.35) → output dBm
+**`device_admin_managed_devices`-এ যোগ:**
+- `snmp_enabled` (bool default false)
+- `snmp_ip`, `snmp_port` (default 161), `snmp_community` (default 'public'), `snmp_version` (v1/v2c/v3)
+- `oid_profile_id` (FK → device_vendor_profiles, nullable)
+- `agent_enabled` (bool default false), `data_source_priority` (text, same enum হিসেবে), `agent_stale_seconds` (int default 180)
+- `fallback_protocol` (text — `ssh` / `telnet` / null)
 
-## Reseller OLT Access (Admin-assigned)
+RLS: tenant scoped same pattern হিসেবে। `is_system=true` profile সবাই দেখতে পাবে কিন্তু edit/delete করতে পারবে না।
 
-নতুন table:
-```
-olt_reseller_access (
-  id uuid pk,
-  olt_id uuid → olt_devices,
-  reseller_branch_manager_id uuid → branch_managers,
-  granted_by uuid (admin),
-  granted_at timestamptz,
-  unique(olt_id, reseller_branch_manager_id)
-)
-```
+### Seed data (system profiles)
 
-- Admin UI: `/dashboard/olt/:id` edit form-এ নতুন section **"Assign to Reseller(s)"** — multi-select dropdown of resellers (multiple OLT একজনের / একটা OLT একাধিক reseller — সব valid)
-- RLS: reseller (POP user) `olt_devices` SELECT করতে পারবে যদি branch_id own করে **অথবা** `olt_reseller_access`-এ entry থাকে
-- Reseller mobile/portal-এ same `/m/olt` route, কিন্তু list filtered হবে assigned OLT-গুলোতে
-- Reseller-কে write action (delete OLT, edit) দেওয়া হবে না — শুধু read + ONU read + reboot ONU permission
+মাইগ্রেশনে প্রতিটি vendor-এর জন্য baseline OID seeded:
 
-## Data — distance & last_offline_reason
+| Vendor | Notes |
+|---|---|
+| VSOL OLT | EPON/GPON standard + VSOL private MIB |
+| BDCOM OLT | BDCOM private MIB (.1.3.6.1.4.1.3320) |
+| DBC OLT | C-Data based |
+| Syrotech | EPON standard + Syrotech ext |
+| Solitine | Generic GPON |
+| CORELINK | C-Data clone |
+| C-Data OLT | .1.3.6.1.4.1.17409 |
+| ECOM | Generic |
+| LightX | Generic GPON |
+| HSGQ | Generic EPON |
+| Phyhome | Phyhome private MIB |
+| TBS | Generic |
+| Huawei OLT | .1.3.6.1.4.1.2011 (MA5600 series) |
+| HBDPON | Generic |
+| MikroTik Router/Switch | MikroTik MIB .1.3.6.1.4.1.14988 |
 
-`onu_list` table-এ নতুন columns:
-- `distance_m integer` (meters)
-- `last_offline_at timestamptz`
-- `last_offline_reason text` (DyingGasp, LOS, LOSi, PowerOff, LinkLoss, etc.)
-- `alive_time interval`
-- `temperature numeric`
+প্রতিটি profile-এ minimum: `system_name`, `system_uptime`, `cpu_usage`, `memory_usage`, এবং OLT হলে ONU-related OID set।  
+নোট: real-world MIB values পরবর্তীতে user নিজে adjust/override করতে পারবে।
 
-**Two data paths:**
-1. **Agent push (priority)** — `sync-olt-data` edge function extend, agent পাঠাবে `distance`, `offline_reason`, `temperature`, `alive_time`। Status transition online→offline হলে current timestamp + reason snapshot save।
-2. **SNMP fallback** — নতুন edge function `snmp-fetch-onu-distance` (Huawei/ZTE/VSOL/BDCOM OID set), `/dashboard/olt/:id/onus` থেকে manual "Refresh" trigger।
+### UI — OID Library page
 
-## Files
+বাম দিকে vendor profile list (search সহ), ডান দিকে selected profile-এর OID টেবিল (metric_key, OID, type, transform, description)। Actions:
+- "নতুন Profile" — blank বা existing থেকে clone
+- "Edit" row inline বা dialog-এ
+- "Import JSON" / "Export JSON" — পরে portable
+- System profile-এ "Clone to custom" বাটন (edit ব্লকড)
 
-**New (mobile shell + screens):**
-- `src/components/olt-mobile/OltMobileShell.tsx` — bottom tab + scope theme
-- `src/components/olt-mobile/OltCard.tsx`, `OnuCard.tsx`, `OltHeroCard.tsx`, `ActionButton.tsx`, `VendorIcon.tsx`
-- `src/pages/olt-mobile/OltList.tsx`
-- `src/pages/olt-mobile/OltOverview.tsx`
-- `src/pages/olt-mobile/OltOnuList.tsx`
-- `src/pages/olt-mobile/OnuDetailSheet.tsx`
-- `src/pages/olt-mobile/OltMore.tsx`
-- `src/pages/olt-mobile/OpticalCalculator.tsx`
-- `src/pages/olt-mobile/MacTable.tsx`
-- `src/pages/olt-mobile/OnuHealth.tsx`
-- `src/lib/opticalCalc.ts` — splitter loss table + distance loss formula
-- `src/hooks/useOltAccess.ts` — admin vs reseller filter helper
+### Device form integration
 
-**Modify:**
-- `src/App.tsx` — add `/m/olt/*` routes, mobile detect redirect for `/dashboard/olt` on small screens (toggle-able)
-- `src/pages/dashboard/olt/OltDevices.tsx` — add "Assign to Resellers" section
-- `supabase/functions/sync-olt-data/index.ts` — accept distance/reason/temperature, snapshot last_offline_reason on transition
+`AddDeviceDialog` ও `OltDevices.tsx`-এর form-এ "OID Profile" dropdown — vendor select হলে auto-suggest matching system profile, কিন্তু user override করতে পারবে।
 
-**New edge function:**
-- `supabase/functions/snmp-fetch-onu-distance/index.ts` — vendor-specific OID GET for distance + last alarm
+## 3. Sync logic এ OID profile ব্যবহার
 
-## Migrations
+`sync-olt-data` ইতোমধ্যে source priority enforce করে। নতুন helper edge function **`snmp-poll-device`** যেটা:
+1. device load করবে (OID profile সহ)
+2. profile-এর OID গুলো walk/get করবে
+3. fail হলে — যদি `fallback_protocol` সেট থাকে — SSH/Telnet adapter call করবে
+4. result কে normalized payload-এ `sync-olt-data`-তে post করবে (`source: 'snmp'` বা `'ssh'`)
 
-1. `onu_list` add: `distance_m`, `last_offline_at`, `last_offline_reason`, `alive_time`, `temperature`, `vendor_id`, `model_id`, `onu_type`, `ethernet_count`, `wifi_count`, `response_time_ms`
-2. `olt_reseller_access` table + RLS
-3. Update RLS on `olt_devices` and `onu_list` to honor reseller access
-4. Index: `onu_list(olt_id, status, interface)`, `olt_reseller_access(reseller_branch_manager_id)`
+এই edge function এই plan-এ scaffold হবে (skeleton + OID profile loader + fallback dispatch), কিন্তু প্রতিটি vendor-এর actual SNMP walk implementation iterative — প্রথম pass-এ generic SNMP walker + Huawei/BDCOM/VSOL/MikroTik live; বাকি গুলো profile load করবে কিন্তু parser placeholder থাকবে।
 
-## Execution order (4 parts)
+## ফাইল পরিবর্তন (overview)
 
-**Part A — DB + RLS:** migration for ONU columns, `olt_reseller_access`, updated RLS
-**Part B — Mobile shell + OLT list + Overview:** routes, shell, list/overview screens with NexOLT visual fidelity
-**Part C — ONU list + Detail sheet + Calculator:** card grid, info/action tabs, optical calculator
-**Part D — More menu + MAC table + Health + Reseller assignment UI + agent extension**
+- **Migration** (নতুন):
+  - `device_vendor_profiles`, `device_oid_mappings` (+ RLS + seed)
+  - `device_admin_managed_devices` ALTER (SNMP/agent columns)
+- **নতুন pages**:
+  - `src/pages/dashboard/device-admin/OidLibrary.tsx`
+  - `src/components/device-admin/OidProfileDialog.tsx`
+- **এডিট**:
+  - `src/components/device-admin/AddDeviceDialog.tsx` — protocol Select + SNMP/Agent section + OID profile picker + expanded vendor list
+  - Device-admin sidebar / route registry — OID Library link
+  - `src/App.tsx` — route যোগ
+- **নতুন edge function** (skeleton): `supabase/functions/snmp-poll-device/index.ts`
 
-Approve করলে Part A থেকে শুরু করব।
+## টেকনিক্যাল নোট
+
+- OID-এর actual SNMP walk Deno edge থেকে UDP — limited; production-এ on-prem agent recommended (ইতিমধ্যে decided)। তাই `snmp-poll-device` agent + edge উভয় mode সাপোর্ট করবে: agent push (existing pattern) অথবা edge-initiated walk (best-effort)।
+- `oid_profile_id` device update form-এও দেখাবে (`OltDevices.tsx` form-এও একই picker)।
+- RLS: `device_vendor_profiles` system rows — `is_system=true` select সবার জন্য, write blocked।
+
+বাকি কাজ (agent installer, per-vendor parser polish) পরবর্তী iteration-এ।
