@@ -242,7 +242,7 @@ export default function DeviceInventory() {
       </Card>
 
       {dialog && <DeployUserDialog open={!!dialog} onOpenChange={(v) => !v && setDialog(null)} mode={dialog} />}
-      <AddDeviceDialog open={addOpen} onOpenChange={setAddOpen} />
+      <AddDeviceDialog open={addOpen} onOpenChange={(v) => { setAddOpen(v); if (!v) setEditTarget(null); }} editDevice={editTarget} />
       <DeviceInspectorDialog open={!!inspectDevice} onOpenChange={(v) => !v && setInspectDevice(null)} device={inspectDevice} />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
