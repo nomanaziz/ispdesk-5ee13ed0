@@ -164,6 +164,48 @@ export default function OltDevices() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["olt-devices"] }); toast.success("মুছে ফেলা হয়েছে"); },
   });
 
+  const syncOne = async (oltId: string): Promise<{ ok: boolean; msg: string; count?: number }> => {
+    try {
+      const { data, error } = await supabase.functions.invoke("snmp-poll-device", { body: { olt_id: oltId } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const count = data?.processed ?? data?.inserted ?? data?.onu_count ?? 0;
+      return { ok: true, msg: `${count} ONU synced`, count };
+    } catch (e: any) {
+      return { ok: false, msg: e.message || "Sync failed" };
+    }
+  };
+
+  const syncOneMut = useMutation({
+    mutationFn: async (id: string) => {
+      const r = await syncOne(id);
+      if (!r.ok) throw new Error(r.msg);
+      return r;
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["olt-devices"] });
+      qc.invalidateQueries({ queryKey: ["onu-counts-by-olt"] });
+      toast.success(r.msg);
+    },
+    onError: (e: any) => toast.error(e.message || "Sync failed"),
+  });
+
+  const syncAllMut = useMutation({
+    mutationFn: async () => {
+      const results = await Promise.all(devices.map((d: any) => syncOne(d.id)));
+      const ok = results.filter((r) => r.ok).length;
+      const fail = results.length - ok;
+      return { ok, fail };
+    },
+    onSuccess: ({ ok, fail }) => {
+      qc.invalidateQueries({ queryKey: ["olt-devices"] });
+      qc.invalidateQueries({ queryKey: ["onu-counts-by-olt"] });
+      if (fail === 0) toast.success(`সব ${ok}টা OLT sync হয়েছে`);
+      else toast.warning(`${ok} সফল, ${fail} ব্যর্থ`);
+    },
+  });
+
+
   const fetchSnmpName = async () => {
     const ip = form.snmp_ip || form.ip_address;
     if (!ip) { toast.error("আগে IP দিন"); return; }
