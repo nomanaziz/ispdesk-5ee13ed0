@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,9 +12,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Server, Wifi, WifiOff, Cpu, Pencil, Trash2, Search, Download, Loader2 } from "lucide-react";
+import {
+  Plus, Server, Wifi, WifiOff, Cpu, Pencil, Trash2, Search, Download, Loader2,
+  Router, CheckCircle2, AlertCircle, Circle,
+} from "lucide-react";
+import { z } from "zod";
 
-const vendors = ["huawei","bdcom","vsol","dbc","syrotech","solitine","corelink","c-data","ecom","hsgq","phyhome"] as const;
+const vendors = ["huawei", "zte", "bdcom", "vsol", "dbc", "syrotech", "solitine", "corelink", "c-data", "ecom", "hsgq", "phyhome"] as const;
+const PRIMARY_VENDORS = new Set(["huawei", "zte", "bdcom"]);
+
+const ipRegex = /^(25[0-5]|2[0-4]\d|[01]?\d?\d)(\.(25[0-5]|2[0-4]\d|[01]?\d?\d)){3}$/;
+
+const formSchema = z.object({
+  name: z.string().trim().min(1, "নাম দিন").max(120),
+  ip_address: z.string().regex(ipRegex, "সঠিক IP দিন"),
+  port: z.number().int().min(1).max(65535),
+  telnet_port: z.number().int().min(1).max(65535),
+  snmp_port: z.number().int().min(1).max(65535),
+});
 
 const emptyForm = {
   name: "", ip_address: "", port: 23, telnet_port: 23,
@@ -24,6 +39,24 @@ const emptyForm = {
   snmp_enabled: false, snmp_ip: "", snmp_port: 161, snmp_community: "public",
   snmp_version: "v2c", brand_model: "", olt_version: "",
 };
+
+// Live status from last_seen (online if seen ≤3 min ago)
+function computeLive(lastSeen: string | null, dbStatus: string | null): "online" | "offline" | "unknown" {
+  if (!lastSeen) return (dbStatus as any) || "unknown";
+  const diff = Date.now() - new Date(lastSeen).getTime();
+  if (diff <= 3 * 60_000) return "online";
+  if (diff <= 24 * 3600_000) return "offline";
+  return "unknown";
+}
+
+function timeAgo(iso: string | null): string {
+  if (!iso) return "—";
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return `${s}s আগে`;
+  if (s < 3600) return `${Math.floor(s / 60)}m আগে`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h আগে`;
+  return `${Math.floor(s / 86400)}d আগে`;
+}
 
 export default function OltDevices() {
   const qc = useQueryClient();
@@ -38,9 +71,13 @@ export default function OltDevices() {
   const { data: devices = [] } = useQuery({
     queryKey: ["olt-devices"],
     queryFn: async () => {
-      const { data } = await supabase.from("olt_devices").select("*, branches(name), mikrotik_devices(name)").order("created_at", { ascending: false });
+      const { data } = await supabase
+        .from("olt_devices")
+        .select("*, branches(name), mikrotik_devices(id, name, ip_address, status)")
+        .order("created_at", { ascending: false });
       return (data || []) as any[];
     },
+    refetchInterval: 30_000,
   });
 
   const { data: branches = [] } = useQuery({
@@ -49,8 +86,14 @@ export default function OltDevices() {
   });
 
   const { data: mikrotiks = [] } = useQuery({
-    queryKey: ["mikrotik-list"],
-    queryFn: async () => { const { data } = await supabase.from("mikrotik_devices").select("id, name"); return data || []; },
+    queryKey: ["mikrotik-list-enriched"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("mikrotik_devices")
+        .select("id, name, ip_address, api_port, status, enabled, branch_id")
+        .order("name");
+      return (data || []) as any[];
+    },
   });
 
   const { data: onuCounts = [] } = useQuery({
@@ -59,15 +102,29 @@ export default function OltDevices() {
       const { data } = await supabase.from("onu_list").select("olt_id, status");
       return data || [];
     },
+    refetchInterval: 60_000,
   });
+
+  const selectedMikrotik = useMemo(
+    () => mikrotiks.find((m) => m.id === form.mikrotik_id),
+    [form.mikrotik_id, mikrotiks],
+  );
 
   const saveMut = useMutation({
     mutationFn: async () => {
+      const parsed = formSchema.safeParse({
+        name: form.name, ip_address: form.ip_address,
+        port: form.port, telnet_port: form.telnet_port, snmp_port: form.snmp_port,
+      });
+      if (!parsed.success) {
+        const first = parsed.error.errors[0];
+        throw new Error(first?.message || "ফর্ম যাচাই ব্যর্থ");
+      }
       const payload: any = {
-        name: form.name, ip_address: form.ip_address, port: form.port,
+        name: form.name.trim(), ip_address: form.ip_address.trim(), port: form.port,
         telnet_port: form.telnet_port,
         connection_type: form.connection_type, vendor: form.vendor,
-        username: form.username, password_encrypted: form.password_encrypted,
+        username: form.username || null, password_encrypted: form.password_encrypted || null,
         branch_id: form.branch_id || null, mikrotik_id: form.mikrotik_id || null,
         description: form.description || null,
         snmp_enabled: form.snmp_enabled, snmp_ip: form.snmp_ip || null,
@@ -83,7 +140,11 @@ export default function OltDevices() {
         if (error) throw error;
       }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["olt-devices"] }); setOpen(false); toast.success(editId ? "আপডেট হয়েছে" : "যোগ হয়েছে"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["olt-devices"] });
+      setOpen(false);
+      toast.success(editId ? "আপডেট হয়েছে" : "যোগ হয়েছে");
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -103,7 +164,7 @@ export default function OltDevices() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (data?.name) {
-        setForm(f => ({ ...f, name: data.name }));
+        setForm((f) => ({ ...f, name: data.name }));
         toast.success(`Device name: ${data.name}`);
       } else {
         toast.error("নাম পাওয়া যায়নি");
@@ -115,15 +176,18 @@ export default function OltDevices() {
     }
   };
 
-  const filtered = devices.filter(d =>
-    !search || d.name.toLowerCase().includes(search.toLowerCase()) || d.ip_address.includes(search)
+  const filtered = devices.filter((d) =>
+    !search ||
+    d.name.toLowerCase().includes(search.toLowerCase()) ||
+    d.ip_address.includes(search) ||
+    (d.mikrotik_devices?.name || "").toLowerCase().includes(search.toLowerCase()),
   );
   const paged = filtered.slice(page * perPage, (page + 1) * perPage);
   const totalPages = Math.ceil(filtered.length / perPage);
 
   const totalOlt = devices.length;
-  const onlineOlt = devices.filter(d => d.status === "online").length;
-  const offlineOlt = devices.filter(d => d.status === "offline").length;
+  const onlineOlt = devices.filter((d) => computeLive(d.last_seen, d.status) === "online").length;
+  const offlineOlt = totalOlt - onlineOlt;
   const totalOnu = onuCounts.length;
 
   const openAdd = () => { setEditId(null); setForm(emptyForm); setOpen(true); };
@@ -144,8 +208,14 @@ export default function OltDevices() {
   };
 
   const getOnuStats = (oltId: string) => {
-    const onus = onuCounts.filter(o => o.olt_id === oltId);
-    return { total: onus.length, online: onus.filter(o => o.status === "online").length };
+    const onus = onuCounts.filter((o) => o.olt_id === oltId);
+    return { total: onus.length, online: onus.filter((o) => o.status === "online").length };
+  };
+
+  const statusDot = (live: string) => {
+    if (live === "online") return <Circle className="h-2.5 w-2.5 fill-emerald-500 text-emerald-500" />;
+    if (live === "offline") return <Circle className="h-2.5 w-2.5 fill-red-500 text-red-500" />;
+    return <Circle className="h-2.5 w-2.5 fill-muted-foreground text-muted-foreground" />;
   };
 
   return (
@@ -153,7 +223,7 @@ export default function OltDevices() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold text-foreground">OLT ডিভাইস</h1>
-          <p className="text-muted-foreground text-sm">সকল OLT ডিভাইস ম্যানেজমেন্ট</p>
+          <p className="text-muted-foreground text-sm">সকল OLT ডিভাইস ম্যানেজমেন্ট ও MikroTik ম্যাপিং</p>
         </div>
         <Button onClick={openAdd}><Plus className="h-4 w-4 mr-1" /> OLT যোগ করুন</Button>
       </div>
@@ -164,7 +234,7 @@ export default function OltDevices() {
           { label: "অনলাইন", value: onlineOlt, icon: Wifi, color: "emerald" },
           { label: "অফলাইন", value: offlineOlt, icon: WifiOff, color: "red" },
           { label: "মোট ONU", value: totalOnu, icon: Cpu, color: "purple" },
-        ].map(c => (
+        ].map((c) => (
           <Card key={c.label} className={`border-l-4 border-l-${c.color}-500`}>
             <CardContent className="p-4 flex items-center gap-4">
               <div className={`h-12 w-12 rounded-lg bg-${c.color}-500/10 flex items-center justify-center`}>
@@ -182,9 +252,9 @@ export default function OltDevices() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>OLT তালিকা</CardTitle>
-          <div className="relative w-64">
+          <div className="relative w-72">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="নাম বা IP দিয়ে খুঁজুন..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8" />
+            <Input placeholder="নাম, IP বা MikroTik দিয়ে খুঁজুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
           </div>
         </CardHeader>
         <CardContent>
@@ -195,193 +265,16 @@ export default function OltDevices() {
                   <TableHead>#</TableHead>
                   <TableHead>নাম / Alias</TableHead>
                   <TableHead>Vendor</TableHead>
-                  <TableHead>Brand/Model</TableHead>
-                  <TableHead>IP : Wave / Telnet</TableHead>
+                  <TableHead>IP / Ports</TableHead>
                   <TableHead>SNMP</TableHead>
                   <TableHead>ব্রাঞ্চ</TableHead>
                   <TableHead>MikroTik</TableHead>
                   <TableHead>স্ট্যাটাস</TableHead>
-                  <TableHead>CPU%</TableHead>
-                  <TableHead>Mem%</TableHead>
+                  <TableHead>Last Seen</TableHead>
                   <TableHead>ONU</TableHead>
                   <TableHead>অ্যাকশন</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paged.length === 0 ? (
-                  <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">কোনো OLT পাওয়া যায়নি</TableCell></TableRow>
-                ) : paged.map((d, i) => {
-                  const stats = getOnuStats(d.id);
-                  return (
-                    <TableRow key={d.id}>
-                      <TableCell>{page * perPage + i + 1}</TableCell>
-                      <TableCell className="font-medium">{d.name}</TableCell>
-                      <TableCell><Badge variant="outline" className="capitalize">{d.vendor}</Badge></TableCell>
-                      <TableCell className="text-xs">{d.brand_model || "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {d.ip_address}
-                        <div className="text-muted-foreground">W:{d.port} • T:{d.telnet_port ?? 23}</div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={d.snmp_enabled ? "default" : "secondary"} className="text-[10px]">
-                          {d.snmp_enabled ? "ON" : "OFF"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{d.branches?.name || "—"}</TableCell>
-                      <TableCell className="text-xs">{d.mikrotik_devices?.name || "—"}</TableCell>
-                      <TableCell>
-                        <Badge variant={d.status === "online" ? "default" : "destructive"}>{d.status}</Badge>
-                      </TableCell>
-                      <TableCell>{d.cpu_usage ?? "—"}%</TableCell>
-                      <TableCell>{d.memory_usage ?? "—"}%</TableCell>
-                      <TableCell>
-                        <span className="text-emerald-600">{stats.online}</span>/<span>{stats.total}</span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(d)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => { if (confirm("মুছে ফেলতে চান?")) delMut.mutate(d.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-          {totalPages > 1 && (
-            <div className="flex items-center justify-end gap-2 mt-4">
-              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>পূর্ববর্তী</Button>
-              <span className="text-sm text-muted-foreground">পৃষ্ঠা {page + 1} / {totalPages}</span>
-              <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>পরবর্তী</Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editId ? "OLT সম্পাদনা" : "নতুন OLT যোগ করুন"}</DialogTitle></DialogHeader>
-          <div className="grid gap-4">
-            {/* Section: Basic Identity */}
-            <div className="border rounded-lg p-4 space-y-3">
-              <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Basic Identity</Label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>নাম / Alias *</Label>
-                  <Input
-                    placeholder="e.g. Madaripur-BDCOM-1"
-                    value={form.name}
-                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">Port-forward IP দেখে চেনা কঠিন — পরিচিত নাম দিন বা SNMP থেকে fetch করুন</p>
-                </div>
-                <div>
-                  <Label>Vendor</Label>
-                  <Select value={form.vendor} onValueChange={v => setForm(f => ({ ...f, vendor: v as any }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{vendors.map(v => <SelectItem key={v} value={v} className="capitalize">{v}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label>Brand / Model</Label><Input placeholder="e.g. MA5608T" value={form.brand_model} onChange={e => setForm(f => ({ ...f, brand_model: e.target.value }))} /></div>
-                <div><Label>OLT Version</Label><Input placeholder="e.g. V800R013" value={form.olt_version} onChange={e => setForm(f => ({ ...f, olt_version: e.target.value }))} /></div>
-              </div>
-            </div>
-
-            {/* Section: Connection (CLI) */}
-            <div className="border rounded-lg p-4 space-y-3">
-              <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Connection (CLI)</Label>
-              <div className="grid grid-cols-3 gap-4">
-                <div><Label>IP Address *</Label><Input placeholder="192.168.x.x" value={form.ip_address} onChange={e => setForm(f => ({ ...f, ip_address: e.target.value }))} /></div>
-                <div>
-                  <Label>Wave / Mgmt Port</Label>
-                  <Input type="number" value={form.port} onChange={e => setForm(f => ({ ...f, port: Number(e.target.value) }))} />
-                </div>
-                <div>
-                  <Label>Telnet Port</Label>
-                  <Input type="number" value={form.telnet_port} onChange={e => setForm(f => ({ ...f, telnet_port: Number(e.target.value) }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label>Connection Type</Label>
-                  <Select value={form.connection_type} onValueChange={v => setForm(f => ({ ...f, connection_type: v as any }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="telnet">Telnet</SelectItem><SelectItem value="ssh">SSH</SelectItem></SelectContent>
-                  </Select>
-                </div>
-                <div><Label>Username</Label><Input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} /></div>
-                <div><Label>Password</Label><Input type="password" value={form.password_encrypted} onChange={e => setForm(f => ({ ...f, password_encrypted: e.target.value }))} /></div>
-              </div>
-            </div>
-
-            {/* Section: SNMP */}
-            <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">SNMP (Monitoring)</Label>
-                <Switch checked={form.snmp_enabled} onCheckedChange={v => setForm(f => ({ ...f, snmp_enabled: v }))} />
-              </div>
-              {form.snmp_enabled && (
-                <div className="grid gap-3">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div><Label>SNMP IP</Label><Input placeholder={form.ip_address || "OLT IP"} value={form.snmp_ip} onChange={e => setForm(f => ({ ...f, snmp_ip: e.target.value }))} /></div>
-                    <div><Label>SNMP Port</Label><Input type="number" value={form.snmp_port} onChange={e => setForm(f => ({ ...f, snmp_port: Number(e.target.value) }))} /></div>
-                    <div>
-                      <Label>Version</Label>
-                      <Select value={form.snmp_version} onValueChange={v => setForm(f => ({ ...f, snmp_version: v }))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="v1">v1</SelectItem>
-                          <SelectItem value="v2c">v2c</SelectItem>
-                          <SelectItem value="v3">v3</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1"><Label>Community String</Label><Input value={form.snmp_community} onChange={e => setForm(f => ({ ...f, snmp_community: e.target.value }))} /></div>
-                    <Button type="button" variant="outline" onClick={fetchSnmpName} disabled={fetchingName}>
-                      {fetchingName ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
-                      Fetch Name
-                    </Button>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">SNMP থেকে device-এর actual sysName fetch করে Alias-এ বসাবে</p>
-                </div>
-              )}
-            </div>
-
-            {/* Section: Linking */}
-            <div className="border rounded-lg p-4 space-y-3">
-              <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Linking</Label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>ব্রাঞ্চ</Label>
-                  <Select value={form.branch_id || "none"} onValueChange={v => setForm(f => ({ ...f, branch_id: v === "none" ? null : v }))}>
-                    <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                    <SelectContent><SelectItem value="none">—</SelectItem>{branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>MikroTik লিংক (Optional)</Label>
-                  <Select value={form.mikrotik_id || "none"} onValueChange={v => setForm(f => ({ ...f, mikrotik_id: v === "none" ? null : v }))}>
-                    <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
-                    <SelectContent><SelectItem value="none">—</SelectItem>{mikrotiks.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div><Label>বিবরণ</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>বাতিল</Button>
-            <Button onClick={() => saveMut.mutate()} disabled={!form.name || !form.ip_address || saveMut.isPending}>
-              {saveMut.isPending ? "সেভ হচ্ছে..." : "সেভ করুন"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
+                  <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">কোনো OLT পাওয়া য
