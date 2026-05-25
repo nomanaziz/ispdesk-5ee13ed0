@@ -196,20 +196,45 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
     mutationFn: async () => {
       if (!form.name || !form.ip_address) throw new Error("নাম ও IP লাগবে");
 
-      // Duplicate IP check across all device tables
       const ip = form.ip_address.trim();
+      const selfId = isEdit ? editDevice!.id : null;
+
+      // Duplicate IP check across all device tables (exclude self in edit mode)
       const [mk, mg, olt, pop] = await Promise.all([
-        supabase.from("mikrotik_devices").select("name").eq("ip_address", ip).limit(1),
-        supabase.from("device_admin_managed_devices").select("name").eq("ip_address", ip).limit(1),
-        supabase.from("olt_devices").select("name").eq("ip_address", ip).limit(1),
-        supabase.from("pop_devices").select("name").eq("ip_address", ip).limit(1),
+        supabase.from("mikrotik_devices").select("id,name").eq("ip_address", ip),
+        supabase.from("device_admin_managed_devices").select("id,name").eq("ip_address", ip),
+        supabase.from("olt_devices").select("id,name").eq("ip_address", ip),
+        supabase.from("pop_devices").select("id,name").eq("ip_address", ip),
       ]);
-      const existing = mk.data?.[0] || mg.data?.[0] || olt.data?.[0] || pop.data?.[0];
-      if (existing) throw new Error(`এই IP ইতিমধ্যে আছে: ${(existing as any).name}`);
+      const all = [...(mk.data || []), ...(mg.data || []), ...(olt.data || []), ...(pop.data || [])];
+      const conflict = all.find((r: any) => r.id !== selfId);
+      if (conflict) throw new Error(`এই IP ইতিমধ্যে আছে: ${(conflict as any).name}`);
 
-
-
-      if (form.category === "router" && form.vendor === "mikrotik" && usesApi) {
+      if (isEdit) {
+        const { error } = await supabase.from("device_admin_managed_devices").update({
+          name: form.name,
+          category: form.category,
+          vendor: form.vendor,
+          protocol: form.protocol,
+          ip_address: form.ip_address,
+          port: form.port ? parseInt(form.port) : null,
+          username: usesCli || usesApi ? form.username || null : null,
+          password_encrypted: usesCli || usesApi ? form.password || null : null,
+          enable_password: usesCli ? form.enable_password || null : null,
+          location: form.location || null,
+          snmp_enabled: usesSnmp,
+          snmp_ip: usesSnmp ? form.snmp_ip || null : null,
+          snmp_port: usesSnmp ? form.snmp_port : null,
+          snmp_community: usesSnmp ? form.snmp_community : null,
+          snmp_version: usesSnmp ? form.snmp_version : null,
+          oid_profile_id: usesSnmp || form.category === "olt" ? form.oid_profile_id || null : null,
+          agent_enabled: form.agent_enabled,
+          data_source_priority: form.data_source_priority,
+          agent_stale_seconds: form.agent_stale_seconds,
+          fallback_protocol: fallback,
+        }).eq("id", selfId!);
+        if (error) throw error;
+      } else if (form.category === "router" && form.vendor === "mikrotik" && usesApi) {
         const { error } = await supabase.from("mikrotik_devices").insert({
           name: form.name,
           ip_address: form.ip_address,
@@ -250,11 +275,12 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["device_admin_inventory"] });
-      toast.success("ডিভাইস যোগ হয়েছে");
+      toast.success(isEdit ? "ডিভাইস update হয়েছে" : "ডিভাইস যোগ হয়েছে");
       onOpenChange(false);
     },
     onError: (e: any) => toast.error(e.message),
   });
+
 
   const vendors = VENDORS_BY_CATEGORY[form.category] || [];
   const protocols = PROTOCOLS_BY_CATEGORY[form.category] || [];
