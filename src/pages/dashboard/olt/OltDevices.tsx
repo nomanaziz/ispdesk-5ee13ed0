@@ -240,7 +240,14 @@ export default function OltDevices() {
           <h1 className="text-2xl font-bold text-foreground">OLT ডিভাইস</h1>
           <p className="text-muted-foreground text-sm">সকল OLT ডিভাইস ম্যানেজমেন্ট ও MikroTik ম্যাপিং</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-1" /> OLT যোগ করুন</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => syncAllMut.mutate()} disabled={syncAllMut.isPending || devices.length === 0}>
+            {syncAllMut.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+            Sync All
+          </Button>
+          <Button onClick={openAdd}><Plus className="h-4 w-4 mr-1" /> OLT যোগ করুন</Button>
+        </div>
+
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
