@@ -134,6 +134,7 @@ export default function OltDevices() {
         name: form.name.trim(), ip_address: form.ip_address.trim(), port: form.port,
         telnet_port: form.telnet_port,
         connection_type: form.connection_type, vendor: form.vendor,
+        pon_type: CHASSIS_VENDORS.has(form.vendor) ? "mixed" : form.pon_type,
         username: form.username || null, password_encrypted: form.password_encrypted || null,
         branch_id: form.branch_id || null, mikrotik_id: form.mikrotik_id || null,
         description: form.description || null,
