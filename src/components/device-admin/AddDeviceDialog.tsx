@@ -235,6 +235,7 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
           data_source_priority: form.data_source_priority,
           agent_stale_seconds: form.agent_stale_seconds,
           fallback_protocol: fallback,
+          pon_type: form.category === "olt" ? form.pon_type : null,
         }).eq("id", selfId!);
         if (error) throw error;
       } else if (form.category === "router" && form.vendor === "mikrotik" && usesApi) {
@@ -272,6 +273,7 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
           data_source_priority: form.data_source_priority,
           agent_stale_seconds: form.agent_stale_seconds,
           fallback_protocol: fallback,
+          pon_type: form.category === "olt" ? form.pon_type : null,
         });
         if (error) throw error;
       }
