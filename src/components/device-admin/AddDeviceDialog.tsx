@@ -135,6 +135,7 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
         agent_enabled: !!data.agent_enabled,
         data_source_priority: data.data_source_priority || "snmp_first",
         agent_stale_seconds: data.agent_stale_seconds || 180,
+        pon_type: (data.pon_type as any) || "mixed",
       }));
     })();
   }, [open, isEdit, editDevice]);
