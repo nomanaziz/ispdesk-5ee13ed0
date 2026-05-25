@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Router, Cpu, Network, Users, Database, UserPlus, UserX, Plus, Search, Trash2, AlertTriangle, Wifi, Server as ServerIcon, HardDrive } from "lucide-react";
+import { Router, Cpu, Network, Users, Database, UserPlus, UserX, Plus, Search, Trash2, AlertTriangle, Wifi, Server as ServerIcon, HardDrive, Pencil } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
 import { DeployUserDialog } from "@/components/device-admin/DeployUserDialog";
 import { AddDeviceDialog } from "@/components/device-admin/AddDeviceDialog";
 import { DeviceInspectorDialog } from "@/components/device-admin/DeviceInspectorDialog";
@@ -41,13 +43,16 @@ type Row = {
 
 export default function DeviceInventory() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [category, setCategory] = useState("all");
   const [vendorFilter, setVendorFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [dialog, setDialog] = useState<"deploy" | "remove" | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<{ id: string; source: string } | null>(null);
   const [inspectDevice, setInspectDevice] = useState<{ id: string; name: string; type: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
+
 
   const { allowed: canAdd } = usePermission("device.add");
   const { allowed: canDelete } = usePermission("device.delete");
@@ -205,6 +210,21 @@ export default function DeviceInventory() {
                         <Button size="icon" variant="ghost" className="h-8 w-8" title="ইন্সপেক্ট" onClick={() => setInspectDevice({ id: d.id, name: d.name, type: d.category === "router" && d.vendor === "mikrotik" ? "mikrotik" : d.category })}>
                           <Search className="h-4 w-4" />
                         </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" title="Edit" onClick={() => {
+                          if (d.source === "mikrotik_devices") {
+                            toast.info("MikroTik device — Mikrotik → Servers page থেকে edit করুন");
+                            navigate("/dashboard/mikrotik/servers");
+                            return;
+                          }
+                          if (d.source !== "device_admin_managed_devices") {
+                            toast.info("এই source-এর device এখান থেকে edit করা যায় না");
+                            return;
+                          }
+                          setEditTarget({ id: d.id, source: d.source });
+                          setAddOpen(true);
+                        }}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         {canDelete && (
                           <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" title="Delete" onClick={() => setDeleteTarget(d)}>
                             <Trash2 className="h-4 w-4" />
@@ -212,6 +232,7 @@ export default function DeviceInventory() {
                         )}
                       </div>
                     </TableCell>
+
                   </TableRow>
                 );
               })}
@@ -221,7 +242,7 @@ export default function DeviceInventory() {
       </Card>
 
       {dialog && <DeployUserDialog open={!!dialog} onOpenChange={(v) => !v && setDialog(null)} mode={dialog} />}
-      <AddDeviceDialog open={addOpen} onOpenChange={setAddOpen} />
+      <AddDeviceDialog open={addOpen} onOpenChange={(v) => { setAddOpen(v); if (!v) setEditTarget(null); }} editDevice={editTarget} />
       <DeviceInspectorDialog open={!!inspectDevice} onOpenChange={(v) => !v && setInspectDevice(null)} device={inspectDevice} />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>

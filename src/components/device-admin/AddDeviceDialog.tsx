@@ -15,7 +15,9 @@ import { toast } from "sonner";
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  editDevice?: { id: string; source: string } | null;
 }
+
 
 // ---------- Catalogs (future-extensible) ----------
 const CATEGORIES = [
@@ -72,8 +74,9 @@ const VENDOR_TO_PROFILE: Record<string, string> = {
 
 const DEFAULT_PORT: Record<string, string> = { api: "80", ssh: "22", telnet: "23", snmp: "161", radius: "1812" };
 
-export function AddDeviceDialog({ open, onOpenChange }: Props) {
+export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
   const qc = useQueryClient();
+  const isEdit = !!editDevice && editDevice.source === "device_admin_managed_devices";
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -100,10 +103,46 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
     os_type: "linux",
   });
 
+  // Load existing row for edit mode
+  useEffect(() => {
+    if (!open || !isEdit || !editDevice) return;
+    (async () => {
+      const { data } = await supabase
+        .from("device_admin_managed_devices")
+        .select("*")
+        .eq("id", editDevice.id)
+        .single();
+      if (!data) return;
+      setForm((f) => ({
+        ...f,
+        name: data.name || "",
+        category: data.category || "router",
+        vendor: data.vendor || "other",
+        protocol: data.protocol || "snmp",
+        ip_address: data.ip_address || "",
+        port: data.port ? String(data.port) : "",
+        username: data.username || "",
+        password: data.password_encrypted || "",
+        enable_password: data.enable_password || "",
+        location: data.location || "",
+        snmp_ip: data.snmp_ip || "",
+        snmp_port: data.snmp_port || 161,
+        snmp_community: data.snmp_community || "public",
+        snmp_version: data.snmp_version || "v2c",
+        oid_profile_id: data.oid_profile_id || "",
+        agent_enabled: !!data.agent_enabled,
+        data_source_priority: data.data_source_priority || "snmp_first",
+        agent_stale_seconds: data.agent_stale_seconds || 180,
+      }));
+    })();
+  }, [open, isEdit, editDevice]);
+
+
   const set = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
 
-  // Reset vendor + protocol when category changes
+  // Reset vendor + protocol when category changes (skip in edit mode to preserve loaded values)
   useEffect(() => {
+    if (isEdit) return;
     const vendors = VENDORS_BY_CATEGORY[form.category] || [];
     const protos = PROTOCOLS_BY_CATEGORY[form.category] || [];
     setForm((f) => ({
@@ -114,6 +153,7 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.category]);
+
 
   // Auto port default
   useEffect(() => {
@@ -156,20 +196,45 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
     mutationFn: async () => {
       if (!form.name || !form.ip_address) throw new Error("নাম ও IP লাগবে");
 
-      // Duplicate IP check across all device tables
       const ip = form.ip_address.trim();
+      const selfId = isEdit ? editDevice!.id : null;
+
+      // Duplicate IP check across all device tables (exclude self in edit mode)
       const [mk, mg, olt, pop] = await Promise.all([
-        supabase.from("mikrotik_devices").select("name").eq("ip_address", ip).limit(1),
-        supabase.from("device_admin_managed_devices").select("name").eq("ip_address", ip).limit(1),
-        supabase.from("olt_devices").select("name").eq("ip_address", ip).limit(1),
-        supabase.from("pop_devices").select("name").eq("ip_address", ip).limit(1),
+        supabase.from("mikrotik_devices").select("id,name").eq("ip_address", ip),
+        supabase.from("device_admin_managed_devices").select("id,name").eq("ip_address", ip),
+        supabase.from("olt_devices").select("id,name").eq("ip_address", ip),
+        supabase.from("pop_devices").select("id,name").eq("ip_address", ip),
       ]);
-      const existing = mk.data?.[0] || mg.data?.[0] || olt.data?.[0] || pop.data?.[0];
-      if (existing) throw new Error(`এই IP ইতিমধ্যে আছে: ${(existing as any).name}`);
+      const all = [...(mk.data || []), ...(mg.data || []), ...(olt.data || []), ...(pop.data || [])];
+      const conflict = all.find((r: any) => r.id !== selfId);
+      if (conflict) throw new Error(`এই IP ইতিমধ্যে আছে: ${(conflict as any).name}`);
 
-
-
-      if (form.category === "router" && form.vendor === "mikrotik" && usesApi) {
+      if (isEdit) {
+        const { error } = await supabase.from("device_admin_managed_devices").update({
+          name: form.name,
+          category: form.category,
+          vendor: form.vendor,
+          protocol: form.protocol,
+          ip_address: form.ip_address,
+          port: form.port ? parseInt(form.port) : null,
+          username: usesCli || usesApi ? form.username || null : null,
+          password_encrypted: usesCli || usesApi ? form.password || null : null,
+          enable_password: usesCli ? form.enable_password || null : null,
+          location: form.location || null,
+          snmp_enabled: usesSnmp,
+          snmp_ip: usesSnmp ? form.snmp_ip || null : null,
+          snmp_port: usesSnmp ? form.snmp_port : null,
+          snmp_community: usesSnmp ? form.snmp_community : null,
+          snmp_version: usesSnmp ? form.snmp_version : null,
+          oid_profile_id: usesSnmp || form.category === "olt" ? form.oid_profile_id || null : null,
+          agent_enabled: form.agent_enabled,
+          data_source_priority: form.data_source_priority,
+          agent_stale_seconds: form.agent_stale_seconds,
+          fallback_protocol: fallback,
+        }).eq("id", selfId!);
+        if (error) throw error;
+      } else if (form.category === "router" && form.vendor === "mikrotik" && usesApi) {
         const { error } = await supabase.from("mikrotik_devices").insert({
           name: form.name,
           ip_address: form.ip_address,
@@ -210,11 +275,12 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["device_admin_inventory"] });
-      toast.success("ডিভাইস যোগ হয়েছে");
+      toast.success(isEdit ? "ডিভাইস update হয়েছে" : "ডিভাইস যোগ হয়েছে");
       onOpenChange(false);
     },
     onError: (e: any) => toast.error(e.message),
   });
+
 
   const vendors = VENDORS_BY_CATEGORY[form.category] || [];
   const protocols = PROTOCOLS_BY_CATEGORY[form.category] || [];
@@ -222,7 +288,7 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>নতুন ডিভাইস যোগ করুন</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{isEdit ? "ডিভাইস Edit করুন" : "নতুন ডিভাইস যোগ করুন"}</DialogTitle></DialogHeader>
 
         {/* === Basic === */}
         <div className="grid grid-cols-2 gap-3 py-2">
@@ -407,7 +473,7 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>বাতিল</Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>যোগ করুন</Button>
+          <Button onClick={() => save.mutate()} disabled={save.isPending}>{isEdit ? "সেভ করুন" : "যোগ করুন"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

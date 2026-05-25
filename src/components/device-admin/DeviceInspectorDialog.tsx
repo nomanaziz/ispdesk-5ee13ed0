@@ -17,7 +17,7 @@ interface Props {
 function ResourceTable({ deviceId, deviceType, resource, columns }: {
   deviceId: string; deviceType: string; resource: string; columns: { key: string; label: string }[];
 }) {
-  const { data, isLoading, error } = useQuery({
+  const { data: payload, isLoading, error } = useQuery({
     queryKey: ["inspect", deviceId, resource],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("inspect-device", {
@@ -25,11 +25,14 @@ function ResourceTable({ deviceId, deviceType, resource, columns }: {
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Failed");
-      return data.data as any[];
+      return data as { data: any[]; note?: string };
     },
     enabled: !!deviceId,
     retry: false,
   });
+
+  const data = payload?.data;
+  const note = payload?.note;
 
   if (isLoading) return <div className="flex items-center justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2" /> ফেচ করা হচ্ছে...</div>;
   if (error) {
@@ -49,29 +52,37 @@ function ResourceTable({ deviceId, deviceType, resource, columns }: {
       </div>
     );
   }
-  if (!data || data.length === 0) return <div className="text-center py-8 text-muted-foreground text-sm">কোনো ডেটা পাওয়া যায়নি</div>;
+  if (!data || data.length === 0) return (
+    <div className="text-center py-8 text-muted-foreground text-sm">
+      {note || "কোনো ডেটা পাওয়া যায়নি"}
+    </div>
+  );
 
   return (
-    <ScrollArea className="h-[420px]">
-      <Table>
-        <TableHeader>
-          <TableRow>{columns.map((c) => <TableHead key={c.key}>{c.label}</TableHead>)}</TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((row, i) => (
-            <TableRow key={i}>
-              {columns.map((c) => (
-                <TableCell key={c.key} className="text-sm font-mono">
-                  {String(row[c.key] ?? "—")}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </ScrollArea>
+    <>
+      {note && <div className="text-xs text-muted-foreground mb-2">ℹ️ {note}</div>}
+      <ScrollArea className="h-[420px]">
+        <Table>
+          <TableHeader>
+            <TableRow>{columns.map((c) => <TableHead key={c.key}>{c.label}</TableHead>)}</TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.map((row, i) => (
+              <TableRow key={i}>
+                {columns.map((c) => (
+                  <TableCell key={c.key} className="text-sm font-mono">
+                    {String(row[c.key] ?? "—")}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+    </>
   );
 }
+
 
 export function DeviceInspectorDialog({ open, onOpenChange, device }: Props) {
   const [tab, setTab] = useState("users");
@@ -88,12 +99,8 @@ export function DeviceInspectorDialog({ open, onOpenChange, device }: Props) {
           </DialogTitle>
         </DialogHeader>
 
-        {device.type !== "mikrotik" && (
-          <div className="flex items-start gap-2 p-3 bg-warning/10 text-warning-foreground rounded text-sm">
-            <AlertCircle className="h-4 w-4 mt-0.5" />
-            <span>{device.type} ভেন্ডর এডাপ্টার এখনো implement করা হয়নি — শুধু MikroTik supported।</span>
-          </div>
-        )}
+
+
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
