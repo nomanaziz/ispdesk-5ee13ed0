@@ -15,7 +15,9 @@ import { toast } from "sonner";
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  editDevice?: { id: string; source: string } | null;
 }
+
 
 // ---------- Catalogs (future-extensible) ----------
 const CATEGORIES = [
