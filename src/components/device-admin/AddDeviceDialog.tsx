@@ -101,6 +101,8 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
     agent_stale_seconds: 180,
     // Server-specific
     os_type: "linux",
+    // OLT
+    pon_type: "gpon" as "epon" | "gpon" | "mixed",
   });
 
   // Load existing row for edit mode
