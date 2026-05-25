@@ -43,13 +43,16 @@ type Row = {
 
 export default function DeviceInventory() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [category, setCategory] = useState("all");
   const [vendorFilter, setVendorFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [dialog, setDialog] = useState<"deploy" | "remove" | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<{ id: string; source: string } | null>(null);
   const [inspectDevice, setInspectDevice] = useState<{ id: string; name: string; type: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
+
 
   const { allowed: canAdd } = usePermission("device.add");
   const { allowed: canDelete } = usePermission("device.delete");
