@@ -1,119 +1,131 @@
-## OLT/ONU Monitoring Module — সম্পূর্ণ ১৭-পয়েন্ট স্পেক
+# OLT/ONU NexOLT-style Mobile App + Reseller Scope
 
-বিদ্যমান ভিত্তি: `olt_devices`, `olt_ports`, `onu_list`, `onu_history`, `olt_mac_table`, `user_onu_mapping`, `alerts` টেবিল এবং `OltDevices`, `OnuList`, `OnuDetail`, `PowerDashboard`, `FiberDownFinder` পেজ + `sync-olt-data`, `snmp-fetch-olt-name`, `snmp-fetch-olt-mac-table`, `map-users-to-onu` edge functions ইতিমধ্যেই আছে। নতুন করে শুরু না করে এগুলোকে শক্ত, সম্পূর্ণ এবং সংযুক্ত করব।
+পুরো OLT/ONU module-কে NexOLT app-এর মত mobile-first design এ rebuild করব, একই সাথে desktop responsive রাখব, এবং reseller-দের জন্য admin-assigned OLT access যোগ করব।
 
-কাজ ৪টা পর্বে ভাগ করা হলো।
+## নতুন routes
 
----
-
-### পর্ব ১ — OLT Add + MikroTik Mapping (প্রথম ডেলিভারি)
-
-`src/pages/dashboard/olt/OltDevices.tsx` উন্নয়ন:
-- **ফর্ম রিফ্যাক্টর**: Basic / CLI Connection / SNMP / Mapping — ৪টা স্পষ্ট সেকশন।
-- **MikroTik mapping জোরালো করা**: dropdown-এ MikroTik এর IP + host + status দেখাবে; নির্বাচিত হলে preview card (router name, host, connected users count)।
-- **Brand options**: huawei / zte / bdcom আলাদাভাবে highlight (user-specified)।
-- **SNMP Test বাটন**: `snmp-fetch-olt-name` কল করে name auto-fill (এটা আছে, UI improve করব)।
-- **Validation (zod)**: IP format, port range, required fields।
-- **List view**: প্রতি OLT row-এ — vendor badge, IP, MikroTik link, live status dot, ONU count (online/total), CPU/Mem, last seen।
-- **Status badge**: online (সবুজ), offline (লাল), unknown (ধূসর) — `last_seen` থেকে গণনা।
-
-DB migration:
-- `olt_devices`-এ যা নেই যোগ: `last_offline_reason text`, `last_seen timestamptz` (যদি না থাকে check করে), index on `(branch_id, status)`।
-
----
-
-### পর্ব ২ — ONU Monitoring + Power Threshold
-
-`OnuList.tsx` rebuild হিসেবে **ONU card grid** (SmartOLT-style):
-- Card-এ: PON port, ONU id, interface, online/offline badge, RX/TX power (color-coded), serial, MAC, model, last offline reason, last seen।
-- **Color logic**:
-  - সবুজ: RX −15 থেকে −25 dBm
-  - হলুদ: RX −25 থেকে −28 dBm
-  - লাল: RX < −28 dBm
-- **ফিল্টার**: OLT, PON port, status, customer name/id, power range।
-- **Linked customer**: `user_onu_mapping` join করে PPPoE username, package, IP, phone দেখাবে।
-- ONU click → `OnuDetail` (already exists) — চার্ট সহ history।
-
-`OnuDetail.tsx` enhance:
-- Recharts দিয়ে RX/TX history line chart (24h / 7d / 30d toggle)।
-- Status timeline (online/offline transitions)।
-
----
-
-### পর্ব ৩ — Dashboard, Alerts, MikroTik User Mapping
-
-**`PowerDashboard.tsx`** → full realtime overview:
-- KPI cards: Total ONU, Online, Offline, Low Power (yellow), Critical (red), Total OLT।
-- Per-PON statistics table (PON utilization %)।
-- "Offline trend" chart (last 24h)।
-- "Worst RX" top-10 list।
-- Realtime: Supabase Realtime subscription on `onu_list` row updates (WebSocket-equivalent)।
-
-**MikroTik User Mapping**:
-- নতুন `OnuUserMapping.tsx` page — manual mapping UI (MAC / serial / username basis)।
-- "Auto-map" বাটন → `map-users-to-onu` edge function কল।
-- Mapping confidence badge (mac+port, mac_only_ambiguous, etc.)।
-
-**Alerts**:
-- Trigger: ONU offline → `alerts` insert; RX power < −28 → critical; sudden drop > 3dBm → warning। `sync-olt-data` ইতিমধ্যেই এই logic আংশিক করে — সম্পূর্ণ করব।
-- Telegram channel: existing `send-telegram-alert` edge function-এ route করব।
-- In-app: `AdminNotificationBell` ইতিমধ্যে আছে — `alerts` table থেকে subscribe।
-
----
-
-### পর্ব ৪ — Agent Contract + Background Polling
-
-ব্যবহারকারী on-prem agent চালাবেন। তাই backend = agent + edge functions।
-
-**Edge function refresh / extension**:
-- `sync-olt-data` (আছে) — agent POST করে ONU list/RX/TX। Documentation দেব।
-- `snmp-fetch-olt-mac-table` (আছে) — MAC FDB push।
-- নতুন: `agent-health-ping` — agent প্রতি ১ মিনিটে ping → `olt_devices.last_seen` update + status গণনা।
-
-**Cron (pg_cron)**:
-- প্রতি ৫ মিনিট: OLT `last_seen > 3min` হলে status = `offline` + alert।
-- প্রতি ১ ঘণ্টা: `onu_history` থেকে ৩০ দিনের পুরোনো row archive/delete।
-
-**Agent docs**: README-তে এক পাতা — কোন endpoint-এ কী POST করতে হবে, sample payload।
-
----
-
-### Technical Details (developer-facing)
-
-```text
-DB migrations:
-  - alter olt_devices: add last_offline_reason, ensure last_seen, index
-  - alter alerts: ensure (severity, created_at) index
-  - pg_cron: olt-offline-detector (*/5 * * * *)
-
-Realtime:
-  - supabase.channel('onu_list').on('postgres_changes', ...)
-  - debounce 2s to avoid spam re-renders
-
-Power color util in src/lib/oltPower.ts:
-  rxColor(dbm) -> 'green'|'yellow'|'red'|'unknown'
-
-Pages touched/created:
-  - OltDevices.tsx (rebuild form + list)        [পর্ব ১]
-  - OnuList.tsx (card grid)                     [পর্ব ২]
-  - OnuDetail.tsx (charts)                      [পর্ব ২]
-  - PowerDashboard.tsx (realtime KPI)           [পর্ব ৩]
-  - OnuUserMapping.tsx (NEW)                    [পর্ব ৩]
-  - lib/oltPower.ts (NEW util)                  [পর্ব ২]
-
-Edge functions:
-  - agent-health-ping (NEW)
-  - sync-olt-data (extend alert logic)
-  - send-telegram-alert (route ONU alerts)
-
-Routes to add in App.tsx:
-  - /dashboard/olt/user-mapping
+```
+/m/olt                        → OLT list (NexOLT home screen)
+/m/olt/:id                    → Overview tab (Connected to / CPU / Memory / Uptime / Device Info)
+/m/olt/:id/onus               → ONU List tab (PON filter, All/Online/Offline tabs, ONU cards)
+/m/olt/:id/onus/:onuId        → ONU detail sheet (Info + Action tabs)
+/m/olt/:id/more               → Advanced Diagnostics grid (Uplink, PON, MAC Table, Down, Health, Reader)
+/m/olt/calculator             → Optical Power & Splitter Calculator (modal-style)
+/m/olt/mac-table              → Global MAC table viewer
 ```
 
-স্কোপের বাইরে রাখা (পরে দরকার হলে): Three.js network map, advanced gesture UI, multi-OLT-to-multi-MikroTik junction (১:১ approved)।
+Bottom tab bar প্রতি OLT screen-এ: **Overview · ONU List · More** (image-293/295 অনুসারে)। Top-level `/m/olt` screen-এ shortcut + calculator + settings আইকন (image-296)।
 
----
+Desktop responsive: existing `/dashboard/olt/*` pages-গুলো একই data hooks share করবে, mobile route থাকলে phone থেকে auto-redirect হবে `/m/olt`-এ।
 
-### Delivery Order
+## Screens — design details
 
-1. **পর্ব ১** আগে শেষ করব এবং চালু অবস্থায় দেখাব — তারপরই পরের পর্বে যাব। প্রতি পর্বের শেষে আপনি verify করবেন।
+### 1. `/m/olt` — OLT List (image-296 style)
+- Top bar: brand name + `+` (Add OLT) + calculator + settings আইকন
+- Filter chips row: **ALL / Search / Vendor chips** (BDCOM, BDPON, VSOL, C-DATA, MikroTik...)
+- OLT card: brand logo box (left), name + vendor·protocol (right), live status dot, `×` quick action
+- Long-press → action sheet (Edit / Delete / Assign to reseller)
+
+### 2. `/m/olt/:id` Overview (image-293)
+- Gradient hero card: brand logo + "Connected to {alias}" + Total ONUs `{online}/{total}` + CPU% / Memory% / Uptime tiles
+- Device Information card: Serial / HW / FW / MAC / Model / Software time
+- System Information card: System Name / System Time / License limit
+- 4 action buttons: **Refresh Information** (blue), **Disconnect from OLT** (red), **Save Configuration** (green), **Reboot OLT** (orange)
+
+### 3. `/m/olt/:id/onus` ONU List (image-292)
+- PON dropdown (PON1, PON2...) + refresh + search icon row
+- 3-tab pill: **All ({n}) / Online ({n}) / Offline ({n})**
+- ONU card layout:
+  - ONU icon (left) — distinct icon per status (online: blue/yellow port, offline: greyed)
+  - **Name** = MAC-based name (fallback to PPPoE user থাকলে username)
+  - Sub-line: `interface` (GPON0/1:5)
+  - Right: **Online/Offline** pill (green/red)
+  - Divider line
+  - Bottom row: `MAC | Model` left, `RX Power: -19.71 dBm` right
+  - Offline এ red border + extra row: **Reason: {last_offline_reason}**, **Distance: {distance} m**
+
+### 4. `/m/olt/:id/onus/:onuId` ONU Detail (image-297, 298)
+- Bottom sheet (mobile) / dialog (desktop), title `ONU Details: {name}` + pencil edit icon
+- 2-tab pill: **INFO / ACTION**
+- INFO tab fields: ONU ID, MAC Address, Status, **Distance**, Alive Time, Last Register, Vendor ID, Model ID, ONU Type, Ethernet Count, WiFi Count, Response Time, Temperature, Receive Power
+- ACTION tab buttons (gradient): **Reboot ONU** (orange), **Bind Profile** (blue), **ONU MAC Table** (green), **ONU Port Status** (purple)
+
+### 5. `/m/olt/:id/more` Advanced Diagnostics (image-295)
+- 2-column tile grid: Uplink Ports, PON Ports, MAC Table, ONU Down Detection, ONU Health, ONU Reader, NEXSYNC (agent sync)
+
+### 6. `/m/olt/calculator` Optical Link Calculator (image-294)
+- 2-tab: **SPLITTER / DISTANCE**
+- Splitter: Input Power (dBm) + Splitter Type dropdown (10:90, 20:80, 30:70, 40:60, 50:50, 1:2, 1:4, 1:8, 1:16, 1:32, 1:64) → result cards with output dBm
+- Distance: Input Power + Distance (km) + Cable loss (dB/km, default 0.35) → output dBm
+
+## Reseller OLT Access (Admin-assigned)
+
+নতুন table:
+```
+olt_reseller_access (
+  id uuid pk,
+  olt_id uuid → olt_devices,
+  reseller_branch_manager_id uuid → branch_managers,
+  granted_by uuid (admin),
+  granted_at timestamptz,
+  unique(olt_id, reseller_branch_manager_id)
+)
+```
+
+- Admin UI: `/dashboard/olt/:id` edit form-এ নতুন section **"Assign to Reseller(s)"** — multi-select dropdown of resellers (multiple OLT একজনের / একটা OLT একাধিক reseller — সব valid)
+- RLS: reseller (POP user) `olt_devices` SELECT করতে পারবে যদি branch_id own করে **অথবা** `olt_reseller_access`-এ entry থাকে
+- Reseller mobile/portal-এ same `/m/olt` route, কিন্তু list filtered হবে assigned OLT-গুলোতে
+- Reseller-কে write action (delete OLT, edit) দেওয়া হবে না — শুধু read + ONU read + reboot ONU permission
+
+## Data — distance & last_offline_reason
+
+`onu_list` table-এ নতুন columns:
+- `distance_m integer` (meters)
+- `last_offline_at timestamptz`
+- `last_offline_reason text` (DyingGasp, LOS, LOSi, PowerOff, LinkLoss, etc.)
+- `alive_time interval`
+- `temperature numeric`
+
+**Two data paths:**
+1. **Agent push (priority)** — `sync-olt-data` edge function extend, agent পাঠাবে `distance`, `offline_reason`, `temperature`, `alive_time`। Status transition online→offline হলে current timestamp + reason snapshot save।
+2. **SNMP fallback** — নতুন edge function `snmp-fetch-onu-distance` (Huawei/ZTE/VSOL/BDCOM OID set), `/dashboard/olt/:id/onus` থেকে manual "Refresh" trigger।
+
+## Files
+
+**New (mobile shell + screens):**
+- `src/components/olt-mobile/OltMobileShell.tsx` — bottom tab + scope theme
+- `src/components/olt-mobile/OltCard.tsx`, `OnuCard.tsx`, `OltHeroCard.tsx`, `ActionButton.tsx`, `VendorIcon.tsx`
+- `src/pages/olt-mobile/OltList.tsx`
+- `src/pages/olt-mobile/OltOverview.tsx`
+- `src/pages/olt-mobile/OltOnuList.tsx`
+- `src/pages/olt-mobile/OnuDetailSheet.tsx`
+- `src/pages/olt-mobile/OltMore.tsx`
+- `src/pages/olt-mobile/OpticalCalculator.tsx`
+- `src/pages/olt-mobile/MacTable.tsx`
+- `src/pages/olt-mobile/OnuHealth.tsx`
+- `src/lib/opticalCalc.ts` — splitter loss table + distance loss formula
+- `src/hooks/useOltAccess.ts` — admin vs reseller filter helper
+
+**Modify:**
+- `src/App.tsx` — add `/m/olt/*` routes, mobile detect redirect for `/dashboard/olt` on small screens (toggle-able)
+- `src/pages/dashboard/olt/OltDevices.tsx` — add "Assign to Resellers" section
+- `supabase/functions/sync-olt-data/index.ts` — accept distance/reason/temperature, snapshot last_offline_reason on transition
+
+**New edge function:**
+- `supabase/functions/snmp-fetch-onu-distance/index.ts` — vendor-specific OID GET for distance + last alarm
+
+## Migrations
+
+1. `onu_list` add: `distance_m`, `last_offline_at`, `last_offline_reason`, `alive_time`, `temperature`, `vendor_id`, `model_id`, `onu_type`, `ethernet_count`, `wifi_count`, `response_time_ms`
+2. `olt_reseller_access` table + RLS
+3. Update RLS on `olt_devices` and `onu_list` to honor reseller access
+4. Index: `onu_list(olt_id, status, interface)`, `olt_reseller_access(reseller_branch_manager_id)`
+
+## Execution order (4 parts)
+
+**Part A — DB + RLS:** migration for ONU columns, `olt_reseller_access`, updated RLS
+**Part B — Mobile shell + OLT list + Overview:** routes, shell, list/overview screens with NexOLT visual fidelity
+**Part C — ONU list + Detail sheet + Calculator:** card grid, info/action tabs, optical calculator
+**Part D — More menu + MAC table + Health + Reseller assignment UI + agent extension**
+
+Approve করলে Part A থেকে শুরু করব।
