@@ -74,8 +74,9 @@ const VENDOR_TO_PROFILE: Record<string, string> = {
 
 const DEFAULT_PORT: Record<string, string> = { api: "80", ssh: "22", telnet: "23", snmp: "161", radius: "1812" };
 
-export function AddDeviceDialog({ open, onOpenChange }: Props) {
+export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
   const qc = useQueryClient();
+  const isEdit = !!editDevice && editDevice.source === "device_admin_managed_devices";
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -101,6 +102,41 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
     // Server-specific
     os_type: "linux",
   });
+
+  // Load existing row for edit mode
+  useEffect(() => {
+    if (!open || !isEdit || !editDevice) return;
+    (async () => {
+      const { data } = await supabase
+        .from("device_admin_managed_devices")
+        .select("*")
+        .eq("id", editDevice.id)
+        .single();
+      if (!data) return;
+      setForm((f) => ({
+        ...f,
+        name: data.name || "",
+        category: data.category || "router",
+        vendor: data.vendor || "other",
+        protocol: data.protocol || "snmp",
+        ip_address: data.ip_address || "",
+        port: data.port ? String(data.port) : "",
+        username: data.username || "",
+        password: data.password_encrypted || "",
+        enable_password: data.enable_password || "",
+        location: data.location || "",
+        snmp_ip: data.snmp_ip || "",
+        snmp_port: data.snmp_port || 161,
+        snmp_community: data.snmp_community || "public",
+        snmp_version: data.snmp_version || "v2c",
+        oid_profile_id: data.oid_profile_id || "",
+        agent_enabled: !!data.agent_enabled,
+        data_source_priority: data.data_source_priority || "snmp_first",
+        agent_stale_seconds: data.agent_stale_seconds || 180,
+      }));
+    })();
+  }, [open, isEdit, editDevice]);
+
 
   const set = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
 
