@@ -210,6 +210,21 @@ export default function DeviceInventory() {
                         <Button size="icon" variant="ghost" className="h-8 w-8" title="ইন্সপেক্ট" onClick={() => setInspectDevice({ id: d.id, name: d.name, type: d.category === "router" && d.vendor === "mikrotik" ? "mikrotik" : d.category })}>
                           <Search className="h-4 w-4" />
                         </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" title="Edit" onClick={() => {
+                          if (d.source === "mikrotik_devices") {
+                            toast.info("MikroTik device — Mikrotik → Servers page থেকে edit করুন");
+                            navigate("/dashboard/mikrotik/servers");
+                            return;
+                          }
+                          if (d.source !== "device_admin_managed_devices") {
+                            toast.info("এই source-এর device এখান থেকে edit করা যায় না");
+                            return;
+                          }
+                          setEditTarget({ id: d.id, source: d.source });
+                          setAddOpen(true);
+                        }}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         {canDelete && (
                           <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" title="Delete" onClick={() => setDeleteTarget(d)}>
                             <Trash2 className="h-4 w-4" />
@@ -217,6 +232,7 @@ export default function DeviceInventory() {
                         )}
                       </div>
                     </TableCell>
+
                   </TableRow>
                 );
               })}
