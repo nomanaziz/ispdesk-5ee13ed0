@@ -88,12 +88,8 @@ export function DeviceInspectorDialog({ open, onOpenChange, device }: Props) {
           </DialogTitle>
         </DialogHeader>
 
-        {device.type !== "mikrotik" && (
-          <div className="flex items-start gap-2 p-3 bg-warning/10 text-warning-foreground rounded text-sm">
-            <AlertCircle className="h-4 w-4 mt-0.5" />
-            <span>{device.type} ভেন্ডর এডাপ্টার এখনো implement করা হয়নি — শুধু MikroTik supported।</span>
-          </div>
-        )}
+
+
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
