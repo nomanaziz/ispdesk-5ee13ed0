@@ -39,6 +39,10 @@ const emptyForm = {
   branch_id: null as string | null, mikrotik_id: null as string | null, description: "",
   snmp_enabled: false, snmp_ip: "", snmp_port: 161, snmp_community: "public",
   snmp_version: "v2c", brand_model: "", olt_version: "",
+  data_source_priority: "agent_first" as "agent_first" | "snmp_first" | "agent_only" | "snmp_only",
+  agent_enabled: true,
+  snmp_fallback_enabled: true,
+  agent_stale_seconds: 180,
 };
 
 // Live status from last_seen (online if seen ≤3 min ago)
@@ -133,6 +137,10 @@ export default function OltDevices() {
         snmp_port: form.snmp_port, snmp_community: form.snmp_community || "public",
         snmp_version: form.snmp_version, brand_model: form.brand_model || null,
         olt_version: form.olt_version || null,
+        data_source_priority: form.data_source_priority,
+        agent_enabled: form.agent_enabled,
+        snmp_fallback_enabled: form.snmp_fallback_enabled,
+        agent_stale_seconds: Math.max(30, Number(form.agent_stale_seconds) || 180),
       };
       if (editId) {
         const { error } = await supabase.from("olt_devices").update(payload).eq("id", editId);
@@ -205,6 +213,10 @@ export default function OltDevices() {
       snmp_port: d.snmp_port ?? 161, snmp_community: d.snmp_community || "public",
       snmp_version: d.snmp_version || "v2c", brand_model: d.brand_model || "",
       olt_version: d.olt_version || "",
+      data_source_priority: d.data_source_priority || "agent_first",
+      agent_enabled: d.agent_enabled ?? true,
+      snmp_fallback_enabled: d.snmp_fallback_enabled ?? true,
+      agent_stale_seconds: d.agent_stale_seconds ?? 180,
     });
     setOpen(true);
   };
@@ -496,6 +508,59 @@ export default function OltDevices() {
                   <p className="text-[11px] text-muted-foreground pt-1">এই MikroTik-এর PPPoE users এর সাথে OLT-র ONU auto-mapping হবে।</p>
                 </div>
               )}
+              {/* Section: Data Source (Agent / SNMP) */}
+              <div className="md:col-span-2 border-t pt-4 mt-2">
+                <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Data Source — Agent / SNMP</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <Label>Priority</Label>
+                    <Select
+                      value={form.data_source_priority}
+                      onValueChange={(v: any) => setForm((f) => ({ ...f, data_source_priority: v }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="agent_first">Agent first (SNMP fallback)</SelectItem>
+                        <SelectItem value="snmp_first">SNMP first</SelectItem>
+                        <SelectItem value="agent_only">Agent only</SelectItem>
+                        <SelectItem value="snmp_only">SNMP only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground pt-1">কোন উৎসকে primary হিসেবে ব্যবহার করা হবে</p>
+                  </div>
+                  <div>
+                    <Label>Agent stale threshold (সেকেন্ড)</Label>
+                    <Input
+                      type="number"
+                      min={30}
+                      value={form.agent_stale_seconds}
+                      onChange={(e) => setForm((f) => ({ ...f, agent_stale_seconds: Number(e.target.value) || 180 }))}
+                    />
+                    <p className="text-[11px] text-muted-foreground pt-1">কতো সেকেন্ড agent silent থাকলে SNMP fallback active হবে</p>
+                  </div>
+                  <div className="flex items-center justify-between rounded-md border p-3">
+                    <div>
+                      <Label className="cursor-pointer">Agent Enabled</Label>
+                      <p className="text-[11px] text-muted-foreground">Polling agent থেকে data নেওয়া হবে</p>
+                    </div>
+                    <Switch
+                      checked={form.agent_enabled}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, agent_enabled: v }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-md border p-3">
+                    <div>
+                      <Label className="cursor-pointer">SNMP Fallback</Label>
+                      <p className="text-[11px] text-muted-foreground">Agent fail হলে SNMP try করা হবে</p>
+                    </div>
+                    <Switch
+                      checked={form.snmp_fallback_enabled}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, snmp_fallback_enabled: v }))}
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div><Label>বিবরণ</Label><Textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} /></div>
             </div>
           </div>
