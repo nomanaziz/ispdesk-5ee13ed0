@@ -140,8 +140,9 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
 
   const set = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
 
-  // Reset vendor + protocol when category changes
+  // Reset vendor + protocol when category changes (skip in edit mode to preserve loaded values)
   useEffect(() => {
+    if (isEdit) return;
     const vendors = VENDORS_BY_CATEGORY[form.category] || [];
     const protos = PROTOCOLS_BY_CATEGORY[form.category] || [];
     setForm((f) => ({
@@ -152,6 +153,7 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.category]);
+
 
   // Auto port default
   useEffect(() => {
