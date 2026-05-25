@@ -14,8 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Plus, Server, Wifi, WifiOff, Cpu, Pencil, Trash2, Search, Download, Loader2,
-  Router, CheckCircle2, AlertCircle, Circle, Users,
+  Router, CheckCircle2, AlertCircle, Circle, Users, RefreshCw,
 } from "lucide-react";
+
 import ResellerAccessDialog from "@/components/olt/ResellerAccessDialog";
 import { z } from "zod";
 
@@ -163,6 +164,48 @@ export default function OltDevices() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["olt-devices"] }); toast.success("মুছে ফেলা হয়েছে"); },
   });
 
+  const syncOne = async (oltId: string): Promise<{ ok: boolean; msg: string; count?: number }> => {
+    try {
+      const { data, error } = await supabase.functions.invoke("snmp-poll-device", { body: { device_id: oltId } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const count = data?.processed ?? data?.inserted ?? data?.onu_count ?? 0;
+      return { ok: true, msg: `${count} ONU synced`, count };
+    } catch (e: any) {
+      return { ok: false, msg: e.message || "Sync failed" };
+    }
+  };
+
+  const syncOneMut = useMutation({
+    mutationFn: async (id: string) => {
+      const r = await syncOne(id);
+      if (!r.ok) throw new Error(r.msg);
+      return r;
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["olt-devices"] });
+      qc.invalidateQueries({ queryKey: ["onu-counts-by-olt"] });
+      toast.success(r.msg);
+    },
+    onError: (e: any) => toast.error(e.message || "Sync failed"),
+  });
+
+  const syncAllMut = useMutation({
+    mutationFn: async () => {
+      const results = await Promise.all(devices.map((d: any) => syncOne(d.id)));
+      const ok = results.filter((r) => r.ok).length;
+      const fail = results.length - ok;
+      return { ok, fail };
+    },
+    onSuccess: ({ ok, fail }) => {
+      qc.invalidateQueries({ queryKey: ["olt-devices"] });
+      qc.invalidateQueries({ queryKey: ["onu-counts-by-olt"] });
+      if (fail === 0) toast.success(`সব ${ok}টা OLT sync হয়েছে`);
+      else toast.warning(`${ok} সফল, ${fail} ব্যর্থ`);
+    },
+  });
+
+
   const fetchSnmpName = async () => {
     const ip = form.snmp_ip || form.ip_address;
     if (!ip) { toast.error("আগে IP দিন"); return; }
@@ -239,7 +282,14 @@ export default function OltDevices() {
           <h1 className="text-2xl font-bold text-foreground">OLT ডিভাইস</h1>
           <p className="text-muted-foreground text-sm">সকল OLT ডিভাইস ম্যানেজমেন্ট ও MikroTik ম্যাপিং</p>
         </div>
-        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-1" /> OLT যোগ করুন</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => syncAllMut.mutate()} disabled={syncAllMut.isPending || devices.length === 0}>
+            {syncAllMut.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+            Sync All
+          </Button>
+          <Button onClick={openAdd}><Plus className="h-4 w-4 mr-1" /> OLT যোগ করুন</Button>
+        </div>
+
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -341,6 +391,11 @@ export default function OltDevices() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" title="Sync now" onClick={() => syncOneMut.mutate(d.id)} disabled={syncOneMut.isPending}>
+                            {syncOneMut.isPending && syncOneMut.variables === d.id
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <RefreshCw className="h-4 w-4 text-emerald-600" />}
+                          </Button>
                           <Button variant="ghost" size="icon" title="Reseller Access" onClick={() => setAccessOlt({ id: d.id, name: d.name })}>
                             <Users className="h-4 w-4 text-blue-500" />
                           </Button>
@@ -348,6 +403,7 @@ export default function OltDevices() {
                           <Button variant="ghost" size="icon" onClick={() => { if (confirm("মুছে ফেলতে চান?")) delMut.mutate(d.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
                       </TableCell>
+
                     </TableRow>
                   );
                 })}
