@@ -391,6 +391,11 @@ export default function OltDevices() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" title="Sync now" onClick={() => syncOneMut.mutate(d.id)} disabled={syncOneMut.isPending}>
+                            {syncOneMut.isPending && syncOneMut.variables === d.id
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <RefreshCw className="h-4 w-4 text-emerald-600" />}
+                          </Button>
                           <Button variant="ghost" size="icon" title="Reseller Access" onClick={() => setAccessOlt({ id: d.id, name: d.name })}>
                             <Users className="h-4 w-4 text-blue-500" />
                           </Button>
@@ -398,6 +403,7 @@ export default function OltDevices() {
                           <Button variant="ghost" size="icon" onClick={() => { if (confirm("মুছে ফেলতে চান?")) delMut.mutate(d.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
                       </TableCell>
+
                     </TableRow>
                   );
                 })}
