@@ -4111,6 +4111,7 @@ export type Database = {
           name: string
           oid_profile_id: string | null
           password_encrypted: string | null
+          pon_type: string | null
           port: number | null
           protocol: string
           snmp_community: string
@@ -4140,6 +4141,7 @@ export type Database = {
           name: string
           oid_profile_id?: string | null
           password_encrypted?: string | null
+          pon_type?: string | null
           port?: number | null
           protocol?: string
           snmp_community?: string
@@ -4169,6 +4171,7 @@ export type Database = {
           name?: string
           oid_profile_id?: string | null
           password_encrypted?: string | null
+          pon_type?: string | null
           port?: number | null
           protocol?: string
           snmp_community?: string
@@ -6268,6 +6271,7 @@ export type Database = {
           olt_version: string | null
           online_onus: number | null
           password_encrypted: string | null
+          pon_type: string | null
           port: number
           serial_number: string | null
           snmp_community: string | null
@@ -6312,6 +6316,7 @@ export type Database = {
           olt_version?: string | null
           online_onus?: number | null
           password_encrypted?: string | null
+          pon_type?: string | null
           port?: number
           serial_number?: string | null
           snmp_community?: string | null
@@ -6356,6 +6361,7 @@ export type Database = {
           olt_version?: string | null
           online_onus?: number | null
           password_encrypted?: string | null
+          pon_type?: string | null
           port?: number
           serial_number?: string | null
           snmp_community?: string | null
