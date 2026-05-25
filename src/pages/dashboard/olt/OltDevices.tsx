@@ -507,6 +507,8 @@ export default function OltDevices() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ResellerAccessDialog open={!!accessOlt} onOpenChange={(v) => !v && setAccessOlt(null)} olt={accessOlt} />
     </div>
   );
 }
