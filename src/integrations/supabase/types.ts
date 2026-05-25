@@ -4095,63 +4095,101 @@ export type Database = {
       }
       device_admin_managed_devices: {
         Row: {
+          agent_enabled: boolean
+          agent_stale_seconds: number
           backup_schedule: string
           category: string
           created_at: string
           created_by: string | null
+          data_source_priority: string
           enable_password: string | null
+          fallback_protocol: string | null
           group_id: string | null
           id: string
           ip_address: string | null
           location: string | null
           name: string
+          oid_profile_id: string | null
           password_encrypted: string | null
           port: number | null
           protocol: string
+          snmp_community: string
+          snmp_enabled: boolean
+          snmp_ip: string | null
+          snmp_port: number
+          snmp_version: string
           status: string
           updated_at: string
           username: string | null
           vendor: string
         }
         Insert: {
+          agent_enabled?: boolean
+          agent_stale_seconds?: number
           backup_schedule?: string
           category?: string
           created_at?: string
           created_by?: string | null
+          data_source_priority?: string
           enable_password?: string | null
+          fallback_protocol?: string | null
           group_id?: string | null
           id?: string
           ip_address?: string | null
           location?: string | null
           name: string
+          oid_profile_id?: string | null
           password_encrypted?: string | null
           port?: number | null
           protocol?: string
+          snmp_community?: string
+          snmp_enabled?: boolean
+          snmp_ip?: string | null
+          snmp_port?: number
+          snmp_version?: string
           status?: string
           updated_at?: string
           username?: string | null
           vendor?: string
         }
         Update: {
+          agent_enabled?: boolean
+          agent_stale_seconds?: number
           backup_schedule?: string
           category?: string
           created_at?: string
           created_by?: string | null
+          data_source_priority?: string
           enable_password?: string | null
+          fallback_protocol?: string | null
           group_id?: string | null
           id?: string
           ip_address?: string | null
           location?: string | null
           name?: string
+          oid_profile_id?: string | null
           password_encrypted?: string | null
           port?: number | null
           protocol?: string
+          snmp_community?: string
+          snmp_enabled?: boolean
+          snmp_ip?: string | null
+          snmp_port?: number
+          snmp_version?: string
           status?: string
           updated_at?: string
           username?: string | null
           vendor?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "device_admin_managed_devices_oid_profile_id_fkey"
+            columns: ["oid_profile_id"]
+            isOneToOne: false
+            referencedRelation: "device_vendor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       device_admin_schedules: {
         Row: {
@@ -4287,6 +4325,47 @@ export type Database = {
         }
         Relationships: []
       }
+      device_oid_mappings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          metric_key: string
+          oid: string
+          oid_type: string
+          profile_id: string
+          value_transform: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          metric_key: string
+          oid: string
+          oid_type?: string
+          profile_id: string
+          value_transform?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          metric_key?: string
+          oid?: string
+          oid_type?: string
+          profile_id?: string
+          value_transform?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_oid_mappings_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "device_vendor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_permissions: {
         Row: {
           created_at: string
@@ -4314,6 +4393,42 @@ export type Database = {
           scope?: string
           scope_id?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      device_vendor_profiles: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          device_category: string
+          display_name: string
+          id: string
+          is_system: boolean
+          notes: string | null
+          updated_at: string
+          vendor_key: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          device_category?: string
+          display_name: string
+          id?: string
+          is_system?: boolean
+          notes?: string | null
+          updated_at?: string
+          vendor_key: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          device_category?: string
+          display_name?: string
+          id?: string
+          is_system?: boolean
+          notes?: string | null
+          updated_at?: string
+          vendor_key?: string
         }
         Relationships: []
       }
