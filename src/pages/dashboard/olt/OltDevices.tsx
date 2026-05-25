@@ -39,6 +39,10 @@ const emptyForm = {
   branch_id: null as string | null, mikrotik_id: null as string | null, description: "",
   snmp_enabled: false, snmp_ip: "", snmp_port: 161, snmp_community: "public",
   snmp_version: "v2c", brand_model: "", olt_version: "",
+  data_source_priority: "agent_first" as "agent_first" | "snmp_first" | "agent_only" | "snmp_only",
+  agent_enabled: true,
+  snmp_fallback_enabled: true,
+  agent_stale_seconds: 180,
 };
 
 // Live status from last_seen (online if seen ≤3 min ago)
