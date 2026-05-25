@@ -138,6 +138,12 @@ const PowerDashboard = lazy(() => import("@/pages/dashboard/olt/PowerDashboard")
 const UserDownCount = lazy(() => import("@/pages/dashboard/olt/UserDownCount"));
 const FiberDownFinder = lazy(() => import("@/pages/dashboard/olt/FiberDownFinder"));
 const OltSharing = lazy(() => import("@/pages/dashboard/olt/OltSharing"));
+// OLT Mobile (NexOLT-style)
+const MOltList = lazy(() => import("@/pages/olt-mobile/OltList"));
+const MOltOverview = lazy(() => import("@/pages/olt-mobile/OltOverview"));
+const MOltOnuList = lazy(() => import("@/pages/olt-mobile/OltOnuList"));
+const MOltMore = lazy(() => import("@/pages/olt-mobile/OltMore"));
+const MOpticalCalc = lazy(() => import("@/pages/olt-mobile/OpticalCalculator"));
 
 const NetworkSwitchList = lazy(() => import("@/pages/dashboard/network/SwitchList"));
 const NetworkSwitchDetail = lazy(() => import("@/pages/dashboard/network/SwitchDetail"));
