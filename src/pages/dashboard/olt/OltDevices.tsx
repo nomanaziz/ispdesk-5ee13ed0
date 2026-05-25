@@ -137,6 +137,10 @@ export default function OltDevices() {
         snmp_port: form.snmp_port, snmp_community: form.snmp_community || "public",
         snmp_version: form.snmp_version, brand_model: form.brand_model || null,
         olt_version: form.olt_version || null,
+        data_source_priority: form.data_source_priority,
+        agent_enabled: form.agent_enabled,
+        snmp_fallback_enabled: form.snmp_fallback_enabled,
+        agent_stale_seconds: Math.max(30, Number(form.agent_stale_seconds) || 180),
       };
       if (editId) {
         const { error } = await supabase.from("olt_devices").update(payload).eq("id", editId);
