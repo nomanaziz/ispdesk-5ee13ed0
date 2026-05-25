@@ -6127,18 +6127,23 @@ export type Database = {
       }
       olt_devices: {
         Row: {
+          agent_enabled: boolean
+          agent_last_seen: string | null
+          agent_stale_seconds: number
           branch_id: string | null
           brand_model: string | null
           connection_type: Database["public"]["Enums"]["connection_type"]
           cpu_usage: number | null
           created_at: string
           credentials_encrypted: string | null
+          data_source_priority: string
           description: string | null
           device_model: string | null
           firmware_version: string | null
           hardware_version: string | null
           id: string
           ip_address: string
+          last_data_source: string | null
           last_offline_reason: string | null
           last_seen: string | null
           mac_address: string | null
@@ -6152,7 +6157,9 @@ export type Database = {
           serial_number: string | null
           snmp_community: string | null
           snmp_enabled: boolean | null
+          snmp_fallback_enabled: boolean
           snmp_ip: string | null
+          snmp_last_seen: string | null
           snmp_port: number | null
           snmp_version: string | null
           status: Database["public"]["Enums"]["device_status"]
@@ -6164,18 +6171,23 @@ export type Database = {
           vendor: Database["public"]["Enums"]["olt_vendor"]
         }
         Insert: {
+          agent_enabled?: boolean
+          agent_last_seen?: string | null
+          agent_stale_seconds?: number
           branch_id?: string | null
           brand_model?: string | null
           connection_type?: Database["public"]["Enums"]["connection_type"]
           cpu_usage?: number | null
           created_at?: string
           credentials_encrypted?: string | null
+          data_source_priority?: string
           description?: string | null
           device_model?: string | null
           firmware_version?: string | null
           hardware_version?: string | null
           id?: string
           ip_address: string
+          last_data_source?: string | null
           last_offline_reason?: string | null
           last_seen?: string | null
           mac_address?: string | null
@@ -6189,7 +6201,9 @@ export type Database = {
           serial_number?: string | null
           snmp_community?: string | null
           snmp_enabled?: boolean | null
+          snmp_fallback_enabled?: boolean
           snmp_ip?: string | null
+          snmp_last_seen?: string | null
           snmp_port?: number | null
           snmp_version?: string | null
           status?: Database["public"]["Enums"]["device_status"]
@@ -6201,18 +6215,23 @@ export type Database = {
           vendor?: Database["public"]["Enums"]["olt_vendor"]
         }
         Update: {
+          agent_enabled?: boolean
+          agent_last_seen?: string | null
+          agent_stale_seconds?: number
           branch_id?: string | null
           brand_model?: string | null
           connection_type?: Database["public"]["Enums"]["connection_type"]
           cpu_usage?: number | null
           created_at?: string
           credentials_encrypted?: string | null
+          data_source_priority?: string
           description?: string | null
           device_model?: string | null
           firmware_version?: string | null
           hardware_version?: string | null
           id?: string
           ip_address?: string
+          last_data_source?: string | null
           last_offline_reason?: string | null
           last_seen?: string | null
           mac_address?: string | null
@@ -6226,7 +6245,9 @@ export type Database = {
           serial_number?: string | null
           snmp_community?: string | null
           snmp_enabled?: boolean | null
+          snmp_fallback_enabled?: boolean
           snmp_ip?: string | null
+          snmp_last_seen?: string | null
           snmp_port?: number | null
           snmp_version?: string | null
           status?: Database["public"]["Enums"]["device_status"]
@@ -6443,6 +6464,7 @@ export type Database = {
           ethernet_count: number | null
           id: string
           interface: string | null
+          last_data_source: string | null
           last_offline_at: string | null
           last_register_at: string | null
           last_seen: string | null
@@ -6469,6 +6491,7 @@ export type Database = {
           ethernet_count?: number | null
           id?: string
           interface?: string | null
+          last_data_source?: string | null
           last_offline_at?: string | null
           last_register_at?: string | null
           last_seen?: string | null
@@ -6495,6 +6518,7 @@ export type Database = {
           ethernet_count?: number | null
           id?: string
           interface?: string | null
+          last_data_source?: string | null
           last_offline_at?: string | null
           last_register_at?: string | null
           last_seen?: string | null
