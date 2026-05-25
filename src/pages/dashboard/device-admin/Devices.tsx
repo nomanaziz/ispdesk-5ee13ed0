@@ -67,9 +67,13 @@ export default function DeviceInventory() {
         supabase.from("zkteco_devices").select("id,name,ip_address,status,location"),
         supabase.from("device_admin_managed_devices").select("id,name,category,vendor,ip_address,status,location"),
       ]);
+      const managedIds = new Set(((mg.data ?? []) as any[]).map((d) => d.id));
       return [
         ...((mk.data ?? []) as any[]).map((d) => ({ ...d, category: "router", vendor: "mikrotik", source: "mikrotik_devices" as const })),
-        ...((olt.data ?? []) as any[]).map((d) => ({ ...d, category: "olt", vendor: d.vendor || "—", source: "olt_devices" as const })),
+        // skip olt rows that are mirrors of managed_devices (same id) to avoid duplicate listing
+        ...((olt.data ?? []) as any[])
+          .filter((d) => !managedIds.has(d.id))
+          .map((d) => ({ ...d, category: "olt", vendor: d.vendor || "—", source: "olt_devices" as const })),
         ...((sw.data ?? []) as any[]).map((d) => ({ ...d, category: "switch", vendor: "—", source: "pop_devices" as const })),
         ...((zk.data ?? []) as any[]).map((d) => ({ ...d, category: "zkteco", vendor: "zkteco", source: "zkteco_devices" as const })),
         ...((mg.data ?? []) as any[]).map((d) => ({ ...d, category: d.category || "other", vendor: d.vendor || "—", source: "device_admin_managed_devices" as const })),
