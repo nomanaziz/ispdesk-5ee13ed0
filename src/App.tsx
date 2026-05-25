@@ -138,6 +138,12 @@ const PowerDashboard = lazy(() => import("@/pages/dashboard/olt/PowerDashboard")
 const UserDownCount = lazy(() => import("@/pages/dashboard/olt/UserDownCount"));
 const FiberDownFinder = lazy(() => import("@/pages/dashboard/olt/FiberDownFinder"));
 const OltSharing = lazy(() => import("@/pages/dashboard/olt/OltSharing"));
+// OLT Mobile (NexOLT-style)
+const MOltList = lazy(() => import("@/pages/olt-mobile/OltList"));
+const MOltOverview = lazy(() => import("@/pages/olt-mobile/OltOverview"));
+const MOltOnuList = lazy(() => import("@/pages/olt-mobile/OltOnuList"));
+const MOltMore = lazy(() => import("@/pages/olt-mobile/OltMore"));
+const MOpticalCalc = lazy(() => import("@/pages/olt-mobile/OpticalCalculator"));
 
 const NetworkSwitchList = lazy(() => import("@/pages/dashboard/network/SwitchList"));
 const NetworkSwitchDetail = lazy(() => import("@/pages/dashboard/network/SwitchDetail"));
@@ -581,6 +587,13 @@ const App = () => (
               <Route path="/dashboard/olt/user-down" element={<P><UserDownCount /></P>} />
               <Route path="/dashboard/olt/fiber-down" element={<P><FiberDownFinder /></P>} />
               <Route path="/dashboard/olt/sharing" element={<P><OltSharing /></P>} />
+
+              {/* OLT Mobile (NexOLT-style) */}
+              <Route path="/m/olt" element={<P><MOltList /></P>} />
+              <Route path="/m/olt/calculator" element={<P><MOpticalCalc /></P>} />
+              <Route path="/m/olt/:id" element={<P><MOltOverview /></P>} />
+              <Route path="/m/olt/:id/onus" element={<P><MOltOnuList /></P>} />
+              <Route path="/m/olt/:id/more" element={<P><MOltMore /></P>} />
 
               {/* Network — Switches */}
               <Route path="/dashboard/network/switches" element={<P><NetworkSwitchList /></P>} />

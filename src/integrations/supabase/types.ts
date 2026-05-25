@@ -6359,6 +6359,45 @@ export type Database = {
           },
         ]
       }
+      olt_reseller_access: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          id: string
+          olt_id: string
+          reseller_branch_manager_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          olt_id: string
+          reseller_branch_manager_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          olt_id?: string
+          reseller_branch_manager_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "olt_reseller_access_olt_id_fkey"
+            columns: ["olt_id"]
+            isOneToOne: false
+            referencedRelation: "olt_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "olt_reseller_access_reseller_branch_manager_id_fkey"
+            columns: ["reseller_branch_manager_id"]
+            isOneToOne: false
+            referencedRelation: "branch_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onu_history: {
         Row: {
           id: string
@@ -6396,49 +6435,82 @@ export type Database = {
       }
       onu_list: {
         Row: {
+          alive_seconds: number | null
           created_at: string
           description: string | null
           distance: number | null
+          distance_m: number | null
+          ethernet_count: number | null
           id: string
           interface: string | null
+          last_offline_at: string | null
+          last_register_at: string | null
           last_seen: string | null
           mac: string | null
+          model_id: string | null
           offline_reason: string | null
           olt_id: string
+          onu_type: string | null
+          response_time_ms: number | null
           rx_power: number | null
           serial_number: string | null
           status: Database["public"]["Enums"]["onu_status"]
+          temperature: number | null
           tx_power: number | null
+          vendor_id: string | null
+          wifi_count: number | null
         }
         Insert: {
+          alive_seconds?: number | null
           created_at?: string
           description?: string | null
           distance?: number | null
+          distance_m?: number | null
+          ethernet_count?: number | null
           id?: string
           interface?: string | null
+          last_offline_at?: string | null
+          last_register_at?: string | null
           last_seen?: string | null
           mac?: string | null
+          model_id?: string | null
           offline_reason?: string | null
           olt_id: string
+          onu_type?: string | null
+          response_time_ms?: number | null
           rx_power?: number | null
           serial_number?: string | null
           status?: Database["public"]["Enums"]["onu_status"]
+          temperature?: number | null
           tx_power?: number | null
+          vendor_id?: string | null
+          wifi_count?: number | null
         }
         Update: {
+          alive_seconds?: number | null
           created_at?: string
           description?: string | null
           distance?: number | null
+          distance_m?: number | null
+          ethernet_count?: number | null
           id?: string
           interface?: string | null
+          last_offline_at?: string | null
+          last_register_at?: string | null
           last_seen?: string | null
           mac?: string | null
+          model_id?: string | null
           offline_reason?: string | null
           olt_id?: string
+          onu_type?: string | null
+          response_time_ms?: number | null
           rx_power?: number | null
           serial_number?: string | null
           status?: Database["public"]["Enums"]["onu_status"]
+          temperature?: number | null
           tx_power?: number | null
+          vendor_id?: string | null
+          wifi_count?: number | null
         }
         Relationships: [
           {
