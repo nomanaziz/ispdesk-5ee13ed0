@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -15,11 +17,51 @@ interface Props {
   onOpenChange: (v: boolean) => void;
 }
 
-const VENDORS = [
-  "vsol", "bdcom", "dbc", "syrotech", "solitine", "corelink", "c-data",
-  "ecom", "lightx", "hsgq", "phyhome", "tbs", "huawei", "hbdpon",
-  "mikrotik", "zte", "cisco", "juniper", "generic",
+// ---------- Catalogs (future-extensible) ----------
+const CATEGORIES = [
+  { value: "router", label: "Router" },
+  { value: "olt", label: "OLT" },
+  { value: "switch", label: "Switch" },
+  { value: "access_point", label: "Access Point" },
+  { value: "server", label: "Server" },
+  { value: "pppoe", label: "PPPoE Server" },
 ];
+
+const VENDORS_BY_CATEGORY: Record<string, string[]> = {
+  router: ["mikrotik", "cisco", "juniper", "huawei", "other"],
+  olt: ["vsol", "bdcom", "huawei", "c-data", "hsgq", "phyhome", "tbs", "hbdpon", "ecom", "lightx", "syrotech", "solitine", "corelink", "dbc", "other"],
+  switch: ["mikrotik", "cisco", "huawei", "tp-link", "ubiquiti", "other"],
+  access_point: ["mikrotik", "ubiquiti", "tp-link", "cambium", "other"],
+  server: ["dell", "hp", "lenovo", "supermicro", "generic", "other"],
+  pppoe: ["mikrotik", "accel-ppp", "other"],
+};
+
+const PROTOCOLS_BY_CATEGORY: Record<string, { value: string; label: string }[]> = {
+  router: [
+    { value: "api", label: "MikroTik API" },
+    { value: "ssh", label: "SSH" },
+    { value: "telnet", label: "Telnet" },
+    { value: "snmp", label: "SNMP" },
+  ],
+  olt: [
+    { value: "snmp", label: "Type 1 — SNMP only" },
+    { value: "ssh", label: "Type 2 — SSH only" },
+    { value: "telnet", label: "Type 2 — Telnet only" },
+    { value: "snmp_ssh", label: "Type 3 — SNMP + SSH fallback" },
+    { value: "snmp_telnet", label: "Type 3 — SNMP + Telnet fallback" },
+  ],
+  switch: [{ value: "snmp", label: "SNMP (monitoring)" }],
+  access_point: [{ value: "snmp", label: "SNMP" }],
+  server: [
+    { value: "snmp", label: "SNMP" },
+    { value: "ssh", label: "SSH" },
+  ],
+  pppoe: [
+    { value: "api", label: "MikroTik API" },
+    { value: "ssh", label: "SSH" },
+    { value: "radius", label: "RADIUS" },
+  ],
+};
 
 const VENDOR_TO_PROFILE: Record<string, string> = {
   vsol: "vsol_olt", bdcom: "bdcom_olt", dbc: "dbc_olt", syrotech: "syrotech_olt",
@@ -28,22 +70,23 @@ const VENDOR_TO_PROFILE: Record<string, string> = {
   tbs: "tbs_olt", huawei: "huawei_olt", hbdpon: "hbdpon_olt", mikrotik: "mikrotik_router",
 };
 
+const DEFAULT_PORT: Record<string, string> = { api: "80", ssh: "22", telnet: "23", snmp: "161", radius: "1812" };
+
 export function AddDeviceDialog({ open, onOpenChange }: Props) {
   const qc = useQueryClient();
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [form, setForm] = useState({
     name: "",
-    category: "mikrotik",
+    category: "router",
     vendor: "mikrotik",
-    protocol: "snmp", // snmp | ssh | telnet | snmp_ssh | snmp_telnet
+    protocol: "api",
     ip_address: "",
     port: "",
     username: "admin",
     password: "",
     enable_password: "",
     location: "",
-    backup_schedule: "manual",
     // SNMP
-    snmp_enabled: true,
     snmp_ip: "",
     snmp_port: 161,
     snmp_community: "public",
@@ -53,11 +96,30 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
     agent_enabled: false,
     data_source_priority: "snmp_first",
     agent_stale_seconds: 180,
-    // Fallback
-    fallback_protocol: "" as string,
+    // Server-specific
+    os_type: "linux",
   });
 
   const set = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
+
+  // Reset vendor + protocol when category changes
+  useEffect(() => {
+    const vendors = VENDORS_BY_CATEGORY[form.category] || [];
+    const protos = PROTOCOLS_BY_CATEGORY[form.category] || [];
+    setForm((f) => ({
+      ...f,
+      vendor: vendors.includes(f.vendor) ? f.vendor : vendors[0] || "other",
+      protocol: protos.find((p) => p.value === f.protocol) ? f.protocol : protos[0]?.value || "snmp",
+      oid_profile_id: "",
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.category]);
+
+  // Auto port default
+  useEffect(() => {
+    if (!form.port) set("port", DEFAULT_PORT[form.protocol] || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.protocol]);
 
   const { data: profiles = [] } = useQuery({
     queryKey: ["device_vendor_profiles_picker"],
@@ -67,25 +129,34 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
     },
   });
 
-  // Auto-suggest OID profile when vendor changes
+  // Filter OID profiles by vendor when relevant
+  const filteredProfiles = useMemo(() => {
+    const vk = VENDOR_TO_PROFILE[form.vendor];
+    if (!vk) return profiles;
+    const matching = (profiles as any[]).filter((p) => p.vendor_key?.startsWith(form.vendor) || p.vendor_key === vk);
+    return matching.length ? matching : profiles;
+  }, [profiles, form.vendor]);
+
+  // Auto-suggest OID profile
   useEffect(() => {
     const key = VENDOR_TO_PROFILE[form.vendor];
-    if (key) {
-      const p = profiles.find((x: any) => x.vendor_key === key);
-      if (p && !form.oid_profile_id) setForm((f) => ({ ...f, oid_profile_id: p.id }));
+    if (key && !form.oid_profile_id) {
+      const p = (profiles as any[]).find((x) => x.vendor_key === key);
+      if (p) setForm((f) => ({ ...f, oid_profile_id: p.id }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.vendor, profiles]);
 
   const usesSnmp = ["snmp", "snmp_ssh", "snmp_telnet"].includes(form.protocol);
+  const usesCli = ["ssh", "telnet", "snmp_ssh", "snmp_telnet"].includes(form.protocol);
+  const usesApi = form.protocol === "api";
   const fallback = form.protocol === "snmp_ssh" ? "ssh" : form.protocol === "snmp_telnet" ? "telnet" : null;
-  const usesCli = ["ssh", "telnet"].includes(form.protocol) || fallback;
 
   const save = useMutation({
     mutationFn: async () => {
       if (!form.name || !form.ip_address) throw new Error("নাম ও IP লাগবে");
 
-      if (form.category === "mikrotik" && form.protocol === "api") {
+      if (form.category === "router" && form.vendor === "mikrotik" && usesApi) {
         const { error } = await supabase.from("mikrotik_devices").insert({
           name: form.name,
           ip_address: form.ip_address,
@@ -104,18 +175,18 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
           protocol: form.protocol,
           ip_address: form.ip_address,
           port: form.port ? parseInt(form.port) : null,
-          username: form.username || null,
-          password_encrypted: form.password || null,
-          enable_password: form.enable_password || null,
+          username: usesCli || usesApi ? form.username || null : null,
+          password_encrypted: usesCli || usesApi ? form.password || null : null,
+          enable_password: usesCli ? form.enable_password || null : null,
           location: form.location || null,
-          backup_schedule: form.backup_schedule,
+          backup_schedule: "manual",
           created_by: u.user?.id,
           snmp_enabled: usesSnmp,
-          snmp_ip: form.snmp_ip || null,
-          snmp_port: form.snmp_port,
-          snmp_community: form.snmp_community,
-          snmp_version: form.snmp_version,
-          oid_profile_id: form.oid_profile_id || null,
+          snmp_ip: usesSnmp ? form.snmp_ip || null : null,
+          snmp_port: usesSnmp ? form.snmp_port : null,
+          snmp_community: usesSnmp ? form.snmp_community : null,
+          snmp_version: usesSnmp ? form.snmp_version : null,
+          oid_profile_id: usesSnmp || form.category === "olt" ? form.oid_profile_id || null : null,
           agent_enabled: form.agent_enabled,
           data_source_priority: form.data_source_priority,
           agent_stale_seconds: form.agent_stale_seconds,
@@ -128,19 +199,22 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
       qc.invalidateQueries({ queryKey: ["device_admin_inventory"] });
       toast.success("ডিভাইস যোগ হয়েছে");
       onOpenChange(false);
-      setForm({ ...form, name: "", ip_address: "", password: "", enable_password: "" });
     },
     onError: (e: any) => toast.error(e.message),
   });
 
+  const vendors = VENDORS_BY_CATEGORY[form.category] || [];
+  const protocols = PROTOCOLS_BY_CATEGORY[form.category] || [];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>নতুন ডিভাইস যোগ করুন</DialogTitle></DialogHeader>
 
+        {/* === Basic === */}
         <div className="grid grid-cols-2 gap-3 py-2">
-          <div className="space-y-1.5">
-            <Label>নাম *</Label>
+          <div className="space-y-1.5 col-span-2">
+            <Label>ডিভাইস নাম *</Label>
             <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Core-Router-1" />
           </div>
           <div className="space-y-1.5">
@@ -148,83 +222,93 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
             <Select value={form.category} onValueChange={(v) => set("category", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="mikrotik">MikroTik</SelectItem>
-                <SelectItem value="olt">OLT</SelectItem>
-                <SelectItem value="switch">Switch / POP</SelectItem>
-                <SelectItem value="zkteco">ZKTeco</SelectItem>
-                <SelectItem value="other">অন্যান্য</SelectItem>
+                {CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-
           <div className="space-y-1.5">
             <Label>IP অ্যাড্রেস *</Label>
             <Input value={form.ip_address} onChange={(e) => set("ip_address", e.target.value)} placeholder="192.168.1.1" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Management পোর্ট</Label>
-            <Input value={form.port} onChange={(e) => set("port", e.target.value)} placeholder="22" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>ভেন্ডর</Label>
-            <Select value={form.vendor} onValueChange={(v) => { set("vendor", v); set("oid_profile_id", ""); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {VENDORS.map((v) => <SelectItem key={v} value={v}>{v.toUpperCase()}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>কানেকশন প্রোটোকল</Label>
-            <Select value={form.protocol} onValueChange={(v) => set("protocol", v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="snmp">SNMP only</SelectItem>
-                <SelectItem value="snmp_ssh">SNMP + SSH fallback</SelectItem>
-                <SelectItem value="snmp_telnet">SNMP + Telnet fallback</SelectItem>
-                <SelectItem value="ssh">SSH only</SelectItem>
-                <SelectItem value="telnet">Telnet only</SelectItem>
-                {form.category === "mikrotik" && <SelectItem value="api">MikroTik API</SelectItem>}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>ইউজারনেম {usesCli ? "" : "(optional)"}</Label>
-            <Input value={form.username} onChange={(e) => set("username", e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>পাসওয়ার্ড</Label>
-            <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} />
-          </div>
-
-          {usesCli && (form.vendor === "cisco" || form.vendor === "huawei") && (
-            <div className="space-y-1.5 col-span-2">
-              <Label>Enable পাসওয়ার্ড (privileged mode)</Label>
-              <Input type="password" value={form.enable_password} onChange={(e) => set("enable_password", e.target.value)} />
-            </div>
-          )}
-
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 col-span-2">
             <Label>লোকেশন</Label>
             <Input value={form.location} onChange={(e) => set("location", e.target.value)} />
           </div>
-          <div className="space-y-1.5">
-            <Label>ব্যাকআপ শিডিউল</Label>
-            <Select value={form.backup_schedule} onValueChange={(v) => set("backup_schedule", v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="manual">Manual</SelectItem>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
+        {/* === Vendor + Protocol === */}
+        {vendors.length > 0 && (
+          <>
+            <Separator />
+            <div className="grid grid-cols-2 gap-3 py-2">
+              <div className="space-y-1.5">
+                <Label>{form.category === "olt" ? "OLT Vendor" : "Vendor"}</Label>
+                <Select value={form.vendor} onValueChange={(v) => { set("vendor", v); set("oid_profile_id", ""); }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {vendors.map((v) => <SelectItem key={v} value={v}>{v.toUpperCase()}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {form.category === "server" ? (
+                <div className="space-y-1.5">
+                  <Label>OS Type</Label>
+                  <Select value={form.os_type} onValueChange={(v) => set("os_type", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="linux">Linux</SelectItem>
+                      <SelectItem value="windows">Windows</SelectItem>
+                      <SelectItem value="other">অন্যান্য</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label>{form.category === "olt" ? "Communication Type" : "Connection Protocol"}</Label>
+                  <Select value={form.protocol} onValueChange={(v) => { set("protocol", v); set("port", DEFAULT_PORT[v] || ""); }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {protocols.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* === CLI / API credentials === */}
+        {(usesCli || usesApi) && (
+          <>
+            <Separator />
+            <div className="space-y-3 py-2">
+              <h3 className="text-sm font-semibold">{usesApi ? "API" : "CLI"} অ্যাক্সেস</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>পোর্ট</Label>
+                  <Input value={form.port} onChange={(e) => set("port", e.target.value)} placeholder={DEFAULT_PORT[form.protocol]} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>ইউজারনেম</Label>
+                  <Input value={form.username} onChange={(e) => set("username", e.target.value)} />
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <Label>পাসওয়ার্ড</Label>
+                  <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} />
+                </div>
+                {usesCli && (form.vendor === "cisco" || form.vendor === "huawei") && (
+                  <div className="space-y-1.5 col-span-2">
+                    <Label>Enable পাসওয়ার্ড</Label>
+                    <Input type="password" value={form.enable_password} onChange={(e) => set("enable_password", e.target.value)} />
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* === SNMP === */}
         {usesSnmp && (
           <>
             <Separator />
@@ -232,7 +316,7 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
               <h3 className="text-sm font-semibold">SNMP কনফিগ</h3>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>SNMP IP (ফাঁকা = main IP)</Label>
+                  <Label>SNMP IP (ফাঁকা = main)</Label>
                   <Input value={form.snmp_ip} onChange={(e) => set("snmp_ip", e.target.value)} placeholder={form.ip_address || "192.168.1.1"} />
                 </div>
                 <div className="space-y-1.5">
@@ -240,7 +324,7 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
                   <Input type="number" value={form.snmp_port} onChange={(e) => set("snmp_port", parseInt(e.target.value) || 161)} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Community string</Label>
+                  <Label>Community</Label>
                   <Input value={form.snmp_community} onChange={(e) => set("snmp_community", e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
@@ -254,51 +338,59 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5 col-span-2">
-                  <Label>OID Profile</Label>
-                  <Select value={form.oid_profile_id} onValueChange={(v) => set("oid_profile_id", v)}>
-                    <SelectTrigger><SelectValue placeholder="Profile সিলেক্ট করুন" /></SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {profiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.display_name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">OID Library থেকে আসছে — vendor অনুযায়ী auto-suggested।</p>
-                </div>
+                {(form.category === "olt" || form.category === "switch") && (
+                  <div className="space-y-1.5 col-span-2">
+                    <Label>OID Profile</Label>
+                    <Select value={form.oid_profile_id} onValueChange={(v) => set("oid_profile_id", v)}>
+                      <SelectTrigger><SelectValue placeholder="Profile সিলেক্ট করুন" /></SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {filteredProfiles.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.display_name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             </div>
           </>
         )}
 
+        {/* === Advanced (Agent) === */}
         <Separator />
-        <div className="space-y-3 py-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Polling Agent (optional)</h3>
-            <Switch checked={form.agent_enabled} onCheckedChange={(v) => set("agent_enabled", v)} />
-          </div>
-          {form.agent_enabled && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Data source priority</Label>
-                <Select value={form.data_source_priority} onValueChange={(v) => set("data_source_priority", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="snmp_first">SNMP first</SelectItem>
-                    <SelectItem value="agent_first">Agent first</SelectItem>
-                    <SelectItem value="snmp_only">SNMP only</SelectItem>
-                    <SelectItem value="agent_only">Agent only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Agent stale (seconds)</Label>
-                <Input type="number" min={30} value={form.agent_stale_seconds} onChange={(e) => set("agent_stale_seconds", parseInt(e.target.value) || 180)} />
-              </div>
+        <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-semibold py-2 hover:text-primary">
+            <ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? "" : "-rotate-90"}`} />
+            Advanced — Polling Agent
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-3 py-2">
+            <div className="flex items-center justify-between">
+              <Label>Agent enabled</Label>
+              <Switch checked={form.agent_enabled} onCheckedChange={(v) => set("agent_enabled", v)} />
             </div>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Local network-এ Windows/Linux PC-তে agent install করলে private IP MikroTik / OLT-এ access পাওয়া যাবে।
-          </p>
-        </div>
+            {form.agent_enabled && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Data source priority</Label>
+                  <Select value={form.data_source_priority} onValueChange={(v) => set("data_source_priority", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="snmp_first">SNMP first</SelectItem>
+                      <SelectItem value="agent_first">Agent first</SelectItem>
+                      <SelectItem value="snmp_only">SNMP only</SelectItem>
+                      <SelectItem value="agent_only">Agent only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Agent stale (sec)</Label>
+                  <Input type="number" min={30} value={form.agent_stale_seconds} onChange={(e) => set("agent_stale_seconds", parseInt(e.target.value) || 180)} />
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Local network agent (Windows/Linux) install করলে private IP device-এ access পাওয়া যাবে।
+            </p>
+          </CollapsibleContent>
+        </Collapsible>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>বাতিল</Button>
