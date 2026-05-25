@@ -455,6 +455,19 @@ export default function OltDevices() {
                   </Select>
                 </div>
               </div>
+              {!CHASSIS_VENDORS.has(form.vendor) && (
+                <div>
+                  <Label>PON Type *</Label>
+                  <Select value={form.pon_type} onValueChange={(v) => setForm((f) => ({ ...f, pon_type: v as any }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="epon">EPON</SelectItem>
+                      <SelectItem value="gpon">GPON</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1">এই vendor সাধারণত fixed-config; device কোন type সেটা select করুন।</p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div><Label>Brand / Model</Label><Input placeholder="e.g. MA5608T" value={form.brand_model} onChange={(e) => setForm((f) => ({ ...f, brand_model: e.target.value }))} /></div>
                 <div><Label>OLT Version</Label><Input placeholder="e.g. V800R013" value={form.olt_version} onChange={(e) => setForm((f) => ({ ...f, olt_version: e.target.value }))} /></div>
