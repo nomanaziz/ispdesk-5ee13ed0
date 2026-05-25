@@ -156,6 +156,19 @@ export function AddDeviceDialog({ open, onOpenChange }: Props) {
     mutationFn: async () => {
       if (!form.name || !form.ip_address) throw new Error("নাম ও IP লাগবে");
 
+      // Duplicate IP check across all device tables
+      const ip = form.ip_address.trim();
+      const [mk, mg, olt, pop] = await Promise.all([
+        supabase.from("mikrotik_devices").select("name").eq("ip_address", ip).limit(1),
+        supabase.from("device_admin_managed_devices").select("name").eq("ip_address", ip).limit(1),
+        supabase.from("olt_devices").select("name").eq("ip_address", ip).limit(1),
+        supabase.from("pop_devices").select("name").eq("ip_address", ip).limit(1),
+      ]);
+      const existing = mk.data?.[0] || mg.data?.[0] || olt.data?.[0] || pop.data?.[0];
+      if (existing) throw new Error(`এই IP ইতিমধ্যে আছে: ${(existing as any).name}`);
+
+
+
       if (form.category === "router" && form.vendor === "mikrotik" && usesApi) {
         const { error } = await supabase.from("mikrotik_devices").insert({
           name: form.name,
