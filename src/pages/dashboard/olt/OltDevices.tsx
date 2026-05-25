@@ -277,4 +277,231 @@ export default function OltDevices() {
               </TableHeader>
               <TableBody>
                 {paged.length === 0 ? (
-                  <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">কোনো OLT পাওয়া য
+                  <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">কোনো OLT পাওয়া যায়নি</TableCell></TableRow>
+                ) : paged.map((d, i) => {
+                  const stats = getOnuStats(d.id);
+                  const live = computeLive(d.last_seen, d.status);
+                  const mt = d.mikrotik_devices;
+                  return (
+                    <TableRow key={d.id}>
+                      <TableCell>{page * perPage + i + 1}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">{statusDot(live)} {d.name}</div>
+                        {d.brand_model && <div className="text-[11px] text-muted-foreground">{d.brand_model}</div>}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={PRIMARY_VENDORS.has(d.vendor) ? "default" : "outline"} className="capitalize">
+                          {d.vendor}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {d.ip_address}
+                        <div className="text-muted-foreground">W:{d.port} • T:{d.telnet_port ?? 23}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={d.snmp_enabled ? "default" : "secondary"} className="text-[10px]">
+                          {d.snmp_enabled ? "ON" : "OFF"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">{d.branches?.name || "—"}</TableCell>
+                      <TableCell className="text-xs">
+                        {mt ? (
+                          <div className="flex items-center gap-1.5">
+                            <Router className="h-3.5 w-3.5 text-blue-500" />
+                            <div>
+                              <div className="font-medium">{mt.name}</div>
+                              <div className="text-muted-foreground font-mono text-[10px]">{mt.ip_address}</div>
+                            </div>
+                          </div>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={live === "online" ? "default" : live === "offline" ? "destructive" : "secondary"} className="capitalize">
+                          {live}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{timeAgo(d.last_seen)}</TableCell>
+                      <TableCell>
+                        <span className="text-emerald-600 font-medium">{stats.online}</span>
+                        <span className="text-muted-foreground">/{stats.total}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(d)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => { if (confirm("মুছে ফেলতে চান?")) delMut.mutate(d.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-end gap-2 mt-4">
+              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>পূর্ববর্তী</Button>
+              <span className="text-sm text-muted-foreground">পৃষ্ঠা {page + 1} / {totalPages}</span>
+              <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>পরবর্তী</Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editId ? "OLT সম্পাদনা" : "নতুন OLT যোগ করুন"}</DialogTitle></DialogHeader>
+          <div className="grid gap-4">
+            {/* Section: Basic Identity */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Basic Identity</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>নাম / Alias *</Label>
+                  <Input
+                    placeholder="e.g. Madaripur-BDCOM-1"
+                    value={form.name}
+                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">SNMP থেকে auto-fetch করতে পারেন (নিচে SNMP enable করে Fetch Name)</p>
+                </div>
+                <div>
+                  <Label>Vendor *</Label>
+                  <Select value={form.vendor} onValueChange={(v) => setForm((f) => ({ ...f, vendor: v as any }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {vendors.map((v) => (
+                        <SelectItem key={v} value={v} className="capitalize">
+                          {v} {PRIMARY_VENDORS.has(v) && <span className="text-[10px] text-emerald-500 ml-1">★</span>}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>Brand / Model</Label><Input placeholder="e.g. MA5608T" value={form.brand_model} onChange={(e) => setForm((f) => ({ ...f, brand_model: e.target.value }))} /></div>
+                <div><Label>OLT Version</Label><Input placeholder="e.g. V800R013" value={form.olt_version} onChange={(e) => setForm((f) => ({ ...f, olt_version: e.target.value }))} /></div>
+              </div>
+            </div>
+
+            {/* Section: Connection (CLI) */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Connection (CLI)</Label>
+              <div className="grid grid-cols-3 gap-4">
+                <div><Label>IP Address *</Label><Input placeholder="192.168.x.x" value={form.ip_address} onChange={(e) => setForm((f) => ({ ...f, ip_address: e.target.value }))} /></div>
+                <div>
+                  <Label>Wave / Mgmt Port</Label>
+                  <Input type="number" value={form.port} onChange={(e) => setForm((f) => ({ ...f, port: Number(e.target.value) }))} />
+                </div>
+                <div>
+                  <Label>Telnet Port</Label>
+                  <Input type="number" value={form.telnet_port} onChange={(e) => setForm((f) => ({ ...f, telnet_port: Number(e.target.value) }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label>Connection Type</Label>
+                  <Select value={form.connection_type} onValueChange={(v) => setForm((f) => ({ ...f, connection_type: v as any }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="telnet">Telnet</SelectItem><SelectItem value="ssh">SSH</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Username</Label><Input value={form.username} onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))} /></div>
+                <div><Label>Password</Label><Input type="password" value={form.password_encrypted} onChange={(e) => setForm((f) => ({ ...f, password_encrypted: e.target.value }))} /></div>
+              </div>
+            </div>
+
+            {/* Section: SNMP */}
+            <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">SNMP (Monitoring)</Label>
+                <Switch checked={form.snmp_enabled} onCheckedChange={(v) => setForm((f) => ({ ...f, snmp_enabled: v }))} />
+              </div>
+              {form.snmp_enabled && (
+                <div className="grid gap-3">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div><Label>SNMP IP</Label><Input placeholder={form.ip_address || "OLT IP"} value={form.snmp_ip} onChange={(e) => setForm((f) => ({ ...f, snmp_ip: e.target.value }))} /></div>
+                    <div><Label>SNMP Port</Label><Input type="number" value={form.snmp_port} onChange={(e) => setForm((f) => ({ ...f, snmp_port: Number(e.target.value) }))} /></div>
+                    <div>
+                      <Label>Version</Label>
+                      <Select value={form.snmp_version} onValueChange={(v) => setForm((f) => ({ ...f, snmp_version: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="v1">v1</SelectItem>
+                          <SelectItem value="v2c">v2c</SelectItem>
+                          <SelectItem value="v3">v3</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1"><Label>Community String</Label><Input value={form.snmp_community} onChange={(e) => setForm((f) => ({ ...f, snmp_community: e.target.value }))} /></div>
+                    <Button type="button" variant="outline" onClick={fetchSnmpName} disabled={fetchingName}>
+                      {fetchingName ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
+                      Fetch Name
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">SNMP থেকে device-এর actual sysName fetch করে Alias-এ বসাবে</p>
+                </div>
+              )}
+            </div>
+
+            {/* Section: Linking — Branch + MikroTik */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Linking</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>ব্রাঞ্চ</Label>
+                  <Select value={form.branch_id || "none"} onValueChange={(v) => setForm((f) => ({ ...f, branch_id: v === "none" ? null : v }))}>
+                    <SelectTrigger><SelectValue placeholder="নির্বাচন করুন" /></SelectTrigger>
+                    <SelectContent><SelectItem value="none">—</SelectItem>{branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="flex items-center gap-1"><Router className="h-3.5 w-3.5" /> MikroTik (যে router-এর under-এ এই OLT)</Label>
+                  <Select value={form.mikrotik_id || "none"} onValueChange={(v) => setForm((f) => ({ ...f, mikrotik_id: v === "none" ? null : v }))}>
+                    <SelectTrigger><SelectValue placeholder="MikroTik নির্বাচন করুন" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">—</SelectItem>
+                      {mikrotiks.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          <span className="flex items-center gap-2">
+                            {m.status === "online" ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> : <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />}
+                            {m.name} <span className="text-xs text-muted-foreground font-mono">({m.ip_address})</span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {selectedMikrotik && (
+                <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1">
+                  <div className="flex items-center gap-2 font-medium">
+                    <Router className="h-4 w-4 text-blue-500" />
+                    {selectedMikrotik.name}
+                    <Badge variant={selectedMikrotik.status === "online" ? "default" : "secondary"} className="ml-auto capitalize">
+                      {selectedMikrotik.status || "unknown"}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                    <div>Host: <span className="font-mono text-foreground">{selectedMikrotik.ip_address}:{selectedMikrotik.api_port}</span></div>
+                    <div>Enabled: <span className="text-foreground">{selectedMikrotik.enabled ? "হ্যাঁ" : "না"}</span></div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground pt-1">এই MikroTik-এর PPPoE users এর সাথে OLT-র ONU auto-mapping হবে।</p>
+                </div>
+              )}
+              <div><Label>বিবরণ</Label><Textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} /></div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>বাতিল</Button>
+            <Button onClick={() => saveMut.mutate()} disabled={!form.name || !form.ip_address || saveMut.isPending}>
+              {saveMut.isPending ? "সেভ হচ্ছে..." : "সেভ করুন"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
