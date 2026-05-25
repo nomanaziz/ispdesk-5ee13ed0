@@ -253,7 +253,7 @@ export default function OltDevices() {
       name: d.name, ip_address: d.ip_address, port: d.port,
       telnet_port: d.telnet_port ?? 23,
       connection_type: d.connection_type,
-      vendor: d.vendor, username: d.username || "", password_encrypted: d.password_encrypted || "",
+      vendor: d.vendor, pon_type: (d.pon_type as any) || (CHASSIS_VENDORS.has(d.vendor) ? "mixed" : "gpon"), username: d.username || "", password_encrypted: d.password_encrypted || "",
       branch_id: d.branch_id, mikrotik_id: d.mikrotik_id, description: d.description || "",
       snmp_enabled: d.snmp_enabled || false, snmp_ip: d.snmp_ip || "",
       snmp_port: d.snmp_port ?? 161, snmp_community: d.snmp_community || "public",
