@@ -1,86 +1,37 @@
-// Real SNMP probe for OLT devices.
-// POST { device_id } → SNMP GET sysName on the device IP/community. If response
-// arrives, mark device online + stamp last_seen / snmp_last_seen. Timeout → offline.
+// Reachability probe for OLT devices.
+// POST { device_id } → tries a TCP connect to the device's management port (and
+// a few common fallbacks). If anything responds within the timeout, the device
+// is marked online. Supabase Edge Runtime does not expose UDP, so true SNMP
+// polling must be done by the on-prem agent — this probe is the best
+// reachability signal we can run from the cloud.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2/cors";
 
-// --- ASN.1 / SNMP helpers (same as snmp-fetch-olt-name) ---
-function encodeLen(len: number): number[] {
-  if (len < 0x80) return [len];
-  const bytes: number[] = [];
-  let n = len;
-  while (n > 0) { bytes.unshift(n & 0xff); n >>= 8; }
-  return [0x80 | bytes.length, ...bytes];
-}
-function encodeOid(oid: string): number[] {
-  const parts = oid.split(".").map(Number);
-  const out: number[] = [parts[0] * 40 + parts[1]];
-  for (let i = 2; i < parts.length; i++) {
-    let v = parts[i];
-    if (v < 0x80) { out.push(v); continue; }
-    const stack: number[] = [];
-    stack.push(v & 0x7f); v >>= 7;
-    while (v > 0) { stack.push((v & 0x7f) | 0x80); v >>= 7; }
-    while (stack.length) out.push(stack.pop()!);
-  }
-  return out;
-}
-function tlv(tag: number, value: number[]): number[] {
-  return [tag, ...encodeLen(value.length), ...value];
-}
-function buildSnmpGet(community: string, oid: string, version: number, reqId: number): Uint8Array {
-  const versionTlv = tlv(0x02, [version]);
-  const communityTlv = tlv(0x04, Array.from(new TextEncoder().encode(community)));
-  const reqIdBytes: number[] = [];
-  let r = reqId;
-  if (r === 0) reqIdBytes.push(0);
-  else { while (r > 0) { reqIdBytes.unshift(r & 0xff); r >>= 8; } if (reqIdBytes[0] & 0x80) reqIdBytes.unshift(0); }
-  const reqIdTlv = tlv(0x02, reqIdBytes);
-  const errorStatus = tlv(0x02, [0]);
-  const errorIndex = tlv(0x02, [0]);
-  const oidTlv = tlv(0x06, encodeOid(oid));
-  const nullVal = tlv(0x05, []);
-  const varBind = tlv(0x30, [...oidTlv, ...nullVal]);
-  const varBindList = tlv(0x30, varBind);
-  const pdu = tlv(0xa0, [...reqIdTlv, ...errorStatus, ...errorIndex, ...varBindList]);
-  const message = tlv(0x30, [...versionTlv, ...communityTlv, ...pdu]);
-  return new Uint8Array(message);
-}
-function parseSnmpStringResponse(buf: Uint8Array): string | null {
-  for (let i = 0; i < buf.length - 2; i++) {
-    if (buf[i] === 0x04) {
-      const len = buf[i + 1];
-      if (len > 0 && len < 128 && i + 2 + len <= buf.length) {
-        const s = new TextDecoder().decode(buf.slice(i + 2, i + 2 + len));
-        if (i > 10) return s;
-      }
+async function tcpProbe(ip: string, port: number, timeoutMs = 3500): Promise<boolean> {
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), timeoutMs);
+    try {
+      const conn = await Deno.connect({ hostname: ip, port, transport: "tcp", signal: ac.signal } as any);
+      try { conn.close(); } catch { /* ignore */ }
+      return true;
+    } finally {
+      clearTimeout(timer);
     }
+  } catch {
+    return false;
   }
-  return null;
 }
 
-async function snmpProbe(ip: string, port: number, community: string, version: string, timeoutMs = 5000): Promise<{ ok: boolean; name?: string; error?: string }> {
-  try {
-    const verNum = version === "v1" ? 0 : 1;
-    const packet = buildSnmpGet(community, "1.3.6.1.2.1.1.5.0", verNum, Math.floor(Math.random() * 100000));
-    const conn = Deno.listenDatagram({ transport: "udp", hostname: "0.0.0.0", port: 0 });
-    try {
-      await conn.send(packet, { transport: "udp", hostname: ip, port });
-      const result = await Promise.race([
-        conn.receive(),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
-      ]);
-      if (!result) return { ok: false, error: "SNMP timeout" };
-      const [data] = result as [Uint8Array, Deno.Addr];
-      const name = parseSnmpStringResponse(data);
-      return { ok: true, name: name || undefined };
-    } finally {
-      try { conn.close(); } catch { /* ignore */ }
-    }
-  } catch (e: any) {
-    return { ok: false, error: e?.message || String(e) };
+async function probeReachable(ip: string, ports: number[]): Promise<{ ok: boolean; port?: number }> {
+  for (const p of ports) {
+    if (!p || p < 1 || p > 65535) continue;
+    const ok = await tcpProbe(ip, p);
+    if (ok) return { ok: true, port: p };
   }
+  return { ok: false };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
