@@ -6139,6 +6139,8 @@ export type Database = {
           hardware_version: string | null
           id: string
           ip_address: string
+          last_offline_reason: string | null
+          last_seen: string | null
           mac_address: string | null
           memory_usage: number | null
           mikrotik_id: string | null
@@ -6174,6 +6176,8 @@ export type Database = {
           hardware_version?: string | null
           id?: string
           ip_address: string
+          last_offline_reason?: string | null
+          last_seen?: string | null
           mac_address?: string | null
           memory_usage?: number | null
           mikrotik_id?: string | null
@@ -6209,6 +6213,8 @@ export type Database = {
           hardware_version?: string | null
           id?: string
           ip_address?: string
+          last_offline_reason?: string | null
+          last_seen?: string | null
           mac_address?: string | null
           memory_usage?: number | null
           mikrotik_id?: string | null
