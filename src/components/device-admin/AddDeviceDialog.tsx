@@ -288,7 +288,7 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>নতুন ডিভাইস যোগ করুন</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{isEdit ? "ডিভাইস Edit করুন" : "নতুন ডিভাইস যোগ করুন"}</DialogTitle></DialogHeader>
 
         {/* === Basic === */}
         <div className="grid grid-cols-2 gap-3 py-2">
