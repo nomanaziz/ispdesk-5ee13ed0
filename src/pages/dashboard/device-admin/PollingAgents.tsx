@@ -217,14 +217,30 @@ export default function PollingAgents() {
                 <p className="text-muted-foreground">https://nodejs.org থেকে LTS (18+) download করুন।</p>
               </div>
               <div>
-                <Label className="text-base">3. Agent code ডাউনলোড ও setup</Label>
+                <Label className="text-base">3. Agent files ডাউনলোড করুন</Label>
+                <p className="text-muted-foreground mt-1">
+                  নিচের ৪টা file আপনার PC-তে একটা নতুন folder-এ (যেমন <code>C:\ispdesk-agent\</code>) save করুন:
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {[
+                    { f: "polling-agent.js", label: "polling-agent.js" },
+                    { f: "package.json", label: "package.json" },
+                    { f: "config.example.json", label: "config.example.json" },
+                    { f: "README.md", label: "README.md" },
+                  ].map((x) => (
+                    <Button key={x.f} size="sm" variant="outline" asChild>
+                      <a href={`/agent/${x.f}`} download={x.f}>
+                        <Download className="h-3 w-3 mr-2" /> {x.label}
+                      </a>
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-muted-foreground mt-2">তারপর সেই folder-এ terminal/CMD খুলে:</p>
                 <pre className="bg-muted p-3 rounded text-xs overflow-x-auto mt-1">
-{`# Repo থেকে agent/ folder copy করুন, তারপর:
-cd agent
-npm install
-cp config.example.json config.json`}
+{`npm install`}
                 </pre>
               </div>
+
               <div>
                 <Label className="text-base">4. config.json ডাউনলোড করুন</Label>
                 <pre className="bg-muted p-3 rounded text-xs overflow-x-auto mt-1">
