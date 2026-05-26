@@ -6248,6 +6248,7 @@ export type Database = {
           agent_enabled: boolean
           agent_last_seen: string | null
           agent_stale_seconds: number
+          assigned_agent_id: string | null
           branch_id: string | null
           brand_model: string | null
           connection_type: Database["public"]["Enums"]["connection_type"]
@@ -6293,6 +6294,7 @@ export type Database = {
           agent_enabled?: boolean
           agent_last_seen?: string | null
           agent_stale_seconds?: number
+          assigned_agent_id?: string | null
           branch_id?: string | null
           brand_model?: string | null
           connection_type?: Database["public"]["Enums"]["connection_type"]
@@ -6338,6 +6340,7 @@ export type Database = {
           agent_enabled?: boolean
           agent_last_seen?: string | null
           agent_stale_seconds?: number
+          assigned_agent_id?: string | null
           branch_id?: string | null
           brand_model?: string | null
           connection_type?: Database["public"]["Enums"]["connection_type"]
@@ -6380,6 +6383,13 @@ export type Database = {
           vendor?: Database["public"]["Enums"]["olt_vendor"]
         }
         Relationships: [
+          {
+            foreignKeyName: "olt_devices_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "polling_agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "olt_devices_branch_id_fkey"
             columns: ["branch_id"]
@@ -7056,6 +7066,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ping_targets_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      polling_agents: {
+        Row: {
+          api_key: string
+          branch_id: string | null
+          created_at: string
+          id: string
+          last_heartbeat: string | null
+          name: string
+          notes: string | null
+          poll_interval_seconds: number
+          status: string
+          updated_at: string
+          version: string | null
+        }
+        Insert: {
+          api_key: string
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          last_heartbeat?: string | null
+          name: string
+          notes?: string | null
+          poll_interval_seconds?: number
+          status?: string
+          updated_at?: string
+          version?: string | null
+        }
+        Update: {
+          api_key?: string
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          last_heartbeat?: string | null
+          name?: string
+          notes?: string | null
+          poll_interval_seconds?: number
+          status?: string
+          updated_at?: string
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "polling_agents_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
