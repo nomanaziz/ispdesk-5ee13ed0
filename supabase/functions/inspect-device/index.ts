@@ -41,13 +41,42 @@ async function inspectMikrotik(dev: any, resource: string) {
 
 // EPON/GPON/SFP detect helper (port_name pattern fallback)
 function detectPortType(name: string, fallback: string | null): string {
+  const fb = (fallback || "").toLowerCase();
+  if (["pon", "ether-sfp", "ether-rj45"].includes(fb)) return fb;
   const n = (name || "").toLowerCase();
-  if (/epon/.test(n)) return "epon";
-  if (/gpon/.test(n)) return "gpon";
-  if (/tengig|10g|xge/.test(n)) return "sfp+";
-  if (/giga|gigabit|^ge/.test(n)) return "sfp";
-  if (/uplink/.test(n)) return "uplink";
-  return (fallback || "other").toLowerCase();
+  if (/epon|gpon|pon\d|xpon/.test(n)) return "pon";
+  if (/tengig|10g|xge|sfp/.test(n)) return "ether-sfp";
+  if (/giga|gigabit|^ge|ethernet/.test(n)) return "ether-rj45";
+  return "skip";
+}
+
+function formatUptimeStr(raw: any): string {
+  if (raw == null) return "—";
+  const s = String(raw);
+  // Already formatted?
+  if (/[a-z]/i.test(s)) return s;
+  const ticks = Number(s);
+  if (!isFinite(ticks) || ticks <= 0) return s;
+  const totalSec = Math.floor(ticks / 100);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const parts: string[] = [];
+  if (d) parts.push(`${d}d`);
+  if (h || d) parts.push(`${h}h`);
+  parts.push(`${m}m`);
+  return parts.join(" ");
+}
+
+function parseBrandModel(desc: string): { model: string; firmware: string | null; hardware: string | null } {
+  if (!desc) return { model: "—", firmware: null, hardware: null };
+  const fwMatch = desc.match(/Version\s+([A-Za-z0-9._\-]+)/i);
+  const hwMatch = desc.match(/hardware\s*version[:\s]+([A-Za-z0-9._\-]+)/i);
+  // Strip "Software, Version XXX" and "hardware version: X" from display name
+  let model = desc.replace(/\s*Software,?\s*Version\s+[A-Za-z0-9._\-]+/i, "")
+                  .replace(/\s*hardware\s*version[:\s]+[A-Za-z0-9._\-]+/i, "")
+                  .replace(/\s+/g, " ").trim();
+  return { model: model || desc, firmware: fwMatch?.[1] || null, hardware: hwMatch?.[1] || null };
 }
 
 async function inspectOlt(supabase: any, deviceId: string, resource: string, opts: { mode?: string } = {}) {
@@ -57,30 +86,30 @@ async function inspectOlt(supabase: any, deviceId: string, resource: string, opt
       .eq("id", deviceId).maybeSingle();
     const { data: ports } = await supabase.from("olt_ports")
       .select("port_name, port_type, oper_status, admin_status").eq("olt_id", deviceId);
-    const counts: Record<string, number> = { epon: 0, gpon: 0, sfp: 0, "sfp+": 0, uplink: 0, other: 0 };
+    const counts = { pon: 0, "ether-sfp": 0, "ether-rj45": 0 };
     let up = 0, down = 0;
     (ports || []).forEach((p: any) => {
       const t = detectPortType(p.port_name, p.port_type);
-      counts[t] = (counts[t] || 0) + 1;
+      if (t === "skip") return;
+      counts[t as keyof typeof counts] = (counts[t as keyof typeof counts] || 0) + 1;
       const s = (p.oper_status || "").toLowerCase();
       if (s === "up") up++;
       else if (s === "down") down++;
     });
+    const parsed = parseBrandModel(olt?.brand_model || "");
     return [{
-      brand_model: olt?.brand_model || "—",
-      hardware_version: olt?.hardware_version || "—",
-      firmware_version: olt?.firmware_version || olt?.olt_version || "—",
+      brand_model: parsed.model,
+      hardware_version: olt?.hardware_version || parsed.hardware || "—",
+      firmware_version: olt?.firmware_version || olt?.olt_version || parsed.firmware || "—",
       serial_number: olt?.serial_number || "—",
       mac_address: olt?.mac_address || "—",
-      uptime: olt?.uptime || "—",
+      uptime: formatUptimeStr(olt?.uptime),
       status: olt?.status || "—",
       pon_type: olt?.pon_type || "—",
-      total_interfaces: (ports || []).length,
-      epon_count: counts.epon,
-      gpon_count: counts.gpon,
-      sfp_count: counts.sfp + counts["sfp+"],
-      uplink_count: counts.uplink,
-      other_count: counts.other,
+      total_interfaces: counts.pon + counts["ether-sfp"] + counts["ether-rj45"],
+      pon_count: counts.pon,
+      ether_sfp_count: counts["ether-sfp"],
+      ether_rj45_count: counts["ether-rj45"],
       ports_up: up,
       ports_down: down,
       total_onus: olt?.total_onus ?? 0,

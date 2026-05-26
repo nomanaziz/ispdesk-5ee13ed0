@@ -99,6 +99,7 @@ function OltOverview({ deviceId }: { deviceId: string }) {
     </div>
   );
 
+  const ponLabel = String(s.pon_type || "").toUpperCase() === "EPON" ? "EPON" : "GPON";
   return (
     <ScrollArea className="h-[420px] pr-2">
       <div className="space-y-4">
@@ -108,12 +109,10 @@ function OltOverview({ deviceId }: { deviceId: string }) {
           <Chip label="Total ONU" value={s.total_onus} />
           <Chip label="Online ONU" value={s.online_onus} tone="ok" />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-          <Chip label="EPON" value={s.epon_count} />
-          <Chip label="GPON" value={s.gpon_count} />
-          <Chip label="SFP" value={s.sfp_count} />
-          <Chip label="Uplink" value={s.uplink_count} />
-          <Chip label="Other" value={s.other_count} />
+        <div className="grid grid-cols-3 gap-2">
+          <Chip label={ponLabel} value={s.pon_count} />
+          <Chip label="Ether-SFP" value={s.ether_sfp_count} />
+          <Chip label="Ether-RJ45" value={s.ether_rj45_count} />
         </div>
         <div className="rounded-lg border p-3 space-y-1 text-sm">
           <div className="font-semibold mb-2">সিস্টেম ইনফো</div>

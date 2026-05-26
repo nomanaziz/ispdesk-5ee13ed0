@@ -1,87 +1,84 @@
-## লক্ষ্য
+## কেন এখন interface/hardware/serial/MAC আসছে না — সরল উত্তর
 
-OLT Inspector-এ দুটো আলাদা scenario support করব, এবং সাথে OLT-এর basic system info (interface count, EPON/GPON/SFP breakdown, up/down) দেখাব।
+আমি যা পেয়েছি database-এ:
+- `olt_devices`: brand_model আছে (BDCOM GP3600-08B), uptime raw সংখ্যা আছে (TimeTicks), কিন্তু `hardware_version`, `firmware_version`, `serial_number`, `mac_address` সব `NULL`
+- `olt_ports`: **পুরো ফাঁকা** — তাই Total Interface=0, EPON=0, GPON=0, Up/Down=0/0
+- agent (Naeem-PC) install হয়নি (`agent_last_seen=null`)
 
-## দুটো Scenario (User toggle করতে পারবে)
+**কারণ:** এই codebase-এ এখন পর্যন্ত শুধু `snmp-fetch-olt-name` function-টা সত্যিকারের SNMP UDP করে — সে শুধু sysDescr এনেছে। কোনো function এখন `ifTable` walk করে না, তাই port list তৈরি হয়নি। এবং brand_model থেকে hardware/firmware parse করা হয়নি — raw string-টাই দেখানো হচ্ছে।
 
-**Scenario 1 — "ইউজার সহ" (with-user view)**
-ONU MAC / SN → MikroTik PPPoE caller-id MAC মিলিয়ে customer name দেখাবে। যদি match না হয়, customer column ফাঁকা থাকবে কিন্তু ONU row লুকাবে না।
+**ভালো খবর:** Supabase Edge runtime `Deno.listenDatagram` দিয়ে UDP/SNMP করতে পারে (already proven — brand_model এসেছে)। মানে OLT এর public IP/port reachable, **agent install না করেও** আমি এই কাজগুলো cloud থেকে করতে পারব।
 
-**Scenario 2 — "শুধু OLT" (without-user view)**
-শুধু OLT-এর নিজের data: ONU description (যেটা OLT-তে লেখা আছে), MAC/SN, PON port, Rx power, status। MikroTik / user_onu_mapping একদম touch করবে না — এটাই OLT-only natural view।
+## তোমার কাছে আমার যা লাগবে (অল্প)
 
-UI-তে ONU tab-এর উপরে একটা small SegmentedControl / toggle:  
-`[ শুধু OLT ]  [ + ইউজার ]` — default = "শুধু OLT" (কারণ এটাই OLT-এর native truth)।
+1. **Confirm:** OLT-এর management IP কি Supabase cloud থেকে reach করা যায়? (sysDescr এসেছে মানে হ্যাঁ — শুধু confirm করে দিও, port 161 firewall-এ open আছে কিনা)
+2. **আর কিছু লাগবে না** — community string (`GxNsnMP_RO`) ও SNMP version (v2c) ইতিমধ্যে DB-তে সেভ আছে।
 
-## কী কী add করব
+VSol/Huawei/ZTE OLT যোগ করলে তখন আলাদা OID profile দরকার হবে — এখন BDCOM-এর জন্য কাজ করব।
 
-### 1. নতুন resource: `system` (OLT chassis snapshot)
+## কী কী fix/add করব
 
-`inspect-device` → `inspectOlt('system')` return করবে:
+### 1. নতুন edge function: `snmp-walk-olt-system`
+SNMP দিয়ে fetch করবে:
+- `sysDescr` → brand_model + firmware parse ("Version 117819" → firmware_version="117819")
+- `sysDescr` থেকে hardware_version parse ("hardware version: A" → "A")
+- `sysUpTime` (TimeTicks) → human format ("11 days 19 hr 38 min")
+- `ifPhysAddress` first non-zero → mac_address
+- `entPhysicalSerialNum` (1.3.6.1.2.1.47.1.1.1.1.11) → serial_number
 
-```
-{
-  total_interfaces, epon_count, gpon_count, sfp_count, uplink_count,
-  ports_up, ports_down,
-  brand_model, hardware_version, firmware_version,
-  uptime, agent_last_seen, snmp_last_seen
-}
-```
+DB update: hardware_version, firmware_version, serial_number, mac_address, uptime (formatted), snmp_last_seen।
 
-Source:
-- `olt_devices` row (brand_model, hw, fw, uptime, last_seen)
-- `olt_ports` aggregate (port_type → epon/gpon/sfp/uplink count; oper_status → up/down count)
+### 2. নতুন edge function: `snmp-walk-olt-interfaces`
+ifTable walk করে olt_ports populate করবে:
+- `ifDescr` (1.3.6.1.2.1.2.2.1.2) → port_name
+- `ifType` (1.3.6.1.2.1.2.2.1.3) → port_type detect
+- `ifAdminStatus` (.7), `ifOperStatus` (.8)
+- `ifSpeed` (.5) → speed_mbps
 
-UI: নতুন প্রথম tab "📊 Overview" — chip grid + summary। এটাই OLT খোলার পরে default tab হবে।
+**Port classification (user-defined, only 3 types):**
+- `pon` — port_name match EPON/GPON pattern (vendor-specific)
+- `ether-sfp` — ifType=117 (gigabitEthernet over SFP) বা ifSpeed≥1000 যেগুলো PON না
+- `ether-rj45` — ifType=6 (ethernetCsmacd) baseline copper
+- (Uplink/Other category একদম drop)
 
-### 2. `users` resource → mode parameter
+### 3. `snmp-poll-device` upgrade
+এখন শুধু TCP probe → পরিবর্তে call করবে: `snmp-walk-olt-system` + `snmp-walk-olt-interfaces` parallel। Cron (every 2 min)-ও তাই করবে।
 
-`inspectOlt(deviceId, 'users', { mode: 'olt-only' | 'with-user' })`
+### 4. `inspect-device` (OLT branch) update
+- **Uptime format:** TimeTicks/100 → "Xd Yh Zm" string
+- **brand_model split:** model+firmware+hw আলাদা field-এ দেখাবে
+- **System resource counts:** শুধু relevant categories return করব (`pon_count`, `ether_sfp_count`, `ether_rj45_count`) — uplink/other সরিয়ে দিচ্ছি
+- **pon_type aware:** `pon_type='gpon'` হলে "GPON" chip দেখাবে, EPON chip hide; `epon` হলে উল্টো
 
-- `olt-only` (default): শুধু `onu_list` থেকে — name = description ?? mac
-- `with-user`: এখনকার মতো `user_onu_mapping` + MikroTik PPPoE MAC join
-
-UI toggle দুটো query key আলাদা রাখবে।
-
-### 3. `interfaces` enrich
-
-`olt_ports` থেকে port_type ভিত্তিক grouping এবং oper_status সহ row। Inspector PON tab-এ আগের column-এর পাশে নতুন column: `oper_status` (up/down badge), `admin_status`।
-
-EPON/GPON detection: port_name pattern (`EPON0/x`, `GPON0/x`, `gigabit`, `tenGigE`) থেকে infer করব যদি `port_type` খালি থাকে।
-
-### 4. Agent contract update (doc only)
-
-`AGENT_CONTRACT.md`-এ যোগ করব — agent কে এই OID গুলোও walk করতে হবে এবং `pon_ports[]`-এ পাঠাতে:
-- `ifType` (1.3.6.1.2.1.2.2.1.3) → EPON / GPON / Ethernet / SFP detect
-- `ifOperStatus`, `ifAdminStatus`, `ifSpeed`
-- BDCOM EPON ONU description OID যাতে scenario-2 কাজ করে
-
-### 5. UI changes — `DeviceInspectorDialog.tsx`
-
-- নতুন `Overview` tab (OLT হলে)
-- ONU tab-এর উপরে `Tabs`-style toggle: শুধু OLT / + ইউজার
-- PON tab-এ oper_status column + EPON/GPON/SFP filter chips
-- Header chip-এ অতিরিক্ত: `EPON: X  GPON: Y  SFP: Z  Up: A/B`
+### 5. `DeviceInspectorDialog` UI tweak (Overview tab)
+- চারটে chip: **Total Interface | Up/Down | Total ONU | Online ONU**
+- পরের row: **PON (label= GPON/EPON pon_type অনুযায়ী) | Ether-SFP | Ether-RJ45** — Uplink/Other সম্পূর্ণ বাদ
+- System info card: Hardware/Firmware/Serial/MAC/Uptime এখন real value দেখাবে
+- "এখনই Poll" button দুটো walk function একসাথে fire করবে, 5s পরে refetch
 
 ## ফাইল পরিবর্তন
 
-- `supabase/functions/inspect-device/index.ts` — system resource + mode-aware users
-- `supabase/functions/ingest-snmp-data/AGENT_CONTRACT.md` — নতুন OID add
-- `src/components/device-admin/DeviceInspectorDialog.tsx` — Overview tab, scenario toggle, extra columns
+- `supabase/functions/snmp-walk-olt-system/index.ts` — নতুন (SNMP system OID walk)
+- `supabase/functions/snmp-walk-olt-interfaces/index.ts` — নতুন (ifTable walk → olt_ports upsert)
+- `supabase/functions/snmp-poll-device/index.ts` — TCP probe + auto-trigger দুটো walk
+- `supabase/functions/inspect-device/index.ts` — system resource কাটছাঁট + uptime formatter + brand parse
+- `src/components/device-admin/DeviceInspectorDialog.tsx` — chip layout (Uplink/Other বাদ, PON label dynamic)
 
-DB schema change লাগবে না — `olt_ports.oper_status/admin_status/port_type` already আছে; `olt_devices`-এ hardware/firmware/uptime column-ও already আছে।
+DB schema change লাগবে না।
 
-## যা এই plan-এ নেই (পরে)
+## যা এই plan-এ নেই
 
-- VLAN OID walk (BDCOM-specific, পরের iteration)
-- Per-ONU enable/disable action
-- ONU realtime traffic graph
+- Huawei/ZTE/VSol OID profile (পরে — তখন আরেক round)
+- VLAN OID walk
+- Agent install (cloud SNMP কাজ করছে, এখন দরকার নেই)
 
 ## টেস্ট প্ল্যান
 
-1. Deploy → Inspector → AFTABNOGOR_OLT
-2. Overview tab-এ চিপ দেখা যাবে (data 0 হলেও structure দেখাবে)
-3. ONU tab → "শুধু OLT" mode-এ description-ভিত্তিক list
-4. Toggle → "+ ইউজার" mode-এ MikroTik mapping যোগ হবে
-5. PON tab-এ port-type ও up/down breakdown
-6. Naeem-PC agent updated contract অনুযায়ী data পাঠালে সব populate হবে
+1. Deploy → Inspector → AFTABNOGOR_OLT → "এখনই Poll"
+2. ~5 sec পরে Overview-এ:
+   - Total Interface > 0
+   - PON / Ether-SFP / Ether-RJ45 count আসবে
+   - Up/Down সঠিক
+   - Hardware="A", Firmware="117819", MAC, Serial সব populate
+   - Uptime: "11 days 19 hr 38 min"
+3. PON tab-এ port list, প্রতিটার oper/admin status
