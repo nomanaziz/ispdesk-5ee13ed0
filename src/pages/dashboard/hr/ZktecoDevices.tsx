@@ -11,15 +11,38 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Plus, Server, RefreshCw, Trash2, Wifi, WifiOff } from "lucide-react";
+import { Plus, Server, RefreshCw, Trash2, Wifi, WifiOff, Cloud } from "lucide-react";
+
+const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+const ADMS_URL = `https://${PROJECT_ID}.supabase.co/functions/v1/zkteco-adms`;
+
+type FormState = {
+  name: string;
+  connection_type: "tcp_ip" | "adms_push";
+  ip_address: string;
+  port: number;
+  comm_key: number;
+  serial_number: string;
+  location: string;
+  status: string;
+};
+
+const blankForm: FormState = {
+  name: "",
+  connection_type: "tcp_ip",
+  ip_address: "",
+  port: 4370,
+  comm_key: 0,
+  serial_number: "",
+  location: "",
+  status: "active",
+};
 
 export default function ZktecoDevices() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    name: "", ip_address: "", port: 4370, api_id: "", api_password: "", serial_number: "", location: "", status: "active",
-  });
+  const [form, setForm] = useState<FormState>(blankForm);
 
   const { data: devices, isLoading } = useQuery({
     queryKey: ["zkteco-devices"],
@@ -30,8 +53,24 @@ export default function ZktecoDevices() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (values: typeof form) => {
-      const payload = { ...values, port: Number(values.port) };
+    mutationFn: async (values: FormState) => {
+      const isAdms = values.connection_type === "adms_push";
+      if (isAdms && !values.serial_number.trim()) {
+        throw new Error("ADMS Push mode-এ Serial Number আবশ্যক");
+      }
+      if (!isAdms && !values.ip_address.trim()) {
+        throw new Error("TCP/IP mode-এ IP Address আবশ্যক");
+      }
+      const payload: any = {
+        name: values.name,
+        connection_type: values.connection_type,
+        ip_address: isAdms ? null : values.ip_address.trim(),
+        port: isAdms ? null : Number(values.port),
+        comm_key: isAdms ? 0 : Number(values.comm_key) || 0,
+        serial_number: values.serial_number.trim() || null,
+        location: values.location || null,
+        status: values.status,
+      };
       if (editId) {
         const { error } = await supabase.from("zkteco_devices").update(payload).eq("id", editId);
         if (error) throw error;
@@ -78,14 +117,25 @@ export default function ZktecoDevices() {
   const resetForm = () => {
     setOpen(false);
     setEditId(null);
-    setForm({ name: "", ip_address: "", port: 4370, api_id: "", api_password: "", serial_number: "", location: "", status: "active" });
+    setForm(blankForm);
   };
 
   const openEdit = (d: any) => {
     setEditId(d.id);
-    setForm({ name: d.name, ip_address: d.ip_address, port: d.port, api_id: d.api_id || "", api_password: d.api_password || "", serial_number: d.serial_number || "", location: d.location || "", status: d.status });
+    setForm({
+      name: d.name,
+      connection_type: (d.connection_type as "tcp_ip" | "adms_push") || "tcp_ip",
+      ip_address: d.ip_address || "",
+      port: d.port || 4370,
+      comm_key: d.comm_key || 0,
+      serial_number: d.serial_number || "",
+      location: d.location || "",
+      status: d.status,
+    });
     setOpen(true);
   };
+
+  const isAdms = form.connection_type === "adms_push";
 
   return (
     <div className="space-y-6">
@@ -98,22 +148,83 @@ export default function ZktecoDevices() {
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-1" /> ডিভাইস যোগ করুন</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editId ? "ডিভাইস সম্পাদনা" : "নতুন ZKTeco ডিভাইস"}</DialogTitle></DialogHeader>
             <div className="space-y-4">
-              <div><Label>ডিভাইস নাম *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Main Gate Device" /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label>IP Address *</Label><Input value={form.ip_address} onChange={(e) => setForm({ ...form, ip_address: e.target.value })} placeholder="192.168.1.201" /></div>
-                <div><Label>Port</Label><Input type="number" value={form.port} onChange={(e) => setForm({ ...form, port: Number(e.target.value) })} /></div>
+              <div>
+                <Label>Connection Type *</Label>
+                <Select value={form.connection_type} onValueChange={(v) => setForm({ ...form, connection_type: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tcp_ip">TCP/IP (LAN)</SelectItem>
+                    <SelectItem value="adms_push">ADMS Push (Cloud)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label>API ID</Label><Input value={form.api_id} onChange={(e) => setForm({ ...form, api_id: e.target.value })} /></div>
-                <div><Label>API Password</Label><Input type="password" value={form.api_password} onChange={(e) => setForm({ ...form, api_password: e.target.value })} /></div>
+
+              <div>
+                <Label>ডিভাইস নাম *</Label>
+                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Main Gate Device" />
               </div>
+
+              {!isAdms ? (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>IP Address *</Label>
+                      <Input value={form.ip_address} onChange={(e) => setForm({ ...form, ip_address: e.target.value })} placeholder="192.168.1.201" />
+                    </div>
+                    <div>
+                      <Label>Port</Label>
+                      <Input type="number" value={form.port} onChange={(e) => setForm({ ...form, port: Number(e.target.value) })} />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Comm Key</Label>
+                    <Input
+                      type="number"
+                      value={form.comm_key}
+                      onChange={(e) => setForm({ ...form, comm_key: Number(e.target.value) })}
+                      placeholder="0 (default), e.g. 1895"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Device-এর Communication password। Default 0; পরিবর্তন না করলে 0 রাখুন।
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-md border bg-muted/40 p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Cloud className="h-4 w-4" /> ADMS Push Setup
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Device-এর Menu → Comm → Cloud Server-এ এই URL দিন:
+                  </p>
+                  <code className="block text-xs bg-background p-2 rounded border break-all">{ADMS_URL}</code>
+                  <p className="text-xs text-muted-foreground">
+                    Device নিজে এখানে data push করবে। Serial Number দিয়ে চেনা হবে।
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
-                <div><Label>Serial Number</Label><Input value={form.serial_number} onChange={(e) => setForm({ ...form, serial_number: e.target.value })} /></div>
-                <div><Label>Location</Label><Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="e.g. Main Office" /></div>
+                <div>
+                  <Label>Serial Number{isAdms ? " *" : ""}</Label>
+                  <Input
+                    value={form.serial_number}
+                    onChange={(e) => setForm({ ...form, serial_number: e.target.value })}
+                    placeholder={isAdms ? "Device-এ লেখা SN" : "Auto-detect on first sync"}
+                  />
+                  {!isAdms && (
+                    <p className="text-xs text-muted-foreground mt-1">খালি রাখলে first sync-এ auto-detect হবে।</p>
+                  )}
+                </div>
+                <div>
+                  <Label>Location</Label>
+                  <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="e.g. Main Office" />
+                </div>
               </div>
+
               <div>
                 <Label>স্ট্যাটাস</Label>
                 <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
@@ -124,7 +235,12 @@ export default function ZktecoDevices() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button className="w-full" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending || !form.name || !form.ip_address}>
+
+              <Button
+                className="w-full"
+                onClick={() => saveMutation.mutate(form)}
+                disabled={saveMutation.isPending || !form.name}
+              >
                 {editId ? "আপডেট" : "সংরক্ষণ"}
               </Button>
             </div>
@@ -145,7 +261,7 @@ export default function ZktecoDevices() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>নাম</TableHead>
-                    <TableHead>IP : Port</TableHead>
+                    <TableHead>Connection</TableHead>
                     <TableHead>Serial</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>স্ট্যাটাস</TableHead>
@@ -160,7 +276,13 @@ export default function ZktecoDevices() {
                   {(devices || []).map((d: any) => (
                     <TableRow key={d.id}>
                       <TableCell className="font-medium">{d.name}</TableCell>
-                      <TableCell className="font-mono text-sm">{d.ip_address}:{d.port}</TableCell>
+                      <TableCell className="text-sm">
+                        {d.connection_type === "adms_push" ? (
+                          <Badge variant="outline" className="gap-1"><Cloud className="h-3 w-3" /> ADMS Push</Badge>
+                        ) : (
+                          <span className="font-mono">{d.ip_address}:{d.port}</span>
+                        )}
+                      </TableCell>
                       <TableCell>{d.serial_number || "—"}</TableCell>
                       <TableCell>{d.location || "—"}</TableCell>
                       <TableCell>

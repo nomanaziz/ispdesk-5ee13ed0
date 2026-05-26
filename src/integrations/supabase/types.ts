@@ -11693,39 +11693,45 @@ export type Database = {
         Row: {
           api_id: string | null
           api_password: string | null
+          comm_key: number
+          connection_type: string
           created_at: string
           id: string
-          ip_address: string
+          ip_address: string | null
           last_sync_at: string | null
           location: string | null
           name: string
-          port: number
+          port: number | null
           serial_number: string | null
           status: string
         }
         Insert: {
           api_id?: string | null
           api_password?: string | null
+          comm_key?: number
+          connection_type?: string
           created_at?: string
           id?: string
-          ip_address: string
+          ip_address?: string | null
           last_sync_at?: string | null
           location?: string | null
           name: string
-          port?: number
+          port?: number | null
           serial_number?: string | null
           status?: string
         }
         Update: {
           api_id?: string | null
           api_password?: string | null
+          comm_key?: number
+          connection_type?: string
           created_at?: string
           id?: string
-          ip_address?: string
+          ip_address?: string | null
           last_sync_at?: string | null
           location?: string | null
           name?: string
-          port?: number
+          port?: number | null
           serial_number?: string | null
           status?: string
         }
