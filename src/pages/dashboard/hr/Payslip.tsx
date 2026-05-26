@@ -107,7 +107,7 @@ export default function PayslipManager() {
       if (filterMode === "all") return true;
       const c = computed[e.id];
       const ex = existingByEmp.get(e.id);
-      if (!c || !ex) return filterMode === "all";
+      if (!c || !ex) return false;
       const tpl = c.basic_salary + c.total_allowance - c.total_deduction;
       const net = Number(ex.net_salary || 0);
       if (filterMode === "regular") return Math.abs(net - tpl) < 1;
