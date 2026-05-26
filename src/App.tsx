@@ -105,6 +105,7 @@ const DeviceAdminSchedules = lazy(() => import("@/pages/dashboard/device-admin/S
 const DeviceAdminAuditLog = lazy(() => import("@/pages/dashboard/device-admin/AuditLog"));
 const DeviceAdminJobs = lazy(() => import("@/pages/dashboard/device-admin/Jobs"));
 const DeviceAdminOidLibrary = lazy(() => import("@/pages/dashboard/device-admin/OidLibrary"));
+const DeviceAdminPollingAgents = lazy(() => import("@/pages/dashboard/device-admin/PollingAgents"));
 
 // HR
 const HrDepartments = lazy(() => import("@/pages/dashboard/hr/Departments"));
@@ -556,6 +557,7 @@ const App = () => (
               <Route path="/dashboard/device-admin/jobs" element={<P><DeviceAdminJobs /></P>} />
               <Route path="/dashboard/device-admin/audit-log" element={<P><DeviceAdminAuditLog /></P>} />
               <Route path="/dashboard/device-admin/oid-library" element={<P><DeviceAdminOidLibrary /></P>} />
+              <Route path="/dashboard/device-admin/polling-agents" element={<P><DeviceAdminPollingAgents /></P>} />
 
               {/* HR */}
               <Route path="/dashboard/hr/departments" element={<P><HrDepartments /></P>} />

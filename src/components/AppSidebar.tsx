@@ -214,6 +214,7 @@ export const menuGroups: MenuGroup[] = [
       { title: "ড্যাশবোর্ড", url: "/dashboard/device-admin", icon: LayoutDashboard },
       { title: "ডিভাইস ইনভেন্টরি", url: "/dashboard/device-admin/devices", icon: Server },
       { title: "OID Library", url: "/dashboard/device-admin/oid-library", icon: Server },
+      { title: "Polling Agents", url: "/dashboard/device-admin/polling-agents", icon: Server },
       { title: "MikroTik PPPoE", url: "/dashboard/mikrotik/servers", icon: Server },
       { title: "অল ডিভাইস ইউজার", url: "/dashboard/device-admin/users", icon: Users },
       { title: "জব ম্যানেজমেন্ট", url: "/dashboard/device-admin/jobs", icon: Briefcase },

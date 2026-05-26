@@ -1,0 +1,13 @@
+{
+  "name": "ispdesk-polling-agent",
+  "version": "1.0.0",
+  "description": "On-premise SNMP polling agent for ISPDesk OLT monitoring",
+  "main": "polling-agent.js",
+  "scripts": {
+    "start": "node polling-agent.js"
+  },
+  "dependencies": {
+    "net-snmp": "^3.11.2",
+    "node-fetch": "^2.7.0"
+  }
+}
