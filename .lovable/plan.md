@@ -1,74 +1,46 @@
-# পে-রোল (PayRoll) Module Plan
+# ZKTeco Device Form — TCP/IP + ADMS Push + Auto Serial
 
-বর্তমান `Payroll.tsx` শুধু template + payhead assign করতে দেয়। নতুন design-এ ৩টা concept লাগবে: **PayRoll**, **Periods**, **Assigned PayHeads**। নিচের plan ঠিক screenshot-গুলোর মতই কাজ করবে।
+বর্তমানে form-এ IP, Port, API ID/Password, Serial, Location আছে। ZKTeco device-এ আসলে যেটা দরকার সেটা হল **Comm Key** (4-digit communication password, e.g. `0`, `1895`)। আর ADMS Push mode আলাদা — সেখানে device নিজে server-এ data পাঠায়, IP-Port লাগে না, শুধু **Serial Number** আর **Cloud URL** দরকার।
 
-## ১. Database (migration)
+## ১. Database migration
 
-`payroll_templates` কে PayRoll হিসেবে ব্যবহার করব, ২টা নতুন column + ১টা নতুন table:
-
+`zkteco_devices` table-এ ২টা column যোগ:
 ```text
-ALTER payroll_templates:
-  + payroll_type      text   (Monthly|Weekly|Daily|Quarterly|Annual|Bi_Annual|Tri_Annual|One_Time)
-  + payment_type      text   (Cash|bKash|Bank|Rocket|Nagad|SSL Commerz|...|Other)
-  + is_default        boolean default false
-
-NEW payroll_periods:
-  id, payroll_id (FK payroll_templates), period_type,
-  period_name text, start_date date, end_date date, issue_date date,
-  created_at
++ connection_type  text   default 'tcp_ip'   ('tcp_ip' | 'adms_push')
++ comm_key         int    default 0           (ZKTeco communication password)
 ```
+`ip_address`, `port` কে nullable করব (ADMS mode-এ লাগবে না)।
 
-GRANT + RLS (authenticated read/insert/update/delete, service_role all)। ১টা `payroll_template_payheads` ইতিমধ্যেই আছে — reuse।
+## ২. Form পরিবর্তন (`ZktecoDevices.tsx`)
 
-**Seed:** ১টা default row — name `Monthly Payroll`, payroll_type `Monthly`, payment_type null; এবং বর্তমান সব active payheads কে এই payroll-এ amount=0 দিয়ে assign।
+সবার উপরে একটা **Connection Type** dropdown:
 
-## ২. পেজ: `src/pages/dashboard/hr/Payroll.tsx` (rewrite)
+| Connection Type | যে field গুলো দেখাবে |
+|---|---|
+| **TCP/IP** (default) | IP Address\*, Port (default 4370), **Comm Key** (default 0, e.g. 1895) |
+| **ADMS Push** | একটা info box — "ADMS server URL দিন device-এ: `https://<project>.supabase.co/functions/v1/zkteco-adms`" + Serial Number field |
 
-Screenshot-১ এর মত table:
+সব mode-এ common: Device Name\*, Location, Status।
 
-```text
-Serial | PayRoll Name | Payroll Type | Payment Type | Action
-                                                    [Assign Period] [Assign PayHead] [Edit]
-[+ New PayRoll]
-```
+**Serial Number** field-এ helper text: *"খালি রাখুন — প্রথম sync-এ device থেকে auto-detect হবে"*। TCP/IP mode-এ optional, ADMS mode-এ required (device push-এ এটা দিয়েই চেনা হবে)।
 
-### a) New / Edit PayRoll dialog (screenshot-২)
-Fields: **Payroll Name\***, **Payroll Type\*** (dropdown: Monthly/Weekly/Daily/Quarterly/Annual/Bi_Annual/Tri_Annual/One_Time), **Payment Type** (dropdown: Cash, bKash, Bank, Rocket, Nagad, SSL Commerz, Foster Payments, Walletmix, SureCash, MCash, UCash, aamarPay, PhonePe, Razorpay, Stripe, Other)।
+API ID/API Password field দুটো সরিয়ে দেব — ZKTeco hardware-এ এগুলা লাগে না, পুরোনো ভুল ছিল।
 
-### b) Assign Period dialog (screenshot-৩,৫,৬,৭)
-- যদি `period_type` set না থাকে → শুধু "Type" dropdown + **Assign Periods** button (screenshot-৩)।
-- Type select করার পর সাল-ভিত্তিক periods auto-generate করে editable form-এ দেখাবে (Period Name, Start Date, End Date, Issue Date)। **Update Periods** button save করবে।
+## ৩. List table পরিবর্তন
 
-**Auto-generation rule:**
-| Type | কতটা period | Period Name pattern |
-|---|---|---|
-| Monthly | 12 (current year) | `Jan-25`, `Feb-25`… |
-| Weekly | পুরো বছরের weeks; মাসের শেষ chunk = বাকি দিন (`22 - 31 Jan 2025 (10 days)`) | range + (N days) |
-| Quarterly | 4 | `Jan-25 To Mar-25` ইত্যাদি |
-| Annual | 1 | `2025` |
-| Bi_Annual | 2 | `Jan-25 To Jun-25`, `Jul-25 To Dec-25` |
-| Tri_Annual | 3 | 4-মাসের blocks |
-| Daily | চলতি মাসের প্রতিদিন | `01 Jan 2025` |
-| One_Time | 1 | user দেয় |
+"IP : Port" column-কে **Connection** column করব:
+- TCP/IP → `192.168.1.201:4370` badge সহ
+- ADMS → `ADMS Push` badge + SN
 
-Issue Date = end_date + 1 day (default, editable)।
+## ৪. Sync edge function (`sync-zkteco-data`)
 
-Save: existing periods delete করে নতুন set insert (simpler than diffing)।
+ছোট update: response-এ `serial_number` ফেরত আসলে DB-তে save করব (auto-detect)। Connection type অনুযায়ী আলাদা path:
+- `tcp_ip` → existing IP-port flow (comm_key পাঠাব authentication-এ)
+- `adms_push` → শুধু last_sync timestamp আপডেট (data device push করবে আলাদা endpoint-এ; future scope)
 
-### c) Assign PayHead dialog (screenshot-৪)
-- Top row: **PayHead** dropdown (active payheads), **Type** (Amount/Percentage), **Amount/Unit**, **Assign PayHead** button → `payroll_template_payheads` এ insert।
-- নিচে assigned list: Name | editable Amount input | Type badge (Addition/Deduction — payheads.type থেকে) | Amount/Percentage | value | trash।
-- Inline amount edit → update mutation।
-- Bottom: **Grand Total** (sum addition − sum deduction)।
+ADMS receiver endpoint পরে আলাদা task-এ করব — এই plan-এ শুধু form + DB।
 
-## ৩. UI/বাংলা labels
-Heading **"পে-রোল"**, sidebar group **"Configuration"** এ আছে আগে থেকেই, রাখব।
-
-## ৪. কাজের ক্রম
-1. Migration: alter table + new `payroll_periods` table + GRANT/RLS + seed default Monthly Payroll with all payheads (amount 0)।
-2. `Payroll.tsx` rewrite — list + 3 dialogs।
-3. Period generator utility (`src/lib/payrollPeriods.ts`)।
-4. Verify: build clean, default row দেখায়, period generation সঠিক।
-
-## প্রশ্ন
-পিরিয়ড generate করার সময় কোন বছর ধরে নেব? — **চলতি বছর (2026)** default, screenshot-এ দেখানো dates editable থাকবে — ঠিক আছে?
+## ৫. ক্রম
+1. Migration (alter table, 2 columns, nullable IP/Port)
+2. `ZktecoDevices.tsx` rewrite — dynamic form
+3. `sync-zkteco-data` edge function-এ auto ser
