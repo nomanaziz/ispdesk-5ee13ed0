@@ -1,89 +1,61 @@
-# Plan: Online Client Monitoring (OLT-ভিত্তিক ONU live view)
+## আপনার OLT এর actual saved data (DB থেকে)
 
-## লক্ষ্য
-আপনি যে screenshot পাঠিয়েছেন — সেই design follow করে একটা **Online Client Monitoring** page বানাব। উপরে ৩টা summary card (Total ONU / Online ONU / Matched PPPoE), নিচে একটা rich table — সব column সহ: OLT Name, PON Port, ONU#, PPPoE Username, ONU MAC, Router MAC, RX Power (color badge), TX Power, Voltage, Temp, Laser Bias, Status, Distance।
+| Field | Value | মূল্যায়ন |
+|---|---|---|
+| Name | AFTABNAGAR-OLT | ✅ |
+| Vendor / Model | bdcom / — | ✅ |
+| PON Type | gpon | ✅ |
+| IP Address | 192.168.110.4 | ✅ (private LAN IP — agent থেকে reachable হতে হবে) |
+| Telnet Port | 23 | ✅ |
+| Username | admin | ✅ |
+| Password | greendhaka | ⚠️ plain text saved (পরে encrypt করা দরকার) |
+| Location | AFTABNAGAR, Dhaka | ✅ |
+| SNMP Enabled | true | ✅ |
+| SNMP IP | 192.168.110.4 | ✅ |
+| **SNMP Port** | **162** | ❌ **ভুল — হওয়া উচিত 161** |
+| SNMP Community | GxNsnMP_RO | ⚠️ আপনি বলেছিলেন "Bashundhara TC" — মিলছে না, verify করুন |
+| SNMP Version | v2c | ✅ |
+| OID Profile | BDCOM OLT GPON | ✅ |
+| Data Source Priority | agent_first | ✅ |
+| Fallback | telnet | ✅ |
+| Agent Enabled | true | ✅ |
+| **Assigned Agent** | **null** | ❌ **OLT কোনো agent এ assign করা নাই** |
+| Status | unknown | কারণ — কখনো poll হয়নি |
+| agent_last_seen / snmp_last_seen | null | কারণ — উপরের ২টা সমস্যা |
 
----
-
-## ১. Page structure (load-safe)
-
-আলাদা route রাখব যাতে অন্য page load না বাড়ে:
-
-- **`/dashboard/olt/online-monitoring`** — All-OLT view (default: একটা OLT select করতে হবে, সব OLT একসাথে load হবে না → performance safe)
-- প্রতিটা OLT card-এ একটা **"Live Monitoring"** button — click করলে এই page-এ চলে আসে, ওই OLT pre-selected হয়ে
-- User-list থেকে কোনো user-এ click করলেও এই page-এ আসা যাবে, OLT + PON port + ONU pre-filtered হয়ে (`map-users-to-onu` data ব্যবহার করে)
-
-Sidebar এ "OLT" group-এর under নতুন menu item যোগ হবে।
-
-## ২. Data source — কোথা থেকে আসবে
-
-Existing `onu_list` + `olt_devices` + `pppoe_user_onu_map` tables থেকে data render করব। এই table গুলো ইতিমধ্যে SNMP polling (edge function বা agent) update করে। কোনো নতুন table দরকার নেই।
-
-Refresh strategy:
-- Auto-refresh: **৩০ সেকেন্ড interval** (configurable, default off — manual refresh button)
-- Page leave করলে refresh বন্ধ → load বাড়বে না
-
-## ৩. Filtering (screenshot-এ যেটা নেই, সেটা যোগ হবে)
-
-Table-এর উপরে filter bar:
-- **OLT selector** (required)
-- **PON Port** dropdown (ওই OLT-র সব port)
-- **Status**: All / Online / Offline / LOS
-- **RX Power range**: preset chips — `> -25 dBm`, `-25 to -27`, `-27 to -29`, `< -29 (Critical)`, `LOS (no signal)` + custom min/max
-- **Search**: PPPoE username / ONU MAC / Router MAC
-- **Export CSV** button
-
-RX Power color rule (screenshot-এর সাথে মিল):
-- Green badge: ≥ -24 dBm
-- Yellow: -24 to -27
-- Red: < -27 বা LOS
-
-## ৪. SNMP-direct vs Agent — কেন agent লাগছে
-
-আপনি জানতে চেয়েছেন SNMP direct কেন কাজ করছে না। সংক্ষেপে:
-
-| পদ্ধতি | অবস্থা |
-|---|---|
-| Supabase Edge Function থেকে SNMP (UDP 161) | **কাজ করে না** — Deno edge runtime UDP socket support করে না, শুধু TCP/HTTP। তাই codebase-এ যে `snmp-poll-device` / `snmp-fetch-*` functions আছে সেগুলো cloud-এ run করলে timeout/connection error দেয়। |
-| Browser থেকে SNMP | **সম্ভব না** — browser-এ raw UDP নেই |
-| অন-প্রিমিস agent (Node.js, আপনার office PC) | **কাজ করে** — LAN থেকে OLT-এ direct SNMP, তারপর HTTPS-এ Supabase-এ push |
-
-**সমাধান যা আপনি configure করতে পারেন (যদি SNMP-direct চান):**
-1. একটা VPS/cloud server নিন যেটা OLT-এর public IP-তে UDP 161 reach করতে পারে (OLT public IP লাগবে + firewall rule)
-2. ওই server-এ আমাদের agent চালান → এটাই effectively "SNMP-direct" হবে cloud থেকে
-3. **অথবা** OLT-এর management IP-কে public করে port-forward করুন (security risk — recommend না)
-
-বাস্তবে বেশিরভাগ ISP agent-ই use করে (Splynx, Smart OLT, UNMS সবাই)। তাই agent কে fallback না ভেবে **primary** ধরে এগোনই ভালো — device dependency কমাতে চাইলে agent একটা ছোট Raspberry Pi-তেও চলবে।
-
-আপনি যদি এখন **agent test** করতে চান, monitoring page ready হলে আমি একটা test flow দেব।
-
-## ৫. Per-user quick view
-
-User list (PPPoE Users) থেকে কোনো user-এ একটা **"Live ONU Status"** button যোগ হবে — click করলে monitoring page-এ ওই user-এর row scroll/highlight হবে (auto-filter by username)।
-
-## ৬. Performance safeguards
-
-- OLT select না করা পর্যন্ত query চলবে না
-- Pagination: ১০০ row/page (server-side via Supabase `.range()`)
-- Auto-refresh default **off**, user toggle করবে
-- Index check: `onu_list(olt_id, pon_port, status)` — দরকার হলে index migration যোগ হবে
+Agent **Naeem-PC** online আছে (last heartbeat ঠিক আছে), কিন্তু সে এই OLT-কে চেনে না কারণ assignment নাই।
 
 ---
 
-## File changes (technical)
+## 🔴 যে ২টা ঠিক করতেই হবে
 
-- `src/pages/dashboard/olt/OnlineMonitoring.tsx` — নতুন page
-- `src/App.tsx` — route
-- `src/components/AppSidebar.tsx` — menu item
-- `src/pages/dashboard/olt/OltDevices.tsx` — "Live Monitoring" button প্রতিটা OLT row-এ
-- `src/pages/dashboard/users/UsersList.tsx` (বা যা applicable) — user row-এ "Live ONU Status" link
-- Index migration (যদি query slow হয়)
+### 1. SNMP Port 162 → 161
+- **161** = SNMP query port (agent → OLT, এটাই লাগবে)
+- **162** = SNMP trap port (OLT → server, আলাদা feature)
+- 162 দিয়ে কখনো OLT poll হবে না।
 
-কোনো নতুন edge function বা table দরকার নেই — existing `onu_list` data-ই render হবে।
+### 2. OLT-কে Agent এ assign করুন
+Dashboard → **Device Admin → Polling Agents** → Naeem-PC এর "Assign OLTs" → AFTABNAGAR-OLT select → Save।
+Assign না করলে agent এই device-এর জন্য কোনো job পাবে না।
 
 ---
 
-## নিশ্চিত করার বিষয়
+## ⚠️ একটু verify করার বিষয়
 
-এই plan approve করলে আমি build mode-এ এগোব। শুধু একটা confirm:
-- **Default OLT selector** ঠিক আছে, নাকি "All OLTs aggregate" view-ও দরকার? (আমি default OLT-required রেখেছি load safety-র জন্য)
+- **SNMP Community**: আপনি বললেন "Bashundhara TC" কিন্তু save আছে `GxNsnMP_RO`। কোনটা আপনার OLT এ actually configured সেটা OLT CLI থেকে দেখে নিন (`show snmp` জাতীয় command)। ভুল community দিলে OLT কোনো reply দিবে না।
+- **Password plain text** আছে — কাজ করবে কিন্তু পরে encryption যোগ করা উচিত।
+
+---
+
+## এখন আপনার করণীয় (এই plan-এ আমি কোনো code change করবো না — শুধু আপনি যা করবেন)
+
+1. OLT edit করে **SNMP Port = 161** করুন।
+2. OLT এর actual SNMP community confirm করে সঠিক value বসান।
+3. Polling Agents পেজে Naeem-PC এ এই OLT assign করুন।
+4. Agent machine থেকে test:
+   ```bash
+   snmpwalk -v2c -c <community> 192.168.110.4 1.3.6.1.2.1.1.1.0
+   ```
+   reply আসলে ৩০ সেকেন্ড পর OLT status "online" হবে এবং `agent_last_seen` update হবে।
+
+এই plan accept করলে আমি এর পরের message-এ verify করব যে status update হয়েছে কিনা, আর চাইলে UI-তে SNMP port এর default 161 করে দিব যাতে ভবিষ্যতে এই ভুল না হয়।
