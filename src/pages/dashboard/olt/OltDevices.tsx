@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Plus, Server, Wifi, WifiOff, Cpu, Pencil, Trash2, Search, Download, Loader2,
-  Router, CheckCircle2, AlertCircle, Circle, Users, RefreshCw,
+  Router, CheckCircle2, AlertCircle, Circle, Users, RefreshCw, Activity,
 } from "lucide-react";
 
 import ResellerAccessDialog from "@/components/olt/ResellerAccessDialog";
