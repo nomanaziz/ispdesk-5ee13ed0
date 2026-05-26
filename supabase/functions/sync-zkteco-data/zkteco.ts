@@ -97,12 +97,14 @@ export function makeCommKey(key: number, sessionId: number, ticks = 50): Uint8Ar
   const ZKSO = [0x5a, 0x4b, 0x53, 0x4f];
   for (let i = 0; i < 4; i++) b[i] ^= ZKSO[i];
 
-  // swap: out = B[2] B[3] B[0] B[1], then XOR low halves with ticks
+  // HH swap then XOR with ticks per pyzk: pack(B,B,B,B, c0^B, c1^B, B, c3^B)
+  // where c = [b[2], b[3], b[0], b[1]]
+  const B = ticks & 0xff;
   const out = new Uint8Array(4);
-  out[0] = b[2];
-  out[1] = b[3];
-  out[2] = b[0] ^ (ticks & 0xff);
-  out[3] = b[1] ^ (ticks & 0xff);
+  out[0] = b[2] ^ B;
+  out[1] = b[3] ^ B;
+  out[2] = B;
+  out[3] = b[1] ^ B;
   return out;
 }
 
