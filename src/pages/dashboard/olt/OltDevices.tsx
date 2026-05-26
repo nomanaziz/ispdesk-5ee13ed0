@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Plus, Server, Wifi, WifiOff, Cpu, Pencil, Trash2, Search, Download, Loader2,
-  Router, CheckCircle2, AlertCircle, Circle, Users, RefreshCw,
+  Router, CheckCircle2, AlertCircle, Circle, Users, RefreshCw, Activity,
 } from "lucide-react";
 
 import ResellerAccessDialog from "@/components/olt/ResellerAccessDialog";
@@ -410,6 +411,9 @@ export default function OltDevices() {
                             {syncOneMut.isPending && syncOneMut.variables === d.id
                               ? <Loader2 className="h-4 w-4 animate-spin" />
                               : <RefreshCw className="h-4 w-4 text-emerald-600" />}
+                          </Button>
+                          <Button variant="ghost" size="icon" title="Live Monitoring" asChild>
+                            <Link to={`/dashboard/olt/online-monitoring?olt=${d.id}`}><Activity className="h-4 w-4 text-emerald-600" /></Link>
                           </Button>
                           <Button variant="ghost" size="icon" title="Reseller Access" onClick={() => setAccessOlt({ id: d.id, name: d.name })}>
                             <Users className="h-4 w-4 text-blue-500" />

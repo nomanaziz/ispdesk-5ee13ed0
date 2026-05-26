@@ -173,6 +173,7 @@ export const menuGroups: MenuGroup[] = [
       { title: "OLT / ONU ওভারভিউ", url: "/dashboard/olt-overview", icon: Cpu },
       { title: "OLT ডিভাইস", url: "/dashboard/olt", icon: Server },
       { title: "OLT Power Dashboard", url: "/dashboard/olt/power-dashboard", icon: Activity },
+      { title: "Online Client Monitoring", url: "/dashboard/olt/online-monitoring", icon: Wifi },
       { title: "ONU তালিকা", url: "/dashboard/olt/onu", icon: List },
       { title: "OLT ইউজার", url: "/dashboard/olt/users", icon: Users },
       { title: "OLT Port Classification", url: "/dashboard/olt/ports", icon: Network },

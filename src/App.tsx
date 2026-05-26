@@ -137,6 +137,7 @@ const OltPorts = lazy(() => import("@/pages/dashboard/olt/OltPorts"));
 const OnuList = lazy(() => import("@/pages/dashboard/olt/OnuList"));
 const OnuDetail = lazy(() => import("@/pages/dashboard/olt/OnuDetail"));
 const PowerDashboard = lazy(() => import("@/pages/dashboard/olt/PowerDashboard"));
+const OnlineMonitoring = lazy(() => import("@/pages/dashboard/olt/OnlineMonitoring"));
 const UserDownCount = lazy(() => import("@/pages/dashboard/olt/UserDownCount"));
 const FiberDownFinder = lazy(() => import("@/pages/dashboard/olt/FiberDownFinder"));
 const OltSharing = lazy(() => import("@/pages/dashboard/olt/OltSharing"));
@@ -585,6 +586,7 @@ const App = () => (
               <Route path="/dashboard/olt" element={<P><OltDevices /></P>} />
               <Route path="/dashboard/olt/power-dashboard" element={<P><PowerDashboard /></P>} />
               <Route path="/dashboard/olt/onu" element={<P><OnuList /></P>} />
+              <Route path="/dashboard/olt/online-monitoring" element={<P><OnlineMonitoring /></P>} />
               <Route path="/dashboard/olt/onu/:id" element={<P><OnuDetail /></P>} />
               <Route path="/dashboard/olt/users" element={<P><OltUsers /></P>} />
               <Route path="/dashboard/olt/ports" element={<P><OltPorts /></P>} />
