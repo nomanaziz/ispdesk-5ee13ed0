@@ -138,13 +138,15 @@ Deno.serve(async (req) => {
 
     if (device.connection_type === "adms_push") {
       return new Response(JSON.stringify({
+        ok: false,
+        code: "ADMS_PUSH_MODE",
         error: "ADMS Push mode-এ device নিজে data push করে; sync button দিয়ে fetch করা যায় না।",
-      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (!device.ip_address) {
-      return new Response(JSON.stringify({ error: "IP address missing" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ ok: false, code: "MISSING_IP", error: "IP address missing" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -158,9 +160,19 @@ Deno.serve(async (req) => {
     } catch (e) {
       console.error("ZK fetch error:", e);
       return new Response(JSON.stringify({
+        ok: false,
+        code: "DEVICE_UNREACHABLE",
+        reachable: false,
         error: `Device সংযোগ ব্যর্থ: ${String(e?.message || e)}`,
         details: String(e),
-      }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        troubleshooting: [
+          "Router/NAT-এ TCP 4370 port forward আছে কিনা দেখুন",
+          "Device LAN IP ঠিক আছে কিনা এবং device online কিনা দেখুন",
+          "Firewall/ACL থেকে Supabase outbound IP allow করতে হতে পারে",
+          "Public IP থেকে telnet/nc দিয়ে 4370 reachable কিনা test করুন",
+          "Reachable না হলে ADMS Push mode ব্যবহার করুন",
+        ],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     console.log("Device log:", result.log.join("\n"));
