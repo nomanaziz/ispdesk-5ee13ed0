@@ -195,7 +195,7 @@ export default function PollingAgents() {
 
       {/* Setup dialog */}
       <Dialog open={!!setupOpen} onOpenChange={(o) => !o && setSetupOpen(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Setup: {setupOpen?.name}</DialogTitle>
             <DialogDescription>আপনার office PC-তে এই step-গুলো follow করুন</DialogDescription>
