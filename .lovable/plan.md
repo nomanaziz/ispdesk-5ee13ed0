@@ -1,65 +1,116 @@
-# Resignation Management — পূর্ণাঙ্গ প্ল্যান
+## লক্ষ্য
 
-বর্তমানে `resign_rules` আর `resignations` দুটো table আছে কিন্তু minimal। UI পেইজ দুটোও আছে কিন্তু field গুলো reference screenshot এর মতো না। দুটো menu আলাদাই রাখব (HR & Payroll → Resign Rules আর Resignations)।
+Employee list-কে action-rich করব (4টা button), Employee View page বানাব (client view-এর মতো বিস্তারিত), আর Payslip Manager বানাব যেখান থেকে bulk select করে যেকোনো মাসের payslip generate/regenerate করা যাবে।
 
-## 1. Database migration
+---
 
-**`resign_rules` table এ যোগ:**
-- `description` (text) — rule এর details
-- `is_active` (boolean, default true)
-- `tenant_id` (uuid) — multi-tenant scope
-- `updated_at` trigger
+## ১. Employee List পরিবর্তন (`Employees.tsx`)
 
-**`resignations` table এ যোগ:**
-- `type` (text: `resign` | `terminate`, default `resign`)
-- `letter_received_date` (date)
-- `resignation_letter_url` (text) — Supabase Storage path
-- `good_or_bad_activities` (text)
-- `is_applied` (boolean, default false) — applied হলে employee left-list-এ যাবে
-- `applied_rules` (jsonb) — `[{rule_id, checked}]` checklist
-- `tenant_id` (uuid)
-- `created_by` (uuid)
-- `updated_at` trigger
+বর্তমান Edit + Delete এর জায়গায় ৪টি action icon button:
 
-**নতুন storage bucket:** `resignation-letters` (private, RLS: tenant এর user দেখতে/upload করতে পারবে)।
+```text
+[👁 View] [✏️ Edit] [💵 PayHeads] [📅 Holidays]
+```
 
-RLS: দুই table-এই `tenant_id = current_user_tenant()` policy।
+- **View** → নতুন route `/dashboard/hr/employees/:id` খুলবে
+- **Edit** → existing add-employee form (edit mode)
+- **PayHeads** → modal: এই employee-কে assigned template-এর payheads list, প্রতিটির default amount + override option (employee-specific)
+- **Holidays** → modal: employee-এর assigned shift অনুসারে weekly off + holiday list (current month + next month)
 
-## 2. Resign Rules page (`/dashboard/hr/resign-rules`)
-- Table: Serial, Rule Name, Details, Active toggle, Edit/Delete
-- "+ Resign Rules" button → Modal (Name, Details, Active)
-- Default seed: "All Asset Returned", "All Salary Paid"
+এছাড়াও:
+- প্রতিটি row-এর শুরুতে **checkbox** + header-এ "Select All"
+- Filter bar-এ নতুন button: **"Generate Payslip"** (bulk action, enabled when ≥1 selected) → directly Payslip Manager-এ navigate করবে selected IDs সহ
 
-## 3. Resignations page (`/dashboard/hr/resignations`)
-- Table: Employee Name, Type (Resign/Terminate badge), Resign Date, Letter Received Date, Reason, Activities, Action (Download Attachment, Edit, View History)
-- Filter: Type, Date range, Search
-- "+ New Resignation" button → Modal:
-  - Resign/Terminate radio
-  - Employee select (active employees)
-  - Resignation Letter file upload (jpg/png/pdf/doc/docx)
-  - Letter Received Date, Resign Date (End Date)
-  - **Official Resign Rules:** dynamic checkbox list — `resign_rules` থেকে active গুলো load হবে
-  - Reason for Resignation (textarea, required)
-  - Good or Bad Activities (textarea)
-  - "Is Resignation Applied" checkbox — checked হলে employee status update
-  - Save
+---
 
-## 4. Business logic
-- "Is Resignation Applied" = true হলে:
-  - `employees.status = 'resigned'` (terminate হলে `'terminated'`)
-  - `employees.resign_date = resign_date`
-  - সব active shift assignment বন্ধ
-- View Resignation History → ওই employee এর সব past resignation entry modal-এ
-- Download Attachment → signed URL দিয়ে letter download
+## ২. Employee View page (`EmployeeView.tsx`, new)
 
-## 5. Files (technical)
+Route: `/dashboard/hr/employees/:id`
 
-**New/edit:**
-- `supabase/migrations/<ts>_resignation_module.sql` — alter tables + bucket + RLS
-- `src/pages/dashboard/hr/ResignRules.tsx` — পূর্ণ rewrite (table + modal)
-- `src/pages/dashboard/hr/Resignations.tsx` — পূর্ণ rewrite (table + Add modal + history modal)
-- `src/components/hr/ResignationForm.tsx` — reusable form
-- `src/components/hr/ResignationHistoryDialog.tsx`
-- `src/hooks/useResignRules.ts`, `src/hooks/useResignations.ts` — react-query CRUD
+Tab layout (client view-এর মতো):
 
-স্ক্রীনশটের সব field এবং rule-checklist behavior কভার হবে।
+- **Profile**: ছবি, Employee ID, নাম, ডিপার্টমেন্ট, পদবী, যোগদান তারিখ, NID, ফোন, address, education — সবগুলো field card-style
+- **Salary Summary** (top stat cards):
+  - Total Bill Generated (সব month-এর net_salary যোগফল)
+  - Total Paid (paid status)
+  - Total Due (unpaid)
+  - Base Salary, Current Template
+- **Payslip History** (timeline, screenshot 3 এর মতো):
+  - প্রতিটি month entry: period name, "Fully Paid / Unpaid" badge, generated date
+  - "Pay" + "Cancel" + "Edit Payheads for Regenerate" buttons unpaid-এর জন্য
+  - "View Full History..." link → individual payslip detail
+- **PayHeads tab**: assigned payheads ও তাদের amount
+- **Attendance Summary tab**: এই মাসের present/absent/late count
+
+---
+
+## ৩. Payslip Manager (`Payslip.tsx` rewrite)
+
+বর্তমান single-employee payslip viewer-কে replace করে screenshot 2 এর মতো Manager:
+
+**Top bar:**
+- Month picker (default = current month)
+- Employee Type: Active / Left / All
+- Search Employee
+- **Generate** (bulk), **View**, **Regenerate** buttons
+
+**Row layout (per employee):**
+```text
+☑ [Name + ID]   [Period dropdown (May-26)]   Generate Payslip for: May-26
+                                              --> Position (Monthly Payroll)
+                                              [💵 icon] Payheads Total: 23,600
+```
+
+- "Select All Employee" checkbox top-left
+- প্রতিটি row default = active payroll template থেকে calculated total
+- কোনো employee-এ click করলে inline payhead edit (override per-month)
+- **Generate** → selected employee-দের জন্য `payroll` row insert করবে for selected month (basic + allowance − deduction), attendance থাকলে late/early auto deduct
+- **Regenerate** → existing row delete করে recompute
+- **Filter chips**: All / Regular (net == template total) / Bonus (net > template) / Less (net < template)
+
+---
+
+## ৪. Per-month Payhead Override
+
+নতুন column `payroll.adjustments jsonb` যোগ হবে — প্রতি month-এ যদি কোনো payhead-এর amount override করা হয় (যেমন এই মাসে bonus), সেটা এখানে store হবে। Regenerate এর সময় override থাকলে সেটাই use হবে, না থাকলে template default।
+
+---
+
+## ৫. Attendance auto-deduction (যদি enabled)
+
+Generate-এর সময় selected month-এর attendance থেকে:
+- Late minutes × late-fee-payhead amount
+- Early-out minutes × early-fee-payhead amount
+- Absent days × per-day-salary
+এগুলো auto deduction হিসেবে যোগ হবে। `hr_settings` table-এ already late/early rules আছে — সেগুলোই ব্যবহার করব।
+
+---
+
+## প্রযুক্তিগত পরিবর্তন (technical)
+
+**Migration:**
+- `ALTER TABLE payroll ADD COLUMN adjustments jsonb DEFAULT '[]'::jsonb;`
+- `ALTER TABLE payroll ADD COLUMN period_label text;` (যেমন "May-26")
+- `ALTER TABLE payroll ADD COLUMN generated_at timestamptz DEFAULT now();`
+- Index: `(employee_id, month)` unique
+
+**Routes (App.tsx-এ যোগ):**
+- `/dashboard/hr/employees/:id` → `EmployeeView`
+
+**ফাইল তৈরি/সম্পাদনা:**
+- edit: `src/pages/dashboard/hr/Employees.tsx` (checkbox + 4 action buttons + bulk navigate)
+- new: `src/pages/dashboard/hr/EmployeeView.tsx`
+- rewrite: `src/pages/dashboard/hr/Payslip.tsx` (Payslip Manager)
+- new: `src/components/hr/EmployeePayheadsDialog.tsx`
+- new: `src/components/hr/EmployeeHolidaysDialog.tsx`
+- new: `src/lib/payrollCompute.ts` (template + adjustment + attendance compute logic)
+- edit: `src/App.tsx` (new route)
+
+**SalarySheet.tsx** অপরিবর্তিত থাকবে — সেটা ইতিমধ্যেই monthly summary দেখায়।
+
+---
+
+## পরিবর্তনের বাইরে যা থাকবে না
+
+- Payroll templates / Payheads / Periods configuration page — আগের মতোই
+- Attendance, Leave, Resignation modules — touch করব না
