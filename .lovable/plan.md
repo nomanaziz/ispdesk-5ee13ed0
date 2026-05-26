@@ -1,84 +1,109 @@
-## কেন এখন interface/hardware/serial/MAC আসছে না — সরল উত্তর
+# Plan: Self-Hosting Documentation (Hybrid Pattern)
 
-আমি যা পেয়েছি database-এ:
-- `olt_devices`: brand_model আছে (BDCOM GP3600-08B), uptime raw সংখ্যা আছে (TimeTicks), কিন্তু `hardware_version`, `firmware_version`, `serial_number`, `mac_address` সব `NULL`
-- `olt_ports`: **পুরো ফাঁকা** — তাই Total Interface=0, EPON=0, GPON=0, Up/Down=0/0
-- agent (Naeem-PC) install হয়নি (`agent_last_seen=null`)
+## লক্ষ্য
+একটা সম্পূর্ণ markdown documentation file তৈরি করব যেটা future-এ আপনি ব্যবহার করে local server-এ পুরো ISPDesk stack install করতে পারবেন। কোনো code change হবে না — শুধু documentation।
 
-**কারণ:** এই codebase-এ এখন পর্যন্ত শুধু `snmp-fetch-olt-name` function-টা সত্যিকারের SNMP UDP করে — সে শুধু sysDescr এনেছে। কোনো function এখন `ifTable` walk করে না, তাই port list তৈরি হয়নি। এবং brand_model থেকে hardware/firmware parse করা হয়নি — raw string-টাই দেখানো হচ্ছে।
+## যে file তৈরি হবে
 
-**ভালো খবর:** Supabase Edge runtime `Deno.listenDatagram` দিয়ে UDP/SNMP করতে পারে (already proven — brand_model এসেছে)। মানে OLT এর public IP/port reachable, **agent install না করেও** আমি এই কাজগুলো cloud থেকে করতে পারব।
+**`docs/SELF_HOSTING.md`** (Bangla + English mixed, ~600-800 lines)
 
-## তোমার কাছে আমার যা লাগবে (অল্প)
+## Document Structure
 
-1. **Confirm:** OLT-এর management IP কি Supabase cloud থেকে reach করা যায়? (sysDescr এসেছে মানে হ্যাঁ — শুধু confirm করে দিও, port 161 firewall-এ open আছে কিনা)
-2. **আর কিছু লাগবে না** — community string (`GxNsnMP_RO`) ও SNMP version (v2c) ইতিমধ্যে DB-তে সেভ আছে।
+### Section 1 — Overview
+- কী কী component আছে (Frontend, Postgres, Auth, Edge Functions, Storage, Polling Agent)
+- Hybrid pattern diagram (ASCII): Local primary ← nightly backup → Cloud
+- Data flow: customer portal (public via Caddy) ↔ ERP (LAN) ↔ OLT/MikroTik (LAN)
 
-VSol/Huawei/ZTE OLT যোগ করলে তখন আলাদা OID profile দরকার হবে — এখন BDCOM-এর জন্য কাজ করব।
+### Section 2 — Hardware & OS Requirement
+- Minimum/Recommended spec table
+- Ubuntu 22.04 LTS setup
+- Network: static LAN IP, UPS, dual ISP recommendation
+- Firewall/UFW base rules
 
-## কী কী fix/add করব
+### Section 3 — Step-by-Step Installation
 
-### 1. নতুন edge function: `snmp-walk-olt-system`
-SNMP দিয়ে fetch করবে:
-- `sysDescr` → brand_model + firmware parse ("Version 117819" → firmware_version="117819")
-- `sysDescr` থেকে hardware_version parse ("hardware version: A" → "A")
-- `sysUpTime` (TimeTicks) → human format ("11 days 19 hr 38 min")
-- `ifPhysAddress` first non-zero → mac_address
-- `entPhysicalSerialNum` (1.3.6.1.2.1.47.1.1.1.1.11) → serial_number
+**3.1 Server Bootstrap**
+- apt update, docker install, user permission, fail2ban, ufw
 
-DB update: hardware_version, firmware_version, serial_number, mac_address, uptime (formatted), snmp_last_seen।
+**3.2 Self-hosted Supabase (Docker Compose)**
+- `git clone supabase/supabase`
+- `.env` configure: POSTGRES_PASSWORD, JWT_SECRET, ANON_KEY, SERVICE_ROLE_KEY, SMTP
+- Generate JWT keys (script সহ)
+- `docker compose up -d`
+- Studio access (port 8000)
+- Verify each service: gotrue, postgrest, realtime, storage-api, edge-runtime, kong
 
-### 2. নতুন edge function: `snmp-walk-olt-interfaces`
-ifTable walk করে olt_ports populate করবে:
-- `ifDescr` (1.3.6.1.2.1.2.2.1.2) → port_name
-- `ifType` (1.3.6.1.2.1.2.2.1.3) → port_type detect
-- `ifAdminStatus` (.7), `ifOperStatus` (.8)
-- `ifSpeed` (.5) → speed_mbps
+**3.3 Database Migration**
+- সব `supabase/migrations/*.sql` file order-wise apply
+- `psql` command examples
+- Seed data (roles, default branches, app_vault key)
+- Verify with `\dt public.*`
 
-**Port classification (user-defined, only 3 types):**
-- `pon` — port_name match EPON/GPON pattern (vendor-specific)
-- `ether-sfp` — ifType=117 (gigabitEthernet over SFP) বা ifSpeed≥1000 যেগুলো PON না
-- `ether-rj45` — ifType=6 (ethernetCsmacd) baseline copper
-- (Uplink/Other category একদম drop)
+**3.4 Edge Functions Deploy**
+- Supabase CLI install
+- `supabase functions deploy <name>` — সব ৬০+ function list
+- Secret configure: LOVABLE_API_KEY (যদি AI feature use করেন), SMTP, Telegram bot token, payment gateway keys
 
-### 3. `snmp-poll-device` upgrade
-এখন শুধু TCP probe → পরিবর্তে call করবে: `snmp-walk-olt-system` + `snmp-walk-olt-interfaces` parallel। Cron (every 2 min)-ও তাই করবে।
+**3.5 Frontend Build**
+- `.env` update: VITE_SUPABASE_URL=http://server-ip:8000
+- `npm install && npm run build`
+- Nginx config example (`/etc/nginx/sites-available/ispdesk`)
+- SPA fallback rule (try_files)
+- gzip + cache headers
 
-### 4. `inspect-device` (OLT branch) update
-- **Uptime format:** TimeTicks/100 → "Xd Yh Zm" string
-- **brand_model split:** model+firmware+hw আলাদা field-এ দেখাবে
-- **System resource counts:** শুধু relevant categories return করব (`pon_count`, `ether_sfp_count`, `ether_rj45_count`) — uplink/other সরিয়ে দিচ্ছি
-- **pon_type aware:** `pon_type='gpon'` হলে "GPON" chip দেখাবে, EPON chip hide; `epon` হলে উল্টো
+**3.6 Polling Agent**
+- Same server-এ pm2 দিয়ে
+- `config.json` local Supabase URL
+- Multiple agents যদি multiple branch থাকে
 
-### 5. `DeviceInspectorDialog` UI tweak (Overview tab)
-- চারটে chip: **Total Interface | Up/Down | Total ONU | Online ONU**
-- পরের row: **PON (label= GPON/EPON pon_type অনুযায়ী) | Ether-SFP | Ether-RJ45** — Uplink/Other সম্পূর্ণ বাদ
-- System info card: Hardware/Firmware/Serial/MAC/Uptime এখন real value দেখাবে
-- "এখনই Poll" button দুটো walk function একসাথে fire করবে, 5s পরে refetch
+### Section 4 — Hybrid Backup Setup
+- **Nightly pg_dump** cron job
+- Compressed dump → `/backup/` local + rsync to cloud (S3/Backblaze/Google Drive)
+- Sample script: `pg_dump | gzip | aws s3 cp - s3://...`
+- Restore procedure
+- Storage bucket sync (MinIO ↔ cloud)
+- Retention policy (7 daily, 4 weekly, 12 monthly)
 
-## ফাইল পরিবর্তন
+### Section 5 — Public Customer Portal (Optional)
+- Caddy reverse proxy install
+- `Caddyfile` example with auto Let's Encrypt SSL
+- Domain DNS A record → static IP
+- Port 80/443 forward from router
+- Subdomain split: `portal.yourisp.com` → frontend, `api.yourisp.com` → Supabase API
 
-- `supabase/functions/snmp-walk-olt-system/index.ts` — নতুন (SNMP system OID walk)
-- `supabase/functions/snmp-walk-olt-interfaces/index.ts` — নতুন (ifTable walk → olt_ports upsert)
-- `supabase/functions/snmp-poll-device/index.ts` — TCP probe + auto-trigger দুটো walk
-- `supabase/functions/inspect-device/index.ts` — system resource কাটছাঁট + uptime formatter + brand parse
-- `src/components/device-admin/DeviceInspectorDialog.tsx` — chip layout (Uplink/Other বাদ, PON label dynamic)
+### Section 6 — Security Hardening
+- UFW rules (allow 80/443/22, deny rest)
+- fail2ban for SSH
+- Postgres strong password, pg_hba.conf restrict
+- Disable Supabase Studio public access (LAN only)
+- HTTPS everywhere
+- Daily security update cron
 
-DB schema change লাগবে না।
+### Section 7 — Monitoring & Maintenance
+- `docker compose logs` quick reference
+- Disk space alert
+- pg_stat queries for slow query
+- Uptime check (uptime-kuma container suggestion)
+- Update procedure: git pull → new migrations → rebuild frontend
 
-## যা এই plan-এ নেই
+### Section 8 — Sync with Lovable Cloud Version
+- কীভাবে Lovable cloud-এ যে নতুন feature আসে সেগুলো local-এ আনবেন
+- Git workflow: clone Lovable repo → pull → apply new migrations → redeploy edge functions → rebuild frontend
+- Schema diff tool suggestion
 
-- Huawei/ZTE/VSol OID profile (পরে — তখন আরেক round)
-- VLAN OID walk
-- Agent install (cloud SNMP কাজ করছে, এখন দরকার নেই)
+### Section 9 — Troubleshooting
+- Common issues:
+  - JWT mismatch
+  - Edge function timeout
+  - CORS error (Kong config)
+  - Email not sending (SMTP)
+  - Polling agent reaches local but auth fails
+- Each with diagnosis + fix
 
-## টেস্ট প্ল্যান
+### Section 10 — Checklist (Quick Reference)
+- Pre-install checklist
+- Post-install verification checklist
+- Daily/weekly/monthly maintenance checklist
 
-1. Deploy → Inspector → AFTABNOGOR_OLT → "এখনই Poll"
-2. ~5 sec পরে Overview-এ:
-   - Total Interface > 0
-   - PON / Ether-SFP / Ether-RJ45 count আসবে
-   - Up/Down সঠিক
-   - Hardware="A", Firmware="117819", MAC, Serial সব populate
-   - Uptime: "11 days 19 hr 38 min"
-3. PON tab-এ port list, প্রতিটার oper/admin status
+## Implementation
+Build mode-এ switch হলে শুধু একটা file write হবে: `docs/SELF_HOSTING.md`। কোনো source code, migration, বা edge function change হবে না।
