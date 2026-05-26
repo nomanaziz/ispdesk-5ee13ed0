@@ -1,91 +1,89 @@
-## আসল কথা
+# Plan: Online Client Monitoring (OLT-ভিত্তিক ONU live view)
 
-হ্যাঁ, ঠিক বলেছেন — production ISP monitoring (Zabbix, PRTG, LibreNMS, The Dude, Smokeping) সবাই **SNMP UDP port 161** ব্যবহার করে। ONU RX power, distance, status, uptime — সব SNMP walk দিয়েই আসে।
+## লক্ষ্য
+আপনি যে screenshot পাঠিয়েছেন — সেই design follow করে একটা **Online Client Monitoring** page বানাব। উপরে ৩টা summary card (Total ONU / Online ONU / Matched PPPoE), নিচে একটা rich table — সব column সহ: OLT Name, PON Port, ONU#, PPPoE Username, ONU MAC, Router MAC, RX Power (color badge), TX Power, Voltage, Temp, Laser Bias, Status, Distance।
 
-কিন্তু একটা technical সমস্যা আছে যেটা পরিষ্কার করতে হবে:
+---
 
-> **Supabase Edge Functions UDP support করে না — শুধু TCP/HTTP।**
+## ১. Page structure (load-safe)
 
-মানে cloud থেকে সরাসরি SNMP query পাঠানো সম্ভব না। এজন্য সব serious NMS (Zabbix, LibreNMS ইত্যাদি) **on-premise server/agent** চালায় — সেই agent SNMP করে, তারপর data central server-এ পাঠায়।
+আলাদা route রাখব যাতে অন্য page load না বাড়ে:
 
-আমাদেরও একই pattern লাগবে।
+- **`/dashboard/olt/online-monitoring`** — All-OLT view (default: একটা OLT select করতে হবে, সব OLT একসাথে load হবে না → performance safe)
+- প্রতিটা OLT card-এ একটা **"Live Monitoring"** button — click করলে এই page-এ চলে আসে, ওই OLT pre-selected হয়ে
+- User-list থেকে কোনো user-এ click করলেও এই page-এ আসা যাবে, OLT + PON port + ONU pre-filtered হয়ে (`map-users-to-onu` data ব্যবহার করে)
 
-## Architecture
+Sidebar এ "OLT" group-এর under নতুন menu item যোগ হবে।
 
-```text
-[BDCOM OLT]  ←── UDP 161 SNMP ──→  [Polling Agent (অফিস PC/VPS)]
-   LAN IP                              Node.js script
-                                         │
-                                         │  HTTPS POST (every 30s)
-                                         ▼
-                              [Supabase Edge Function]
-                              ingest-snmp-data
-                                         │
-                                         ▼
-                              [olt_devices, onu_list, alerts]
-                                         │
-                                         ▼
-                                  Dashboard UI
-```
+## ২. Data source — কোথা থেকে আসবে
 
-Agent আপনার office-এর যেকোনো একটা PC-তে চলবে (Windows/Linux), OLT-এর সাথে same LAN-এ। OLT-কে internet-এ expose করতে হবে না।
+Existing `onu_list` + `olt_devices` + `pppoe_user_onu_map` tables থেকে data render করব। এই table গুলো ইতিমধ্যে SNMP polling (edge function বা agent) update করে। কোনো নতুন table দরকার নেই।
 
-## কী বানাবো
+Refresh strategy:
+- Auto-refresh: **৩০ সেকেন্ড interval** (configurable, default off — manual refresh button)
+- Page leave করলে refresh বন্ধ → load বাড়বে না
 
-### 1. Polling Agent (`agent/` folder, repo-এর বাইরে download করার জন্য)
+## ৩. Filtering (screenshot-এ যেটা নেই, সেটা যোগ হবে)
 
-- `polling-agent.js` — Node.js script, `net-snmp` npm package use করে।
-- `config.json` — agent_id, supabase_url, api_key, poll_interval।
-- `README.md` — Windows/Linux setup steps (Node install → `npm install` → `node polling-agent.js`)।
-- `install.bat` / `install.sh` — one-click installer।
-- PM2 / Windows Service দিয়ে background-এ চালানোর instruction।
+Table-এর উপরে filter bar:
+- **OLT selector** (required)
+- **PON Port** dropdown (ওই OLT-র সব port)
+- **Status**: All / Online / Offline / LOS
+- **RX Power range**: preset chips — `> -25 dBm`, `-25 to -27`, `-27 to -29`, `< -29 (Critical)`, `LOS (no signal)` + custom min/max
+- **Search**: PPPoE username / ONU MAC / Router MAC
+- **Export CSV** button
 
-Agent প্রতি 30 sec এ যা করবে:
-1. Supabase থেকে নিজের assigned OLT list pull করবে (agent_id দিয়ে)।
-2. প্রতিটা OLT-তে SNMP walk:
-   - sysName, sysUpTime, sysDescr (device meta)
-   - vendor-specific OID দিয়ে ONU list (interface, MAC, serial, status, RX power, distance, temp)
-3. সব data `ingest-snmp-data` edge function-এ POST করবে।
+RX Power color rule (screenshot-এর সাথে মিল):
+- Green badge: ≥ -24 dBm
+- Yellow: -24 to -27
+- Red: < -27 বা LOS
 
-### 2. Database changes
+## ৪. SNMP-direct vs Agent — কেন agent লাগছে
 
-- নতুন table `polling_agents` (id, tenant_id, name, api_key, last_heartbeat, status)
-- `olt_devices.assigned_agent_id` column — কোন agent এই OLT poll করবে
-- BDCOM EPON/GPON OID mapping আগের migration-এ আছে — verify করে আরো নিখুঁত OID seed করব (research করে)
+আপনি জানতে চেয়েছেন SNMP direct কেন কাজ করছে না। সংক্ষেপে:
 
-### 3. Edge functions
+| পদ্ধতি | অবস্থা |
+|---|---|
+| Supabase Edge Function থেকে SNMP (UDP 161) | **কাজ করে না** — Deno edge runtime UDP socket support করে না, শুধু TCP/HTTP। তাই codebase-এ যে `snmp-poll-device` / `snmp-fetch-*` functions আছে সেগুলো cloud-এ run করলে timeout/connection error দেয়। |
+| Browser থেকে SNMP | **সম্ভব না** — browser-এ raw UDP নেই |
+| অন-প্রিমিস agent (Node.js, আপনার office PC) | **কাজ করে** — LAN থেকে OLT-এ direct SNMP, তারপর HTTPS-এ Supabase-এ push |
 
-- `agent-heartbeat` — agent online status update + assigned OLT list return
-- `ingest-snmp-data` — agent থেকে পাওয়া SNMP data process → olt_devices/onu_list update + alert generate (rx_power thresholds)
-- পুরনো `snmp-poll-device` deprecated করব (TCP probe শুধু "online check" হিসেবে রাখা যায়)
+**সমাধান যা আপনি configure করতে পারেন (যদি SNMP-direct চান):**
+1. একটা VPS/cloud server নিন যেটা OLT-এর public IP-তে UDP 161 reach করতে পারে (OLT public IP লাগবে + firewall rule)
+2. ওই server-এ আমাদের agent চালান → এটাই effectively "SNMP-direct" হবে cloud থেকে
+3. **অথবা** OLT-এর management IP-কে public করে port-forward করুন (security risk — recommend না)
 
-### 4. UI
+বাস্তবে বেশিরভাগ ISP agent-ই use করে (Splynx, Smart OLT, UNMS সবাই)। তাই agent কে fallback না ভেবে **primary** ধরে এগোনই ভালো — device dependency কমাতে চাইলে agent একটা ছোট Raspberry Pi-তেও চলবে।
 
-- `/dashboard/device-admin/polling-agents` — নতুন page:
-  - Agent তৈরি → API key generate
-  - Download instructions (Windows/Linux)
-  - Last heartbeat status
-  - কোন OLT কোন agent-এ assigned
-- OLT add/edit dialog-এ "Assigned Agent" dropdown
-- OLT detail page-এ "Last SNMP poll" timestamp এবং data source badge
+আপনি যদি এখন **agent test** করতে চান, monitoring page ready হলে আমি একটা test flow দেব।
 
-## Setup flow (user-এর জন্য)
+## ৫. Per-user quick view
 
-1. Dashboard → Polling Agents → "Add Agent" → API key পাবেন।
-2. Office-এর একটা PC-তে Node.js install করুন।
-3. Agent zip download → extract → `config.json`-এ API key paste।
-4. `node polling-agent.js` চালান (অথবা service হিসেবে install)।
-5. Dashboard-এ agent online দেখাবে → OLT-গুলোকে এই agent-এ assign করুন।
-6. 30 sec পর real SNMP data আসা শুরু হবে — RX power, ONU list, status সব।
+User list (PPPoE Users) থেকে কোনো user-এ একটা **"Live ONU Status"** button যোগ হবে — click করলে monitoring page-এ ওই user-এর row scroll/highlight হবে (auto-filter by username)।
 
-## এই plan-এ যেটা নাই
+## ৬. Performance safeguards
 
-- Cloud VPS-এ agent host করার option (পরে যোগ করা যাবে)
-- Mass agent management (একাধিক agent load balancing)
-- SNMP v3 (encryption) — শুরুতে শুধু v2c
+- OLT select না করা পর্যন্ত query চলবে না
+- Pagination: ১০০ row/page (server-side via Supabase `.range()`)
+- Auto-refresh default **off**, user toggle করবে
+- Index check: `onu_list(olt_id, pon_port, status)` — দরকার হলে index migration যোগ হবে
 
-## প্রশ্ন
+---
 
-Approve করলে আগে **agent code + database + ingest function** বানাবো, তারপর UI। মোট ~4-5 ধাপে complete হবে।
+## File changes (technical)
 
-শুরু করব?
+- `src/pages/dashboard/olt/OnlineMonitoring.tsx` — নতুন page
+- `src/App.tsx` — route
+- `src/components/AppSidebar.tsx` — menu item
+- `src/pages/dashboard/olt/OltDevices.tsx` — "Live Monitoring" button প্রতিটা OLT row-এ
+- `src/pages/dashboard/users/UsersList.tsx` (বা যা applicable) — user row-এ "Live ONU Status" link
+- Index migration (যদি query slow হয়)
+
+কোনো নতুন edge function বা table দরকার নেই — existing `onu_list` data-ই render হবে।
+
+---
+
+## নিশ্চিত করার বিষয়
+
+এই plan approve করলে আমি build mode-এ এগোব। শুধু একটা confirm:
+- **Default OLT selector** ঠিক আছে, নাকি "All OLTs aggregate" view-ও দরকার? (আমি default OLT-required রেখেছি load safety-র জন্য)
