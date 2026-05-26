@@ -125,6 +125,8 @@ const HrShiftManagement = lazy(() => import("@/pages/dashboard/hr/ShiftManagemen
 const HrZktecoDevices = lazy(() => import("@/pages/dashboard/hr/ZktecoDevices"));
 const HrAttendanceRules = lazy(() => import("@/pages/dashboard/hr/AttendanceRules"));
 const HrSettings = lazy(() => import("@/pages/dashboard/hr/HrSettings"));
+const HrAdvanceSalary = lazy(() => import("@/pages/dashboard/hr/AdvanceSalary"));
+const HrEmployeeLoans = lazy(() => import("@/pages/dashboard/hr/EmployeeLoans"));
 const DashboardLinks = lazy(() => import("@/pages/dashboard/Links"));
 
 // Access Management
@@ -579,6 +581,9 @@ const App = () => (
               <Route path="/dashboard/hr/zkteco-devices" element={<P><HrZktecoDevices /></P>} />
               <Route path="/dashboard/hr/attendance-rules" element={<P><HrAttendanceRules /></P>} />
               <Route path="/dashboard/hr/settings" element={<P><HrSettings /></P>} />
+
+              <Route path="/dashboard/hr/advance-salary" element={<P><HrAdvanceSalary /></P>} />
+              <Route path="/dashboard/hr/loans" element={<P><HrEmployeeLoans /></P>} />
 
               {/* Access Management */}
               <Route path="/dashboard/access/app-users" element={<P><AppUsers /></P>} />
