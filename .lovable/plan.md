@@ -1,21 +1,30 @@
 
-# BTRC Report — Bugfix
+# Pay Head — Default ১০টি Seed
 
-## সমস্যা
-`column isp_packages_1.olt_range does not exist` — কারণ `clients.package_id` দুটি table-এ relationship suggest করে (`packages` এবং `isp_packages`); Supabase auto-pick করে ভুল table (`isp_packages`), যেখানে `olt_range` নেই।
+## বর্তমান অবস্থা
+- পেজ ইতিমধ্যেই আছে: `src/pages/dashboard/hr/Payheads.tsx` (ConfigCrudPage ব্যবহার করে `payheads` table)
+- Sidebar/Route: HR → Payheads-এ accessible
+- DB table `public.payheads` খালি — কোন default row নেই
 
-## ফিক্স (একটি ফাইল: `src/pages/dashboard/reports/Btrc.tsx`)
+## কাজ
+শুধু ডিফল্ট ১০টি pay head DB-তে insert করব (ON CONFLICT DO NOTHING দিয়ে, যেন বার বার চললেও duplicate না হয়):
 
-1. **Embed disambiguate** — `pkg:package_id(name, olt_range)` এর বদলে explicit table hint:
-   ```
-   pkg:packages!clients_package_id_fkey(name, olt_range)
-   ```
-   FK constraint না থাকলে fallback হিসেবে `packages` table-এ আলাদা query করে `id → name/olt_range` map বানাব এবং client-side join করব। (নিরাপদ পথ — তাই এটাই নেব।)
+| # | Name | Type |
+|---|---|---|
+| 1 | Basic Salary | allowance |
+| 2 | Late Fee | deduction |
+| 3 | Early Out | deduction |
+| 4 | Overtime | allowance |
+| 5 | Incentive | allowance |
+| 6 | Bonus | allowance |
+| 7 | Food Allowance | allowance |
+| 8 | Mobile Bill | allowance |
+| 9 | Salary Advance | deduction |
+| 10 | Absence | deduction |
 
-2. **bandwidth_allocation fallback** — `packages.olt_range` খালি হলে `packages.name` দেখাব।
+(`name` UNIQUE constraint না থাকলে `WHERE NOT EXISTS` দিয়ে handle করব।)
 
-3. **Column headings** — ইতিমধ্যেই lowercase underscore আছে; শুধু নিশ্চিত করব শেষ column `selling_price_bdt_excluding_vat` (টাইপো নেই)।
+## পেজ লেবেল
+"Configuration → পে-হেড ম্যানেজমেন্ট" নামে দেখাতে হলে sidebar/route label-ও আপডেট লাগে। বর্তমান menu-তে এটা HR-এর নিচে আছে। **আমার সাজেশন:** HR-এ যেটা আছে সেটাই রাখি, শুধু DB seed করি। নাকি Configuration menu-তেও duplicate entry যোগ করব?
 
-4. **Empty email/mobile** — খালি থাকলে `""` (blank) যাবে — কোন `-` দেখাব না।
-
-কোনো DB migration লাগবে না, শুধু query পরিবর্তন।
+কোন code change লাগবে না (পেজ already exists)। শুধু একটি SQL data-insert call।
