@@ -18,8 +18,12 @@ async function fetchFromDevice(opts: {
   commKey: number;
 }) {
   const { host, port, commKey } = opts;
-  const conn = await Deno.connect({ hostname: host, port, transport: "tcp" });
   const log: string[] = [];
+  log.push(`Connecting to ${host}:${port}...`);
+  const conn = await Promise.race<Deno.TcpConn>([
+    Deno.connect({ hostname: host, port, transport: "tcp" }),
+    new Promise<Deno.TcpConn>((_, rej) => setTimeout(() => rej(new Error(`Connect timeout to ${host}:${port}`)), 8000)),
+  ]);
   log.push(`Connected to ${host}:${port}`);
 
   let sessionId = 0;
