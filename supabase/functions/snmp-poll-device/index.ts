@@ -74,7 +74,16 @@ async function pollOne(supabase: any, device_id: string) {
       last_data_source: "snmp",
       last_offline_reason: null,
     }).eq("id", device_id);
-    return { device_id, name: device_name, ok: true, status: "online", port: probe.port };
+
+    // Fire-and-forget SNMP walks (system + interfaces) — don't block reachability response
+    const fnBase = `${Deno.env.get("SUPABASE_URL")}/functions/v1`;
+    const auth = { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` };
+    Promise.allSettled([
+      fetch(`${fnBase}/snmp-walk-olt-system`,     { method: "POST", headers: auth, body: JSON.stringify({ device_id }) }),
+      fetch(`${fnBase}/snmp-walk-olt-interfaces`, { method: "POST", headers: auth, body: JSON.stringify({ device_id }) }),
+    ]).catch(() => { /* logged downstream */ });
+
+    return { device_id, name: device_name, ok: true, status: "online", port: probe.port, walks: "triggered" };
   } else {
     await supabase.from("olt_devices").update({
       status: "offline",
