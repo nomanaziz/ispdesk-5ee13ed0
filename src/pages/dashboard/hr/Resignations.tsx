@@ -67,8 +67,8 @@ export default function Resignations() {
   const { data: rules } = useQuery({
     queryKey: ["resign_rules_active"],
     queryFn: async () => {
-      const { data } = await supabase.from("resign_rules").select("id,name,is_active").eq("is_active" as any, true).order("created_at");
-      return (data || []) as any as Rule[];
+      const { data } = await (supabase.from("resign_rules") as any).select("id,name,is_active").eq("is_active", true).order("created_at");
+      return (data || []) as Rule[];
     },
   });
 
