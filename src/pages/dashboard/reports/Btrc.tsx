@@ -117,7 +117,6 @@ export default function Btrc() {
           zone_id, sub_zone_id, box_id, package_id, branch_id, mikrotik_id,
           remote_address, mac_address, static_ip,
           division_id, district_id, upazila_id,
-          pkg:package_id(name, olt_range),
           division:division_id(name),
           district:district_id(name),
           upazila:upazila_id(name),
