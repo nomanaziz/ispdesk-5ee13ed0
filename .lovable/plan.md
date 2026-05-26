@@ -1,61 +1,59 @@
-## আপনার OLT এর actual saved data (DB থেকে)
+## আপনার OLT add করার প্ল্যান
 
-| Field | Value | মূল্যায়ন |
-|---|---|---|
-| Name | AFTABNAGAR-OLT | ✅ |
-| Vendor / Model | bdcom / — | ✅ |
-| PON Type | gpon | ✅ |
-| IP Address | 192.168.110.4 | ✅ (private LAN IP — agent থেকে reachable হতে হবে) |
-| Telnet Port | 23 | ✅ |
-| Username | admin | ✅ |
-| Password | greendhaka | ⚠️ plain text saved (পরে encrypt করা দরকার) |
-| Location | AFTABNAGAR, Dhaka | ✅ |
-| SNMP Enabled | true | ✅ |
-| SNMP IP | 192.168.110.4 | ✅ |
-| **SNMP Port** | **162** | ❌ **ভুল — হওয়া উচিত 161** |
-| SNMP Community | GxNsnMP_RO | ⚠️ আপনি বলেছিলেন "Bashundhara TC" — মিলছে না, verify করুন |
-| SNMP Version | v2c | ✅ |
-| OID Profile | BDCOM OLT GPON | ✅ |
-| Data Source Priority | agent_first | ✅ |
-| Fallback | telnet | ✅ |
-| Agent Enabled | true | ✅ |
-| **Assigned Agent** | **null** | ❌ **OLT কোনো agent এ assign করা নাই** |
-| Status | unknown | কারণ — কখনো poll হয়নি |
-| agent_last_seen / snmp_last_seen | null | কারণ — উপরের ২টা সমস্যা |
+বর্তমান অবস্থা DB তে check করলাম — `olt_devices` table এখন খালি (আপনি delete করে দিয়েছেন), এবং Naeem-PC agent online আছে (id: `48abcec1-...`)। নিচের কাজগুলো করব:
 
-Agent **Naeem-PC** online আছে (last heartbeat ঠিক আছে), কিন্তু সে এই OLT-কে চেনে না কারণ assignment নাই।
+### ১. AFTABNAGAR-OLT সরাসরি insert করব (migration দিয়ে)
+
+আপনার দেওয়া মান দিয়ে — port-গুলা সব সঠিক default-এ:
+
+| Field | Value |
+|---|---|
+| name | AFTABNAGAR-OLT |
+| vendor | bdcom |
+| pon_type | gpon |
+| ip_address | 192.168.110.4 |
+| snmp_ip | 192.168.110.4 |
+| **snmp_port** | **161** ✅ |
+| snmp_community | GxNsnMP_RO |
+| snmp_version | v2c |
+| snmp_enabled | true |
+| **telnet_port** | **23** ✅ |
+| username | admin |
+| password | greendhaka |
+| brand_model | BDCOM GPON OLT |
+| data_source_priority | agent_first |
+| agent_enabled | true |
+| **assigned_agent_id** | **Naeem-PC** (auto-assigned) ✅ |
+| status | unknown (১ম poll-এর পর update হবে) |
+
+### ২. Add Device Dialog-এ default-গুলা পাকাপোক্ত করব
+
+যাতে next time আপনি শুধু IP, Name, Community দিলেই হয়:
+
+- **SNMP Port**: input field-টা readonly/locked করে দেব `161`-এ (manual edit করতে গেলে warning) — যাতে আবার ভুল করে 162 না বসে যায়
+- **Telnet port**: একই ভাবে 23-এ lock
+- **SNMP version**: default `v2c` (already আছে)
+- **Data source priority**: OLT category-তে default `agent_first` (এখন `snmp_first`)
+- **Agent enabled**: OLT category-তে default `true`
+- **Auto-assign agent**: শুধু একটাই online agent থাকলে save করার সময় automatic ভাবে সেটাই assign হয়ে যাবে — আপনাকে আলাদা করে Polling Agents পেজে গিয়ে assign করতে হবে না
+- **OID Profile**: vendor=bdcom + pon=gpon select করলে auto-fill হবে "BDCOM OLT (GPON)" (auto-suggest logic আগে থেকেই আছে, শুধু gpon-specific profile-এ point করব)
+
+### ৩. Verify
+
+Migration approve করার ৩০-৬০ সেকেন্ড পর আমি check করব:
+- agent heartbeat-এ এই OLT job হিসেবে আসছে কিনা
+- `agent_last_seen`, `snmp_last_seen` update হয়েছে কিনা
+- `total_onus` / `online_onus` populate হয়েছে কিনা
+
+ঠিকঠাক হলে status `online` হয়ে যাবে এবং OltOverview-তে ONU list দেখবেন।
 
 ---
 
-## 🔴 যে ২টা ঠিক করতেই হবে
+### Technical notes (ref only)
 
-### 1. SNMP Port 162 → 161
-- **161** = SNMP query port (agent → OLT, এটাই লাগবে)
-- **162** = SNMP trap port (OLT → server, আলাদা feature)
-- 162 দিয়ে কখনো OLT poll হবে না।
+- Insert target: `public.olt_devices` (not `device_admin_managed_devices` — OltOverview ও heartbeat function এই table পড়ে)
+- Agent id resolve: `(SELECT id FROM polling_agents WHERE name='Naeem-PC' LIMIT 1)`
+- Dialog changes: `src/components/device-admin/AddDeviceDialog.tsx` — initial state-এ category-based defaults, single-agent auto-assign on save mutation
+- Password plain text save হবে (encryption এখনো implemented না — পরে আলাদা task)
 
-### 2. OLT-কে Agent এ assign করুন
-Dashboard → **Device Admin → Polling Agents** → Naeem-PC এর "Assign OLTs" → AFTABNAGAR-OLT select → Save।
-Assign না করলে agent এই device-এর জন্য কোনো job পাবে না।
-
----
-
-## ⚠️ একটু verify করার বিষয়
-
-- **SNMP Community**: আপনি বললেন "Bashundhara TC" কিন্তু save আছে `GxNsnMP_RO`। কোনটা আপনার OLT এ actually configured সেটা OLT CLI থেকে দেখে নিন (`show snmp` জাতীয় command)। ভুল community দিলে OLT কোনো reply দিবে না।
-- **Password plain text** আছে — কাজ করবে কিন্তু পরে encryption যোগ করা উচিত।
-
----
-
-## এখন আপনার করণীয় (এই plan-এ আমি কোনো code change করবো না — শুধু আপনি যা করবেন)
-
-1. OLT edit করে **SNMP Port = 161** করুন।
-2. OLT এর actual SNMP community confirm করে সঠিক value বসান।
-3. Polling Agents পেজে Naeem-PC এ এই OLT assign করুন।
-4. Agent machine থেকে test:
-   ```bash
-   snmpwalk -v2c -c <community> 192.168.110.4 1.3.6.1.2.1.1.1.0
-   ```
-   reply আসলে ৩০ সেকেন্ড পর OLT status "online" হবে এবং `agent_last_seen` update হবে।
-
-এই plan accept করলে আমি এর পরের message-এ verify করব যে status update হয়েছে কিনা, আর চাইলে UI-তে SNMP port এর default 161 করে দিব যাতে ভবিষ্যতে এই ভুল না হয়।
+Approve করলে migration চালাবো, তারপর dialog edit করব, শেষে verify করে দিব।
