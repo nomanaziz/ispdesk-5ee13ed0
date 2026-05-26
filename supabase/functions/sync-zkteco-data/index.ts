@@ -189,25 +189,34 @@ Deno.serve(async (req) => {
       .from("employees").select("id, device_user_id").not("device_user_id", "is", null);
     const empMap = new Map((employees || []).map((e: any) => [String(e.device_user_id), e.id]));
 
-    let syncedCount = 0;
-    const sample: any[] = [];
-    for (const rec of result.records) {
+    // Build rows and batch upsert (ignore duplicates) — far cheaper than per-row insert
+    const rows = result.records.map((rec) => {
       const employeeId = empMap.get(rec.user_id) || null;
       const isCheckIn = rec.punch === 0 || rec.status === 0;
-      const { error: insErr } = await supabase.from("zkteco_attendance_logs").insert({
+      return {
         device_id,
         employee_id: employeeId,
         punch_time: rec.timestamp,
         punch_type: isCheckIn ? "check_in" : "check_out",
         device_user_id: rec.user_id,
-      });
-      if (insErr) {
-        // Likely duplicate or constraint; continue
+      };
+    });
+    const sample = rows.slice(0, 3).map((r) => ({ user_id: r.device_user_id, time: r.punch_time, type: r.punch_type }));
+
+    let syncedCount = 0;
+    const BATCH = 500;
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const chunk = rows.slice(i, i + BATCH);
+      const { error: upErr, count } = await supabase
+        .from("zkteco_attendance_logs")
+        .upsert(chunk, { onConflict: "device_id,device_user_id,punch_time", ignoreDuplicates: true, count: "exact" });
+      if (upErr) {
+        console.error("Batch upsert error:", upErr);
         continue;
       }
-      syncedCount++;
-      if (sample.length < 3) sample.push({ user_id: rec.user_id, time: rec.timestamp, type: isCheckIn ? "in" : "out" });
+      syncedCount += count ?? chunk.length;
     }
+
 
     return new Response(JSON.stringify({
       ok: true,
