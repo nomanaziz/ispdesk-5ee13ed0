@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { olt_id, olt_meta, onus, reachable } = body;
+    const { olt_id, olt_meta, onus, reachable, pon_ports } = body;
     if (!olt_id) {
       return new Response(JSON.stringify({ error: "olt_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -107,6 +107,21 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Optional: PON port snapshot from agent
+    let portsUpserted = 0;
+    if (Array.isArray(pon_ports)) {
+      for (const p of pon_ports) {
+        if (!p?.port_name) continue;
+        const { error } = await supabase.from("olt_ports").upsert({
+          olt_id,
+          port_name: String(p.port_name),
+          port_type: p.port_type || "pon",
+          description: p.description ?? null,
+        }, { onConflict: "olt_id,port_name" });
+        if (!error) portsUpserted++;
+      }
+    }
+
     if (alerts.length > 0) {
       await supabase.from("alerts").insert(alerts);
     }
@@ -116,7 +131,7 @@ Deno.serve(async (req) => {
       status: "online", last_heartbeat: now,
     }).eq("id", agent.id);
 
-    return new Response(JSON.stringify({ ok: true, processed, alerts: alerts.length }), {
+    return new Response(JSON.stringify({ ok: true, processed, ports: portsUpserted, alerts: alerts.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

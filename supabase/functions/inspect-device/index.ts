@@ -45,29 +45,65 @@ async function inspectMikrotik(dev: any, resource: string) {
 
 async function inspectOlt(supabase: any, deviceId: string, resource: string) {
   if (resource === "users") {
-    // ONU list acts as "users" for OLT
-    const { data } = await supabase.from("onu_list")
-      .select("mac, interface, description, status, rx_power, tx_power, last_seen")
+    // ONU list + customer mapping
+    const { data: onus } = await supabase.from("onu_list")
+      .select("id, mac, interface, description, status, rx_power, tx_power, last_seen")
       .eq("olt_id", deviceId).order("interface");
-    return (data || []).map((r: any) => ({
-      name: r.description || r.mac,
-      mac: r.mac,
-      group: r.status,
-      address: r.interface,
-      "last-logged-in": r.last_seen,
-      rx_power: r.rx_power,
-      tx_power: r.tx_power,
-    }));
+    const ids = (onus || []).map((o: any) => o.id);
+    const macs = (onus || []).map((o: any) => o.mac);
+    const { data: maps } = ids.length
+      ? await supabase.from("user_onu_mapping")
+          .select("ppp_username, caller_id_mac, onu_id, status")
+          .or(`onu_id.in.(${ids.join(",")}),caller_id_mac.in.(${macs.map((m: string) => `"${m}"`).join(",")})`)
+      : { data: [] };
+    const byOnu = new Map<string, any>();
+    const byMac = new Map<string, any>();
+    (maps || []).forEach((m: any) => {
+      if (m.onu_id) byOnu.set(m.onu_id, m);
+      if (m.caller_id_mac) byMac.set(m.caller_id_mac, m);
+    });
+    return (onus || []).map((r: any) => {
+      const m = byOnu.get(r.id) || byMac.get(r.mac);
+      return {
+        name: m?.ppp_username || r.description || r.mac,
+        mac: r.mac,
+        pon: r.interface,
+        status: r.status,
+        rx_power: r.rx_power,
+        tx_power: r.tx_power,
+        mapping: m?.status || (m ? "mapped" : "—"),
+        "last-logged-in": r.last_seen,
+      };
+    });
   }
   if (resource === "interfaces") {
-    const { data } = await supabase.from("olt_ports")
+    const { data: ports } = await supabase.from("olt_ports")
       .select("port_name, port_type, description").eq("olt_id", deviceId).order("port_name");
-    return (data || []).map((r: any) => ({
-      name: r.port_name, type: r.port_type, "mac-address": r.description || "—", running: "—", mtu: "—",
+    const { data: onus } = await supabase.from("onu_list")
+      .select("interface, status").eq("olt_id", deviceId);
+    // Build interface set from ports + ONU interface names (in case ports table empty)
+    const ifaceMap = new Map<string, { type: string; description: string | null; total: number; online: number }>();
+    (ports || []).forEach((p: any) => {
+      ifaceMap.set(p.port_name, { type: p.port_type || "pon", description: p.description, total: 0, online: 0 });
+    });
+    (onus || []).forEach((o: any) => {
+      if (!o.interface) return;
+      const cur = ifaceMap.get(o.interface) || { type: "pon", description: null, total: 0, online: 0 };
+      cur.total++;
+      if ((o.status || "").toLowerCase() === "online") cur.online++;
+      ifaceMap.set(o.interface, cur);
+    });
+    return Array.from(ifaceMap.entries()).map(([name, v]) => ({
+      name,
+      type: v.type,
+      total_onus: v.total,
+      online_onus: v.online,
+      description: v.description || "—",
+      running: v.online > 0 ? "yes" : "no",
     }));
   }
   if (resource === "vlans" || resource === "vlan_ips") {
-    return []; // not stored — OID-driven fallback would go here
+    return []; // BDCOM EPON VLAN OID — agent contract pending
   }
   return [];
 }

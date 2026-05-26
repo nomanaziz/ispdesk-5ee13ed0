@@ -1,59 +1,90 @@
-## আপনার OLT add করার প্ল্যান
+## লক্ষ্য
 
-বর্তমান অবস্থা DB তে check করলাম — `olt_devices` table এখন খালি (আপনি delete করে দিয়েছেন), এবং Naeem-PC agent online আছে (id: `48abcec1-...`)। নিচের কাজগুলো করব:
+Device Inspector → AFTABNOGOR_OLT খুললে এখন সব tab ফাঁকা। MikroTik-এর মতো এখানেও দেখাতে হবে:
 
-### ১. AFTABNAGAR-OLT সরাসরি insert করব (migration দিয়ে)
+- কোন PON port-এ কয়টা ONU আছে, কয়টা active
+- প্রত্যেক ONU-এর MAC, signal (Rx/Tx), status, description
+- কোন ONU-তে কোন user (PPPoE/Static) bound — অর্থাৎ user↔ONU map
+- VLAN / VLAN-IP — best-effort note (BDCOM EPON VLAN OID আলাদা, পরে আনব)
 
-আপনার দেওয়া মান দিয়ে — port-গুলা সব সঠিক default-এ:
+## বর্তমান অবস্থা যা পেয়েছি
 
-| Field | Value |
-|---|---|
-| name | AFTABNAGAR-OLT |
-| vendor | bdcom |
-| pon_type | gpon |
-| ip_address | 192.168.110.4 |
-| snmp_ip | 192.168.110.4 |
-| **snmp_port** | **161** ✅ |
-| snmp_community | GxNsnMP_RO |
-| snmp_version | v2c |
-| snmp_enabled | true |
-| **telnet_port** | **23** ✅ |
-| username | admin |
-| password | greendhaka |
-| brand_model | BDCOM GPON OLT |
-| data_source_priority | agent_first |
-| agent_enabled | true |
-| **assigned_agent_id** | **Naeem-PC** (auto-assigned) ✅ |
-| status | unknown (১ম poll-এর পর update হবে) |
+- OLT: BDCOM GP3600-08B, vendor=bdcom, agent (Naeem-PC) assign করা
+- `snmp-poll-device` cron প্রতি 2 min reachability check করে — TCP only
+- `snmp-fetch-olt-name` থেকে sysDescr (brand_model) এসেছে
+- Agent heartbeat আসছে কিন্তু এখনো ONU/port snapshot পাঠাচ্ছে না
+- `sync-olt-data` endpoint already `{onus[], olt_meta}` accept করে, কিন্তু `pon_ports[]` accept করে না
+- `onu_list`, `olt_ports`, `olt_mac_table` — সব ফাঁকা
+- Inspector tabs already wired to read এই tables থেকে; data নেই বলে blank
 
-### ২. Add Device Dialog-এ default-গুলা পাকাপোক্ত করব
+Edge runtime UDP করতে পারে না, তাই actual SNMP walk Naeem-PC agent-ই করবে। এই codebase-এ আমরা backend contract + UI ঠিক করব; agent-কে কোন OID walk করতে হবে সেটাও document করব।
 
-যাতে next time আপনি শুধু IP, Name, Community দিলেই হয়:
+## কী কী করব
 
-- **SNMP Port**: input field-টা readonly/locked করে দেব `161`-এ (manual edit করতে গেলে warning) — যাতে আবার ভুল করে 162 না বসে যায়
-- **Telnet port**: একই ভাবে 23-এ lock
-- **SNMP version**: default `v2c` (already আছে)
-- **Data source priority**: OLT category-তে default `agent_first` (এখন `snmp_first`)
-- **Agent enabled**: OLT category-তে default `true`
-- **Auto-assign agent**: শুধু একটাই online agent থাকলে save করার সময় automatic ভাবে সেটাই assign হয়ে যাবে — আপনাকে আলাদা করে Polling Agents পেজে গিয়ে assign করতে হবে না
-- **OID Profile**: vendor=bdcom + pon=gpon select করলে auto-fill হবে "BDCOM OLT (GPON)" (auto-suggest logic আগে থেকেই আছে, শুধু gpon-specific profile-এ point করব)
+### 1. Backend — `ingest-snmp-data` extend
 
-### ৩. Verify
+Body-তে নতুন optional field যোগ:
+- `pon_ports: [{ port_name, port_type:'pon', admin_status, oper_status, total_onus, online_onus, rx_power_dbm, description }]`
+- `vlans: [{ vlan_id, name, tagged_ports[], untagged_ports[] }]` (পরের iteration-এর জন্য optional)
 
-Migration approve করার ৩০-৬০ সেকেন্ড পর আমি check করব:
-- agent heartbeat-এ এই OLT job হিসেবে আসছে কিনা
-- `agent_last_seen`, `snmp_last_seen` update হয়েছে কিনা
-- `total_onus` / `online_onus` populate হয়েছে কিনা
+কাজ:
+- `olt_ports`-এ upsert (key: olt_id+port_name)
+- `olt_devices.total_onus`, `online_onus`, `last_seen` aggregate update
+- ONU upsert এখন যেমন আছে তেমন থাকবে (interface field-এ PON port name)
 
-ঠিকঠাক হলে status `online` হয়ে যাবে এবং OltOverview-তে ONU list দেখবেন।
+### 2. Backend — `inspect-device` (OLT branch) আপডেট
 
----
+`inspectOlt()`-এ নতুন resource:
+- `users` → existing `onu_list` + LEFT JOIN `user_onu_mapping`/`ppp_users` যেন প্রতিটা ONU-এর সাথে customer name দেখা যায়
+- `interfaces` → `olt_ports` থেকে port_name, port_type, total_onus/online_onus, rx_power, oper_status (port-wise active count এখানেই দেখাবে)
+- `vlans` → ফাঁকা হলে clearer note: "BDCOM EPON VLAN — agent থেকে এখনো আসেনি"
 
-### Technical notes (ref only)
+### 3. UI — `DeviceInspectorDialog`
 
-- Insert target: `public.olt_devices` (not `device_admin_managed_devices` — OltOverview ও heartbeat function এই table পড়ে)
-- Agent id resolve: `(SELECT id FROM polling_agents WHERE name='Naeem-PC' LIMIT 1)`
-- Dialog changes: `src/components/device-admin/AddDeviceDialog.tsx` — initial state-এ category-based defaults, single-agent auto-assign on save mutation
-- Password plain text save হবে (encryption এখনো implemented না — পরে আলাদা task)
+- OLT হলে tab labels একটু change:
+  - "ইউজার" → "ONU (ইউজার)"
+  - "ইন্টারফেস" → "PON পোর্ট"
+- Columns adjust (rx_power, online_onus column যোগ)
+- উপরে summary chip: "Total ONU: X / Online: Y" (olt_devices থেকে)
+- "এখনই Poll করুন" button — `snmp-poll-device` কে `{device_id}` সহ call করবে; agent পরবর্তী cycle-এ full walk করে পাঠাবে
 
-Approve করলে migration চালাবো, তারপর dialog edit করব, শেষে verify করে দিব।
+### 4. Agent contract doc (codebase-এ markdown)
+
+`supabase/functions/ingest-snmp-data/AGENT_CONTRACT.md` — Naeem-PC agent-কে কী কী BDCOM EPON OID walk করতে হবে:
+
+```text
+ONU MAC table      : 1.3.6.1.4.1.3320.101.10.1.1.3
+ONU description    : 1.3.6.1.4.1.3320.101.10.1.1.10
+ONU online status  : 1.3.6.1.4.1.3320.101.108.1.1.2
+ONU Rx power (dBm) : 1.3.6.1.4.1.3320.101.10.5.1.5
+PON port stats     : 1.3.6.1.4.1.3320.10.3.1.x
+ifDescr/operStatus : 1.3.6.1.2.1.2.2.1.2 / .8
+```
+
+Agent এই OID গুলো walk করে আগের contract অনুযায়ী `POST /ingest-snmp-data` পাঠাবে — body-তে `onus[]` + নতুন `pon_ports[]`।
+
+### 5. User↔ONU mapping trigger
+
+Inspector-এ "Users" tab খোলার সময় background-এ একবার `map-users-to-onu` invoke — যাতে নতুন ONU আসা মাত্র customer auto-attach হয়। (Throttle: last_run < 60s হলে skip)
+
+## যা এই plan-এ নেই (পরে)
+
+- BDCOM VLAN OID full coverage
+- ONU realtime traffic graph
+- Per-ONU enable/disable action
+
+## ফাইল পরিবর্তন
+
+- `supabase/functions/ingest-snmp-data/index.ts` — pon_ports accept
+- `supabase/functions/ingest-snmp-data/AGENT_CONTRACT.md` — নতুন doc
+- `supabase/functions/inspect-device/index.ts` — OLT branch enrich
+- `src/components/device-admin/DeviceInspectorDialog.tsx` — OLT-specific tabs, columns, Poll Now button, summary chip
+
+কোনো database schema change লাগছে না — সব table already আছে।
+
+## টেস্ট প্ল্যান
+
+1. Deploy → Inspector খুলে AFTABNOGOR_OLT সিলেক্ট
+2. "এখনই Poll করুন" চাপি → agent next cycle-এ (≤ poll_interval) walk করে data পাঠাবে
+3. ONU tab-এ list, PON tab-এ port-wise count আসবে
+4. agent-side কাজ Naeem-PC team করবে AGENT_CONTRACT.md অনুযায়ী
