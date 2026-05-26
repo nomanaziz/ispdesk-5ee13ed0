@@ -1,70 +1,91 @@
+## আসল কথা
 
-## সমস্যা কী
+হ্যাঁ, ঠিক বলেছেন — production ISP monitoring (Zabbix, PRTG, LibreNMS, The Dude, Smokeping) সবাই **SNMP UDP port 161** ব্যবহার করে। ONU RX power, distance, status, uptime — সব SNMP walk দিয়েই আসে।
 
-`/dashboard/olt`-এ Sync button click করলেও BDCOM-এর status `unknown` থেকে যায় কারণ:
+কিন্তু একটা technical সমস্যা আছে যেটা পরিষ্কার করতে হবে:
 
-- Sync button `snmp-poll-device` edge function call করে, কিন্তু ওইটা শুধু **OID plan return করে** — actual SNMP request পাঠায় না, status update-ও করে না।
-- `snmp-fetch-olt-name`-এ আসল UDP SNMP code আছে (sysName fetch), কিন্তু সেটা শুধু "Add device" dialog-এ নাম auto-fill করতে ব্যবহার হয়।
-- BDCOM-এর OID profile-এ `onu_status / onu_serial / onu_distance` সব placeholder OID (`1.3.6.1.4.1.0.0.0.0`) — EPON বা GPON কোনোটারই সত্যিকারের OID নাই।
-- কোথাও PON type (EPON / GPON) select করার option নাই, তাই system জানে না কোন MIB walk করবে।
+> **Supabase Edge Functions UDP support করে না — শুধু TCP/HTTP।**
+
+মানে cloud থেকে সরাসরি SNMP query পাঠানো সম্ভব না। এজন্য সব serious NMS (Zabbix, LibreNMS ইত্যাদি) **on-premise server/agent** চালায় — সেই agent SNMP করে, তারপর data central server-এ পাঠায়।
+
+আমাদেরও একই pattern লাগবে।
+
+## Architecture
+
+```text
+[BDCOM OLT]  ←── UDP 161 SNMP ──→  [Polling Agent (অফিস PC/VPS)]
+   LAN IP                              Node.js script
+                                         │
+                                         │  HTTPS POST (every 30s)
+                                         ▼
+                              [Supabase Edge Function]
+                              ingest-snmp-data
+                                         │
+                                         ▼
+                              [olt_devices, onu_list, alerts]
+                                         │
+                                         ▼
+                                  Dashboard UI
+```
+
+Agent আপনার office-এর যেকোনো একটা PC-তে চলবে (Windows/Linux), OLT-এর সাথে same LAN-এ। OLT-কে internet-এ expose করতে হবে না।
 
 ## কী বানাবো
 
-### 1. Schema: PON type field যোগ
+### 1. Polling Agent (`agent/` folder, repo-এর বাইরে download করার জন্য)
 
-`olt_devices` এবং `device_admin_managed_devices` দুটিতেই new column `pon_type text` (`epon` / `gpon` / `mixed`)। Default `mixed`। DB trigger update করে দিব যাতে managed→olt mirror-এ এটাও copy হয়।
+- `polling-agent.js` — Node.js script, `net-snmp` npm package use করে।
+- `config.json` — agent_id, supabase_url, api_key, poll_interval।
+- `README.md` — Windows/Linux setup steps (Node install → `npm install` → `node polling-agent.js`)।
+- `install.bat` / `install.sh` — one-click installer।
+- PM2 / Windows Service দিয়ে background-এ চালানোর instruction।
 
-### 2. Vendor + PON type অনুযায়ী OID profile seed
+Agent প্রতি 30 sec এ যা করবে:
+1. Supabase থেকে নিজের assigned OLT list pull করবে (agent_id দিয়ে)।
+2. প্রতিটা OLT-তে SNMP walk:
+   - sysName, sysUpTime, sysDescr (device meta)
+   - vendor-specific OID দিয়ে ONU list (interface, MAC, serial, status, RX power, distance, temp)
+3. সব data `ingest-snmp-data` edge function-এ POST করবে।
 
-Vendor catalog এ এই combination-গুলো প্রি-সিড করব এবং `device_oid_mappings`-এ আসল OID বসাবো (research করে web থেকে confirm করে):
+### 2. Database changes
 
-| Vendor | PON Type | Profile |
-|---|---|---|
-| BDCOM | EPON | `bdcom-epon` — `1.3.6.1.4.1.3320.101.10.*` (onu MAC, status, RX power, distance) |
-| BDCOM | GPON | `bdcom-gpon` — `1.3.6.1.4.1.3320.101.11.*` / GPON MIB |
-| Vsol | EPON / GPON | আলাদা |
-| DBC, Corelink ইত্যাদি | EPON / GPON | আলাদা |
-| Huawei, ZTE, Nokia | mixed (chassis) | existing generic |
+- নতুন table `polling_agents` (id, tenant_id, name, api_key, last_heartbeat, status)
+- `olt_devices.assigned_agent_id` column — কোন agent এই OLT poll করবে
+- BDCOM EPON/GPON OID mapping আগের migration-এ আছে — verify করে আরো নিখুঁত OID seed করব (research করে)
 
-Migration-এ BDCOM EPON ও BDCOM GPON profile fully seed করব — current BDCOM device-কে GPON profile-এ remap করব।
+### 3. Edge functions
 
-### 3. Sync button আসলে SNMP চালাবে
+- `agent-heartbeat` — agent online status update + assigned OLT list return
+- `ingest-snmp-data` — agent থেকে পাওয়া SNMP data process → olt_devices/onu_list update + alert generate (rx_power thresholds)
+- পুরনো `snmp-poll-device` deprecated করব (TCP probe শুধু "online check" হিসেবে রাখা যায়)
 
-`snmp-poll-device` edge function rewrite:
+### 4. UI
 
-1. Device load → target IP/port/community নাও।
-2. **sysName GET (1.3.6.1.2.1.1.5.0)** UDP দিয়ে চালাও (`snmp-fetch-olt-name`-এর encoder/decoder reuse — শেয়ার করার জন্য `_shared/snmp.ts` বানাবো)।
-3. Response এলে → `olt_devices` update: `status='online'`, `last_seen=now()`, `snmp_last_seen=now()`, `last_data_source='snmp'`। Timeout হলে → `status='offline'`, `last_offline_reason='SNMP timeout'`।
-4. (Optional এই step-এ) sysUpTime, sysDescr scalar GET — `uptime`, `brand_model` update।
-5. ONU walk (status/serial/rx_power) — agent-এর জন্য রেখে দেব; এই step-এ শুধু status reachability fix করব যাতে dashboard correctly online/offline দেখায়।
+- `/dashboard/device-admin/polling-agents` — নতুন page:
+  - Agent তৈরি → API key generate
+  - Download instructions (Windows/Linux)
+  - Last heartbeat status
+  - কোন OLT কোন agent-এ assigned
+- OLT add/edit dialog-এ "Assigned Agent" dropdown
+- OLT detail page-এ "Last SNMP poll" timestamp এবং data source badge
 
-Response `{ok, status, name, uptime}` return করবে। Frontend toast-এ status দেখাবে।
+## Setup flow (user-এর জন্য)
 
-### 4. UI: Add/Edit OLT dialog-এ PON type selector
+1. Dashboard → Polling Agents → "Add Agent" → API key পাবেন।
+2. Office-এর একটা PC-তে Node.js install করুন।
+3. Agent zip download → extract → `config.json`-এ API key paste।
+4. `node polling-agent.js` চালান (অথবা service হিসেবে install)।
+5. Dashboard-এ agent online দেখাবে → OLT-গুলোকে এই agent-এ assign করুন।
+6. 30 sec পর real SNMP data আসা শুরু হবে — RX power, ONU list, status সব।
 
-`OltDevices.tsx` add dialog (এবং device-admin `AddDeviceDialog` যখন category=olt) — `vendor` change হলে:
+## এই plan-এ যেটা নাই
 
-- BDCOM / Vsol / DBC / Corelink ইত্যাদি single-type vendor → **required EPON / GPON radio** দেখাবে।
-- Huawei / ZTE / Nokia → field hide (auto `mixed`)।
+- Cloud VPS-এ agent host করার option (পরে যোগ করা যাবে)
+- Mass agent management (একাধিক agent load balancing)
+- SNMP v3 (encryption) — শুরুতে শুধু v2c
 
-Save করার সময় `pon_type` সাথে যাবে। `oid_profile_id` server-side auto-resolve হবে vendor+pon_type অনুযায়ী (অথবা client-এ profile dropdown filter)।
+## প্রশ্ন
 
-### 5. Existing BDCOM device fix
+Approve করলে আগে **agent code + database + ingest function** বানাবো, তারপর UI। মোট ~4-5 ধাপে complete হবে।
 
-User-এর existing BDCOM (id `c6a38ddd...`) — migration-এ `pon_type='gpon'` set করব এবং BDCOM-GPON profile-এ point করব। Sync চাপলেই status `online` হওয়া উচিত (যদি 103.147.107.1:173 আসলে reachable হয় এবং community `GxNsnMP_RO` valid হয়)।
-
-## Files touched
-
-- `supabase/migrations/...` — new column `pon_type`, mirror trigger update, BDCOM EPON+GPON OID seed, existing BDCOM remap
-- `supabase/functions/_shared/snmp.ts` (new) — SNMP encode/decode util
-- `supabase/functions/snmp-poll-device/index.ts` — real probe + status update
-- `supabase/functions/snmp-fetch-olt-name/index.ts` — import shared util
-- `src/pages/dashboard/olt/OltDevices.tsx` — PON type field in add/edit dialog
-- `src/components/device-admin/AddDeviceDialog.tsx` — PON type when category=olt
-
-## এই plan-এ যেটা **নাই**
-
-- ONU-level walk (rx_power, serial, distance) production-grade implementation — Sync button আপাতত শুধু **device reachability + status** confirm করবে। পরবর্তীতে আলাদা ticket-এ ONU walk যোগ হবে।
-- অন্যান্য vendor (Vsol, DBC, Corelink) এর GPON/EPON profile actually seed — শুধু BDCOM-এর GPON+EPON এই round-এ। বাকিগুলোর জন্য structure ready থাকবে।
-
-Approve করলে BDCOM-এর জন্য আগে fix দিব, status আসা উচিত।
+শুরু করব?
