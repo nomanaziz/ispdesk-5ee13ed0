@@ -214,7 +214,86 @@ export function decodeAttendance(buf: Uint8Array): AttRecord[] {
 
 export function parseOptionString(data: Uint8Array, key: string): string | null {
   const txt = decoder.decode(data);
-  // Format: "~SerialNumber=ABC123\0"
   const m = new RegExp(`${key}=([^\\0\\r\\n]+)`).exec(txt);
   return m ? m[1].trim() : null;
 }
+
+// ---------- User decode/encode ----------
+
+const utf8 = new TextDecoder("utf-8");
+const asciiEnc = new TextEncoder();
+
+export interface DeviceUser {
+  uid: number;
+  user_id: string;
+  name: string;
+  privilege: number;
+  password: string;
+  card_no: string;
+  group_no: number;
+}
+
+// 72-byte record (new firmware) or 28-byte (legacy). Auto-detect by divisibility.
+export function decodeUsers(buf: Uint8Array): DeviceUser[] {
+  if (buf.length < 4) return [];
+  const totalSize = readU32LE(buf, 0);
+  const body = buf.slice(4, 4 + totalSize);
+  const out: DeviceUser[] = [];
+
+  let recSize = 72;
+  if (body.length % 72 !== 0 && body.length % 28 === 0) recSize = 28;
+
+  for (let off = 0; off + recSize <= body.length; off += recSize) {
+    if (recSize === 72) {
+      const uid = readU16LE(body, off);
+      const privilege = body[off + 2];
+      const password = utf8.decode(body.slice(off + 3, off + 11)).replace(/\0.*$/, "");
+      const name = utf8.decode(body.slice(off + 11, off + 35)).replace(/\0.*$/, "").trim();
+      const card_no = String(readU32LE(body, off + 35));
+      const group_no = body[off + 39];
+      const user_id = utf8.decode(body.slice(off + 48, off + 72)).replace(/\0.*$/, "").trim() || String(uid);
+      out.push({ uid, user_id, name, privilege, password, card_no, group_no });
+    } else {
+      const uid = readU16LE(body, off);
+      const privilege = body[off + 2];
+      const password = utf8.decode(body.slice(off + 3, off + 8)).replace(/\0.*$/, "");
+      const name = utf8.decode(body.slice(off + 11, off + 19)).replace(/\0.*$/, "").trim();
+      const card_no = String(readU32LE(body, off + 19));
+      const user_id = utf8.decode(body.slice(off + 24, off + 28)).replace(/\0.*$/, "").trim() || String(uid);
+      out.push({ uid, user_id, name, privilege, password, card_no, group_no: 1 });
+    }
+  }
+  return out;
+}
+
+// Encode a user for USER_WRQ (72-byte payload).
+export function encodeUser(u: {
+  uid: number;
+  user_id: string;
+  name: string;
+  privilege?: number;
+  password?: string;
+  card_no?: string;
+  group_no?: number;
+}): Uint8Array {
+  const rec = new Uint8Array(72);
+  rec.set(u16le(u.uid & 0xffff), 0);
+  rec[2] = u.privilege ?? 0;
+
+  const pw = asciiEnc.encode((u.password ?? "").slice(0, 8));
+  rec.set(pw, 3);
+
+  const name = asciiEnc.encode((u.name ?? "").slice(0, 23));
+  rec.set(name, 11);
+
+  const card = Number(u.card_no ?? 0) >>> 0;
+  rec.set(u32le(card), 35);
+
+  rec[39] = u.group_no ?? 1;
+
+  const userId = asciiEnc.encode((u.user_id ?? "").slice(0, 23));
+  rec.set(userId, 48);
+
+  return rec;
+}
+
