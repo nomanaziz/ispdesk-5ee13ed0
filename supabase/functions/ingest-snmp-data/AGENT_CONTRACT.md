@@ -56,11 +56,11 @@ Headers:
     { "port_name": "GigaEthernet0/1", "port_type": "sfp", "oper_status": "up" }
   ]
 }
+```
 
 > `port_type` values: `epon | gpon | sfp | sfp+ | uplink | other`. Derive from
 > `ifType` (OID 1.3.6.1.2.1.2.2.1.3) + port_name pattern. Also send `ifAdminStatus`
 > (1.3.6.1.2.1.2.2.1.7) and `ifSpeed` (1.3.6.1.2.1.2.2.1.5) when available.
-```
 
 ## BDCOM EPON OIDs (reference)
 
