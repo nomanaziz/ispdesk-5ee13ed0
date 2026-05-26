@@ -156,6 +156,8 @@ export const menuGroups: MenuGroup[] = [
       { title: "পে-স্লিপ", url: "/dashboard/hr/payslip", icon: FileText },
       { title: "কর্মচারী তালিকা", url: "/dashboard/hr/employees", icon: Users },
       { title: "বেতন শীট", url: "/dashboard/hr/salary-sheet", icon: ScrollText },
+      { title: "অগ্রিম বেতন", url: "/dashboard/hr/advance-salary", icon: Wallet },
+      { title: "কর্মী Loan", url: "/dashboard/hr/loans", icon: DollarSign },
       { title: "রিজাইন নিয়ম", url: "/dashboard/hr/resign-rules", icon: FileText },
       { title: "রিজাইনেশন", url: "/dashboard/hr/resignations", icon: UserX },
       { title: "উপস্থিতি", url: "/dashboard/hr/attendance", icon: CheckSquare },
