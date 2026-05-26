@@ -105,6 +105,7 @@ const DeviceAdminSchedules = lazy(() => import("@/pages/dashboard/device-admin/S
 const DeviceAdminAuditLog = lazy(() => import("@/pages/dashboard/device-admin/AuditLog"));
 const DeviceAdminJobs = lazy(() => import("@/pages/dashboard/device-admin/Jobs"));
 const DeviceAdminOidLibrary = lazy(() => import("@/pages/dashboard/device-admin/OidLibrary"));
+const DeviceAdminPollingAgents = lazy(() => import("@/pages/dashboard/device-admin/PollingAgents"));
 
 // HR
 const HrDepartments = lazy(() => import("@/pages/dashboard/hr/Departments"));
