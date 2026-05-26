@@ -412,6 +412,9 @@ export default function OltDevices() {
                               ? <Loader2 className="h-4 w-4 animate-spin" />
                               : <RefreshCw className="h-4 w-4 text-emerald-600" />}
                           </Button>
+                          <Button variant="ghost" size="icon" title="Live Monitoring" asChild>
+                            <Link to={`/dashboard/olt/online-monitoring?olt=${d.id}`}><Activity className="h-4 w-4 text-emerald-600" /></Link>
+                          </Button>
                           <Button variant="ghost" size="icon" title="Reseller Access" onClick={() => setAccessOlt({ id: d.id, name: d.name })}>
                             <Users className="h-4 w-4 text-blue-500" />
                           </Button>
