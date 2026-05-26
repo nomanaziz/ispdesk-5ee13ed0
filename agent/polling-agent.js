@@ -13,7 +13,9 @@ const snmp = require('net-snmp');
 const fs = require('fs');
 const path = require('path');
 
-const CFG_PATH = process.env.AGENT_CONFIG || path.join(__dirname, 'config.json');
+// When packaged with pkg, __dirname points inside the snapshot. Use exe dir instead.
+const BASE_DIR = process.pkg ? path.dirname(process.execPath) : __dirname;
+const CFG_PATH = process.env.AGENT_CONFIG || path.join(BASE_DIR, 'config.json');
 if (!fs.existsSync(CFG_PATH)) {
   console.error(`[FATAL] Config file not found: ${CFG_PATH}`);
   console.error('Copy config.example.json → config.json and fill in your details.');

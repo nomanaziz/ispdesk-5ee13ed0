@@ -3,11 +3,22 @@
   "version": "1.0.0",
   "description": "On-premise SNMP polling agent for ISPDesk OLT monitoring",
   "main": "polling-agent.js",
+  "bin": "polling-agent.js",
   "scripts": {
-    "start": "node polling-agent.js"
+    "start": "node polling-agent.js",
+    "build:win": "pkg . --targets node18-win-x64 --output dist/ispdesk-agent.exe",
+    "build:linux": "pkg . --targets node18-linux-x64 --output dist/ispdesk-agent-linux",
+    "build:all": "pkg . --targets node18-win-x64,node18-linux-x64,node18-macos-x64 --out-path dist"
+  },
+  "pkg": {
+    "assets": [],
+    "scripts": ["polling-agent.js"]
   },
   "dependencies": {
     "net-snmp": "^3.11.2",
     "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^5.16.1"
   }
 }

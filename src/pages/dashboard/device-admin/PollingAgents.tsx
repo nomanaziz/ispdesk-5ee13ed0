@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, Copy, RefreshCw, Server, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Trash2, Copy, RefreshCw, Server, CheckCircle2, XCircle, Download } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 type Agent = {
@@ -226,7 +226,7 @@ cp config.example.json config.json`}
                 </pre>
               </div>
               <div>
-                <Label className="text-base">4. config.json edit করুন</Label>
+                <Label className="text-base">4. config.json ডাউনলোড করুন</Label>
                 <pre className="bg-muted p-3 rounded text-xs overflow-x-auto mt-1">
 {JSON.stringify({
   supabase_url: import.meta.env.VITE_SUPABASE_URL,
@@ -234,14 +234,47 @@ cp config.example.json config.json`}
   poll_interval_seconds: setupOpen.poll_interval_seconds,
 }, null, 2)}
                 </pre>
+                <Button size="sm" className="mt-2" onClick={() => {
+                  const cfg = {
+                    supabase_url: import.meta.env.VITE_SUPABASE_URL,
+                    api_key: setupOpen.api_key,
+                    poll_interval_seconds: setupOpen.poll_interval_seconds,
+                  };
+                  const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: "application/json" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "config.json";
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success("config.json ডাউনলোড হয়েছে");
+                }}>
+                  <Download className="h-3 w-3 mr-2" /> Download config.json
+                </Button>
               </div>
               <div>
-                <Label className="text-base">5. চালু করুন</Label>
-                <pre className="bg-muted p-3 rounded text-xs mt-1">npm start</pre>
-                <p className="text-muted-foreground mt-1">Agent online হলে এই page-এ status "Online" দেখাবে।</p>
+                <Label className="text-base">5. Windows .exe বানান (অথবা ডাউনলোড করুন)</Label>
+                <p className="text-muted-foreground mt-1">আপনার dev PC-তে একবার build করুন — target PC-তে Node.js লাগবে না:</p>
+                <pre className="bg-muted p-3 rounded text-xs overflow-x-auto mt-1">
+{`cd agent
+npm install
+npm run build:win
+# তৈরি হবে: agent/dist/ispdesk-agent.exe`}
+                </pre>
+                <p className="text-muted-foreground mt-2">তারপর target PC-তে একটা folder বানিয়ে রাখুন:</p>
+                <pre className="bg-muted p-3 rounded text-xs mt-1">
+{`C:\\ispdesk-agent\\
+  ├─ ispdesk-agent.exe
+  └─ config.json  (উপরের button দিয়ে download)`}
+                </pre>
               </div>
               <div>
-                <Label className="text-base">6. OLT assign করুন</Label>
+                <Label className="text-base">6. চালু করুন</Label>
+                <p className="text-muted-foreground">Double-click <code>ispdesk-agent.exe</code> — অথবা Node দিয়ে: <code>npm start</code></p>
+                <p className="text-muted-foreground mt-1">Auto-start চাইলে NSSM দিয়ে Windows Service বানান (BUILD_EXE.md দেখুন)।</p>
+              </div>
+              <div>
+                <Label className="text-base">7. OLT assign করুন</Label>
                 <p className="text-muted-foreground">Dashboard → OLT Devices → প্রতিটা OLT edit করে "Assigned Agent" এ এই agent select করুন।</p>
               </div>
             </div>
