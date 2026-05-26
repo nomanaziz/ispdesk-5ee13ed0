@@ -251,10 +251,8 @@ export default function PollingAgents() {
                     { f: "config.example.json", label: "config.example.json" },
                     { f: "README.md", label: "README.md" },
                   ].map((x) => (
-                    <Button key={x.f} size="sm" variant="outline" asChild>
-                      <a href={`/agent/${x.f}`} download={x.f}>
-                        <Download className="h-3 w-3 mr-2" /> {x.label}
-                      </a>
+                    <Button key={x.f} size="sm" variant="outline" onClick={() => downloadAgentFile(x.f)}>
+                      <Download className="h-3 w-3 mr-2" /> {x.label}
                     </Button>
                   ))}
                 </div>
