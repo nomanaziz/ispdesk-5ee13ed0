@@ -42,11 +42,25 @@ Headers:
     }
   ],
   "pon_ports": [
-    { "port_name": "EPON0/1", "port_type": "pon", "description": "uplink-A" },
-    { "port_name": "EPON0/2", "port_type": "pon" }
+    {
+      "port_name": "EPON0/1",
+      "port_type": "epon",
+      "admin_status": "up",
+      "oper_status": "up",
+      "speed_mbps": 1000,
+      "total_onus": 12,
+      "online_onus": 11,
+      "rx_power_dbm": -18.5,
+      "description": "uplink-A"
+    },
+    { "port_name": "GigaEthernet0/1", "port_type": "sfp", "oper_status": "up" }
   ]
 }
 ```
+
+> `port_type` values: `epon | gpon | sfp | sfp+ | uplink | other`. Derive from
+> `ifType` (OID 1.3.6.1.2.1.2.2.1.3) + port_name pattern. Also send `ifAdminStatus`
+> (1.3.6.1.2.1.2.2.1.7) and `ifSpeed` (1.3.6.1.2.1.2.2.1.5) when available.
 
 ## BDCOM EPON OIDs (reference)
 

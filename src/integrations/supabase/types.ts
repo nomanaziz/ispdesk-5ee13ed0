@@ -6460,30 +6460,51 @@ export type Database = {
       }
       olt_ports: {
         Row: {
+          admin_status: string | null
           created_at: string
           description: string | null
           id: string
+          last_seen: string | null
           olt_id: string
+          online_onus: number | null
+          oper_status: string | null
           port_name: string
           port_type: string
+          rx_power_dbm: number | null
+          speed_mbps: number | null
+          total_onus: number | null
           updated_at: string
         }
         Insert: {
+          admin_status?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          last_seen?: string | null
           olt_id: string
+          online_onus?: number | null
+          oper_status?: string | null
           port_name: string
           port_type?: string
+          rx_power_dbm?: number | null
+          speed_mbps?: number | null
+          total_onus?: number | null
           updated_at?: string
         }
         Update: {
+          admin_status?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          last_seen?: string | null
           olt_id?: string
+          online_onus?: number | null
+          oper_status?: string | null
           port_name?: string
           port_type?: string
+          rx_power_dbm?: number | null
+          speed_mbps?: number | null
+          total_onus?: number | null
           updated_at?: string
         }
         Relationships: [
