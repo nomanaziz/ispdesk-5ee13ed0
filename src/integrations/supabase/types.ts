@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      advance_salary: {
+        Row: {
+          adjusted_in_month: string | null
+          amount: number
+          approved_by: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          id: string
+          reason: string | null
+          request_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          adjusted_in_month?: string | null
+          amount: number
+          approved_by?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          id?: string
+          reason?: string | null
+          request_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          adjusted_in_month?: string | null
+          amount?: number
+          approved_by?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          id?: string
+          reason?: string | null
+          request_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advance_salary_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       affiliates: {
         Row: {
           commission_rate: number | null
@@ -4479,6 +4532,62 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_loans: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          id: string
+          installments: number
+          loan_amount: number
+          monthly_installment: number
+          reason: string | null
+          remaining_balance: number
+          start_month: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          id?: string
+          installments: number
+          loan_amount: number
+          monthly_installment: number
+          reason?: string | null
+          remaining_balance: number
+          start_month: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          id?: string
+          installments?: number
+          loan_amount?: number
+          monthly_installment?: number
+          reason?: string | null
+          remaining_balance?: number
+          start_month?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_loans_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_shift_assignments: {
         Row: {
           created_at: string
@@ -5603,6 +5712,51 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "bw_sale_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_installments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          loan_id: string
+          month: string
+          payroll_id: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          loan_id: string
+          month: string
+          payroll_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          loan_id?: string
+          month?: string
+          payroll_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_installments_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "employee_loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_installments_payroll_id_fkey"
+            columns: ["payroll_id"]
+            isOneToOne: false
+            referencedRelation: "payroll"
             referencedColumns: ["id"]
           },
         ]
@@ -6889,15 +7043,19 @@ export type Database = {
       payroll: {
         Row: {
           adjustments: Json
+          advance_deduction: number
           basic_salary: number | null
           created_at: string
           employee_id: string
           generated_at: string
           id: string
+          loan_deduction: number
           month: string
           net_salary: number | null
           notes: string | null
+          paid_amount: number
           paid_at: string | null
+          payment_status: string
           period_label: string | null
           status: string
           total_allowance: number | null
@@ -6905,15 +7063,19 @@ export type Database = {
         }
         Insert: {
           adjustments?: Json
+          advance_deduction?: number
           basic_salary?: number | null
           created_at?: string
           employee_id: string
           generated_at?: string
           id?: string
+          loan_deduction?: number
           month: string
           net_salary?: number | null
           notes?: string | null
+          paid_amount?: number
           paid_at?: string | null
+          payment_status?: string
           period_label?: string | null
           status?: string
           total_allowance?: number | null
@@ -6921,15 +7083,19 @@ export type Database = {
         }
         Update: {
           adjustments?: Json
+          advance_deduction?: number
           basic_salary?: number | null
           created_at?: string
           employee_id?: string
           generated_at?: string
           id?: string
+          loan_deduction?: number
           month?: string
           net_salary?: number | null
           notes?: string | null
+          paid_amount?: number
           paid_at?: string | null
+          payment_status?: string
           period_label?: string | null
           status?: string
           total_allowance?: number | null
@@ -6977,6 +7143,53 @@ export type Database = {
           },
           {
             foreignKeyName: "payroll_details_payroll_id_fkey"
+            columns: ["payroll_id"]
+            isOneToOne: false
+            referencedRelation: "payroll"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_payments: {
+        Row: {
+          amount: number
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          paid_from: string | null
+          payment_date: string
+          payroll_id: string
+          remarks: string | null
+          sms_sent: boolean
+        }
+        Insert: {
+          amount: number
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          paid_from?: string | null
+          payment_date?: string
+          payroll_id: string
+          remarks?: string | null
+          sms_sent?: boolean
+        }
+        Update: {
+          amount?: number
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          paid_from?: string | null
+          payment_date?: string
+          payroll_id?: string
+          remarks?: string | null
+          sms_sent?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_payments_payroll_id_fkey"
             columns: ["payroll_id"]
             isOneToOne: false
             referencedRelation: "payroll"
