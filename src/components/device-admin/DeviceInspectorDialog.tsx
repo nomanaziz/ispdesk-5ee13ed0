@@ -16,14 +16,16 @@ interface Props {
   device: { id: string; name: string; type: string } | null;
 }
 
-function ResourceTable({ deviceId, deviceType, resource, columns }: {
-  deviceId: string; deviceType: string; resource: string; columns: { key: string; label: string }[];
+function ResourceTable({ deviceId, deviceType, resource, columns, extraBody }: {
+  deviceId: string; deviceType: string; resource: string;
+  columns: { key: string; label: string }[];
+  extraBody?: Record<string, any>;
 }) {
   const { data: payload, isLoading, error } = useQuery({
-    queryKey: ["inspect", deviceId, resource],
+    queryKey: ["inspect", deviceId, resource, extraBody],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("inspect-device", {
-        body: { device_id: deviceId, device_type: deviceType, resource },
+        body: { device_id: deviceId, device_type: deviceType, resource, ...(extraBody || {}) },
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Failed");
@@ -39,25 +41,15 @@ function ResourceTable({ deviceId, deviceType, resource, columns }: {
   if (isLoading) return <div className="flex items-center justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2" /> ফেচ করা হচ্ছে...</div>;
   if (error) {
     const msg = (error as any).message || "Unknown";
-    let hint = "";
-    if (/timeout/i.test(msg)) hint = "ডিভাইস unreachable — IP/port চেক করুন";
-    else if (/auth|login/i.test(msg)) hint = "Username/password ভুল";
-    else if (/closed|refused/i.test(msg)) hint = "API port বন্ধ — RouterOS এ API service enable করুন";
     return (
       <div className="flex items-start gap-2 p-4 bg-destructive/10 text-destructive rounded">
         <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-        <div className="text-sm">
-          <div className="font-medium">ফেচ ব্যর্থ</div>
-          <div className="text-xs opacity-80 mt-1">{msg}</div>
-          {hint && <div className="text-xs mt-1 opacity-70">💡 {hint}</div>}
-        </div>
+        <div className="text-sm"><div className="font-medium">ফেচ ব্যর্থ</div><div className="text-xs opacity-80 mt-1">{msg}</div></div>
       </div>
     );
   }
   if (!data || data.length === 0) return (
-    <div className="text-center py-8 text-muted-foreground text-sm">
-      {note || "কোনো ডেটা পাওয়া যায়নি"}
-    </div>
+    <div className="text-center py-8 text-muted-foreground text-sm">{note || "কোনো ডেটা পাওয়া যায়নি"}</div>
   );
 
   return (
@@ -72,9 +64,7 @@ function ResourceTable({ deviceId, deviceType, resource, columns }: {
             {data.map((row, i) => (
               <TableRow key={i}>
                 {columns.map((c) => (
-                  <TableCell key={c.key} className="text-sm font-mono">
-                    {String(row[c.key] ?? "—")}
-                  </TableCell>
+                  <TableCell key={c.key} className="text-sm font-mono">{String(row[c.key] ?? "—")}</TableCell>
                 ))}
               </TableRow>
             ))}
@@ -85,17 +75,77 @@ function ResourceTable({ deviceId, deviceType, resource, columns }: {
   );
 }
 
+function OltOverview({ deviceId }: { deviceId: string }) {
+  const { data: payload, isLoading } = useQuery({
+    queryKey: ["inspect", deviceId, "system"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("inspect-device", {
+        body: { device_id: deviceId, device_type: "olt", resource: "system" },
+      });
+      if (error) throw error;
+      return data as { data: any[] };
+    },
+    refetchInterval: 20000,
+  });
+
+  if (isLoading) return <div className="flex items-center justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2" /> লোড হচ্ছে...</div>;
+  const s = payload?.data?.[0];
+  if (!s) return <div className="text-center py-8 text-muted-foreground text-sm">কোনো ডেটা নেই</div>;
+
+  const Chip = ({ label, value, tone = "default" }: { label: string; value: any; tone?: string }) => (
+    <div className={`rounded-lg border p-3 ${tone === "ok" ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200" : tone === "warn" ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200" : "bg-muted/30"}`}>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-lg font-bold mt-0.5">{value ?? "—"}</div>
+    </div>
+  );
+
+  return (
+    <ScrollArea className="h-[420px] pr-2">
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <Chip label="Total Interface" value={s.total_interfaces} />
+          <Chip label="Up / Down" value={`${s.ports_up} / ${s.ports_down}`} tone={s.ports_down > 0 ? "warn" : "ok"} />
+          <Chip label="Total ONU" value={s.total_onus} />
+          <Chip label="Online ONU" value={s.online_onus} tone="ok" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          <Chip label="EPON" value={s.epon_count} />
+          <Chip label="GPON" value={s.gpon_count} />
+          <Chip label="SFP" value={s.sfp_count} />
+          <Chip label="Uplink" value={s.uplink_count} />
+          <Chip label="Other" value={s.other_count} />
+        </div>
+        <div className="rounded-lg border p-3 space-y-1 text-sm">
+          <div className="font-semibold mb-2">সিস্টেম ইনফো</div>
+          <div className="grid grid-cols-2 gap-y-1 gap-x-4">
+            <div><span className="text-muted-foreground">Brand/Model:</span> <span className="font-mono">{s.brand_model}</span></div>
+            <div><span className="text-muted-foreground">PON Type:</span> <span className="font-mono">{s.pon_type}</span></div>
+            <div><span className="text-muted-foreground">Hardware:</span> <span className="font-mono">{s.hardware_version}</span></div>
+            <div><span className="text-muted-foreground">Firmware:</span> <span className="font-mono">{s.firmware_version}</span></div>
+            <div><span className="text-muted-foreground">Serial:</span> <span className="font-mono">{s.serial_number}</span></div>
+            <div><span className="text-muted-foreground">MAC:</span> <span className="font-mono">{s.mac_address}</span></div>
+            <div><span className="text-muted-foreground">Uptime:</span> <span className="font-mono">{s.uptime}</span></div>
+            <div><span className="text-muted-foreground">Status:</span> <Badge variant={s.status === "online" ? "default" : "secondary"}>{s.status}</Badge></div>
+            <div><span className="text-muted-foreground">Last Source:</span> <span className="font-mono">{s.last_data_source}</span></div>
+            <div><span className="text-muted-foreground">Agent Last Seen:</span> <span className="font-mono text-xs">{s.agent_last_seen ? new Date(s.agent_last_seen).toLocaleString() : "—"}</span></div>
+          </div>
+        </div>
+      </div>
+    </ScrollArea>
+  );
+}
 
 export function DeviceInspectorDialog({ open, onOpenChange, device }: Props) {
-  const [tab, setTab] = useState("users");
-  const [polling, setPolling] = useState(false);
   const isOlt = device?.type === "olt";
+  const [tab, setTab] = useState(isOlt ? "overview" : "users");
+  const [userMode, setUserMode] = useState<"olt-only" | "with-user">("olt-only");
+  const [polling, setPolling] = useState(false);
 
   const { data: oltSummary } = useQuery({
     queryKey: ["olt-summary", device?.id],
     queryFn: async () => {
       const { data } = await supabase.from("olt_devices")
-        .select("total_onus, online_onus, brand_model, snmp_last_seen, agent_last_seen, status")
+        .select("total_onus, online_onus, brand_model, status")
         .eq("id", device!.id).maybeSingle();
       return data;
     },
@@ -108,9 +158,7 @@ export function DeviceInspectorDialog({ open, onOpenChange, device }: Props) {
   const pollNow = async () => {
     setPolling(true);
     try {
-      const { data, error } = await supabase.functions.invoke("snmp-poll-device", {
-        body: { device_id: device.id },
-      });
+      const { error } = await supabase.functions.invoke("snmp-poll-device", { body: { device_id: device.id } });
       if (error) throw error;
       toast.success("Poll trigger পাঠানো হয়েছে — agent next cycle-এ data আনবে");
     } catch (e: any) {
@@ -120,15 +168,14 @@ export function DeviceInspectorDialog({ open, onOpenChange, device }: Props) {
     }
   };
 
-  // OLT-specific column sets
   const usersCols = isOlt
     ? [
-        { key: "name", label: "ইউজার / Desc" },
-        { key: "mac", label: "MAC" },
+        { key: "name", label: userMode === "with-user" ? "ইউজার / Desc" : "Description / MAC" },
+        { key: "mac", label: "MAC / SN" },
         { key: "pon", label: "PON পোর্ট" },
         { key: "status", label: "Status" },
         { key: "rx_power", label: "Rx (dBm)" },
-        { key: "mapping", label: "ম্যাপিং" },
+        ...(userMode === "with-user" ? [{ key: "mapping", label: "ম্যাপিং" }] : []),
       ]
     : [
         { key: "name", label: "নাম" },
@@ -141,9 +188,10 @@ export function DeviceInspectorDialog({ open, onOpenChange, device }: Props) {
     ? [
         { key: "name", label: "পোর্ট" },
         { key: "type", label: "টাইপ" },
+        { key: "oper_status", label: "Oper" },
+        { key: "admin_status", label: "Admin" },
         { key: "total_onus", label: "মোট ONU" },
         { key: "online_onus", label: "Online" },
-        { key: "running", label: "Running" },
         { key: "description", label: "Description" },
       ]
     : [
@@ -175,22 +223,42 @@ export function DeviceInspectorDialog({ open, onOpenChange, device }: Props) {
             )}
           </DialogTitle>
           {isOlt && oltSummary?.brand_model && (
-            <div className="text-xs text-muted-foreground mt-1 whitespace-pre-line">
-              {oltSummary.brand_model}
-            </div>
+            <div className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{oltSummary.brand_model}</div>
           )}
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
+            {isOlt && <TabsTrigger value="overview">📊 Overview</TabsTrigger>}
             <TabsTrigger value="users">{isOlt ? "ONU (ইউজার)" : "ইউজার"}</TabsTrigger>
             <TabsTrigger value="interfaces">{isOlt ? "PON পোর্ট" : "ইন্টারফেস"}</TabsTrigger>
             <TabsTrigger value="vlans">VLAN</TabsTrigger>
             <TabsTrigger value="vlan_ips">VLAN IP</TabsTrigger>
           </TabsList>
 
+          {isOlt && (
+            <TabsContent value="overview">
+              <OltOverview deviceId={device.id} />
+            </TabsContent>
+          )}
+
           <TabsContent value="users">
-            <ResourceTable deviceId={device.id} deviceType={device.type} resource="users" columns={usersCols} />
+            {isOlt && (
+              <div className="flex items-center gap-2 mb-3 text-sm">
+                <span className="text-muted-foreground">View mode:</span>
+                <Button size="sm" variant={userMode === "olt-only" ? "default" : "outline"} onClick={() => setUserMode("olt-only")}>
+                  শুধু OLT
+                </Button>
+                <Button size="sm" variant={userMode === "with-user" ? "default" : "outline"} onClick={() => setUserMode("with-user")}>
+                  + ইউজার (MikroTik)
+                </Button>
+                <span className="text-xs text-muted-foreground ml-2">
+                  {userMode === "olt-only" ? "OLT-এর native ONU description ও MAC" : "MikroTik PPPoE caller-MAC দিয়ে customer match"}
+                </span>
+              </div>
+            )}
+            <ResourceTable deviceId={device.id} deviceType={device.type} resource="users" columns={usersCols}
+              extraBody={isOlt ? { mode: userMode } : undefined} />
           </TabsContent>
           <TabsContent value="interfaces">
             <ResourceTable deviceId={device.id} deviceType={device.type} resource="interfaces" columns={ifaceCols} />
