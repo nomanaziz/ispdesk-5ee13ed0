@@ -547,6 +547,31 @@ export default function OltDevices() {
               )}
             </div>
 
+            {/* Section: Polling Agent */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Polling Agent</Label>
+              <div>
+                <Label>Assigned Agent</Label>
+                <Select
+                  value={form.assigned_agent_id ?? "__none__"}
+                  onValueChange={(v) => setForm((f) => ({ ...f, assigned_agent_id: v === "__none__" ? null : v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="কোনো agent assign নেই" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— None —</SelectItem>
+                    {pollingAgents.map((a: any) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name} {a.last_heartbeat && (Date.now() - new Date(a.last_heartbeat).getTime() < 120000) ? "🟢" : "⚪"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Real SNMP polling-এর জন্য on-premise agent select করুন। Agent না থাকলে Device Admin → Polling Agents-এ গিয়ে তৈরি করুন।
+                </p>
+              </div>
+            </div>
+
             {/* Section: Linking — Branch + MikroTik */}
             <div className="border rounded-lg p-4 space-y-3">
               <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Linking</Label>
