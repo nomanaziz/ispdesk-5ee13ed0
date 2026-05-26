@@ -148,11 +148,15 @@ export function AddDeviceDialog({ open, onOpenChange, editDevice }: Props) {
     if (isEdit) return;
     const vendors = VENDORS_BY_CATEGORY[form.category] || [];
     const protos = PROTOCOLS_BY_CATEGORY[form.category] || [];
+    const isOlt = form.category === "olt";
     setForm((f) => ({
       ...f,
       vendor: vendors.includes(f.vendor) ? f.vendor : vendors[0] || "other",
       protocol: protos.find((p) => p.value === f.protocol) ? f.protocol : protos[0]?.value || "snmp",
       oid_profile_id: "",
+      // OLT-এর জন্য agent-first defaults (private LAN device)
+      agent_enabled: isOlt ? true : f.agent_enabled,
+      data_source_priority: isOlt ? "agent_first" : f.data_source_priority,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.category]);
