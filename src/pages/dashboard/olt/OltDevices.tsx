@@ -265,6 +265,7 @@ export default function OltDevices() {
       agent_enabled: d.agent_enabled ?? true,
       snmp_fallback_enabled: d.snmp_fallback_enabled ?? true,
       agent_stale_seconds: d.agent_stale_seconds ?? 180,
+      assigned_agent_id: d.assigned_agent_id ?? null,
     });
     setOpen(true);
   };
