@@ -47,6 +47,7 @@ const emptyForm = {
   agent_enabled: true,
   snmp_fallback_enabled: true,
   agent_stale_seconds: 180,
+  assigned_agent_id: null as string | null,
 };
 
 // Live status from last_seen (online if seen ≤3 min ago)
