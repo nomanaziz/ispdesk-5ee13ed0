@@ -6888,37 +6888,49 @@ export type Database = {
       }
       payroll: {
         Row: {
+          adjustments: Json
           basic_salary: number | null
           created_at: string
           employee_id: string
+          generated_at: string
           id: string
           month: string
           net_salary: number | null
+          notes: string | null
           paid_at: string | null
+          period_label: string | null
           status: string
           total_allowance: number | null
           total_deduction: number | null
         }
         Insert: {
+          adjustments?: Json
           basic_salary?: number | null
           created_at?: string
           employee_id: string
+          generated_at?: string
           id?: string
           month: string
           net_salary?: number | null
+          notes?: string | null
           paid_at?: string | null
+          period_label?: string | null
           status?: string
           total_allowance?: number | null
           total_deduction?: number | null
         }
         Update: {
+          adjustments?: Json
           basic_salary?: number | null
           created_at?: string
           employee_id?: string
+          generated_at?: string
           id?: string
           month?: string
           net_salary?: number | null
+          notes?: string | null
           paid_at?: string | null
+          period_label?: string | null
           status?: string
           total_allowance?: number | null
           total_deduction?: number | null

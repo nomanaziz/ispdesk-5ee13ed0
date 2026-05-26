@@ -8,17 +8,22 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Search, Edit, Trash2, Users } from "lucide-react";
+import { Plus, Search, Edit, Eye, DollarSign, Calendar, Users, Receipt } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import EmployeePayheadsDialog from "@/components/hr/EmployeePayheadsDialog";
+import EmployeeHolidaysDialog from "@/components/hr/EmployeeHolidaysDialog";
 
 export default function Employees() {
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("active");
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [payheadEmp, setPayheadEmp] = useState<any | null>(null);
+  const [holidayEmp, setHolidayEmp] = useState<any | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -42,19 +47,6 @@ export default function Employees() {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("employees").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
-      toast.success("কর্মী মুছে ফেলা হয়েছে");
-      setDeleteId(null);
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
   const toggleStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await supabase.from("employees").update({ status }).eq("id", id);
@@ -67,7 +59,7 @@ export default function Employees() {
   });
 
   const filtered = (employees || [])
-    .filter((e: any) => e.status === statusFilter)
+    .filter((e: any) => statusFilter === "all" || e.status === statusFilter)
     .filter((e: any) => deptFilter === "all" || e.department_id === deptFilter)
     .filter((e: any) => {
       if (!search) return true;
@@ -75,19 +67,41 @@ export default function Employees() {
       return e.name?.toLowerCase().includes(s) || e.employee_id?.toLowerCase().includes(s) || e.phone?.toLowerCase().includes(s);
     });
 
+  const allSelected = filtered.length > 0 && filtered.every((e: any) => selected.has(e.id));
+  const toggleAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(filtered.map((e: any) => e.id)));
+  };
+  const toggleOne = (id: string) => {
+    const n = new Set(selected);
+    n.has(id) ? n.delete(id) : n.add(id);
+    setSelected(n);
+  };
+
+  const goGenerate = () => {
+    const ids = Array.from(selected);
+    const qs = ids.length ? `?ids=${ids.join(",")}` : "";
+    navigate(`/dashboard/hr/payslip${qs}`);
+  };
+
   const activeCount = (employees || []).filter((e: any) => e.status === "active").length;
   const inactiveCount = (employees || []).filter((e: any) => e.status === "inactive").length;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold text-foreground">কর্মী তালিকা</h1>
           <p className="text-sm text-muted-foreground">HR & Payroll — কর্মী ম্যানেজমেন্ট</p>
         </div>
-        <Button onClick={() => navigate("/dashboard/hr/employees/add")} className="gap-2">
-          <Plus className="h-4 w-4" /> নতুন কর্মী যোগ
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" disabled={selected.size === 0} onClick={goGenerate} className="gap-2">
+            <Receipt className="h-4 w-4" /> পে-স্লিপ জেনারেট {selected.size > 0 && `(${selected.size})`}
+          </Button>
+          <Button onClick={() => navigate("/dashboard/hr/employees/add")} className="gap-2">
+            <Plus className="h-4 w-4" /> নতুন কর্মী যোগ
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -100,6 +114,7 @@ export default function Employees() {
       <div className="flex flex-wrap items-center gap-3">
         <Button size="sm" variant={statusFilter === "active" ? "default" : "outline"} onClick={() => setStatusFilter("active")}>সক্রিয়</Button>
         <Button size="sm" variant={statusFilter === "inactive" ? "default" : "outline"} onClick={() => setStatusFilter("inactive")}>নিষ্ক্রিয়</Button>
+        <Button size="sm" variant={statusFilter === "all" ? "default" : "outline"} onClick={() => setStatusFilter("all")}>সব</Button>
         <Select value={deptFilter} onValueChange={setDeptFilter}>
           <SelectTrigger className="w-48"><SelectValue placeholder="ডিপার্টমেন্ট" /></SelectTrigger>
           <SelectContent>
@@ -115,7 +130,10 @@ export default function Employees() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2"><Users className="h-5 w-5" /> কর্মী তালিকা <Badge variant="secondary">{filtered.length}</Badge></CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Users className="h-5 w-5" /> কর্মী তালিকা <Badge variant="secondary">{filtered.length}</Badge>
+            {selected.size > 0 && <Badge>{selected.size} নির্বাচিত</Badge>}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -125,30 +143,36 @@ export default function Employees() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>কর্মী আইডি</TableHead>
+                    <TableHead className="w-10">
+                      <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                    </TableHead>
                     <TableHead>নাম</TableHead>
+                    <TableHead>ID</TableHead>
+                    <TableHead>মোবাইল</TableHead>
+                    <TableHead>অফিস ফোন</TableHead>
                     <TableHead>ডিপার্টমেন্ট</TableHead>
                     <TableHead>পদবী</TableHead>
-                    <TableHead>ফোন</TableHead>
                     <TableHead>বেতন</TableHead>
-                    <TableHead>যোগদানের তারিখ</TableHead>
                     <TableHead>স্ট্যাটাস</TableHead>
                     <TableHead className="text-right">অ্যাকশন</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 && (
-                    <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">কোনো কর্মী পাওয়া যায়নি</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">কোনো কর্মী পাওয়া যায়নি</TableCell></TableRow>
                   )}
                   {filtered.map((emp: any) => (
-                    <TableRow key={emp.id}>
-                      <TableCell className="font-mono">{emp.employee_id}</TableCell>
+                    <TableRow key={emp.id} className={selected.has(emp.id) ? "bg-muted/30" : ""}>
+                      <TableCell>
+                        <Checkbox checked={selected.has(emp.id)} onCheckedChange={() => toggleOne(emp.id)} />
+                      </TableCell>
                       <TableCell className="font-medium">{emp.name}</TableCell>
+                      <TableCell className="font-mono">{emp.employee_id}</TableCell>
+                      <TableCell>{emp.phone || emp.personal_phone || "—"}</TableCell>
+                      <TableCell>{emp.office_phone || "—"}</TableCell>
                       <TableCell>{emp.departments?.name || "—"}</TableCell>
                       <TableCell>{emp.positions?.name || "—"}</TableCell>
-                      <TableCell>{emp.phone || "—"}</TableCell>
-                      <TableCell>৳{emp.salary?.toLocaleString() || 0}</TableCell>
-                      <TableCell>{emp.joining_date || "—"}</TableCell>
+                      <TableCell>৳{Number(emp.salary || 0).toLocaleString()}</TableCell>
                       <TableCell>
                         <Switch
                           checked={emp.status === "active"}
@@ -157,8 +181,20 @@ export default function Employees() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => navigate(`/dashboard/hr/employees/add?edit=${emp.id}`)}><Edit className="h-4 w-4" /></Button>
-                          <Button size="icon" variant="ghost" className="text-destructive" onClick={() => setDeleteId(emp.id)}><Trash2 className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" title="দেখুন"
+                            onClick={() => navigate(`/dashboard/hr/employees/${emp.id}`)}>
+                            <Eye className="h-4 w-4 text-blue-600" />
+                          </Button>
+                          <Button size="icon" variant="ghost" title="এডিট"
+                            onClick={() => navigate(`/dashboard/hr/employees/add?edit=${emp.id}`)}>
+                            <Edit className="h-4 w-4 text-green-600" />
+                          </Button>
+                          <Button size="icon" variant="ghost" title="পে-হেডস" onClick={() => setPayheadEmp(emp)}>
+                            <DollarSign className="h-4 w-4 text-amber-600" />
+                          </Button>
+                          <Button size="icon" variant="ghost" title="ছুটি/ক্যালেন্ডার" onClick={() => setHolidayEmp(emp)}>
+                            <Calendar className="h-4 w-4 text-indigo-600" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -170,18 +206,8 @@ export default function Employees() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>কর্মী মুছে ফেলুন</DialogTitle>
-            <DialogDescription>আপনি কি নিশ্চিত? এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>বাতিল</Button>
-            <Button variant="destructive" onClick={() => deleteId && deleteMutation.mutate(deleteId)}>মুছে ফেলুন</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EmployeePayheadsDialog employee={payheadEmp} onClose={() => setPayheadEmp(null)} />
+      <EmployeeHolidaysDialog employee={holidayEmp} onClose={() => setHolidayEmp(null)} />
     </div>
   );
 }
