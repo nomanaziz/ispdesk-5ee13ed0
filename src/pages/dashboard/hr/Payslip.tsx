@@ -133,27 +133,45 @@ export default function PayslipManager() {
   // --- Generate / Regenerate ---
   const persistPayroll = async (emp: any, overrides: any[], { regenerate = false }: { regenerate?: boolean } = {}) => {
     const c = await computeForEmployee(emp, overrides);
+    const ex = existingByEmp.get(emp.id);
+    if (ex && !regenerate) return { skipped: true };
+
+    // reverse old deductions if regenerating
+    if (ex && regenerate) {
+      await reverseDeductions(ex.id, month);
+    }
+
+    const ded = await getDeductionsForEmployee(emp.id, month);
+    const netAfter = c.net_salary - ded.loan_deduction - ded.advance_deduction;
+
     const payload: any = {
       employee_id: emp.id,
       month: monthDate,
       basic_salary: c.basic_salary,
       total_allowance: c.total_allowance,
       total_deduction: c.total_deduction,
-      net_salary: c.net_salary,
+      net_salary: netAfter,
+      loan_deduction: ded.loan_deduction,
+      advance_deduction: ded.advance_deduction,
       status: "unpaid",
+      payment_status: "unpaid",
+      paid_amount: 0,
       adjustments: overrides,
       period_label: periodLabel(month),
       generated_at: new Date().toISOString(),
     };
-    const ex = existingByEmp.get(emp.id);
-    if (ex && !regenerate) return { skipped: true };
+
+    let payrollId = ex?.id;
     if (ex) {
       const { error } = await supabase.from("payroll").update(payload).eq("id", ex.id);
       if (error) throw error;
     } else {
-      const { error } = await supabase.from("payroll").insert(payload);
+      const { data, error } = await supabase.from("payroll").insert(payload).select("id").single();
       if (error) throw error;
+      payrollId = data.id;
     }
+
+    if (payrollId) await applyDeductions(payrollId, month, ded);
     return { ok: true };
   };
 
