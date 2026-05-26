@@ -8858,54 +8858,87 @@ export type Database = {
       resign_rules: {
         Row: {
           created_at: string
+          description: string | null
           id: string
+          is_active: boolean
           name: string
           notice_period_days: number | null
           status: string
+          updated_at: string
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
+          is_active?: boolean
           name: string
           notice_period_days?: number | null
           status?: string
+          updated_at?: string
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
+          is_active?: boolean
           name?: string
           notice_period_days?: number | null
           status?: string
+          updated_at?: string
         }
         Relationships: []
       }
       resignations: {
         Row: {
+          applied_rules: Json
           created_at: string
+          created_by: string | null
           employee_id: string
+          good_or_bad_activities: string | null
           id: string
+          is_applied: boolean
           last_working_date: string | null
+          letter_received_date: string | null
           reason: string | null
           resign_date: string
+          resignation_letter_url: string | null
           status: string
+          type: string
+          updated_at: string
         }
         Insert: {
+          applied_rules?: Json
           created_at?: string
+          created_by?: string | null
           employee_id: string
+          good_or_bad_activities?: string | null
           id?: string
+          is_applied?: boolean
           last_working_date?: string | null
+          letter_received_date?: string | null
           reason?: string | null
           resign_date: string
+          resignation_letter_url?: string | null
           status?: string
+          type?: string
+          updated_at?: string
         }
         Update: {
+          applied_rules?: Json
           created_at?: string
+          created_by?: string | null
           employee_id?: string
+          good_or_bad_activities?: string | null
           id?: string
+          is_applied?: boolean
           last_working_date?: string | null
+          letter_received_date?: string | null
           reason?: string | null
           resign_date?: string
+          resignation_letter_url?: string | null
           status?: string
+          type?: string
+          updated_at?: string
         }
         Relationships: [
           {
