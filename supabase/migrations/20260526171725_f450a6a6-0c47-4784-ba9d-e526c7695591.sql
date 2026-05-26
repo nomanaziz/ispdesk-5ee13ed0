@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS zkteco_attendance_logs_uniq ON public.zkteco_attendance_logs (device_id, device_user_id, punch_time);
