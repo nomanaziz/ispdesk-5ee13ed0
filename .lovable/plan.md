@@ -1,109 +1,96 @@
-# Plan: Self-Hosting Documentation (Hybrid Pattern)
 
-## লক্ষ্য
-একটা সম্পূর্ণ markdown documentation file তৈরি করব যেটা future-এ আপনি ব্যবহার করে local server-এ পুরো ISPDesk stack install করতে পারবেন। কোনো code change হবে না — শুধু documentation।
+# BTRC Monthly Report Rebuild
 
-## যে file তৈরি হবে
+বর্তমান `src/pages/dashboard/reports/Btrc.tsx` page-টা reference Galaxy Net screenshot-এর সাথে মিলিয়ে rebuild করা হবে। শুধু এই এক পেজ + একটি ছোট helper edit।
 
-**`docs/SELF_HOSTING.md`** (Bangla + English mixed, ~600-800 lines)
+## ১. Filter bar (top section)
 
-## Document Structure
+নিচের ক্রমে filter থাকবে (screenshot-এর মত):
 
-### Section 1 — Overview
-- কী কী component আছে (Frontend, Postgres, Auth, Edge Functions, Storage, Polling Agent)
-- Hybrid pattern diagram (ASCII): Local primary ← nightly backup → Cloud
-- Data flow: customer portal (public via Caddy) ↔ ERP (LAN) ↔ OLT/MikroTik (LAN)
+| Filter | Options | Default |
+|---|---|---|
+| Previous Month | শেষ ১২ মাস (e.g. Apr-26, Mar-26 ...) | গত মাস |
+| User Type | All / AdminCustomer / MAC Reseller | All |
+| POPs | active reseller list (যখন User Type = Reseller) | All |
+| Servers | active MikroTik servers | All |
+| Service | All / Fiber / Broadband / Wireless | All |
+| Client Type | All / Home / Corporate | All |
+| Connection Type | All / Wired / Wireless | All |
+| B.Status | All / Paid / Unpaid (info only — filter করে না active selection-এ) | All |
+| Zone | active zones | All |
+| Date Format | YYYY-MM-DD / DD-MM-YYYY / MM-DD-YYYY / DD/MM/YYYY / MM/DD/YYYY | DD-MM-YYYY |
+| Allocated IP Type | User ID / MAC Address / IP Address | IP Address |
+| Distributed Point Type | DC / NOC / POP / Server | POP |
+| Sub Zone | selected zone-এর sub-zones | All |
+| Box | selected sub-zone-এর boxes | All |
+| Activation From / To | date pickers | মাসের ১-শেষ |
 
-### Section 2 — Hardware & OS Requirement
-- Minimum/Recommended spec table
-- Ubuntu 22.04 LTS setup
-- Network: static LAN IP, UPS, dual ISP recommendation
-- Firewall/UFW base rules
+Top-right তিনটি action button: **Sync Clients & Servers**, **Generate PDF**, **Generate Excel** (existing exporters reuse)।
 
-### Section 3 — Step-by-Step Installation
+পেজের উপরে একটি ছোট info banner: "N.B: Click here" — click করলে Bangla notice modal খুলবে (screenshot-এর মত):
+> "আপনি যখন বিটিআরসি রিপোর্ট টি ডাউনলোড করবেন, এক্সেল এ এক্টিভেশন ডেট টি নাম্বার আকারে শো করবে। চাইলে এক্সেল সিট থেকে ডেট ফরমেট চেঞ্জ করে দেখতে পারবেন।"
 
-**3.1 Server Bootstrap**
-- apt update, docker install, user permission, fail2ban, ufw
+## ২. Core logic — কোন user list আসবে
 
-**3.2 Self-hosted Supabase (Docker Compose)**
-- `git clone supabase/supabase`
-- `.env` configure: POSTGRES_PASSWORD, JWT_SECRET, ANON_KEY, SERVICE_ROLE_KEY, SMTP
-- Generate JWT keys (script সহ)
-- `docker compose up -d`
-- Studio access (port 8000)
-- Verify each service: gotrue, postgrest, realtime, storage-api, edge-runtime, kong
+BTRC report → **গত মাসের পুরো মাস জুড়ে active ছিল এমন সব user**:
 
-**3.3 Database Migration**
-- সব `supabase/migrations/*.sql` file order-wise apply
-- `psql` command examples
-- Seed data (roles, default branches, app_vault key)
-- Verify with `\dt public.*`
+- `clients.status = 'active'` **OR** `mikrotik_status = 'enabled'` (অর্থাৎ MikroTik-এ active ছিল)
+- `joining_date <= <selected month last day>`
+- যারা ঐ মাসের আগেই left/deleted হয়েছে — বাদ
+- **Billing status check করব না** (free হলেও যাবে — selling_price 1 দেখাব)
+- Default range = previous calendar month
 
-**3.4 Edge Functions Deploy**
-- Supabase CLI install
-- `supabase functions deploy <name>` — সব ৬০+ function list
-- Secret configure: LOVABLE_API_KEY (যদি AI feature use করেন), SMTP, Telegram bot token, payment gateway keys
+`Previous Month` dropdown change করলে `Activation From/To` auto-fill হবে ঐ মাসের ১ → শেষ তারিখ।
 
-**3.5 Frontend Build**
-- `.env` update: VITE_SUPABASE_URL=http://server-ip:8000
-- `npm install && npm run build`
-- Nginx config example (`/etc/nginx/sites-available/ispdesk`)
-- SPA fallback rule (try_files)
-- gzip + cache headers
+## ৩. Allocated IP column behaviour
 
-**3.6 Polling Agent**
-- Same server-এ pm2 দিয়ে
-- `config.json` local Supabase URL
-- Multiple agents যদি multiple branch থাকে
+`Allocated IP Type` selection অনুযায়ী একটাই `allocated_ip` column-এ value বদলাবে:
 
-### Section 4 — Hybrid Backup Setup
-- **Nightly pg_dump** cron job
-- Compressed dump → `/backup/` local + rsync to cloud (S3/Backblaze/Google Drive)
-- Sample script: `pg_dump | gzip | aws s3 cp - s3://...`
-- Restore procedure
-- Storage bucket sync (MinIO ↔ cloud)
-- Retention policy (7 daily, 4 weekly, 12 monthly)
+- **User ID** → `clients.user_id`
+- **MAC Address** → `clients.mac_address`
+- **IP Address** → `clients.remote_address` (PPPoE/Static IP), না থাকলে `-`
 
-### Section 5 — Public Customer Portal (Optional)
-- Caddy reverse proxy install
-- `Caddyfile` example with auto Let's Encrypt SSL
-- Domain DNS A record → static IP
-- Port 80/443 forward from router
-- Subdomain split: `portal.yourisp.com` → frontend, `api.yourisp.com` → Supabase API
+## ৪. Table columns (exact heading order)
 
-### Section 6 — Security Hardening
-- UFW rules (allow 80/443/22, deny rest)
-- fail2ban for SSH
-- Postgres strong password, pg_hba.conf restrict
-- Disable Supabase Studio public access (LAN only)
-- HTTPS everywhere
-- Daily security update cron
+```
+client_type | connection_type | client_name | bandwidth_distribution_point |
+connectivity_type | activation_date | bandwidth_allocation | allocated_ip |
+division | district | thana | address | client_mobile | client_email |
+selling_price_bdt_excluding_vat
+```
 
-### Section 7 — Monitoring & Maintenance
-- `docker compose logs` quick reference
-- Disk space alert
-- pg_stat queries for slow query
-- Uptime check (uptime-kuma container suggestion)
-- Update procedure: git pull → new migrations → rebuild frontend
+Mapping:
+- `client_type` → `clients.client_type` (Home/Corporate)
+- `connection_type` → `Wired` / `Wireless` (clients.connection_type থেকে — fiber/broadband = Wired)
+- `client_name` → `clients.name`
+- `bandwidth_distribution_point` → selected Distributed Point Type label (POP/NOC/DC/Server), অথবা client এর reseller-name যদি POP হয়
+- `connectivity_type` → `Shared` (Home) / `Dedicated` (Corporate)
+- `activation_date` → `joining_date`, selected Date Format-এ format
+- `bandwidth_allocation` → `packages.olt_range` অথবা package name থেকে Mbps
+- `allocated_ip` → section ৩ অনুযায়ী
+- `division` / `district` / `thana` → client address থেকে যদি field থাকে, না থাকলে "-" (পরে structured করা যাবে)
+- `address` → `clients.address`
+- `client_mobile` → `clients.contact`
+- `client_email` → `clients.email`
+- `selling_price_bdt_excluding_vat` →
+  - paid package → `monthly_bill` (VAT excluded — যদি VAT included থাকে তবে `/1.15`, currently flat ধরা হবে)
+  - **free / 0-bill user → `1`** (BTRC কে কখনো 0 দেখানো যাবে না)
 
-### Section 8 — Sync with Lovable Cloud Version
-- কীভাবে Lovable cloud-এ যে নতুন feature আসে সেগুলো local-এ আনবেন
-- Git workflow: clone Lovable repo → pull → apply new migrations → redeploy edge functions → rebuild frontend
-- Schema diff tool suggestion
+## ৫. Export & Display
 
-### Section 9 — Troubleshooting
-- Common issues:
-  - JWT mismatch
-  - Edge function timeout
-  - CORS error (Kong config)
-  - Email not sending (SMTP)
-  - Polling agent reaches local but auth fails
-- Each with diagnosis + fix
+- Table-এর উপরে: `SHOW [10/25/50/100/All] ENTRIES` + right-side search box
+- `Activation Date` Excel-এ raw serial number হবে (Excel auto-detect করে), অন্য column text — তাই notice banner
+- PDF: landscape, কোম্পানির header সহ (existing `exportPdf` reuse)
+- Excel: `xlsx` lib, formatted (existing `exportExcel` reuse)
 
-### Section 10 — Checklist (Quick Reference)
-- Pre-install checklist
-- Post-install verification checklist
-- Daily/weekly/monthly maintenance checklist
+## ৬. Files touched
 
-## Implementation
-Build mode-এ switch হলে শুধু একটা file write হবে: `docs/SELF_HOSTING.md`। কোনো source code, migration, বা edge function change হবে না।
+1. `src/pages/dashboard/reports/Btrc.tsx` — পুরো filter bar, query logic, columns rebuild
+2. `src/components/reports/ReportLayout.tsx` — যদি `Show entries` selector আর info-banner slot না থাকে, তাহলে minor addition
+
+ভবিষ্যতে structured division/district/thana লাগলে `clients` table-এ column add করা যাবে — এখন placeholder `-` থাকবে।
+
+## প্রশ্ন (build শুরুর আগে)
+
+1. `division/district/thana` কি `clients` table-এ এখনই add করব (migration), নাকি placeholder `-` রেখে পরে structured করব?
+2. Selling price-এ VAT অলরেডি excluded ধরব, নাকি `monthly_bill / 1.15` করে VAT বাদ দেব?
