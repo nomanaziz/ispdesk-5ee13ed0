@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, Copy, RefreshCw, Server, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Trash2, Copy, RefreshCw, Server, CheckCircle2, XCircle, Download } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 type Agent = {
