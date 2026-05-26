@@ -5,7 +5,7 @@ import {
   readPacket,
   sendPacket,
   makeCommKey,
-} from "../sync-zkteco-data/zkteco.ts";
+} from "./zkteco.ts";
 
 export interface ZKSession {
   conn: Deno.TcpConn;

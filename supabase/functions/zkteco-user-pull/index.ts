@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2/cors";
-import { CMD, decodeUsers } from "../sync-zkteco-data/zkteco.ts";
-import { zkConnect, zkExit, zkReadLongData } from "../_shared/zk-connect.ts";
+import { CMD, decodeUsers } from "./zkteco.ts";
+import { zkConnect, zkExit, zkReadLongData } from "./zk-connect.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
