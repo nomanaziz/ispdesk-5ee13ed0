@@ -148,15 +148,35 @@ export default function Btrc() {
         return [];
       }
 
+      // Side-load packages (avoid embed ambiguity between packages/isp_packages)
+      const pkgIds = Array.from(new Set((data || []).map((c: any) => c.package_id).filter(Boolean)));
+      const pkgMap: Record<string, { name?: string; olt_range?: string }> = {};
+      if (pkgIds.length) {
+        const { data: pkgs } = await supabase.from("packages").select("id,name,olt_range").in("id", pkgIds);
+        (pkgs || []).forEach((p: any) => { pkgMap[p.id] = { name: p.name, olt_range: p.olt_range }; });
+        // Fallback: any package_ids that point to isp_packages instead
+        const missing = pkgIds.filter((id) => !pkgMap[id as string]);
+        if (missing.length) {
+          const { data: isp } = await supabase.from("isp_packages").select("id,name,bandwidth_down,bandwidth_up").in("id", missing);
+          (isp || []).forEach((p: any) => {
+            pkgMap[p.id] = {
+              name: p.name,
+              olt_range: p.bandwidth_down ? `${p.bandwidth_down}${p.bandwidth_up ? "/" + p.bandwidth_up : ""} Mbps` : undefined,
+            };
+          });
+        }
+      }
+
       const allocatedFor = (c: any) => {
-        if (a.allocated_ip_type === "user_id") return c.user_id || c.client_id || "-";
-        if (a.allocated_ip_type === "mac_address") return c.mac_address || "-";
-        return c.remote_address || c.static_ip || "-";
+        if (a.allocated_ip_type === "user_id") return c.user_id || c.client_id || "";
+        if (a.allocated_ip_type === "mac_address") return c.mac_address || "";
+        return c.remote_address || c.static_ip || "";
       };
 
       return (data || []).map((c: any, i: number) => {
         const isWired = !["wireless"].includes((c.connection_type || "").toLowerCase());
         const bill = Number(c.monthly_bill) || 0;
+        const pkg = c.package_id ? pkgMap[c.package_id] : undefined;
         return {
           id: c.id,
           sn: i + 1,
@@ -166,11 +186,11 @@ export default function Btrc() {
           bandwidth_distribution_point: a.distributed_point,
           connectivity_type: c.client_type === "corporate" ? "Dedicated" : "Shared",
           activation_date: formatDate(c.joining_date, a.date_format),
-          bandwidth_allocation: c.pkg?.olt_range || c.pkg?.name || "",
+          bandwidth_allocation: pkg?.olt_range || pkg?.name || "",
           allocated_ip: allocatedFor(c),
-          division: c.division?.name || "-",
-          district: c.district?.name || "-",
-          thana: c.upazila?.name || "-",
+          division: c.division?.name || "",
+          district: c.district?.name || "",
+          thana: c.upazila?.name || "",
           address: c.address || "",
           client_mobile: c.contact || "",
           client_email: c.email || "",
