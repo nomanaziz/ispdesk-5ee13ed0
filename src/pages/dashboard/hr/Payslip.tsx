@@ -382,17 +382,6 @@ export default function PayslipManager() {
       </Card>
 
       <PayslipPaymentDialog payroll={payDialog} onClose={() => setPayDialog(null)} />
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">কর্মী পাওয়া যায়নি</p>}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Edit Payheads dialog */}
       <Dialog open={!!editEmp} onOpenChange={(o) => !o && setEditEmp(null)}>
