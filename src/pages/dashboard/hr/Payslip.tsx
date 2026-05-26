@@ -366,9 +366,22 @@ export default function PayslipManager() {
                           <Button size="icon" variant="ghost" onClick={() => setPreviewId(ex.id)}>
                             <FileText className="h-4 w-4 text-blue-600" />
                           </Button>
-                          {ex.status !== "paid" && (
-                            <Button size="sm" variant="default" onClick={() => markPaid(ex.id)}>Pay</Button>
+                          {ex.payment_status !== "paid" && (
+                            <Button size="sm" variant="default" onClick={() => setPayDialog(ex)}>Pay</Button>
                           )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">কর্মী পাওয়া যায়নি</p>}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <PayslipPaymentDialog payroll={payDialog} onClose={() => setPayDialog(null)} />
                         </>
                       )}
                     </div>
