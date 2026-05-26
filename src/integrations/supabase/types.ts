@@ -216,21 +216,6 @@ export type Database = {
           },
         ]
       }
-      app_vault: {
-        Row: {
-          key: string
-          value: string
-        }
-        Insert: {
-          key: string
-          value: string
-        }
-        Update: {
-          key?: string
-          value?: string
-        }
-        Relationships: []
-      }
       asset_assignments: {
         Row: {
           assigned_at: string
