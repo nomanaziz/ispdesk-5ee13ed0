@@ -107,6 +107,21 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Optional: PON port snapshot from agent
+    let portsUpserted = 0;
+    if (Array.isArray(pon_ports)) {
+      for (const p of pon_ports) {
+        if (!p?.port_name) continue;
+        const { error } = await supabase.from("olt_ports").upsert({
+          olt_id,
+          port_name: String(p.port_name),
+          port_type: p.port_type || "pon",
+          description: p.description ?? null,
+        }, { onConflict: "olt_id,port_name" });
+        if (!error) portsUpserted++;
+      }
+    }
+
     if (alerts.length > 0) {
       await supabase.from("alerts").insert(alerts);
     }
