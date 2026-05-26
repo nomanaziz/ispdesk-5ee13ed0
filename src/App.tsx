@@ -557,6 +557,7 @@ const App = () => (
               <Route path="/dashboard/device-admin/jobs" element={<P><DeviceAdminJobs /></P>} />
               <Route path="/dashboard/device-admin/audit-log" element={<P><DeviceAdminAuditLog /></P>} />
               <Route path="/dashboard/device-admin/oid-library" element={<P><DeviceAdminOidLibrary /></P>} />
+              <Route path="/dashboard/device-admin/polling-agents" element={<P><DeviceAdminPollingAgents /></P>} />
 
               {/* HR */}
               <Route path="/dashboard/hr/departments" element={<P><HrDepartments /></P>} />
