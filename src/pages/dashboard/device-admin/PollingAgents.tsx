@@ -12,6 +12,29 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Trash2, Copy, RefreshCw, Server, CheckCircle2, XCircle, Download } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+// Bundle agent files into the JS — avoids static-asset auth gates on preview/published hosts.
+import pollingAgentJs from "../../../../public/agent/polling-agent.js?raw";
+import agentPackageJson from "../../../../public/agent/package.json?raw";
+import agentConfigExample from "../../../../public/agent/config.example.json?raw";
+import agentReadme from "../../../../public/agent/README.md?raw";
+
+const AGENT_FILES: Record<string, { content: string; mime: string }> = {
+  "polling-agent.js": { content: pollingAgentJs, mime: "application/javascript" },
+  "package.json": { content: agentPackageJson, mime: "application/json" },
+  "config.example.json": { content: agentConfigExample, mime: "application/json" },
+  "README.md": { content: agentReadme, mime: "text/markdown" },
+};
+
+function downloadAgentFile(name: string) {
+  const f = AGENT_FILES[name];
+  if (!f) return;
+  const blob = new Blob([f.content], { type: f.mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 type Agent = {
   id: string;
