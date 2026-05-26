@@ -1,46 +1,62 @@
-# ZKTeco Device Form — TCP/IP + ADMS Push + Auto Serial
+# ZK Binary Protocol — Live Device Connect & Fetch
 
-বর্তমানে form-এ IP, Port, API ID/Password, Serial, Location আছে। ZKTeco device-এ আসলে যেটা দরকার সেটা হল **Comm Key** (4-digit communication password, e.g. `0`, `1895`)। আর ADMS Push mode আলাদা — সেখানে device নিজে server-এ data পাঠায়, IP-Port লাগে না, শুধু **Serial Number** আর **Cloud URL** দরকার।
+আপনার device: `103.147.107.110:4370`, CommKey `1895`। বর্তমান edge function HTTP fetch করছে, যেটা ZK device-এ কাজ করে না। সম্পূর্ণ ZK binary protocol Deno-তে লিখব।
 
-## ১. Database migration
+## ZK Protocol (TCP, port 4370)
 
-`zkteco_devices` table-এ ২টা column যোগ:
-```text
-+ connection_type  text   default 'tcp_ip'   ('tcp_ip' | 'adms_push')
-+ comm_key         int    default 0           (ZKTeco communication password)
+প্রতিটা packet structure:
 ```
-`ip_address`, `port` কে nullable করব (ADMS mode-এ লাগবে না)।
+[Start: 0x5050827d (4 bytes)]
+[Payload size (4 bytes, LE)]
+[Command (2 bytes)] [Checksum (2 bytes)] [SessionId (2 bytes)] [ReplyId (2 bytes)]
+[Payload (variable)]
+```
 
-## ২. Form পরিবর্তন (`ZktecoDevices.tsx`)
+Sequence:
+1. **CMD_CONNECT** (1000) → device returns `session_id`
+2. যদি error 5 (auth required) → **CMD_AUTH** (1102) with hashed CommKey (1895)
+3. **CMD_ATTLOG_RRQ** (13) → returns attendance records (40 bytes each: user_id 9b, timestamp 4b, status 1b, …)
+4. **CMD_USERTEMP_RRQ** (9) → user list (optional, for SN/auto-detect)
+5. **CMD_GET_FREE_SIZES** (50) বা **CMD_OPTIONS_RRQ** (11) "~SerialNumber" → device SN
+6. **CMD_EXIT** (1001) → clean disconnect
 
-সবার উপরে একটা **Connection Type** dropdown:
+## ফাইল
 
-| Connection Type | যে field গুলো দেখাবে |
-|---|---|
-| **TCP/IP** (default) | IP Address\*, Port (default 4370), **Comm Key** (default 0, e.g. 1895) |
-| **ADMS Push** | একটা info box — "ADMS server URL দিন device-এ: `https://<project>.supabase.co/functions/v1/zkteco-adms`" + Serial Number field |
+**`supabase/functions/sync-zkteco-data/index.ts` সম্পূর্ণ rewrite:**
+- `zkteco.ts` helper module same folder-এ:
+  - `createPacket(cmd, sessionId, replyId, data)` — checksum সহ
+  - `parseHeader(buf)` — command, sessionId extract
+  - `commKeyHash(key, sessionId)` — ZK-এর XOR-based hash algorithm
+  - `decodeAttendance(buf)` — 40-byte records → array
+  - `decodeUserInfo`, `parseSerialNumber`
+- `index.ts`:
+  - `Deno.connect({hostname, port: 4370, transport: "tcp"})` দিয়ে socket open
+  - 5s timeout সহ handshake → auth → SN fetch → ATTLOG fetch → exit
+  - Serial Number device থেকে এসে DB-তে save (auto-detect)
+  - Attendance records existing `zkteco_attendance_logs` table-এ insert + employee mapping logic আগের মতই
+  - Response: `{ ok, serial_number, synced_count, sample_logs: [...first 3] }`
 
-সব mode-এ common: Device Name\*, Location, Status।
+## Testing flow
 
-**Serial Number** field-এ helper text: *"খালি রাখুন — প্রথম sync-এ device থেকে auto-detect হবে"*। TCP/IP mode-এ optional, ADMS mode-এ required (device push-এ এটা দিয়েই চেনা হবে)।
+1. Frontend-এ device add: name "Live Test", IP `103.147.107.110`, port `4370`, comm_key `1895`, blank SN
+2. সিঙ্ক button click → edge function call
+3. Edge function: connect → auth (1895) → SN fetch → DB update → ATTLOG fetch → response
+4. UI toast: "সিঙ্ক সফল! N records, SN: XYZ"
+5. যদি fail: error message সহ — connection refused / auth failed / timeout
 
-API ID/API Password field দুটো সরিয়ে দেব — ZKTeco hardware-এ এগুলা লাগে না, পুরোনো ভুল ছিল।
+## ঝুঁকি
 
-## ৩. List table পরিবর্তন
+- **Outbound TCP from Supabase edge:** Deno Deploy / Supabase Edge runtime `Deno.connect()` allow করে (verified pattern)। যদি block করে, fallback ADMS Push।
+- **Firewall:** আপনার device public IP-তে আছে, port 4370 internet-এ exposed — শুধু server side test করেই বুঝব।
+- **Protocol variant:** কিছু নতুন ZKTeco firmware compressed/extended packet ব্যবহার করে। প্রথম attempt standard protocol-এ; না হলে log দেখে adjust করব।
 
-"IP : Port" column-কে **Connection** column করব:
-- TCP/IP → `192.168.1.201:4370` badge সহ
-- ADMS → `ADMS Push` badge + SN
+## Verification steps (build mode-এ)
 
-## ৪. Sync edge function (`sync-zkteco-data`)
+1. Edge function deploy
+2. Direct curl test দিয়ে edge function call (test_edge_functions বা curl)
+3. Edge function logs check করে handshake/auth response দেখা
+4. সফল হলে SN + record count report
 
-ছোট update: response-এ `serial_number` ফেরত আসলে DB-তে save করব (auto-detect)। Connection type অনুযায়ী আলাদা path:
-- `tcp_ip` → existing IP-port flow (comm_key পাঠাব authentication-এ)
-- `adms_push` → শুধু last_sync timestamp আপডেট (data device push করবে আলাদা endpoint-এ; future scope)
+কোন secret লাগবে না — device-এর IP/Port/CommKey সব DB-তে stored আছে।
 
-ADMS receiver endpoint পরে আলাদা task-এ করব — এই plan-এ শুধু form + DB।
-
-## ৫. ক্রম
-1. Migration (alter table, 2 columns, nullable IP/Port)
-2. `ZktecoDevices.tsx` rewrite — dynamic form
-3. `sync-zkteco-data` edge function-এ auto ser
+Approval দিলে implement শুরু করব।
