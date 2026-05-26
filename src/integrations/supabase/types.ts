@@ -6972,6 +6972,50 @@ export type Database = {
           },
         ]
       }
+      payroll_periods: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          issue_date: string
+          payroll_id: string
+          period_name: string
+          period_type: string
+          sort_order: number
+          start_date: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          issue_date: string
+          payroll_id: string
+          period_name: string
+          period_type: string
+          sort_order?: number
+          start_date: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          issue_date?: string
+          payroll_id?: string
+          period_name?: string
+          period_type?: string
+          sort_order?: number
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_periods_payroll_id_fkey"
+            columns: ["payroll_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payroll_template_payheads: {
         Row: {
           amount_type: string
@@ -7021,19 +7065,28 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_default: boolean
           name: string
+          payment_type: string | null
+          payroll_type: string | null
           status: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_default?: boolean
           name: string
+          payment_type?: string | null
+          payroll_type?: string | null
           status?: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_default?: boolean
           name?: string
+          payment_type?: string | null
+          payroll_type?: string | null
           status?: string
         }
         Relationships: []
