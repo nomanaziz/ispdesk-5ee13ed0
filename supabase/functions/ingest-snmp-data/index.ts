@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
       status: "online", last_heartbeat: now,
     }).eq("id", agent.id);
 
-    return new Response(JSON.stringify({ ok: true, processed, alerts: alerts.length }), {
+    return new Response(JSON.stringify({ ok: true, processed, ports: portsUpserted, alerts: alerts.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
