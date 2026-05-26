@@ -147,6 +147,7 @@ export default function OltDevices() {
         agent_enabled: form.agent_enabled,
         snmp_fallback_enabled: form.snmp_fallback_enabled,
         agent_stale_seconds: Math.max(30, Number(form.agent_stale_seconds) || 180),
+        assigned_agent_id: form.assigned_agent_id || null,
       };
       if (editId) {
         const { error } = await supabase.from("olt_devices").update(payload).eq("id", editId);
