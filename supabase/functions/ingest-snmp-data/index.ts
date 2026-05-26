@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { olt_id, olt_meta, onus, reachable } = body;
+    const { olt_id, olt_meta, onus, reachable, pon_ports } = body;
     if (!olt_id) {
       return new Response(JSON.stringify({ error: "olt_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
