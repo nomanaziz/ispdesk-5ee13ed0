@@ -115,6 +115,7 @@ const HrPositions = lazy(() => import("@/pages/dashboard/hr/Positions"));
 const HrPayslip = lazy(() => import("@/pages/dashboard/hr/Payslip"));
 const HrAddEmployee = lazy(() => import("@/pages/dashboard/hr/AddEmployee"));
 const HrEmployees = lazy(() => import("@/pages/dashboard/hr/Employees"));
+const HrEmployeeView = lazy(() => import("@/pages/dashboard/hr/EmployeeView"));
 const HrSalarySheet = lazy(() => import("@/pages/dashboard/hr/SalarySheet"));
 const HrResignRules = lazy(() => import("@/pages/dashboard/hr/ResignRules"));
 const HrResignations = lazy(() => import("@/pages/dashboard/hr/Resignations"));
