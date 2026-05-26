@@ -109,6 +109,12 @@ export default function ZktecoDevices() {
     },
     onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ["zkteco-devices"] });
+      if (data?.ok === false) {
+        toast.error(data.error || "ডিভাইস reachable না", {
+          description: data.code === "DEVICE_UNREACHABLE" ? "Port forwarding / firewall / device online status চেক করুন।" : undefined,
+        });
+        return;
+      }
       toast.success(`সিঙ্ক সফল! ${data?.synced_count || 0} রেকর্ড`);
     },
     onError: (e: any) => toast.error(`সিঙ্ক ব্যর্থ: ${e.message}`),
