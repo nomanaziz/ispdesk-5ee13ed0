@@ -11689,6 +11689,72 @@ export type Database = {
           },
         ]
       }
+      zkteco_device_users: {
+        Row: {
+          card_no: string | null
+          created_at: string
+          device_id: string
+          device_user_id: string
+          fingerprint_count: number | null
+          group_no: number | null
+          id: string
+          last_seen_at: string | null
+          mapped_employee_id: string | null
+          name: string | null
+          password: string | null
+          privilege: number | null
+          raw_data: Json | null
+          updated_at: string
+        }
+        Insert: {
+          card_no?: string | null
+          created_at?: string
+          device_id: string
+          device_user_id: string
+          fingerprint_count?: number | null
+          group_no?: number | null
+          id?: string
+          last_seen_at?: string | null
+          mapped_employee_id?: string | null
+          name?: string | null
+          password?: string | null
+          privilege?: number | null
+          raw_data?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          card_no?: string | null
+          created_at?: string
+          device_id?: string
+          device_user_id?: string
+          fingerprint_count?: number | null
+          group_no?: number | null
+          id?: string
+          last_seen_at?: string | null
+          mapped_employee_id?: string | null
+          name?: string | null
+          password?: string | null
+          privilege?: number | null
+          raw_data?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zkteco_device_users_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "zkteco_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zkteco_device_users_mapped_employee_id_fkey"
+            columns: ["mapped_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zkteco_devices: {
         Row: {
           api_id: string | null
