@@ -72,8 +72,12 @@ export default function EmployeeView() {
           <h1 className="text-2xl font-bold">{emp.name}</h1>
           <p className="text-sm text-muted-foreground">{emp.employee_id} • {emp.departments?.name} • {emp.positions?.name}</p>
         </div>
+        <Button variant="outline" onClick={() => setConvertOpen(true)} className="gap-2">
+          <UserPlus className="h-4 w-4" /> App User বানান
+        </Button>
         <Button onClick={() => navigate(`/dashboard/hr/employees/add?edit=${emp.id}`)} className="gap-2">
           <Edit className="h-4 w-4" /> এডিট
+
         </Button>
       </div>
 
