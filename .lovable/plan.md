@@ -1,117 +1,157 @@
+# HR Facilities + Conveyance Workflow
 
-# HR Attendance — Convert, Report ও Geo-Attendance
-
-আপনার ৪টা request — প্রত্যেকটার জন্য আলাদা solution নিচে।
-
----
-
-## ১) Device User → Employee Convert (one-click)
-
-**বর্তমানে:** `ZktecoDevices.tsx` → Device Users tab-এ unmapped user-এর পাশে শুধু "Map to existing employee" combobox আছে।
-
-**যা যোগ হবে:**
-- প্রত্যেক unmapped device user-এর পাশে নতুন button: **"➕ Employee বানাও"**
-- Click করলে `AddEmployee` page-এ navigate করবে, query string-এ:
-  - `?from_device_user={row_id}&device_user_id={code}&device_id={device_id}&name={device_name}&card={card_no}`
-- `AddEmployee.tsx`-এ এই query param detect করে:
-  - Name, card number auto-fill হবে
-  - উপরে একটা amber banner: "ZKTeco device user #15 (Nahid) থেকে তৈরি হচ্ছে — save করলে automatic map হবে"
-- Save successful হলে একই transaction-এ:
-  1. `employees` row insert (with `device_user_id`, `zkteco_device_id` set)
-  2. `zkteco_device_users.mapped_employee_id` = নতুন employee.id update
-- তারপর redirect → `EmployeeView` page
+দুইটা বড় feature যোগ হবে:
+1. **Employee Facilities/Benefits** — accommodation, food allowance, monthly food cash ইত্যাদি কে কী পাবে সেটা configure করা, এবং প্রতি মাসে attendance অনুযায়ী auto-calculate করে payroll ও accounts-এ যাওয়া।
+2. **Conveyance Bill Workflow** — employee নিজের portal থেকে daily trip entry দিবে (from-to, mode, fare), HR/Admin verify/reject করবে, approved গুলো expense + payroll/reimbursement-এ যাবে।
 
 ---
 
-## ২) Daily In/Out Report (HR view + Employee self-view)
+## ১. Facility Policy Setup (Master data)
 
-**Data source:** `zkteco_attendance_logs` (employee-এর সব raw punch — already populated, device-এ ২০+ user-এর ৭০+ punch আছে)।
+**নতুন page:** `/dashboard/hr/facility-policies`
 
-**Rule:** প্রতিদিনের **প্রথম punch = IN**, **শেষ punch = OUT**.
-- যদি দিনে শুধু ১টা punch থাকে → "OUT missing" (amber badge)
-- যদি ০টা punch থাকে (working day) → "Absent" (red)
-- দুটাই থাকলে → Total hours calc (OUT − IN)
+একটা policy = একটা facility template। Admin policy বানাবে, তারপর employee profile-এ assign করবে।
 
-**নতুন page: `/dashboard/hr/attendance-report`** (HR/Admin জন্য)
-- Filter: Employee dropdown (সব mapped employee), Month picker, Branch
-- Table: Date | Day | IN time | OUT time | Total hours | Status
-- Footer: Total present days, total hours, late count
-- Export: PDF / Excel button
+Policy types:
+- **Accommodation**
+  - Mode: `company_provided` (কোম্পানি দেয়) / `house_rent_allowance` (cash মাসিক) / `none`
+  - Amount: monthly cash (mode = house_rent_allowance হলে)
+- **Food / Lunch**
+  - Mode:
+    - `full_subsidized` — কোম্পানি পুরো খরচ বহন করে, employee থেকে কাটবে না
+    - `partial_subsidized` — per meal employee share + company share (দুইটা amount)
+    - `self_paid` — employee নিজে কিনে খাবে (payroll থেকে কাটবে)
+    - `monthly_cash` — মাসিক fixed amount (যেমন 400৳) salary-র সাথে যোগ
+    - `per_duty_day_cash` — duty করা দিনে per-day cash (যেমন 100৳/day)
+  - Per-meal/per-day amount + company share / employee share
+  - Trigger condition: `present_only` (duty করলেই) / `present_or_overtime` / `overtime_only`
+- **Overtime/Outdoor food allowance** — overtime বা outdoor duty দিনে per-day cash
 
-**Employee Self-View (Portal):**
-- Employee portal-এ নতুন menu: **"আমার Attendance"**
-- Default current month, top-এ summary cards: Present / Absent / Late / Total hours
-- নিচে daily table (same format)
-- Login: existing portal auth (employee → `employees.portal_user_id` link থাকতে হবে — `employees` table-এ এখন নাই, এটা migration করব)
-
-**EmployeeView page-এও যোগ:** একটা "Attendance" tab — HR যে কোনো employee-র monthly in/out দেখতে পারবে।
-
----
-
-## ৩) আপনার ৩ employee (al amin / joy / nahid) এর জন্য
-
-Device-এ এখন নাম দেখাচ্ছে: Shafiul, Sumon, Iqbal, **Nahid**, Jakir, Noman, Masum, Omor, Ananda, Ashik, Rubel, Nazmul, Turjo, Sohan, Rana ইত্যাদি (২০+ user)।
-
-"al amin" আর "joy" নামে device-এ user দেখাচ্ছে না — সম্ভবত নামগুলো ভিন্ন (যেমন Noman/Jakir হয়তো alias)।
-
-**আমার plan:**
-- Convert feature ready হলে আপনি device user list দেখে যেকোনো user-কে এক click-এ employee বানাতে পারবেন
-- যে ৩ জনের কথা বলেছেন তাদের device user_id (1-23 এর মধ্যে কোনটা) আমাকে জানান — অথবা feature deploy-এর পর আপনি UI থেকে নিজেই করতে পারবেন
-- Map হয়ে গেলে তাদের monthly in/out report automatic দেখাবে (already ৭০+ punch জমা আছে)
+প্রতি policy একটা payhead-এর সাথে link হবে (existing `payheads` table) যাতে payroll generation-এ auto add/deduct হয়।
 
 ---
 
-## ৪) Geolocation-based Mobile Attendance (Possible? — হ্যাঁ)
+## ২. Employee Facility Assignment
 
-**হ্যাঁ, এটা possible এবং standard approach আছে।**
-
-**Concept:**
-- Admin → HR Settings-এ office location define করবে: latitude, longitude, allowed radius (যেমন ১০০ মিটার)
-- Multiple location support (Branch-wise office)
-
-**Employee Mobile Flow:**
-- Portal-এ নতুন page: **"Punch In/Out"**
-- বড় button: "📍 এখন Check In"
-- Click করলে browser-এর `navigator.geolocation.getCurrentPosition()` চালু হবে
-- Coordinates নিয়ে Haversine distance calc → office radius-এর ভেতরে কি না check
-- ভেতরে হলে → punch save (`attendance` table-এ `source='mobile_geo'`, lat/lng সহ)
-- বাইরে হলে → "❌ আপনি office থেকে ৩৫০ মিটার দূরে — punch হবে না"
-
-**Anti-cheat measures:**
-- `accuracy` field check (GPS accuracy ৫০m-এর কম হতে হবে)
-- Same-day duplicate punch within X minutes block
-- Optional selfie capture (camera API) — admin চাইলে enable
-- IP log + device fingerprint store
-
-**Database additions (migration):**
-- `attendance_rules` / `branches`-এ: `office_lat`, `office_lng`, `geo_radius_meters`, `geo_attendance_enabled`
-- `attendance`-এ: `punch_lat`, `punch_lng`, `punch_accuracy_m`, ইতিমধ্যে `source` আছে
-
-**Limitations** (clearly বলে দিচ্ছি):
-- iPhone Safari-তে geolocation কাজ করে শুধু HTTPS-এ (আমাদের আছে ✅)
-- VPN / fake GPS app দিয়ে cheat করা সম্ভব — ১০০% bulletproof নয়, কিন্তু ZKTeco device + geo combo দিলে strong
-- Battery saver mode-এ GPS slow
+`EmployeeView` ও `AddEmployee` page-এ নতুন **"Facilities" tab**:
+- Checkbox list: কোন কোন policy এই employee পাবে
+- Override: amount override করার option (যেমন default 400৳ কিন্তু এই employee-কে 500৳)
+- Effective from/to date
 
 ---
 
-## Implementation Order (আজকেই শেষ হবে)
+## ৩. Monthly Auto-Calculation (Payroll integration)
 
-1. **Step 1:** Convert button + AddEmployee auto-fill + auto-map (১ ঘণ্টা)
-2. **Step 2:** HR Attendance Report page (daily/monthly, IN/OUT/missing logic) (১.৫ ঘণ্টা)
-3. **Step 3:** EmployeeView-এ Attendance tab (৩০ মিনিট)
-4. **Step 4:** Database migration — branch lat/lng/radius + attendance geo columns (১৫ মিনিট)
-5. **Step 5:** Geo-punch page + Haversine check + save (১ ঘণ্টা)
-6. **Step 6:** HR Settings-এ Office location setup UI (৩০ মিনিট)
+Payroll generate করার সময়:
+- প্রতিটি assigned facility loop করে
+- Attendance log থেকে present days, overtime days, outdoor days count
+- নিচের নিয়মে calculate:
+  - `monthly_cash` → fixed amount
+  - `per_duty_day_cash` → present_days × per_day
+  - `partial_subsidized food` → present_days × employee_share (deduction হিসাবে)
+  - `full_subsidized` → শুধু record রাখবে, salary effect নাই
+  - `house_rent_allowance` → fixed monthly
+- Result গুলো `payroll_details`-এ payhead হিসাবে যোগ হবে (addition বা deduction)
+- Payslip-এ আলাদা line item দেখাবে
 
 ---
 
-## একটা প্রশ্ন (clarify করলে ভালো হয়)
+## ৪. Conveyance Bill — Employee Portal
 
-**Employee self-attendance view-এর জন্য login কোনটা use করব?**
-- (A) আলাদা **Employee Portal** বানাব (employees table-এ email/password add করে নতুন login system)
-- (B) existing **Customer Portal**-এই employee login দিব (যদি customer == employee হয়)
-- (C) Admin Dashboard-এর ভেতরেই থাকবে — HR/Admin দেখবে, employee self-view পরে করব
+**নতুন page:** `/employee-portal/conveyance` (employee user_username/password দিয়ে login — existing `has_user_access` infrastructure)
 
-আমার **suggest: A** — আলাদা ছোট employee portal (`/employee` route), simple login, শুধু attendance + payslip + leave দেখতে পারবে। Mobile-first design।
+Employee form:
+- Date (default আজ)
+- From location → To location
+- Purpose (কোন কাজে)
+- Transport mode: `rickshaw` / `bus` / `cng` / `uber` / `bike` / `walk` / `other`
+- Fare amount
+- Other cost (optional, with note)
+- Receipt upload (optional image)
+- Submit → status = `pending`
 
-Plan approve করলে শুরু করছি।
+List view: তার নিজের সব entry মাস ভিত্তিক, status badge (pending/approved/rejected), total
+
+---
+
+## ৫. HR/Admin Verification
+
+**নতুন page:** `/dashboard/hr/conveyance-bills`
+
+- Filter: employee, month, status, branch
+- প্রতিটি row-এ details + Approve/Reject button + remark field
+- Bulk approve option
+- Approved হলে:
+  - `expense_entries`-এ auto insert (category = 'Conveyance', employee reference সহ)
+  - মাস শেষে payroll generation-এ employee-র total approved conveyance reimbursement হিসাবে যোগ হবে (একটা special "Conveyance Reimbursement" payhead-এর মাধ্যমে)
+- Rejected হলে remark সহ employee portal-এ দেখাবে
+
+Permission: শুধু HR/Admin role বা যাকে specifically `conveyance.verify` permission দেওয়া আছে।
+
+---
+
+## ৬. Accounts Integration
+
+- Facility cash (food/accommodation/conveyance reimbursement) payroll generate করলে যেভাবে salary expense accounts-এ hit করে ঠিক সেইভাবে যাবে (existing payroll → accounts pipeline ব্যবহার)
+- Direct approved conveyance bill → `expense_entries` table → already accounts-এ যায়
+
+---
+
+## Database Changes (Technical)
+
+```text
+facility_policies
+  id, tenant_id, branch_id (nullable=সব branch)
+  name, type ('accommodation'|'food'|'overtime_food'|'custom')
+  mode (text), trigger ('present_only'|'present_or_overtime'|'overtime_only'|'always')
+  amount, company_share, employee_share, per_unit ('day'|'meal'|'month')
+  linked_payhead_id (FK payheads), is_deduction bool
+  active bool
+
+employee_facilities
+  id, employee_id, facility_policy_id
+  override_amount nullable, effective_from, effective_to, notes
+
+conveyance_bills
+  id, tenant_id, employee_id, bill_date
+  from_location, to_location, purpose
+  transport_mode, fare_amount, other_amount, other_note
+  receipt_url nullable
+  status ('pending'|'approved'|'rejected')
+  reviewed_by, reviewed_at, review_remark
+  expense_entry_id nullable (link after approval)
+  payroll_period_id nullable (যে মাসে reimburse হল)
+```
+
+সব table-এ `tenant_id`-based RLS + `GRANT` (authenticated/service_role)। Employee নিজের `conveyance_bills` দেখা/তৈরি করার RLS policy (employee.user_id = auth.uid())।
+
+---
+
+## Pages/Files তৈরি/edit হবে
+
+- `src/pages/dashboard/hr/FacilityPolicies.tsx` — new
+- `src/pages/dashboard/hr/ConveyanceBills.tsx` — new (HR verify)
+- `src/pages/employee-portal/Conveyance.tsx` — new (employee entry) (employee portal route group তৈরি/extend)
+- `src/pages/dashboard/hr/EmployeeView.tsx` — Facilities tab যোগ
+- `src/pages/dashboard/hr/AddEmployee.tsx` — facility assign section
+- Payroll generation function/edge function — facility calculation logic যোগ
+- Sidebar menu — নতুন link
+
+---
+
+## Build order
+
+1. DB migration (4 table + grants + RLS)
+2. Facility Policies CRUD page
+3. EmployeeView Facilities tab (assign)
+4. Payroll generation-এ facility calc যোগ
+5. Conveyance entry page (employee portal)
+6. HR Conveyance verify page + approve → expense + reimbursement flow
+
+---
+
+## একটা ছোট প্রশ্ন
+
+**Employee portal login**: এখন `employees` table-এ `has_user_access` + `user_username/password` আছে। Conveyance entry-র জন্য আমি এই existing login-ই ব্যবহার করব, নাকি Supabase auth.users-এর সাথে আলাদা employee account খুলব? পুরনো plan-এ আপনাকে A/B/C option দিয়েছিলাম তখন উত্তর পাইনি। এখন বলে দিলে সব employee-facing page একসাথে সেই auth দিয়ে বানাব।
+
+Approve করলে আমি migration → page-by-page implement শুরু করব।
