@@ -536,7 +536,7 @@ const App = () => (
                 <Route path="leave" element={<MyLeave />} />
                 <Route path="payslip" element={<MyPayslip />} />
                 <Route path="advance" element={<MyRequestPage table="salary_advance_requests" title="অগ্রিম বেতনের আবেদন" kind="advance" />} />
-                <Route path="loan" element={<MyRequestPage table="loan_requests" title="ঋণের আবেদন" kind="loan" />} />
+                
                 <Route path="resignation" element={<MyRequestPage table="resignation_requests" title="পদত্যাগের আবেদন" kind="resignation" />} />
                 <Route path="meals" element={<MyMeals />} />
                 <Route path="requisitions" element={<MyRequisitions />} />
