@@ -30,6 +30,20 @@ const Cart = lazy(() => import("@/pages/public/Cart"));
 const Checkout = lazy(() => import("@/pages/public/Checkout"));
 const OrderTrack = lazy(() => import("@/pages/public/OrderTrack"));
 
+// Employee self-service
+const MyShell = lazy(() => import("@/components/me/MyShell"));
+const MyDashboard = lazy(() => import("@/pages/dashboard/me/MyDashboard"));
+const MyProfile = lazy(() => import("@/pages/dashboard/me/MyProfile"));
+const MyAttendance = lazy(() => import("@/pages/dashboard/me/MyAttendance"));
+const MyLeave = lazy(() => import("@/pages/dashboard/me/MyLeave"));
+const MyPayslip = lazy(() => import("@/pages/dashboard/me/MyPayslip"));
+const MyRequestPage = lazy(() => import("@/pages/dashboard/me/MyRequestPage"));
+const MyMeals = lazy(() => import("@/pages/dashboard/me/MyMeals"));
+const MyRequisitions = lazy(() => import("@/pages/dashboard/me/MyRequisitions"));
+const HrCatering = lazy(() => import("@/pages/dashboard/hr/Catering"));
+const HrProfileApprovals = lazy(() => import("@/pages/dashboard/hr/ProfileApprovals"));
+const HrEmployeeRequests = lazy(() => import("@/pages/dashboard/hr/EmployeeRequests"));
+
 // Shop Admin
 const ShopCategories = lazy(() => import("@/pages/dashboard/shop/Categories"));
 const ShopProducts = lazy(() => import("@/pages/dashboard/shop/Products"));
@@ -513,6 +527,25 @@ const App = () => (
               <Route path="/dashboard/billing-overview" element={<P><CompanyOverview /></P>} />
               <Route path="/dashboard/olt-overview" element={<P><OltOverview /></P>} />
               <Route path="/dashboard/_icons" element={<P><IconPreview /></P>} />
+
+              {/* Employee self-service */}
+              <Route path="/dashboard/me" element={<P><MyShell /></P>}>
+                <Route index element={<MyDashboard />} />
+                <Route path="profile" element={<MyProfile />} />
+                <Route path="attendance" element={<MyAttendance />} />
+                <Route path="leave" element={<MyLeave />} />
+                <Route path="payslip" element={<MyPayslip />} />
+                <Route path="advance" element={<MyRequestPage table="salary_advance_requests" title="অগ্রিম বেতনের আবেদন" kind="advance" />} />
+                <Route path="loan" element={<MyRequestPage table="loan_requests" title="ঋণের আবেদন" kind="loan" />} />
+                <Route path="resignation" element={<MyRequestPage table="resignation_requests" title="পদত্যাগের আবেদন" kind="resignation" />} />
+                <Route path="meals" element={<MyMeals />} />
+                <Route path="requisitions" element={<MyRequisitions />} />
+              </Route>
+
+              {/* HR admin extras for employee portal */}
+              <Route path="/dashboard/hr/catering" element={<P><HrCatering /></P>} />
+              <Route path="/dashboard/hr/profile-approvals" element={<P><HrProfileApprovals /></P>} />
+              <Route path="/dashboard/hr/employee-requests" element={<P><HrEmployeeRequests /></P>} />
 
               {/* Config */}
               <Route path="/dashboard/config/zones" element={<P><ConfigZones /></P>} />

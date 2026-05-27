@@ -12,7 +12,8 @@ import {
   Package, Truck, Building2, Wallet, CircleDollarSign, HandCoins, Landmark,
   ClipboardList, TicketCheck, ListTodo, Award, Globe, Share2, Network
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
+import { useEmployeeContext } from "@/hooks/useEmployeeContext";
 import KpiCard from "@/components/dashboard/KpiCard";
 import MetricTile from "@/components/dashboard/MetricTile";
 import ResourceGauge from "@/components/dashboard/ResourceGauge";
@@ -743,6 +744,9 @@ function TopDueListCard({
 }
 
 const Dashboard = () => {
+  const { isEmployeeOnly, loading: empLoading } = useEmployeeContext();
+  if (empLoading) return null;
+  if (isEmployeeOnly) return <Navigate to="/dashboard/me" replace />;
   const { data: d, isLoading } = useStats();
 
   // Date helpers for filter links
