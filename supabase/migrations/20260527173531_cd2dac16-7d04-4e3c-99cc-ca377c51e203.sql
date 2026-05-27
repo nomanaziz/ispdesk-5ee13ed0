@@ -1,0 +1,4 @@
+INSERT INTO public.facility_policies (name, type, mode, trigger_condition, amount, company_share, employee_share, per_unit, is_deduction, active, description) VALUES
+('লাঞ্চ ভাতা (Subsidized)', 'food', 'partial_subsidized', 'present_only', 80, 50, 30, 'meal', false, true, 'উপস্থিত দিনে দুপুরের খাবার — কোম্পানি ৳50, employee ৳30। অনুপস্থিত দিনে কোনো deduction নেই।'),
+('বাড়ি ভাড়া ভাতা (HRA)', 'accommodation', 'house_rent_allowance', 'always', 5000, 5000, 0, 'month', false, true, 'মাসিক fixed বাড়ি ভাড়া ভাতা ৳5,000 — সব permanent employee পাবে।'),
+('ওভারটাইম খাবার ভাতা', 'overtime_food', 'per_duty_day_cash', 'overtime_only', 120, 120, 0, 'day', false, true, 'যেদিন ওভারটাইম ডিউটি করবে সেদিন cash ৳120 খাবার ভাতা।');
