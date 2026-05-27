@@ -60,9 +60,10 @@ function RequestList({ table, kind }: { table: string; kind: "advance" | "loan" 
     <Table>
       <TableHeader><TableRow>
         <TableHead>তারিখ</TableHead><TableHead>কর্মী</TableHead>
-        {kind !== "resignation" && <TableHead>পরিমাণ</TableHead>}
-        {kind === "loan" && <TableHead>মেয়াদ</TableHead>}
+        {kind === "advance" && <TableHead>পরিমাণ</TableHead>}
+        {kind === "loan" && <><TableHead>পরিমাণ</TableHead><TableHead>মেয়াদ</TableHead></>}
         {kind === "resignation" && <TableHead>কার্যকর</TableHead>}
+        {kind === "requisition" && <><TableHead>আইটেম</TableHead><TableHead>পরিমাণ</TableHead><TableHead>আনুমানিক</TableHead></>}
         <TableHead>কারণ</TableHead><TableHead>স্ট্যাটাস</TableHead><TableHead className="w-32"></TableHead>
       </TableRow></TableHeader>
       <TableBody>
@@ -70,10 +71,15 @@ function RequestList({ table, kind }: { table: string; kind: "advance" | "loan" 
           <TableRow key={r.id}>
             <TableCell className="text-xs">{new Date(r.created_at).toLocaleDateString("bn-BD")}</TableCell>
             <TableCell>{r.employees?.name} <span className="text-xs text-muted-foreground">({r.employees?.employee_id})</span></TableCell>
-            {kind !== "resignation" && <TableCell>৳{Number(r.amount || 0).toLocaleString()}</TableCell>}
-            {kind === "loan" && <TableCell>{r.tenure_months} মাস</TableCell>}
+            {kind === "advance" && <TableCell>৳{Number(r.amount || 0).toLocaleString()}</TableCell>}
+            {kind === "loan" && <><TableCell>৳{Number(r.amount || 0).toLocaleString()}</TableCell><TableCell>{r.tenure_months} মাস</TableCell></>}
             {kind === "resignation" && <TableCell>{r.effective_date}</TableCell>}
-            <TableCell className="text-xs max-w-xs truncate">{r.reason || "—"}</TableCell>
+            {kind === "requisition" && <>
+              <TableCell className="font-medium">{r.item_name} <span className="text-xs text-muted-foreground">({r.category})</span></TableCell>
+              <TableCell>{r.quantity}</TableCell>
+              <TableCell>৳{Number(r.estimated_cost || 0).toLocaleString()}</TableCell>
+            </>}
+            <TableCell className="text-xs max-w-xs truncate">{r.reason || r.description || "—"}</TableCell>
             <TableCell><Badge variant={r.status === "approved" ? "default" : r.status === "rejected" ? "destructive" : "outline"}>{r.status}</Badge></TableCell>
             <TableCell>
               {r.status === "pending" && (
@@ -85,7 +91,7 @@ function RequestList({ table, kind }: { table: string; kind: "advance" | "loan" 
             </TableCell>
           </TableRow>
         ))}
-        {(data ?? []).length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-4">কোনো আবেদন নেই</TableCell></TableRow>}
+        {(data ?? []).length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-4">কোনো আবেদন নেই</TableCell></TableRow>}
       </TableBody>
     </Table>
   );
