@@ -61,6 +61,25 @@ export default function Employees() {
     },
   });
 
+  const confirmEmployee = useMutation({
+    mutationFn: async () => {
+      if (!confirmEmp) return;
+      const { error } = await supabase.rpc("confirm_employee" as any, {
+        _employee_id: confirmEmp.id,
+        _confirm_date: new Date().toISOString().slice(0, 10),
+        _new_salary: confirmSalary ? Number(confirmSalary) : null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Confirmation সম্পন্ন — leave balance auto-create হয়েছে");
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      setConfirmEmp(null);
+      setConfirmSalary("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const filtered = (employees || [])
     .filter((e: any) => statusFilter === "all" || e.status === statusFilter)
     .filter((e: any) => deptFilter === "all" || e.department_id === deptFilter)
