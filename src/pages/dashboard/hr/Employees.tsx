@@ -25,6 +25,8 @@ export default function Employees() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [payheadEmp, setPayheadEmp] = useState<any | null>(null);
   const [holidayEmp, setHolidayEmp] = useState<any | null>(null);
+  const [confirmEmp, setConfirmEmp] = useState<any | null>(null);
+  const [confirmSalary, setConfirmSalary] = useState<string>("");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
