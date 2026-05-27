@@ -149,15 +149,15 @@ export default function ConvertToAppUserDialog({ employee, open, onOpenChange, o
               </div>
             </div>
             <div>
-              <Label>Primary Role *</Label>
-              <Select value={form.role_id} onValueChange={(v) => setForm({ ...form, role_id: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {roles.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Primary Role</Label>
+              <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <span className="font-medium">Employee</span>
+                <Badge variant="outline" className="ml-auto text-xs">🔒 Fixed</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Employee-র জন্য primary role সবসময় "Employee" — পরিবর্তনযোগ্য না।
+              </p>
             </div>
             <div>
               <Label>অতিরিক্ত Role (Department-ভিত্তিক)</Label>

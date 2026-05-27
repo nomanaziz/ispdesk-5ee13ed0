@@ -9,11 +9,15 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Pencil, Trash2, KeyRound, Plus, Power } from "lucide-react";
+import { Pencil, Trash2, KeyRound, Plus, Power, ShieldCheck, ChevronDown, Globe, Wrench, User as UserIcon } from "lucide-react";
+import ExternalUserDialog from "@/components/access/ExternalUserDialog";
 
 const EMPLOYEE_ROLE_ID = "33333333-3333-3333-3333-333333333333";
 
+type UserType = "internal" | "external" | "remote_support";
 
 interface AppUser {
   id: string;
@@ -22,6 +26,11 @@ interface AppUser {
   employee_id: string | null;
   role_id: string | null;
   created_at: string;
+  user_type: UserType;
+  access_expires_at: string | null;
+  purpose: string | null;
+  full_name: string | null;
+  email: string | null;
   employee?: { id: string; name: string; employee_id: string | null } | null;
   role?: { id: string; name: string } | null;
   extra_roles?: { role_id: string; role: { id: string; name: string } | null }[];
@@ -29,6 +38,16 @@ interface AppUser {
 
 interface Employee { id: string; name: string; employee_id: string | null; }
 interface Role { id: string; name: string; is_protected: boolean; status: string; }
+
+const formatExpiry = (iso: string | null) => {
+  if (!iso) return { text: "Permanent", expired: false, soon: false };
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return { text: "Expired", expired: true, soon: false };
+  const hrs = Math.floor(ms / 3600000);
+  if (hrs < 24) return { text: `${hrs}ঘ বাকি`, expired: false, soon: true };
+  const days = Math.floor(hrs / 24);
+  return { text: `${days} দিন বাকি`, expired: false, soon: days < 3 };
+};
 
 export default function AppUsers() {
   const [users, setUsers] = useState<AppUser[]>([]);
@@ -38,9 +57,11 @@ export default function AppUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeTab, setTypeTab] = useState<"all" | UserType>("all");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AppUser | null>(null);
+  const [extOpen, setExtOpen] = useState<null | "external" | "remote_support">(null);
   const [form, setForm] = useState({
     employee_id: "",
     username: "",
@@ -55,13 +76,12 @@ export default function AppUsers() {
   const [resetPwd, setResetPwd] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
 
-
   const load = async () => {
     setLoading(true);
     const [u, e, r, x] = await Promise.all([
       supabase
         .from("app_users")
-        .select("id, username, status, employee_id, role_id, created_at, employee:employees(id,name,employee_id), role:app_roles(id,name)")
+        .select("id, username, status, employee_id, role_id, created_at, user_type, access_expires_at, purpose, full_name, email, employee:employees(id,name,employee_id), role:app_roles(id,name)")
         .order("created_at", { ascending: false }),
       supabase.from("employees").select("id,name,employee_id,status").ilike("status", "active").order("name"),
       supabase.from("app_roles").select("id,name,is_protected,status").eq("status", "Active").order("name"),
@@ -81,24 +101,31 @@ export default function AppUsers() {
     setLoading(false);
   };
 
-
   useEffect(() => { load(); }, []);
+
+  const counts = useMemo(() => {
+    const c = { all: users.length, internal: 0, external: 0, remote_support: 0 };
+    users.forEach((u) => { c[u.user_type] = (c[u.user_type] || 0) + 1; });
+    return c;
+  }, [users]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return users.filter((u) => {
+      if (typeTab !== "all" && u.user_type !== typeTab) return false;
       if (statusFilter !== "all" && u.status !== statusFilter) return false;
       if (!q) return true;
       return (
         u.username.toLowerCase().includes(q) ||
         u.employee?.name?.toLowerCase().includes(q) ||
         u.employee?.employee_id?.toLowerCase().includes(q) ||
+        u.full_name?.toLowerCase().includes(q) ||
         u.role?.name?.toLowerCase().includes(q)
       );
     });
-  }, [users, search, statusFilter]);
+  }, [users, search, statusFilter, typeTab]);
 
-  const openCreate = () => {
+  const openCreateInternal = () => {
     setEditing(null);
     setForm({ employee_id: "", username: "", password: "", confirm: "", role_id: EMPLOYEE_ROLE_ID, status: "Active", extra_role_ids: [] });
     setDialogOpen(true);
@@ -118,19 +145,22 @@ export default function AppUsers() {
     setDialogOpen(true);
   };
 
-
   const handleEmployeeSelect = (empId: string) => {
     const emp = employees.find((e) => e.id === empId);
     setForm((f) => ({
       ...f,
       employee_id: empId,
+      role_id: EMPLOYEE_ROLE_ID, // force Employee when linking an employee
       username: f.username || emp?.employee_id || emp?.name?.toLowerCase().replace(/\s+/g, ".") || "",
     }));
   };
 
+  const isInternalEmployee = !!form.employee_id;
+
   const save = async () => {
     if (!form.username.trim()) return toast.error("ইউজারনেম দিন");
-    if (!form.role_id) return toast.error("রোল সিলেক্ট করুন");
+    const effectiveRoleId = isInternalEmployee ? EMPLOYEE_ROLE_ID : form.role_id;
+    if (!effectiveRoleId) return toast.error("রোল সিলেক্ট করুন");
     if (!editing) {
       if (!form.password) return toast.error("পাসওয়ার্ড দিন");
       if (form.password !== form.confirm) return toast.error("পাসওয়ার্ড মিলছে না");
@@ -141,9 +171,10 @@ export default function AppUsers() {
     const payload: any = {
       username: form.username.trim(),
       employee_id: form.employee_id || null,
-      role_id: form.role_id,
+      role_id: effectiveRoleId,
       status: form.status,
     };
+    if (!editing) payload.user_type = "internal";
     if (!editing || form.password) payload.password = form.password;
 
     let userId = editing?.id as string | undefined;
@@ -158,14 +189,9 @@ export default function AppUsers() {
       toast.success("App User তৈরি হয়েছে");
     }
 
-    // Sync extra roles (exclude primary role to avoid duplicates with trigger-attached Employee)
     if (userId) {
       await supabase.from("app_user_extra_roles").delete().eq("user_id", userId);
-      const extras = form.extra_role_ids.filter((rid) => rid && rid !== form.role_id);
-      // Always ensure Employee role attaches when linked to an employee (trigger covers insert; we re-add on edit)
-      if (form.employee_id && form.role_id !== EMPLOYEE_ROLE_ID && !extras.includes(EMPLOYEE_ROLE_ID)) {
-        extras.push(EMPLOYEE_ROLE_ID);
-      }
+      const extras = form.extra_role_ids.filter((rid) => rid && rid !== effectiveRoleId);
       if (extras.length > 0) {
         await supabase
           .from("app_user_extra_roles")
@@ -176,7 +202,6 @@ export default function AppUsers() {
     setDialogOpen(false);
     load();
   };
-
 
   const toggleStatus = async (u: AppUser) => {
     const next = u.status === "Active" ? "Inactive" : "Active";
@@ -204,15 +229,45 @@ export default function AppUsers() {
     load();
   };
 
+  const typeBadge = (t: UserType) => {
+    if (t === "internal") return <Badge variant="secondary" className="text-xs"><UserIcon className="h-3 w-3 mr-1" />Internal</Badge>;
+    if (t === "external") return <Badge variant="outline" className="text-xs"><Globe className="h-3 w-3 mr-1" />External</Badge>;
+    return <Badge variant="outline" className="text-xs border-orange-500 text-orange-600"><Wrench className="h-3 w-3 mr-1" />Remote</Badge>;
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">অ্যাপ ইউজার</h1>
-          <p className="text-sm text-muted-foreground">এমপ্লয়িদের ERP প্যানেল লগইন অ্যাক্সেস ম্যানেজ করুন</p>
+          <p className="text-sm text-muted-foreground">Internal employee, external partner ও remote support access ম্যানেজ করুন</p>
         </div>
-        <Button onClick={openCreate}><Plus className="h-4 w-4" /> নতুন App User</Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button><Plus className="h-4 w-4" /> নতুন App User <ChevronDown className="h-4 w-4 ml-1" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={openCreateInternal}>
+              <UserIcon className="h-4 w-4 mr-2" /> Employee থেকে বানান
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setExtOpen("external")}>
+              <Globe className="h-4 w-4 mr-2" /> External User যোগ করুন
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setExtOpen("remote_support")}>
+              <Wrench className="h-4 w-4 mr-2" /> Remote Support Access
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+
+      <Tabs value={typeTab} onValueChange={(v) => setTypeTab(v as any)}>
+        <TabsList>
+          <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
+          <TabsTrigger value="internal">Internal ({counts.internal || 0})</TabsTrigger>
+          <TabsTrigger value="external">External ({counts.external || 0})</TabsTrigger>
+          <TabsTrigger value="remote_support">Remote ({counts.remote_support || 0})</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <div className="flex flex-col md:flex-row gap-2">
         <Input placeholder="খুঁজুন: username, employee, role..." value={search} onChange={(e) => setSearch(e.target.value)} className="md:max-w-sm" />
@@ -231,53 +286,75 @@ export default function AppUsers() {
           <TableHeader>
             <TableRow>
               <TableHead>Username</TableHead>
-              <TableHead>Employee</TableHead>
-              <TableHead>Role</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Employee / Name</TableHead>
+              <TableHead>Roles</TableHead>
+              <TableHead>Expiry</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">লোড হচ্ছে...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">লোড হচ্ছে...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">কোনো App User নেই</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">কোনো App User নেই</TableCell></TableRow>
             ) : (
-              filtered.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell className="font-medium">{u.username}</TableCell>
-                  <TableCell>
-                    {u.employee ? (
-                      <div className="text-sm">
-                        <div>{u.employee.name}</div>
-                        <div className="text-xs text-muted-foreground">{u.employee.employee_id}</div>
+              filtered.map((u) => {
+                const exp = formatExpiry(u.access_expires_at);
+                return (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.username}</TableCell>
+                    <TableCell>{typeBadge(u.user_type)}</TableCell>
+                    <TableCell>
+                      {u.employee ? (
+                        <div className="text-sm">
+                          <div>{u.employee.name}</div>
+                          <div className="text-xs text-muted-foreground">{u.employee.employee_id}</div>
+                        </div>
+                      ) : u.full_name ? (
+                        <div className="text-sm">
+                          <div>{u.full_name}</div>
+                          {u.email && <div className="text-xs text-muted-foreground">{u.email}</div>}
+                        </div>
+                      ) : <span className="text-muted-foreground text-xs">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {u.role?.name ? (
+                          u.user_type === "internal" && u.employee_id ? (
+                            <Badge className="gap-1"><ShieldCheck className="h-3 w-3" />{u.role.name}</Badge>
+                          ) : (
+                            <Badge>{u.role.name}</Badge>
+                          )
+                        ) : <span className="text-muted-foreground text-xs">—</span>}
+                        {(u.extra_roles || []).map((er) => (
+                          er.role ? <Badge key={er.role_id} variant="outline" className="text-xs">+{er.role.name}</Badge> : null
+                        ))}
                       </div>
-                    ) : <span className="text-muted-foreground text-xs">—</span>}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {u.role?.name ? <Badge>{u.role.name}</Badge> : <span className="text-muted-foreground text-xs">—</span>}
-                      {(u.extra_roles || []).map((er) => (
-                        er.role ? <Badge key={er.role_id} variant="outline" className="text-xs">+{er.role.name}</Badge> : null
-                      ))}
-                    </div>
-                  </TableCell>
-
-                  <TableCell>
-                    <Badge variant={u.status === "Active" ? "default" : "secondary"}>{u.status}</Badge>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{new Date(u.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button size="icon" variant="ghost" title="Edit" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" title="Reset password" onClick={() => { setResetTarget(u); setResetPwd(""); }}><KeyRound className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" title="Toggle status" onClick={() => toggleStatus(u)}><Power className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" title="Delete" onClick={() => setDeleteTarget(u)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={exp.expired ? "destructive" : exp.soon ? "outline" : "secondary"}
+                        className={exp.soon && !exp.expired ? "border-orange-500 text-orange-600" : ""}
+                      >
+                        {exp.text}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={u.status === "Active" ? "default" : "secondary"}>{u.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="icon" variant="ghost" title="Edit" onClick={() => openEdit(u)}><Pencil className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" title="Reset password" onClick={() => { setResetTarget(u); setResetPwd(""); }}><KeyRound className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" title="Toggle status" onClick={() => toggleStatus(u)}><Power className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" title="Delete" onClick={() => setDeleteTarget(u)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -286,7 +363,7 @@ export default function AppUsers() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editing ? "App User এডিট করুন" : "নতুন App User"}</DialogTitle>
+            <DialogTitle>{editing ? "App User এডিট করুন" : "Employee থেকে App User"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -304,11 +381,6 @@ export default function AppUsers() {
                   )}
                 </SelectContent>
               </Select>
-              {form.employee_id && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Employee role-এর common permissions (food, attendance, payslip ইত্যাদি) auto-যুক্ত হবে।
-                </p>
-              )}
             </div>
 
             <div>
@@ -325,22 +397,38 @@ export default function AppUsers() {
                 <Input type="password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
               </div>
             </div>
-            <div>
-              <Label>Role *</Label>
-              <Select value={form.role_id} onValueChange={(v) => setForm({ ...form, role_id: v })}>
-                <SelectTrigger><SelectValue placeholder="রোল সিলেক্ট করুন" /></SelectTrigger>
-                <SelectContent>
-                  {roles.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
+            {isInternalEmployee ? (
+              <div>
+                <Label>Primary Role</Label>
+                <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  <span className="font-medium">Employee</span>
+                  <Badge variant="outline" className="ml-auto text-xs">🔒 Fixed</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Employee-র জন্য primary role সবসময় "Employee" — পরিবর্তনযোগ্য না।
+                </p>
+              </div>
+            ) : (
+              <div>
+                <Label>Role *</Label>
+                <Select value={form.role_id} onValueChange={(v) => setForm({ ...form, role_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="রোল সিলেক্ট করুন" /></SelectTrigger>
+                  <SelectContent>
+                    {roles.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
               <Label>অতিরিক্ত Role (Department-ভিত্তিক)</Label>
               <div className="rounded-md border p-2 grid grid-cols-2 gap-2 max-h-40 overflow-auto">
                 {roles
-                  .filter((r) => r.id !== form.role_id && r.id !== EMPLOYEE_ROLE_ID)
+                  .filter((r) => r.id !== EMPLOYEE_ROLE_ID && (!isInternalEmployee || r.id !== form.role_id))
                   .map((r) => (
                     <label key={r.id} className="flex items-center gap-2 text-sm cursor-pointer">
                       <Checkbox
@@ -359,11 +447,10 @@ export default function AppUsers() {
                   ))}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Billing, HR, Accounts ইত্যাদি বাড়তি permission। Employee role auto-attached।
+                Billing, HR, Accounts ইত্যাদি বাড়তি permission।
               </p>
             </div>
             <div>
-
               <Label>Status</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -380,6 +467,13 @@ export default function AppUsers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ExternalUserDialog
+        open={extOpen !== null}
+        mode={(extOpen || "external") as any}
+        onOpenChange={(o) => !o && setExtOpen(null)}
+        onCreated={load}
+      />
 
       <Dialog open={!!resetTarget} onOpenChange={(o) => !o && setResetTarget(null)}>
         <DialogContent>
