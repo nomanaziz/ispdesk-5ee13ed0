@@ -1,59 +1,49 @@
-## পরিকল্পনা: Default Monthly Payroll + Auto Payhead Split + Monthly Adjustment
+# HRM & Payroll System Settings
 
-### লক্ষ্য
-প্রত্যেক active employee-র জন্য payroll template না থাকলেও by default monthly payroll apply হবে, payslip generate করলে basic/house rent/conveyance/medical সহ payhead আসবে, এবং প্রতি মাসে employee-wise amount কম-বেশি করার option থাকবে।
+Screenshot অনুযায়ী একটি কেন্দ্রীয় system settings page তৈরি করব যেখানে attendance ও payslip generation এর সব কনফিগারেশন এক জায়গায় থাকবে এবং পুরো system জুড়ে কাজ করবে।
 
-### ১. Default Monthly Payroll নিশ্চিত করা
-- `Monthly Payroll` নামে একটি default template থাকবে।
-- যে employee-র `payroll_template_id` খালি আছে, payslip calculation-এ এই default template ব্যবহার হবে।
-- Employee add/edit screen-এ payroll template না দিলে auto default monthly payroll ধরা হবে।
-- Payslip list-এ template নাম `Monthly Payroll (Default)` হিসেবে দেখাবে, খালি `—` থাকবে না।
+## কোথায় যোগ হবে
+- বিদ্যমান `HrSettings.tsx` page-টি পুনর্গঠন করে এতে নতুন section যোগ করা হবে (Employee ID config-ও থাকবে)
+- Sidebar এ "HR সেটিংস" আগের মতই `/dashboard/hr/settings`
 
-### ২. Default payhead structure তৈরি/seed
-Default payroll-এর মধ্যে এই payhead গুলো থাকবে:
-- `Basic Salary` — 50% of employee gross salary
-- `House Rent` — remaining 50%-এর 75% = gross salary-এর 37.5%
-- `Conveyance Allowance` — remaining 50%-এর 12.5% = gross salary-এর 6.25%
-- `Medical Allowance` — remaining 50%-এর 12.5% = gross salary-এর 6.25%
-- `Bonus` — default 0, monthly edit করলে যোগ হবে
-- `Early Out` — default 0, deduction হিসেবে থাকবে
-- প্রয়োজনে existing `Food Allowance`, `Increment` থাকলে default template-এ যুক্ত থাকবে; না থাকলে তৈরি হবে।
+## Page Structure (Tabs/Sections)
 
-> ফলে 12,000 salary হলে default split হবে: Basic 6,000 + House Rent 4,500 + Conveyance 750 + Medical 750 = Total 12,000।
+### 1. Employee ID (বিদ্যমান — অপরিবর্তিত)
 
-### ৩. Calculation logic ঠিক করা
-- বর্তমান `computeForEmployee()` template না থাকলে empty line দিচ্ছে; এটা বদলে default template + fallback formula ব্যবহার করবে।
-- Basic salary আর আলাদা করে double count হবে না: payhead lines থেকেই gross total হিসাব হবে।
-- `payroll.basic_salary` field-এ Basic Salary line-এর amount রাখা হবে।
-- `total_allowance` হবে House Rent + Conveyance + Medical + Bonus + Food/Increment etc.
-- `total_deduction` হবে Early Out + manual deductions + loan/advance deduction।
-- Net Salary = all addition lines - deduction lines - loan/advance।
+### 2. Attendance Settings
+- **Edit after Overtime approval** — Enable/Disable (overtime approve হবার পরে In/Out edit allow করা হবে কিনা)
+- **Edit Previous Month Timing** — Current Month only / Current + Previous Month
+- **Weekend Days** — ৭ দিনের checkbox (default: Friday)
+- **Late & Overtime Manage** (৩টা minute input):
+  - Start time এর কত মিনিট পরে এলে Late count শুরু হবে
+  - End time এর কত মিনিট আগে গেলে Early Out count শুরু হবে
+  - End time এর কত মিনিট পরে থাকলে Overtime count শুরু হবে
 
-### ৪. Monthly payhead কম-বেশি করার UI উন্নত করা
-Payslip Manager-এর edit icon চাপলে:
-- সব default payhead row দেখা যাবে, employee-র template select না থাকলেও।
-- প্রতিটি row-তে `Base Amount` এবং `This Month Amount` থাকবে।
-- `Add Payhead` dropdown থাকবে, যাতে extra bonus/deduction যোগ করা যায়।
-- `Remove` থাকবে শুধু এই মাসের manual/extra row বাদ দেওয়ার জন্য।
-- Save করলে শুধুমাত্র ওই মাসের adjustment `payroll.adjustments`-এ থাকবে এবং payslip regenerate হবে।
+### 3. Payslip Generation Settings
+- **Generate with Late fee** — Enable/Disable
+- **Generate with Early Out fee** — Enable/Disable
+- **Generate with Overtime fee** — Enable/Disable
 
-### ৫. Payroll template screen update
-- Default payroll-এর payhead list percentage/formula অনুযায়ী readable হবে।
-- Payhead assign করার সময় percentage value support থাকবে, যেমন 50%, 37.5%, 6.25%।
-- Default template accidental empty থাকলে `Reset default payheads` action দিয়ে পুনরায় তৈরি করা যাবে।
+নিচে একটি **Save or Update** বাটন সব section save করবে।
 
-### ৬. Print/Preview update
-- Payslip preview/PDF-এ Basic Salary duplicated দেখাবে না।
-- Default payhead split row-by-row পরিষ্কার দেখা যাবে।
-- Monthly changed amount থাকলে সেটিই PDF-এ যাবে।
+## Data Storage
+বিদ্যমান `hr_settings` (key/value JSON) table-ই ব্যবহার করব — নতুন migration লাগবে না।
+- `setting_key = 'attendance_settings'` → `{ edit_after_ot_approval, edit_previous_month, weekend_days: [..], late_after_min, early_out_before_min, overtime_after_min }`
+- `setting_key = 'payslip_settings'` → `{ apply_late_fee, apply_early_out_fee, apply_overtime_fee }`
 
-### Technical details
-- Database migration লাগবে default payheads/template seed ও missing defaults backfill করার জন্য। নতুন table দরকার নেই।
-- Existing tables ব্যবহার হবে: `payheads`, `payroll_templates`, `payroll_template_payheads`, `employees`, `payroll`।
-- Code touch points:
-  - `src/lib/payrollCompute.ts`
-  - `src/pages/dashboard/hr/Payslip.tsx`
-  - `src/pages/dashboard/hr/AddEmployee.tsx`
-  - `src/pages/dashboard/hr/Payroll.tsx`
-  - `src/components/hr/PayslipPrintView.tsx`
-  - Supabase migration for default data/backfill
+## Integration (পুরো app জুড়ে effect)
+1. **Attendance edit guard** — `Attendance.tsx` এ in/out edit করার আগে `edit_after_ot_approval` ও `edit_previous_month` check করা হবে; previous month হলে block।
+2. **Late / Early-out / Overtime calculation** — `Attendance.tsx` এবং attendance ingestion এ minute thresholds অনুযায়ী status set হবে।
+3. **Weekend** — Attendance ও Payroll এ weekend day list থেকে holiday detect হবে (সবাই present count এ বাদ যাবে)।
+4. **Payslip generation** — `payrollCompute.ts` এ payslip generate করার সময়:
+   - `apply_late_fee` ON হলে late count × পূর্বনির্ধারিত rate কর্তন
+   - `apply_early_out_fee` ON হলে early-out fee কর্তন
+   - `apply_overtime_fee` ON হলে overtime hours × rate যোগ
+   OFF থাকলে এই lines skip হবে।
+
+## নতুন/পরিবর্তিত ফাইল
+- `src/pages/dashboard/hr/HrSettings.tsx` — সম্পূর্ণ পুনর্গঠন (৩ section)
+- `src/hooks/useHrPayrollSettings.ts` — নতুন hook (attendance + payslip settings cached fetch)
+- `src/lib/payrollCompute.ts` — late/early-out/overtime conditional apply
+- `src/pages/dashboard/hr/Attendance.tsx` — edit guard + threshold-based status
+- কোনো DB migration **লাগবে না** (existing `hr_settings` JSON-এ store হবে)
