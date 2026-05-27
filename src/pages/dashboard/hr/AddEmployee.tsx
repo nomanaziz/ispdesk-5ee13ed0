@@ -56,6 +56,11 @@ export default function AddEmployee() {
   const [form, setForm] = useState(initialForm);
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
+  const fromDeviceUserRowId = searchParams.get("from_device_user");
+  const prefDeviceUserId = searchParams.get("device_user_id");
+  const prefDeviceId = searchParams.get("device_id");
+  const prefName = searchParams.get("name");
+  const prefCard = searchParams.get("card");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
