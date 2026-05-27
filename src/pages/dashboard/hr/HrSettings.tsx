@@ -92,24 +92,38 @@ export default function HrSettings() {
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">লোড হচ্ছে...</div>;
 
+  const [activeTab, setActiveTab] = useState("attendance");
+  const showSaveBtn = ["attendance", "payslip", "empid"].includes(activeTab);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">HR & Payroll সেটিংস</h1>
-          <p className="text-sm text-muted-foreground">কর্মী আইডি, অ্যাটেনডেন্স ও পে-স্লিপ কনফিগারেশন</p>
+          <p className="text-sm text-muted-foreground">সকল HR কনফিগারেশন এক জায়গায়</p>
         </div>
-        <Button onClick={() => mutation.mutate()} disabled={mutation.isPending} className="gap-2">
-          <Save className="h-4 w-4" /> {mutation.isPending ? "সংরক্ষণ হচ্ছে..." : "Save or Update"}
-        </Button>
+        {showSaveBtn && (
+          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending} className="gap-2">
+            <Save className="h-4 w-4" /> {mutation.isPending ? "সংরক্ষণ হচ্ছে..." : "Save or Update"}
+          </Button>
+        )}
       </div>
 
-      <Tabs defaultValue="attendance" className="w-full">
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="attendance" className="gap-2"><Clock className="h-4 w-4" /> Attendance Settings</TabsTrigger>
           <TabsTrigger value="payslip" className="gap-2"><FileText className="h-4 w-4" /> Payslip Settings</TabsTrigger>
           <TabsTrigger value="empid" className="gap-2"><IdCard className="h-4 w-4" /> Employee ID</TabsTrigger>
+          <TabsTrigger value="departments" className="gap-2"><Building2 className="h-4 w-4" /> ডিপার্টমেন্ট</TabsTrigger>
+          <TabsTrigger value="positions" className="gap-2"><Briefcase className="h-4 w-4" /> পদবী</TabsTrigger>
+          <TabsTrigger value="payheads" className="gap-2"><DollarSign className="h-4 w-4" /> পে-হেড</TabsTrigger>
+          <TabsTrigger value="attendance-rules" className="gap-2"><Shield className="h-4 w-4" /> উপস্থিতি নিয়ম</TabsTrigger>
+          <TabsTrigger value="shifts" className="gap-2"><Clock className="h-4 w-4" /> শিফট</TabsTrigger>
+          <TabsTrigger value="zkteco" className="gap-2"><Server className="h-4 w-4" /> ZKTeco</TabsTrigger>
+          <TabsTrigger value="facility-policies" className="gap-2"><ScrollText className="h-4 w-4" /> সুবিধা পলিসি</TabsTrigger>
+          <TabsTrigger value="resign-rules" className="gap-2"><UserX className="h-4 w-4" /> রিজাইন নিয়ম</TabsTrigger>
         </TabsList>
+
 
         {/* ---------- Attendance ---------- */}
         <TabsContent value="attendance" className="mt-4">
