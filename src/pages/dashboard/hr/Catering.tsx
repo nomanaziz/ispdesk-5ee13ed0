@@ -144,8 +144,14 @@ export default function Catering() {
         <DialogContent>
           <DialogHeader><DialogTitle>নতুন Catering Service</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>নাম *</Label><Input value={svcName} onChange={(e) => setSvcName(e.target.value)} /></div>
-            <div><Label>যোগাযোগ</Label><Input value={svcContact} onChange={(e) => setSvcContact(e.target.value)} /></div>
+            <div><Label>Service নাম *</Label><Input value={svcName} onChange={(e) => setSvcName(e.target.value)} placeholder="যেমন: রহিম ক্যাটারিং" /></div>
+            <div><Label>মালিকের নাম</Label><Input value={svcOwner} onChange={(e) => setSvcOwner(e.target.value)} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>ফোন</Label><Input value={svcPhone} onChange={(e) => setSvcPhone(e.target.value)} /></div>
+              <div><Label>ইমেইল</Label><Input type="email" value={svcEmail} onChange={(e) => setSvcEmail(e.target.value)} /></div>
+            </div>
+            <div><Label>ঠিকানা</Label><Input value={svcAddress} onChange={(e) => setSvcAddress(e.target.value)} /></div>
+            <div><Label>Default meal price (৳)</Label><Input type="number" value={svcPrice} onChange={(e) => setSvcPrice(e.target.value)} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSvcOpen(false)}>বাতিল</Button>
