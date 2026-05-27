@@ -12,10 +12,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Receipt, RefreshCw, Eye, FileText, Search, Edit2, Printer } from "lucide-react";
+import { Receipt, RefreshCw, Eye, FileText, Search, Edit2, Printer, Download } from "lucide-react";
 import { computeForEmployee, periodLabel, monthToDate, type ComputedPayroll } from "@/lib/payrollCompute";
 import { getDeductionsForEmployee, applyDeductions, reverseDeductions } from "@/lib/payrollDeductions";
 import PayslipPaymentDialog from "@/components/hr/PayslipPaymentDialog";
+import PayslipPrintView from "@/components/hr/PayslipPrintView";
 
 const currentMonth = new Date().toISOString().slice(0, 7);
 
