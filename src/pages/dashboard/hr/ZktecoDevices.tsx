@@ -40,6 +40,8 @@ export default function ZktecoDevices() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(blankForm);
   const [activeDeviceId, setActiveDeviceId] = useState<string>("");
+  const [lastPullDebug, setLastPullDebug] = useState<{ log?: string[]; warning?: string; pulled_count?: number; device_user_count?: number | null } | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   const { data: devices, isLoading } = useQuery({
     queryKey: ["zkteco-devices"],
@@ -146,11 +148,19 @@ export default function ZktecoDevices() {
       return data;
     },
     onSuccess: (data: any) => {
+      setLastPullDebug(data);
       if (data?.ok === false) {
         toast.error(data.error || "User pull ব্যর্থ");
+        setShowDebug(true);
         return;
       }
-      toast.success(`${data?.pulled_count || 0} জন user pull হয়েছে`);
+      const n = data?.pulled_count || 0;
+      if (n === 0) {
+        toast.warning(data?.warning || "0 user pull হয়েছে — debug log দেখুন");
+        setShowDebug(true);
+      } else {
+        toast.success(`${n} জন user pull হয়েছে`);
+      }
       refetchDeviceUsers();
     },
     onError: (e: any) => toast.error(`Pull ব্যর্থ: ${e.message}`),
@@ -372,6 +382,23 @@ export default function ZktecoDevices() {
               <DownloadCloud className={`h-4 w-4 mr-1 ${pullUsersMutation.isPending ? "animate-spin" : ""}`} /> Device থেকে Pull
             </Button>
           </div>
+
+          {lastPullDebug && (
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm">শেষ Pull-এর Debug Log {typeof lastPullDebug.device_user_count === "number" ? `(device user count: ${lastPullDebug.device_user_count})` : ""}</CardTitle>
+                <Button size="sm" variant="ghost" onClick={() => setShowDebug((v) => !v)}>{showDebug ? "Hide" : "Show"}</Button>
+              </CardHeader>
+              {showDebug && (
+                <CardContent>
+                  {lastPullDebug.warning && (
+                    <div className="mb-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">{lastPullDebug.warning}</div>
+                  )}
+                  <pre className="text-xs bg-muted/40 rounded p-2 overflow-x-auto max-h-64 whitespace-pre-wrap">{(lastPullDebug.log || []).join("\n") || "(empty)"}</pre>
+                </CardContent>
+              )}
+            </Card>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Device Users list */}
