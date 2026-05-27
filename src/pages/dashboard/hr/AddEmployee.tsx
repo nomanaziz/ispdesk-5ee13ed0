@@ -238,6 +238,11 @@ export default function AddEmployee() {
       for (const k of nullableKeys) {
         if (payload[k] === "" || payload[k] === undefined) payload[k] = null;
       }
+      // Default to the default Monthly Payroll template if user did not pick one
+      if (!payload.payroll_template_id) {
+        const def = (payrollTemplates || []).find((t: any) => t.is_default) || (payrollTemplates || [])[0];
+        if (def) payload.payroll_template_id = def.id;
+      }
       // Also nullify any remaining empty strings for safety on optional enum/text/uuid columns
       ["gender", "marital_status"].forEach((k) => {
         if (payload[k] === "") payload[k] = null;

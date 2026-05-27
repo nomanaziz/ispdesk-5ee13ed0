@@ -203,17 +203,63 @@ export default function PayslipManager() {
   };
 
   // --- Edit payheads (override per month) ---
-  const openEdit = (emp: any) => {
+  const openEdit = async (emp: any) => {
     setEditEmp(emp);
     const ex = existingByEmp.get(emp.id);
     const overrides = ex?.adjustments && Array.isArray(ex.adjustments) ? ex.adjustments : [];
     const c = computed[emp.id];
     if (!c) return;
-    const lines = c.lines.map((l) => {
+
+    // Prepend the Basic Salary line as editable
+    const { data: basicPh } = await supabase
+      .from("payheads")
+      .select("id,name,type")
+      .ilike("name", "basic salary")
+      .limit(1)
+      .maybeSingle();
+
+    const lines: any[] = [];
+    if (basicPh) {
+      lines.push({
+        payhead_id: (basicPh as any).id,
+        name: "Basic Salary",
+        type: "allowance",
+        amount_type: "amount",
+        base_amount: c.basic_salary,
+        amount: c.basic_salary,
+        is_basic: true,
+      });
+    }
+    for (const l of c.lines) {
       const ov = overrides.find((o: any) => o.payhead_id === l.payhead_id);
-      return { ...l, amount: ov ? Number(ov.amount) : l.amount };
-    });
+      lines.push({ ...l, amount: ov ? Number(ov.amount) : l.amount });
+    }
     setEditLines(lines);
+  };
+
+  const addExtraLine = (phId: string) => {
+    const ph = (allPayheads || []).find((p: any) => p.id === phId);
+    if (!ph) return;
+    if (editLines.find((l) => l.payhead_id === phId)) {
+      toast.error("ইতিমধ্যে যোগ করা আছে");
+      return;
+    }
+    setEditLines((prev) => [
+      ...prev,
+      {
+        payhead_id: ph.id,
+        name: ph.name,
+        type: ph.type === "deduction" ? "deduction" : "allowance",
+        amount_type: "amount",
+        base_amount: 0,
+        amount: 0,
+        is_manual: true,
+      },
+    ]);
+  };
+
+  const removeLine = (id: string) => {
+    setEditLines((prev) => prev.filter((l) => l.payhead_id !== id));
   };
 
   const saveEdit = async () => {
@@ -333,7 +379,7 @@ export default function PayslipManager() {
               {filtered.map((emp: any) => {
                 const c = computed[emp.id];
                 const ex = existingByEmp.get(emp.id);
-                const tplName = emp.payroll_templates?.name || "—";
+                const tplName = emp.payroll_templates?.name || "Monthly Payroll (Default)";
                 const tplType = emp.payroll_templates?.payroll_type || "Monthly";
                 const total = ex ? Number(ex.net_salary) : (c ? c.net_salary : 0);
                 const tplTotal = c ? c.net_salary : 0;
@@ -421,18 +467,21 @@ export default function PayslipManager() {
                   <TableHead>ধরন</TableHead>
                   <TableHead className="text-right">টেমপ্লেট</TableHead>
                   <TableHead className="text-right">এই মাসের পরিমাণ</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {editLines.map((l, i) => (
                   <TableRow key={l.payhead_id}>
-                    <TableCell className="font-medium">{l.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {l.name}{l.is_basic && <span className="text-xs text-muted-foreground ml-1">(মূল)</span>}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={l.type === "deduction" ? "destructive" : "default"}>
                         {l.type === "deduction" ? "কর্তন" : "ভাতা"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right text-muted-foreground">৳{l.base_amount.toLocaleString()}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">৳{Number(l.base_amount || 0).toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       <Input type="number" value={l.amount} className="w-28 ml-auto"
                         onChange={(e) => {
@@ -440,10 +489,30 @@ export default function PayslipManager() {
                           setEditLines((prev) => prev.map((x, idx) => idx === i ? { ...x, amount: v } : x));
                         }} />
                     </TableCell>
+                    <TableCell className="text-right">
+                      {!l.is_basic && (
+                        <Button size="sm" variant="ghost" onClick={() => removeLine(l.payhead_id)}>×</Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+            <div className="flex items-center gap-2 pt-3 border-t">
+              <span className="text-sm text-muted-foreground">অতিরিক্ত যোগ করুন:</span>
+              <Select value="" onValueChange={addExtraLine}>
+                <SelectTrigger className="w-64"><SelectValue placeholder="পে-হেড নির্বাচন করুন" /></SelectTrigger>
+                <SelectContent>
+                  {(allPayheads || [])
+                    .filter((p: any) => !editLines.find((l) => l.payhead_id === p.id))
+                    .map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} ({p.type === "deduction" ? "কর্তন" : "ভাতা"})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditEmp(null)}>বাতিল</Button>
