@@ -145,7 +145,35 @@ export default function PayslipManager() {
     }
 
     const ded = await getDeductionsForEmployee(emp.id, month);
-    const netAfter = c.net_salary - ded.loan_deduction - ded.advance_deduction;
+
+    // Cap deductions so net salary never goes negative — remaining balance
+    // carries forward to the next month automatically (loan remaining_balance
+    // is reduced only by the capped installment).
+    const available = Math.max(0, c.net_salary);
+    let loanDed = Math.min(ded.loan_deduction, available);
+    let advDed = Math.min(ded.advance_deduction, available - loanDed);
+
+    // Reflect cap back into the deduction record so applyDeductions writes
+    // the correct installment + leaves the rest in remaining_balance.
+    const cappedDed = {
+      ...ded,
+      loan_deduction: loanDed,
+      advance_deduction: advDed,
+      installment_amount: ded.active_loan_id ? loanDed : ded.installment_amount,
+    };
+
+    // If the loan installment got capped to 0 (no salary left), don't record
+    // a 0-amount installment row at all.
+    if (cappedDed.installment_amount === 0) {
+      cappedDed.active_loan_id = undefined;
+      cappedDed.installment_amount = undefined;
+    }
+    // Same for advances — only mark as adjusted if we actually deducted them.
+    if (advDed < ded.advance_deduction) {
+      cappedDed.advance_ids = [];
+    }
+
+    const netAfter = c.net_salary - loanDed - advDed;
 
     const payload: any = {
       employee_id: emp.id,
@@ -154,8 +182,8 @@ export default function PayslipManager() {
       total_allowance: c.total_allowance,
       total_deduction: c.total_deduction,
       net_salary: netAfter,
-      loan_deduction: ded.loan_deduction,
-      advance_deduction: ded.advance_deduction,
+      loan_deduction: loanDed,
+      advance_deduction: advDed,
       status: "unpaid",
       payment_status: "unpaid",
       paid_amount: 0,
@@ -174,7 +202,7 @@ export default function PayslipManager() {
       payrollId = data.id;
     }
 
-    if (payrollId) await applyDeductions(payrollId, month, ded);
+    if (payrollId) await applyDeductions(payrollId, month, cappedDed);
     return { ok: true };
   };
 
