@@ -101,10 +101,18 @@ export default function Catering() {
         <CardContent className="space-y-6">
           {(services ?? []).map((s: any) => (
             <div key={s.id} className="border rounded p-3 space-y-2">
-              <div className="flex justify-between">
-                <div>
+              <div className="flex justify-between gap-3 flex-wrap">
+                <div className="space-y-0.5">
                   <p className="font-semibold">{s.name}</p>
-                  <p className="text-xs text-muted-foreground">{s.contact || "—"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    মালিক: {s.owner_name || "—"} • ফোন: {s.phone || "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {s.email || "—"} • {s.address || "—"}
+                  </p>
+                  <p className="text-xs">
+                    Default meal price: <span className="font-semibold">৳{Number(s.default_meal_price || 120).toLocaleString()}</span>
+                  </p>
                 </div>
                 <Badge variant={s.active ? "default" : "outline"}>{s.active ? "Active" : "Inactive"}</Badge>
               </div>
