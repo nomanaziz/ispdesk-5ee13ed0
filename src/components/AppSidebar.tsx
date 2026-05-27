@@ -938,7 +938,7 @@ export function AppSidebar() {
     // whose mapped module has at least 'read'. Always-visible groups
     // (e.g. employee self-service panel) bypass the check.
     const allowed = perms.loading
-      ? baseGroups // while loading, render nothing visible below
+      ? [] // hide all menus until permissions resolved (prevents flash of full menu)
       : baseGroups.filter((g) => {
           if (perms.isSuperAdmin) return true;
           if (ALWAYS_VISIBLE_GROUPS.has(g.label)) return true;
