@@ -255,7 +255,15 @@ export default function AppUsers() {
                       </div>
                     ) : <span className="text-muted-foreground text-xs">—</span>}
                   </TableCell>
-                  <TableCell>{u.role?.name || <span className="text-muted-foreground text-xs">—</span>}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {u.role?.name ? <Badge>{u.role.name}</Badge> : <span className="text-muted-foreground text-xs">—</span>}
+                      {(u.extra_roles || []).map((er) => (
+                        er.role ? <Badge key={er.role_id} variant="outline" className="text-xs">+{er.role.name}</Badge> : null
+                      ))}
+                    </div>
+                  </TableCell>
+
                   <TableCell>
                     <Badge variant={u.status === "Active" ? "default" : "secondary"}>{u.status}</Badge>
                   </TableCell>
