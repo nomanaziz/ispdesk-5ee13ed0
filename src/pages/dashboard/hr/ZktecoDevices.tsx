@@ -517,6 +517,20 @@ export default function ZktecoDevices() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-xs text-muted-foreground">যেসব employee এখনো device-এ নেই তাদের select করে Push করুন। তারপর machine-এ গিয়ে fingerprint/card enroll করবেন।</p>
+                <div className="relative">
+                  <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="h-8 pl-8 pr-8 text-xs"
+                    placeholder="নাম / employee code সার্চ..."
+                    value={empSearch}
+                    onChange={(e) => setEmpSearch(e.target.value)}
+                  />
+                  {empSearch && (
+                    <button onClick={() => setEmpSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
                 <div className="border rounded max-h-[400px] overflow-y-auto">
                   <Table>
                     <TableHeader>
@@ -526,10 +540,10 @@ export default function ZktecoDevices() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {unmappedEmployees.length === 0 && (
-                        <TableRow><TableCell colSpan={3} className="text-center py-6 text-muted-foreground text-sm">সব employee already device-এ আছে</TableCell></TableRow>
+                      {filteredUnmapped.length === 0 && (
+                        <TableRow><TableCell colSpan={3} className="text-center py-6 text-muted-foreground text-sm">{unmappedEmployees.length === 0 ? "সব employee already device-এ আছে" : "সার্চে কোনো match নেই"}</TableCell></TableRow>
                       )}
-                      {unmappedEmployees.map((e: any) => (
+                      {filteredUnmapped.map((e: any) => (
                         <TableRow key={e.id}>
                           <TableCell><Checkbox checked={selectedEmpIds.includes(e.id)} onCheckedChange={() => toggleEmp(e.id)} /></TableCell>
                           <TableCell className="text-sm">{e.name}</TableCell>
