@@ -570,6 +570,7 @@ const App = () => (
               <Route path="/dashboard/hr/payroll" element={<P><HrPayroll /></P>} />
               <Route path="/dashboard/hr/positions" element={<P><HrPositions /></P>} />
               <Route path="/dashboard/hr/payslip" element={<P><HrPayslip /></P>} />
+              <Route path="/dashboard/hr/payslip/print" element={<P><HrPayslipPrint /></P>} />
               <Route path="/dashboard/hr/employees/add" element={<P><HrAddEmployee /></P>} />
               <Route path="/dashboard/hr/employees" element={<P><HrEmployees /></P>} />
               <Route path="/dashboard/hr/employees/:id" element={<P><HrEmployeeView /></P>} />
