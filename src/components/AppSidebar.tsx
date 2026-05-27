@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Sidebar, SidebarContent, useSidebar } from "@/components/ui/sidebar";
+import { useEmployeeContext } from "@/hooks/useEmployeeContext";
+import { User as UserIcon, Utensils, ClipboardList as ClipboardListIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MenuIconTile, tintForLabel } from "@/components/sidebar/MenuIconTile";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -904,15 +906,37 @@ export function AppSidebar() {
     setOpenGroupKey((prev) => (prev === key ? null : key));
   };
 
+  const { isEmployeeOnly } = useEmployeeContext();
+
+  const EMPLOYEE_GROUP: MenuGroup = {
+    label: "আমার প্যানেল",
+    icon: UserIcon,
+    defaultOpen: true,
+    items: [
+      { title: "আমার ড্যাশবোর্ড", url: "/dashboard/me", icon: LayoutDashboard },
+      { title: "আমার প্রোফাইল", url: "/dashboard/me/profile", icon: UserIcon },
+      { title: "হাজিরা", url: "/dashboard/me/attendance", icon: Clock },
+      { title: "ছুটি", url: "/dashboard/me/leave", icon: Calendar },
+      { title: "পে-স্লিপ", url: "/dashboard/me/payslip", icon: FileText },
+      { title: "অগ্রিম বেতন", url: "/dashboard/me/advance", icon: Wallet },
+      { title: "ঋণ", url: "/dashboard/me/loan", icon: DollarSign },
+      { title: "পদত্যাগ", url: "/dashboard/me/resignation", icon: UserX },
+      { title: "খাবার অর্ডার", url: "/dashboard/me/meals", icon: Utensils },
+      { title: "রিকুইজিশন", url: "/dashboard/me/requisitions", icon: ClipboardListIcon },
+    ],
+  };
+
   const orderedGroups = useMemo(() => {
-    const allLabels = menuGroups.map((g) => g.label);
+    if (isEmployeeOnly) return [EMPLOYEE_GROUP];
+    const baseGroups = [EMPLOYEE_GROUP, ...menuGroups];
+    const allLabels = baseGroups.map((g) => g.label);
     const validSaved = savedOrder.filter((l) => allLabels.includes(l));
     const missing = allLabels.filter((l) => !validSaved.includes(l));
     const finalOrder = [...validSaved, ...missing];
     return finalOrder
-      .map((l) => menuGroups.find((g) => g.label === l)!)
+      .map((l) => baseGroups.find((g) => g.label === l)!)
       .filter(Boolean);
-  }, [savedOrder]);
+  }, [savedOrder, isEmployeeOnly]);
 
   const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
