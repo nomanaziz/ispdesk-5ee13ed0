@@ -294,12 +294,23 @@ export default function AppUsers() {
               <Select value={form.employee_id} onValueChange={handleEmployeeSelect}>
                 <SelectTrigger><SelectValue placeholder="Employee সিলেক্ট করুন" /></SelectTrigger>
                 <SelectContent>
-                  {employees.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>{e.name} {e.employee_id ? `(${e.employee_id})` : ""}</SelectItem>
-                  ))}
+                  {employees
+                    .filter((e) => !takenEmployeeIds.has(e.id) || e.id === editing?.employee_id)
+                    .map((e) => (
+                      <SelectItem key={e.id} value={e.id}>{e.name} {e.employee_id ? `(${e.employee_id})` : ""}</SelectItem>
+                    ))}
+                  {employees.length === 0 && (
+                    <div className="p-2 text-xs text-muted-foreground">কোনো active employee নেই</div>
+                  )}
                 </SelectContent>
               </Select>
+              {form.employee_id && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Employee role-এর common permissions (food, attendance, payslip ইত্যাদি) auto-যুক্ত হবে।
+                </p>
+              )}
             </div>
+
             <div>
               <Label>Username *</Label>
               <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
