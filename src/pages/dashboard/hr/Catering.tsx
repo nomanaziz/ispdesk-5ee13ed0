@@ -18,7 +18,11 @@ export default function Catering() {
   const qc = useQueryClient();
   const [svcOpen, setSvcOpen] = useState(false);
   const [svcName, setSvcName] = useState("");
-  const [svcContact, setSvcContact] = useState("");
+  const [svcOwner, setSvcOwner] = useState("");
+  const [svcPhone, setSvcPhone] = useState("");
+  const [svcEmail, setSvcEmail] = useState("");
+  const [svcAddress, setSvcAddress] = useState("");
+  const [svcPrice, setSvcPrice] = useState("120");
   const [editingMenu, setEditingMenu] = useState<{ serviceId: string; day: number } | null>(null);
   const [items, setItems] = useState("");
   const [price, setPrice] = useState("0");
