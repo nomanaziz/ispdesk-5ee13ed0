@@ -573,3 +573,36 @@ export default function ZktecoDevices() {
     </div>
   );
 }
+
+function EmployeeMapPicker({ employees, onSelect }: { employees: any[]; onSelect: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 text-xs w-full justify-start font-normal">
+          <Search className="h-3 w-3 mr-1 opacity-60" /> Map to employee...
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-72" align="start">
+        <Command>
+          <CommandInput placeholder="নাম / code সার্চ..." className="h-9" />
+          <CommandList>
+            <CommandEmpty>কোনো employee নেই</CommandEmpty>
+            <CommandGroup>
+              {employees.map((e: any) => (
+                <CommandItem
+                  key={e.id}
+                  value={`${e.name} ${e.employee_id || ""}`}
+                  onSelect={() => { onSelect(e.id); setOpen(false); }}
+                >
+                  <span className="text-sm">{e.name}</span>
+                  {e.employee_id && <span className="ml-2 text-xs text-muted-foreground font-mono">({e.employee_id})</span>}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
