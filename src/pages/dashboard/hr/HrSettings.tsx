@@ -86,14 +86,15 @@ export default function HrSettings() {
 
   const preview = mode === "auto" ? `${prefix}${String(nextNumber).padStart(padding, "0")}` : "ম্যানুয়াল ইনপুট";
 
+  const [activeTab, setActiveTab] = useState("attendance");
+  const showSaveBtn = ["attendance", "payslip", "empid"].includes(activeTab);
+
   const toggleDay = (d: string) => {
     setAtt((s) => ({ ...s, weekend_days: s.weekend_days.includes(d) ? s.weekend_days.filter((x) => x !== d) : [...s.weekend_days, d] }));
   };
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">লোড হচ্ছে...</div>;
 
-  const [activeTab, setActiveTab] = useState("attendance");
-  const showSaveBtn = ["attendance", "payslip", "empid"].includes(activeTab);
 
   return (
     <div className="space-y-6">
