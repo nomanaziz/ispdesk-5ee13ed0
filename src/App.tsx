@@ -585,6 +585,8 @@ const App = () => (
               <Route path="/dashboard/hr/zkteco-devices" element={<P><HrZktecoDevices /></P>} />
               <Route path="/dashboard/hr/attendance-rules" element={<P><HrAttendanceRules /></P>} />
               <Route path="/dashboard/hr/settings" element={<P><HrSettings /></P>} />
+              <Route path="/dashboard/hr/attendance-report" element={<P><HrAttendanceReport /></P>} />
+              <Route path="/dashboard/hr/geo-punch" element={<P><HrGeoPunch /></P>} />
 
               <Route path="/dashboard/hr/advance-salary" element={<P><HrAdvanceSalary /></P>} />
               <Route path="/dashboard/hr/loans" element={<P><HrEmployeeLoans /></P>} />
