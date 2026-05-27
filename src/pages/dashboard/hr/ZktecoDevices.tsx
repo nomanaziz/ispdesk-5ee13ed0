@@ -500,10 +500,30 @@ export default function ZktecoDevices() {
                                 </Button>
                               </div>
                             ) : (
-                              <EmployeeMapPicker
-                                employees={employees || []}
-                                onSelect={(empId) => mapMutation.mutate({ deviceUserRowId: u.id, employeeId: empId, deviceUserId: u.device_user_id })}
-                              />
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <EmployeeMapPicker
+                                  employees={employees || []}
+                                  onSelect={(empId) => mapMutation.mutate({ deviceUserRowId: u.id, employeeId: empId, deviceUserId: u.device_user_id })}
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 gap-1 text-xs"
+                                  title="এই device user থেকে নতুন Employee তৈরি করুন"
+                                  onClick={() => {
+                                    const params = new URLSearchParams({
+                                      from_device_user: u.id,
+                                      device_user_id: u.device_user_id || "",
+                                      device_id: u.device_id || "",
+                                      name: u.name || "",
+                                      card: u.card_no || "",
+                                    });
+                                    navigate(`/dashboard/hr/employees/add?${params.toString()}`);
+                                  }}
+                                >
+                                  <UserPlus className="h-3.5 w-3.5" /> Employee বানাও
+                                </Button>
+                              </div>
                             )}
                           </TableCell>
                         </TableRow>
