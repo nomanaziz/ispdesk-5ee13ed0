@@ -189,14 +189,18 @@ export function AdminNotificationBell() {
 
   // Realtime: refetch on key table changes
   useEffect(() => {
-    const channel = supabase
-      .channel("admin-notif")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "shop_orders" },
-        () => qc.invalidateQueries({ queryKey: ["admin-notifications"] }))
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "client_requests" },
-        () => qc.invalidateQueries({ queryKey: ["admin-notifications"] }))
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-notifications"] });
+    const tables = [
+      "shop_orders", "client_requests",
+      "leave_applications", "salary_advance_requests", "resignation_requests",
+      "requisitions", "profile_change_requests", "conveyance_bills",
+    ];
+    let ch = supabase.channel("admin-notif");
+    tables.forEach((t) => {
+      ch = ch.on("postgres_changes" as any, { event: "INSERT", schema: "public", table: t }, invalidate);
+    });
+    ch.subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, [qc]);
 
   const unread = useMemo(() => items.filter(n => !seen.has(n.id)).length, [items, seen]);
