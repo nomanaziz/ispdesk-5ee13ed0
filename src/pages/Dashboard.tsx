@@ -744,6 +744,9 @@ function TopDueListCard({
 }
 
 const Dashboard = () => {
+  const { isEmployeeOnly, loading: empLoading } = useEmployeeContext();
+  if (empLoading) return null;
+  if (isEmployeeOnly) return <Navigate to="/dashboard/me" replace />;
   const { data: d, isLoading } = useStats();
 
   // Date helpers for filter links
