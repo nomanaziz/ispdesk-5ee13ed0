@@ -43,6 +43,7 @@ const MyRequisitions = lazy(() => import("@/pages/dashboard/me/MyRequisitions"))
 const HrCatering = lazy(() => import("@/pages/dashboard/hr/Catering"));
 const HrProfileApprovals = lazy(() => import("@/pages/dashboard/hr/ProfileApprovals"));
 const HrEmployeeRequests = lazy(() => import("@/pages/dashboard/hr/EmployeeRequests"));
+const HrEmployeeHub = lazy(() => import("@/pages/dashboard/hr/EmployeeHub"));
 
 // Shop Admin
 const ShopCategories = lazy(() => import("@/pages/dashboard/shop/Categories"));
@@ -546,6 +547,7 @@ const App = () => (
               <Route path="/dashboard/hr/catering" element={<P><HrCatering /></P>} />
               <Route path="/dashboard/hr/profile-approvals" element={<P><HrProfileApprovals /></P>} />
               <Route path="/dashboard/hr/employee-requests" element={<P><HrEmployeeRequests /></P>} />
+              <Route path="/dashboard/hr/employee-hub" element={<P><HrEmployeeHub /></P>} />
 
               {/* Config */}
               <Route path="/dashboard/config/zones" element={<P><ConfigZones /></P>} />
