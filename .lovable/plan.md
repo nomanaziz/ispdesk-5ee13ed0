@@ -1,155 +1,129 @@
-# RBAC v2 + Audit Log + Recycle Bin — Full Plan
-
 ## লক্ষ্য
-ISP ERP-এ admin/employee সবার জন্য একটাই unified permission system। প্রতিটি module-এ 3 ধরনের permission, একজন user একাধিক role পেতে পারবে (max-wins merge), সব admin action log হবে, এবং delete হওয়া data Super Admin recycle bin থেকে restore করতে পারবে।
 
----
+NAHID / EMP001 login করলে যেন নিজের employee profile ঠিকভাবে load হয়, এবং employee self-service moduleগুলো বাস্তবে কাজ করে: profile, attendance, leave, payslip, requests, meal order। Admin/HR side-এ catering service, weekly menu, subsidy, daily order summary এবং SMS/email পাঠানোর ব্যবস্থা যোগ করা হবে।
 
-## ১. Permission Model (3-tier)
+## Root cause
 
-প্রতিটি module-এ এক user-এর জন্য permission level একটাই — এক বা একাধিক role থেকে merge হবে (highest wins):
+বর্তমানে NAHID-এর ডেটা DB-তে যুক্ত আছে:
 
-| Level | Read | Create | Update | Delete | Restore/Audit |
-|-------|------|--------|--------|--------|----------------|
-| `none` | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `read` | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `write` | ✅ | ✅ | ✅ | ❌ | ❌ |
-| `full` | ✅ | ✅ | ✅ | ✅ | ❌ |
+- `employees`: EMP001 / NAHID আছে।
+- `app_users`: EMP001 user আছে এবং `employee_id` দিয়ে ওই employee row-এর সাথে linked।
 
-**Special:**
-- `super_admin` সব কিছু পায়, কেউ তাকে delete/disable করতে পারবে না।
-- Recycle Bin + Audit Restore শুধু Super Admin (বা super_admin যাকে explicit grant দেয়)।
-- Employee-এর নিজস্ব data (own attendance, salary, leave) সবসময় read — permission লাগে না।
+সমস্যা হচ্ছে RLS policy-তে `app_users`, `employees`, `attendance`, `leave_applications`, `leave_balances`, `payroll` মূলত admin-only read। তাই employee login করলে frontend নিজের `app_users -> employee` row পড়তে পারে না, ফলে “আপনার অ্যাকাউন্ট কোনো কর্মীর সাথে যুক্ত নয়” দেখাচ্ছে।
 
-**Merge rule:** কোনো user-এর কোনো module-এ effective permission = `MAX(level)` across সব assigned roles। `full > write > read > none`.
+## Phase 1 — EMP001/self-service access fix
 
----
+1. DB RLS ঠিক করব:
+   - logged-in employee নিজের `app_users` row দেখতে পারবে।
+   - নিজের `employees` row দেখতে পারবে।
+   - নিজের attendance, leave application, leave balance, payroll/payslip দেখতে পারবে।
+   - write access admin/HR-এর কাছেই থাকবে; employee শুধু নিজের allowed request submit করতে পারবে।
 
-## ২. Database Changes
+2. `useEmployeeContext` robust করব:
+   - আগে `app_users.auth_user_id = auth.uid()` দিয়ে linked employee আনবে।
+   - relation না এলে fallback হিসেবে current employee id resolve করবে।
+   - loading/error state পরিষ্কার দেখাবে, false “not linked” দেখাবে না।
 
-বর্তমান tables (`app_roles`, `app_role_modules`, `app_user_extra_roles`, `app_user_effective_modules`) তে `permission` column already আছে কিন্তু enum/enforcement নাই। নতুন migration:
+3. Self-service pages ঠিক করব:
+   - Attendance table-এর real columns `check_in/check_out` ব্যবহার করবে, এখন UI ভুলভাবে `in_time/out_time` পড়ছে।
+   - Profile/Leave/Payslip empty state ও error handling ঠিক করব।
 
-### 2.1 Enum + column tighten
-```sql
-CREATE TYPE perm_level AS ENUM ('none','read','write','full');
-ALTER TABLE app_role_modules ALTER COLUMN permission TYPE perm_level USING permission::perm_level;
-ALTER TABLE app_user_effective_modules ALTER COLUMN permission TYPE perm_level USING permission::perm_level;
-```
+## Phase 2 — Employee request modules ready করা
 
-### 2.2 Effective-permission function (max-wins)
-```sql
-CREATE FUNCTION get_user_module_permission(_user_id uuid, _module text)
-RETURNS perm_level LANGUAGE sql STABLE SECURITY DEFINER AS $$
-  SELECT COALESCE(MAX(arm.permission), 'none'::perm_level)
-  FROM app_users u
-  LEFT JOIN app_user_extra_roles ext ON ext.user_id = u.id
-  LEFT JOIN app_role_modules arm 
-    ON arm.role_id IN (u.role_id, ext.role_id) 
-    AND arm.module_name = _module AND arm.enabled
-  WHERE u.auth_user_id = _user_id;
-$$;
-```
-+ helper booleans: `can_read(_module)`, `can_write(_module)`, `can_delete(_module)`, `is_super_admin()`.
+1. Profile change request:
+   - Employee নিজের পরিবর্তনের আবেদন করবে।
+   - HR/Admin approve করলে employee table update হবে।
 
-### 2.3 Audit log
-```sql
-CREATE TABLE admin_audit_log (
-  id uuid PK, tenant_id, actor_auth_id, actor_username,
-  action text,           -- 'create'|'update'|'delete'|'restore'|'login'|...
-  entity_type text,      -- 'client'|'employee'|'invoice'|...
-  entity_id uuid,
-  before jsonb, after jsonb,
-  ip text, user_agent text, created_at);
-```
-Generic trigger `log_audit()` attached to high-value tables (clients, employees, billing, payments, app_users, app_roles, …).
+2. Leave request:
+   - Employee ছুটির আবেদন করতে পারবে।
+   - HR/Admin pending leave approve/reject করতে পারবে।
+   - Leave balance view employee side-এ ঠিকভাবে দেখাবে।
 
-### 2.4 Recycle bin (soft-delete)
-সব critical tables-এ `deleted_at timestamptz`, `deleted_by uuid` যোগ। RLS-এ default filter `deleted_at IS NULL`। আলাদা VIEW `recycle_bin` যা সব soft-deleted rows union করে — শুধু super_admin SELECT করতে পারবে। RPC:
-- `soft_delete(entity, id)` → sets deleted_at
-- `restore(entity, id)` → clears deleted_at (super_admin only)
-- `purge(entity, id)` → hard delete (super_admin only)
+3. Salary advance / loan / resignation:
+   - Existing request pages clean করব।
+   - Admin/HR review page-এ approve/reject, status, remarks properly রাখব।
 
-Critical tables initial list: `clients`, `employees`, `app_users`, `app_roles`, `billing`, `invoices`, `payments`, `inventory_items`, `mikrotik_clients`, `onu_list`.
+4. Requisition:
+   - “শীঘ্রই আসছে” placeholder বাদ দিয়ে basic requisition request form + admin review workflow করব।
 
-### 2.5 RLS update
-সব module table-এর existing RLS-এ permission check inject:
-```sql
-USING (can_read('clients'))
-WITH CHECK (TG_OP='INSERT' AND can_write('clients') 
-         OR TG_OP='UPDATE' AND can_write('clients')
-         OR TG_OP='DELETE' AND can_delete('clients'))
-```
+## Phase 3 — Catering service admin module
 
----
+Existing `/dashboard/hr/catering` module expand করব:
 
-## ৩. Frontend Changes
+1. Catering service profile:
+   - service name
+   - owner name
+   - phone/contact
+   - email
+   - address
+   - active/inactive
 
-### 3.1 `usePermission` hook rewrite
-```ts
-const { level, canRead, canWrite, canDelete, isSuperAdmin } = useModulePermission('clients');
-```
-এক query-তে user-এর সব module-এর effective permission cache হবে (5 min stale)। যেহেতু "client menu আছে কিন্তু data নাই" বর্তমান bug — sidebar item visibility = `canRead`, page guard = `canRead`, add button = `canWrite`, delete button = `canDelete`.
+2. Weekly menu setup:
+   - Saturday–Friday menu setup থাকবে।
+   - item checkbox/preset support: ভাত, ডাল, সালাদ, ভর্তা ইত্যাদি।
+   - main item text/selection: মুরগি, মাছ, beef, fried rice ইত্যাদি।
+   - price per meal, default `৳120`।
+   - cutoff time।
+   - কোনোদিন খাবার বন্ধ থাকলে “closed day” হিসেবে mark করা যাবে।
 
-### 3.2 Sidebar gating
-`AppSidebar`-এ প্রতিটা menu item-এ `module` key যোগ → effective permission-এ filter। Employee role-এ default শুধু "My *" menus (আগের plan অনুযায়ী)।
+3. Subsidy rules:
+   - company-wide default: none / half / full।
+   - half হলে employee pays ৳60, company pays ৳60 for ৳120 meal।
+   - full হলে employee pays ৳0, company pays ৳120।
+   - specific employee override থাকবে, যেমন কোনো employee full subsidized হতে পারে।
 
-### 3.3 Role management UI
-`/dashboard/access/roles` কে refactor:
-- Role create/edit dialog-এ module tree (group → module) + প্রতি row-এ radio `none/read/write/full`।
-- User edit dialog-এ multi-role selector (primary role + extra roles), preview effective permission table।
+## Phase 4 — Employee meal order module
 
-### 3.4 Recycle Bin page (super_admin only)
-`/dashboard/access/recycle-bin` — entity dropdown + deleted rows list + Restore/Purge button + filter by date/actor.
+`/dashboard/me/meals` উন্নত করব:
 
-### 3.5 Audit Log page (super_admin only)
-`/dashboard/access/audit-log` — filterable timeline (actor, entity, action, date), JSON diff view, "Restore this version" for update logs.
+1. Employee আজকের/নির্বাচিত দিনের menu দেখতে পারবে।
+2. Closed day হলে order button থাকবে না।
+3. Subsidy হিসাব দেখাবে:
+   - total price
+   - employee payable
+   - company subsidy
+4. Employee order/cancel করতে পারবে cutoff সময়ের মধ্যে।
+5. Duplicate order prevent থাকবে।
+6. নিজের monthly meal cost summary দেখাবে।
 
-### 3.6 Action button guards
-Reusable `<Guarded module="clients" need="write">` wrapper — child render হবে শুধু permission থাকলে।
+## Phase 5 — Daily catering order summary + SMS/email
 
----
+Admin/HR side-এ order summary যোগ করব:
 
-## ৪. Bug Fix: "Client menu আছে, data নাই"
-বর্তমানে sidebar item দেখায় কিন্তু `clients` table-এর RLS-এ tenant filter পাশাপাশি role check নাই, ফলে empty list। নতুন `can_read('clients')` যোগ + role-এ যদি permission থাকে তাহলে data আসবে। যাচাই: EMP001 কে temporary `clients: read` দিয়ে test।
+1. Date-wise order dashboard:
+   - কোন catering service-এ কয়টা order পড়েছে।
+   - menu snapshot সহ total count।
+   - employee payable total, company subsidy total, total food cost।
 
----
+2. Send to catering owner:
+   - SMS/email message preview।
+   - Example: আজকের menu, total order count, delivery note।
+   - Existing SMS/email system থাকলে সেটার সাথে integrate করব; না থাকলে send action placeholder/log দিয়ে রাখব যাতে later gateway বসানো যায়।
 
-## ৫. Multi-Role Examples
-- User U1 → Role A (`clients: read`) + Role B (`clients: write`) → effective `write` (create/edit পারবে, delete নাই)।
-- User U2 → Role HR (`employees: full`) + Role Billing (`billing: read`) → HR-এ delete করতে পারবে, Billing-এ শুধু দেখবে।
+## Technical changes
 
----
+1. Supabase migration:
+   - self-read RLS policies for employee-linked data।
+   - catering tables-এ নতুন columns: owner/contact/email/address/default subsidy/settings।
+   - meal orders-এ employee_payable/company_subsidy/menu label/status fields যোগ করা।
+   - optional নতুন tables: `meal_subsidy_rules`, `meal_order_dispatches`, requisition tables if missing।
 
-## ৬. Protection Rules
-- `super_admin` role `is_protected=true` — delete/rename blocked।
-- Main super_admin user (system first user) কে কেউ disable/delete করতে পারবে না (trigger check)।
-- যদি কেউ bulk delete clients করে → soft delete only, super_admin restore করতে পারবে।
+2. Frontend files:
+   - `src/hooks/useEmployeeContext.ts`
+   - `src/pages/dashboard/me/*`
+   - `src/pages/dashboard/hr/Catering.tsx`
+   - `src/pages/dashboard/hr/EmployeeRequests.tsx`
+   - sidebar/menu mapping if new admin pages need visible menu links।
 
----
+3. Security:
+   - Employee নিজের data ছাড়া অন্য employee data পড়তে পারবে না।
+   - Admin/Super Admin manage করতে পারবে।
+   - Employee defaultভাবে main admin modules দেখবে না; শুধু `আমার প্যানেল` দেখবে।
 
-## ৭. Execution Order (4 phases)
+## Implementation order
 
-**Phase 1 — DB foundation** (1 migration)
-- perm_level enum, effective-permission function, audit_log table + generic trigger, soft-delete columns on 10 critical tables, recycle_bin view, RPCs.
-
-**Phase 2 — Permission enforcement**
-- RLS update on top 10 tables। `usePermission` rewrite। `<Guarded>` component।
-
-**Phase 3 — UI**
-- Role editor refactor (module tree + 4-level radio)। User dialog: multi-role + effective preview।
-
-**Phase 4 — Super Admin tools**
-- Recycle Bin page। Audit Log page with restore। Super-admin protection triggers।
-
----
-
-## ৮. Out of Scope (এই plan-এ নয়)
-- Field-level permission (column hide)
-- Row-level sharing rules (e.g., "শুধু নিজের branch-এর clients")  — পরে branch-scoped permission আনব
-- Audit log retention/archival
-- Mobile shell
-
----
-
-## অনুমোদন
-এই 4 phase-এর full plan-এ এগোবো? নাকি প্রথমে শুধু Phase 1+2 (foundation + bug fix) করব এবং Recycle Bin/Audit Log পরে?
+1. আগে NAHID/EMP001 linked employee load issue fix করব।
+2. তারপর attendance/leave/payslip self-view fix করব।
+3. তারপর meal/catering schema + admin setup page।
+4. তারপর employee meal order + subsidy হিসাব।
+5. শেষে daily summary এবং SMS/email dispatch flow।
