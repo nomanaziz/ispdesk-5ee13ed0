@@ -153,6 +153,7 @@ export const menuGroups: MenuGroup[] = [
     label: "HR ও পেরোল",
     icon: UserCog,
     items: [
+      { title: "কর্মী আবেদন কেন্দ্র", url: "/dashboard/hr/employee-hub", icon: ClipboardList },
       { title: "পেরোল", url: "/dashboard/hr/payroll", icon: Wallet },
       { title: "পে-স্লিপ", url: "/dashboard/hr/payslip", icon: FileText },
       { title: "কর্মচারী তালিকা", url: "/dashboard/hr/employees", icon: Users },
