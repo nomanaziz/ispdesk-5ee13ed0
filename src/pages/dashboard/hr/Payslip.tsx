@@ -379,7 +379,7 @@ export default function PayslipManager() {
               {filtered.map((emp: any) => {
                 const c = computed[emp.id];
                 const ex = existingByEmp.get(emp.id);
-                const tplName = emp.payroll_templates?.name || "—";
+                const tplName = emp.payroll_templates?.name || "Monthly Payroll (Default)";
                 const tplType = emp.payroll_templates?.payroll_type || "Monthly";
                 const total = ex ? Number(ex.net_salary) : (c ? c.net_salary : 0);
                 const tplTotal = c ? c.net_salary : 0;
