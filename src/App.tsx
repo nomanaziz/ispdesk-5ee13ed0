@@ -528,6 +528,25 @@ const App = () => (
               <Route path="/dashboard/olt-overview" element={<P><OltOverview /></P>} />
               <Route path="/dashboard/_icons" element={<P><IconPreview /></P>} />
 
+              {/* Employee self-service */}
+              <Route path="/dashboard/me" element={<P><MyShell /></P>}>
+                <Route index element={<MyDashboard />} />
+                <Route path="profile" element={<MyProfile />} />
+                <Route path="attendance" element={<MyAttendance />} />
+                <Route path="leave" element={<MyLeave />} />
+                <Route path="payslip" element={<MyPayslip />} />
+                <Route path="advance" element={<MyRequestPage table="salary_advance_requests" title="অগ্রিম বেতনের আবেদন" kind="advance" />} />
+                <Route path="loan" element={<MyRequestPage table="loan_requests" title="ঋণের আবেদন" kind="loan" />} />
+                <Route path="resignation" element={<MyRequestPage table="resignation_requests" title="পদত্যাগের আবেদন" kind="resignation" />} />
+                <Route path="meals" element={<MyMeals />} />
+                <Route path="requisitions" element={<MyRequisitions />} />
+              </Route>
+
+              {/* HR admin extras for employee portal */}
+              <Route path="/dashboard/hr/catering" element={<P><HrCatering /></P>} />
+              <Route path="/dashboard/hr/profile-approvals" element={<P><HrProfileApprovals /></P>} />
+              <Route path="/dashboard/hr/employee-requests" element={<P><HrEmployeeRequests /></P>} />
+
               {/* Config */}
               <Route path="/dashboard/config/zones" element={<P><ConfigZones /></P>} />
               <Route path="/dashboard/config/sub-zones" element={<P><ConfigSubZones /></P>} />
