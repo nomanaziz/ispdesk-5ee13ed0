@@ -1,40 +1,49 @@
-# Device Inventory: Smarter duplicates + ZKTeco-aware actions
+# Add Employee Self-Service Modules to Roles & Permissions
 
-দুটো জিনিস ঠিক করব:
+বর্তমানে `HR_PAYROLL` group-এ শুধু admin-facing modules (Employees, Attendance, Payroll, Payslip, Departments, Positions, Salary Sheet) আছে। Employee role-এর জন্য self-service modules নেই, তাই /dashboard/access/roles পেইজে Employee role-এ তার নিজের সুবিধা দেখার option add করা যাচ্ছে না।
 
-## 1. Duplicate detection — IP + port একসাথে
+## নতুন Module Group: `EMPLOYEE_SELF_SERVICE`
 
-**বর্তমান সমস্যা:** শুধু IP মিললেই "Duplicate" badge দেখাচ্ছে। কিন্তু router (API port 8728) আর ZKTeco (port 4370) একই public IP-তে port forwarding-এ থাকতে পারে — এটা legitimate, duplicate না।
+`app_role_modules` table-এ নিচের modules add করব (প্রতি role এর জন্য row, default `enabled=false`, `permission='view'`):
 
-**ফিক্স:**
-- প্রতিটি source table থেকে port column-ও fetch করব:
-  - `mikrotik_devices.api_port`
-  - `olt_devices.port`
-  - `zkteco_devices.port`
-  - `device_admin_managed_devices.port`
-  - `pop_devices` — port column নেই, `null` ধরব
-- Duplicate key = `ip:port` (port null হলে শুধু ip)
-- শুধু তখনই "Duplicate" badge দেখাবে যখন **একই IP + একই port** এ একাধিক device থাকবে
-- IP cell-এ port-ও visible দেখাব: `103.147.107.13:8728` — তাহলে user বুঝবে কোনটা কোন port-এ
+| Module Name | উদ্দেশ্য |
+|---|---|
+| My Profile | নিজের employee profile দেখা |
+| My Attendance | নিজের attendance log + status |
+| Daily Attendance Report | আজকের attendance summary |
+| Monthly Attendance Report | মাসিক report + present/absent/late |
+| My Leave Balance | Sick / Casual / Paid / Earned leave বাকি ও used |
+| Apply Leave | Leave application submit |
+| My Leave History | আগের সব leave + status |
+| My Facilities | Food allowance, accommodation, conveyance ইত্যাদি assigned facilities |
+| My Payslip | নিজের payslip download |
+| My Conveyance | Conveyance bill submit (existing page) |
+| Lunch Order | Catering থেকে lunch/food order |
+| Catering Service | (Admin/HR) Catering vendor setup, menu, pricing |
 
-## 2. ZKTeco-aware action buttons
+Employee role-এ default-enabled: My Profile, My Attendance, Daily/Monthly Attendance Report, My Leave Balance, Apply Leave, My Leave History, My Facilities, My Payslip, My Conveyance, Lunch Order.
 
-**বর্তমান সমস্যা:**
-- Edit click করলে "এই source-এর device edit করা যায় না" toast দেখায় — তাহলে button-টা দেখানোরই দরকার নেই
-- Inspect click করলে VLAN / VLAN IP / interface tab আসে — এগুলো MikroTik/OLT-এর জিনিস, ZKTeco-তে অর্থহীন
+Admin/Super Admin role-এ সব enable, plus Catering Service।
 
-**ফিক্স — ZKTeco row-এ:**
-- **Inspect** button → ZKTeco devices page-এ redirect (`/dashboard/hr/zkteco-devices`) — যেখানে device-এর users, attendance logs দেখা যায়
-- **Edit** button → ZKTeco devices page-এ redirect (যেখানে full edit করা যায়)
-- **Delete** button → আগের মতো থাকবে
+## পরিবর্তন
 
-**MikroTik row-এ:** Edit button আগের মতো MikroTik servers page-এ redirect করবে।
+### 1. Database migration
+- `app_role_modules`-এ উপরের ১২টি module row insert করা প্রতিটি existing role-এর জন্য (group=`EMPLOYEE_SELF_SERVICE`)
+- Default: super_admin/admin সব enabled; employee role-এ self-service items enabled; অন্যান্য role disabled
+- Idempotent: `ON CONFLICT DO NOTHING` (module_group + module_name + role_id unique ধরে)
 
-**device_admin_managed_devices source:** Edit dialog খুলবে আগের মতো।
+### 2. AppRoles.tsx (UI)
+- নতুন group automatically render হবে (existing grouping logic দিয়ে), আলাদা code change লাগবে না
+- শুধু group display order ঠিক রাখতে চাইলে `module_group` ordering-এ `EMPLOYEE_SELF_SERVICE` HR_PAYROLL-এর পরে দেখাবে
 
-**অন্য source (olt/pop) যেগুলো edit support করে না:** Edit button hide করব (toast-only-এর বদলে)।
+### 3. Sidebar + Routes (পরের ধাপে, এই plan-এর scope-এ নয়)
+- এই migration-এর পর শুধু permission keys থাকবে। আসল pages (Lunch Order, Catering Service, My Leave ইত্যাদি) যেগুলো এখনো নেই, সেগুলো পরের build phase-এ আলাদা করে করব। এখন শুধু role/permission এ option গুলা visible হবে যাতে আপনি assign করতে পারেন।
 
-## পরিবর্তিত ফাইল
-- `src/pages/dashboard/device-admin/Devices.tsx` — port fetch, dup logic, action button conditional
+## Scope বহির্ভূত (এই plan-এ নেই)
+- Lunch Order এবং Catering Service-এর full UI/DB schema — আলাদা plan লাগবে (vendor table, menu, daily order, billing integration)
+- Leave management backend (leave_types, leave_balances, leave_applications tables) — আলাদা plan
+- এই migration শুধু permission keys add করে, যাতে roles page থেকে toggle করা যায়
 
-কোনো DB migration লাগবে না।
+## প্রশ্ন (আপনার approval দরকার)
+1. শুধু permission keys add করব এখন, না-কি Leave management + Catering-এর full DB schema-ও এই plan-এ ঢুকাব?
+2. "Lunch Order" আর "Catering Service" আলাদা module রাখব, না একসাথে "Catering" group?
