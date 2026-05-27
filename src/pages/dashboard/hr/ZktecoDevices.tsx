@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Server, RefreshCw, Trash2, Wifi, WifiOff, Cloud, Users, DownloadCloud, UploadCloud, Link2 } from "lucide-react";
+import { Plus, Server, RefreshCw, Trash2, Wifi, WifiOff, Cloud, Users, DownloadCloud, UploadCloud, Link2, Unlink2, Search, X } from "lucide-react";
 
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 const ADMS_URL = `https://${PROJECT_ID}.supabase.co/functions/v1/zkteco-adms`;
@@ -205,6 +207,26 @@ export default function ZktecoDevices() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const unlinkMutation = useMutation({
+    mutationFn: async ({ deviceUserRowId, employeeId }: { deviceUserRowId: string; employeeId?: string }) => {
+      const { error: e1 } = await supabase.from("zkteco_device_users")
+        .update({ mapped_employee_id: null }).eq("id", deviceUserRowId);
+      if (e1) throw e1;
+      if (employeeId) {
+        const { error: e2 } = await supabase.from("employees")
+          .update({ device_user_id: null, zkteco_device_id: null })
+          .eq("id", employeeId);
+        if (e2) throw e2;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Unlink সম্পন্ন");
+      refetchDeviceUsers();
+      qc.invalidateQueries({ queryKey: ["all-employees-mini"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const resetForm = () => { setOpen(false); setEditId(null); setForm(blankForm); };
   const openEdit = (d: any) => {
     setEditId(d.id);
@@ -220,6 +242,24 @@ export default function ZktecoDevices() {
   // Push panel selection
   const [selectedEmpIds, setSelectedEmpIds] = useState<string[]>([]);
   const toggleEmp = (id: string) => setSelectedEmpIds((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
+  const [duSearch, setDuSearch] = useState("");
+  const [empSearch, setEmpSearch] = useState("");
+
+  const filteredDeviceUsers = (deviceUsers || []).filter((u: any) => {
+    if (!duSearch.trim()) return true;
+    const q = duSearch.toLowerCase();
+    return String(u.device_user_id || "").toLowerCase().includes(q)
+      || String(u.name || "").toLowerCase().includes(q)
+      || String(u.card_no || "").toLowerCase().includes(q)
+      || String(u.employee?.name || "").toLowerCase().includes(q)
+      || String(u.employee?.employee_id || "").toLowerCase().includes(q);
+  });
+  const filteredUnmapped = unmappedEmployees.filter((e: any) => {
+    if (!empSearch.trim()) return true;
+    const q = empSearch.toLowerCase();
+    return String(e.name || "").toLowerCase().includes(q)
+      || String(e.employee_id || "").toLowerCase().includes(q);
+  });
 
   return (
     <div className="space-y-6">
@@ -403,8 +443,22 @@ export default function ZktecoDevices() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Device Users list */}
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" /> Device-এর Users ({deviceUsers?.length || 0})</CardTitle>
+              <CardHeader className="pb-3 space-y-2">
+                <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" /> Device-এর Users ({filteredDeviceUsers.length}/{deviceUsers?.length || 0})</CardTitle>
+                <div className="relative">
+                  <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="h-8 pl-8 pr-8 text-xs"
+                    placeholder="Code / নাম / কার্ড / mapped employee সার্চ..."
+                    value={duSearch}
+                    onChange={(e) => setDuSearch(e.target.value)}
+                  />
+                  {duSearch && (
+                    <button onClick={() => setDuSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
@@ -416,26 +470,38 @@ export default function ZktecoDevices() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(deviceUsers || []).length === 0 && (
-                        <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground text-sm">কোনো user নেই — "Pull Users" করুন</TableCell></TableRow>
+                      {filteredDeviceUsers.length === 0 && (
+                        <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground text-sm">{(deviceUsers || []).length === 0 ? `কোনো user নেই — "Pull Users" করুন` : "সার্চে কোনো match নেই"}</TableCell></TableRow>
                       )}
-                      {(deviceUsers || []).map((u: any) => (
+                      {filteredDeviceUsers.map((u: any) => (
                         <TableRow key={u.id}>
                           <TableCell className="font-mono text-sm">{u.device_user_id}</TableCell>
                           <TableCell className="text-sm">{u.name || "—"}</TableCell>
                           <TableCell className="text-sm">{u.card_no || "—"}</TableCell>
                           <TableCell>
                             {u.employee ? (
-                              <Badge variant="default" className="gap-1"><Link2 className="h-3 w-3" />{u.employee.name}</Badge>
+                              <div className="flex items-center gap-1">
+                                <Badge variant="default" className="gap-1"><Link2 className="h-3 w-3" />{u.employee.name}</Badge>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6 text-destructive hover:text-destructive"
+                                  title="Unlink"
+                                  onClick={() => {
+                                    if (confirm(`"${u.employee.name}" থেকে এই device user (${u.device_user_id}) unlink করবেন?`)) {
+                                      unlinkMutation.mutate({ deviceUserRowId: u.id, employeeId: u.employee.id });
+                                    }
+                                  }}
+                                  disabled={unlinkMutation.isPending}
+                                >
+                                  <Unlink2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             ) : (
-                              <Select onValueChange={(empId) => mapMutation.mutate({ deviceUserRowId: u.id, employeeId: empId, deviceUserId: u.device_user_id })}>
-                                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Map to employee" /></SelectTrigger>
-                                <SelectContent>
-                                  {(employees || []).map((e: any) => (
-                                    <SelectItem key={e.id} value={e.id}>{e.name} {e.employee_id ? `(${e.employee_id})` : ""}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <EmployeeMapPicker
+                                employees={employees || []}
+                                onSelect={(empId) => mapMutation.mutate({ deviceUserRowId: u.id, employeeId: empId, deviceUserId: u.device_user_id })}
+                              />
                             )}
                           </TableCell>
                         </TableRow>
@@ -453,6 +519,20 @@ export default function ZktecoDevices() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-xs text-muted-foreground">যেসব employee এখনো device-এ নেই তাদের select করে Push করুন। তারপর machine-এ গিয়ে fingerprint/card enroll করবেন।</p>
+                <div className="relative">
+                  <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="h-8 pl-8 pr-8 text-xs"
+                    placeholder="নাম / employee code সার্চ..."
+                    value={empSearch}
+                    onChange={(e) => setEmpSearch(e.target.value)}
+                  />
+                  {empSearch && (
+                    <button onClick={() => setEmpSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
                 <div className="border rounded max-h-[400px] overflow-y-auto">
                   <Table>
                     <TableHeader>
@@ -462,10 +542,10 @@ export default function ZktecoDevices() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {unmappedEmployees.length === 0 && (
-                        <TableRow><TableCell colSpan={3} className="text-center py-6 text-muted-foreground text-sm">সব employee already device-এ আছে</TableCell></TableRow>
+                      {filteredUnmapped.length === 0 && (
+                        <TableRow><TableCell colSpan={3} className="text-center py-6 text-muted-foreground text-sm">{unmappedEmployees.length === 0 ? "সব employee already device-এ আছে" : "সার্চে কোনো match নেই"}</TableCell></TableRow>
                       )}
-                      {unmappedEmployees.map((e: any) => (
+                      {filteredUnmapped.map((e: any) => (
                         <TableRow key={e.id}>
                           <TableCell><Checkbox checked={selectedEmpIds.includes(e.id)} onCheckedChange={() => toggleEmp(e.id)} /></TableCell>
                           <TableCell className="text-sm">{e.name}</TableCell>
@@ -491,5 +571,38 @@ export default function ZktecoDevices() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function EmployeeMapPicker({ employees, onSelect }: { employees: any[]; onSelect: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 text-xs w-full justify-start font-normal">
+          <Search className="h-3 w-3 mr-1 opacity-60" /> Map to employee...
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-72" align="start">
+        <Command>
+          <CommandInput placeholder="নাম / code সার্চ..." className="h-9" />
+          <CommandList>
+            <CommandEmpty>কোনো employee নেই</CommandEmpty>
+            <CommandGroup>
+              {employees.map((e: any) => (
+                <CommandItem
+                  key={e.id}
+                  value={`${e.name} ${e.employee_id || ""}`}
+                  onSelect={() => { onSelect(e.id); setOpen(false); }}
+                >
+                  <span className="text-sm">{e.name}</span>
+                  {e.employee_id && <span className="ml-2 text-xs text-muted-foreground font-mono">({e.employee_id})</span>}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
