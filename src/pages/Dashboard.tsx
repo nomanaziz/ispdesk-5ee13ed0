@@ -985,6 +985,7 @@ const Dashboard = () => {
       </div>
 
       {/* Top Due — by category */}
+      {showW("top_due", "top_due_table") && (
       <div className="space-y-3">
         <SectionHeading title="টপ বকেয়া" hint="প্রতি ক্যাটাগরির শীর্ষ ২০ বকেয়াদার" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1030,8 +1031,10 @@ const Dashboard = () => {
           />
         </div>
       </div>
+      )}
 
       {/* Action required */}
+      {showW("action_needed", "action_panel") && (
       <div className="space-y-3">
         <SectionHeading title="অ্যাকশন প্রয়োজন" hint="দ্রুত পদক্ষেপ নিন" />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -1043,8 +1046,10 @@ const Dashboard = () => {
           <MetricTile label="পেন্ডিং টাস্ক" value={num(d?.pendingTasks)} icon={ListTodo} tone="violet" to="/dashboard/tasks?status=pending" />
         </div>
       </div>
+      )}
 
       {/* Finance summary */}
+      {showW("financial_summary", "financial_panel") && (
       <div className="space-y-3">
         <SectionHeading title="আর্থিক বিবরণ" hint="বর্তমান মাস" />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -1056,6 +1061,7 @@ const Dashboard = () => {
           <MetricTile label="ব্যয়" value={fmt(d?.expTM)} icon={TrendingDown} tone="rose" />
         </div>
       </div>
+      )}
 
       {/* 12-month trend (2/3) + compact বকেয়া list (1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
