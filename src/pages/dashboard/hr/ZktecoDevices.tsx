@@ -441,8 +441,22 @@ export default function ZktecoDevices() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Device Users list */}
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" /> Device-এর Users ({deviceUsers?.length || 0})</CardTitle>
+              <CardHeader className="pb-3 space-y-2">
+                <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" /> Device-এর Users ({filteredDeviceUsers.length}/{deviceUsers?.length || 0})</CardTitle>
+                <div className="relative">
+                  <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="h-8 pl-8 pr-8 text-xs"
+                    placeholder="Code / নাম / কার্ড / mapped employee সার্চ..."
+                    value={duSearch}
+                    onChange={(e) => setDuSearch(e.target.value)}
+                  />
+                  {duSearch && (
+                    <button onClick={() => setDuSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
@@ -454,26 +468,38 @@ export default function ZktecoDevices() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(deviceUsers || []).length === 0 && (
-                        <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground text-sm">কোনো user নেই — "Pull Users" করুন</TableCell></TableRow>
+                      {filteredDeviceUsers.length === 0 && (
+                        <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground text-sm">{(deviceUsers || []).length === 0 ? `কোনো user নেই — "Pull Users" করুন` : "সার্চে কোনো match নেই"}</TableCell></TableRow>
                       )}
-                      {(deviceUsers || []).map((u: any) => (
+                      {filteredDeviceUsers.map((u: any) => (
                         <TableRow key={u.id}>
                           <TableCell className="font-mono text-sm">{u.device_user_id}</TableCell>
                           <TableCell className="text-sm">{u.name || "—"}</TableCell>
                           <TableCell className="text-sm">{u.card_no || "—"}</TableCell>
                           <TableCell>
                             {u.employee ? (
-                              <Badge variant="default" className="gap-1"><Link2 className="h-3 w-3" />{u.employee.name}</Badge>
+                              <div className="flex items-center gap-1">
+                                <Badge variant="default" className="gap-1"><Link2 className="h-3 w-3" />{u.employee.name}</Badge>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6 text-destructive hover:text-destructive"
+                                  title="Unlink"
+                                  onClick={() => {
+                                    if (confirm(`"${u.employee.name}" থেকে এই device user (${u.device_user_id}) unlink করবেন?`)) {
+                                      unlinkMutation.mutate({ deviceUserRowId: u.id, employeeId: u.employee.id });
+                                    }
+                                  }}
+                                  disabled={unlinkMutation.isPending}
+                                >
+                                  <Unlink2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             ) : (
-                              <Select onValueChange={(empId) => mapMutation.mutate({ deviceUserRowId: u.id, employeeId: empId, deviceUserId: u.device_user_id })}>
-                                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Map to employee" /></SelectTrigger>
-                                <SelectContent>
-                                  {(employees || []).map((e: any) => (
-                                    <SelectItem key={e.id} value={e.id}>{e.name} {e.employee_id ? `(${e.employee_id})` : ""}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <EmployeeMapPicker
+                                employees={employees || []}
+                                onSelect={(empId) => mapMutation.mutate({ deviceUserRowId: u.id, employeeId: empId, deviceUserId: u.device_user_id })}
+                              />
                             )}
                           </TableCell>
                         </TableRow>
