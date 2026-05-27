@@ -1,82 +1,57 @@
-## লক্ষ্য
-- সব employee request (ছুটি, advance, resignation, requisition, profile-change, খাবার order) এক জায়গায় super admin দেখবে
-- AdminNotificationBell-এ সব HR event আসবে
-- নতুন **HR** app role তৈরি করা হবে যাতে HR personnel শুধু HR module access পায়
+## সমস্যা
 
----
+বর্তমান `Payslip.tsx`-এ employee list flex/wrap card style — প্রতিটা কর্মীর জন্য অনেক wide row, icon-only action button, সব scattered। ছোট screen-এ ভেঙে যায়।
 
-## ১. Unified Employee Request Hub (নতুন page)
+## সমাধান — Table আকারে সংগঠিত
 
-**Route:** `/dashboard/hr/employee-hub` (sidebar-এ যোগ হবে: "কর্মী আবেদন কেন্দ্র")
+`src/pages/dashboard/hr/Payslip.tsx`-এর employee list section (line 394-493) সম্পূর্ণ replace করে `<Table>` ব্যবহার করব।
 
-এক page-এ tab বা stacked card layout — প্রতিটি tab থেকে directly approve/reject ও deep-link দুটোই থাকবে:
+### Table columns (8টা)
 
-| Tab | উৎস table | বর্তমান review page (deep link) |
-|---|---|---|
-| ছুটি | `leave_applications` (status=pending) | `/dashboard/hr/leave` |
-| অগ্রিম বেতন | `salary_advance_requests` | `/dashboard/hr/advance-salary` ও inline |
-| পদত্যাগ | `resignation_requests` | `/dashboard/hr/resignations` ও inline |
-| রিকুইজিশন | `requisitions` (request_type=employee) | inline (existing `EmployeeRequests.tsx` logic reused) |
-| প্রোফাইল পরিবর্তন | `profile_change_requests` | `/dashboard/hr/profile-approvals` |
-| খাবার order (আজ) | `meal_orders` (today) | inline count + list |
-| কনভেয়েন্স | `conveyance_bills` (pending) | `/dashboard/hr/conveyance-bills` |
+| # | Column | Content |
+|---|--------|---------|
+| 1 | checkbox | select |
+| 2 | কর্মী | নাম + ID (ছোট font) |
+| 3 | টেমপ্লেট | template name (truncate) |
+| 4 | পেহেডস টোটাল | net + diff badge |
+| 5 | পরিশোধিত / বকেয়া | দুই লাইনে |
+| 6 | স্ট্যাটাস | Badge (পরিশোধিত / আংশিক / অপরিশোধিত) |
+| 7 | অ্যাকশন | dropdown menu |
 
-প্রতিটি item-এ employee নাম, তারিখ, summary, status badge, ✓/✗ button থাকবে। উপরে summary chips: "৫ ছুটি · ২ advance · ১ resignation …"
+### Action button — Bangla dropdown
 
-বর্তমানে scattered `EmployeeRequests.tsx`, `ProfileApprovals.tsx` সাব-কম্পোনেন্ট হিসেবে reuse হবে — কোড duplication হবে না।
+প্রতি row-তে এক "অ্যাকশন ▾" button (DropdownMenu) — ভেতরে:
+- ✏️ পে-হেডস এডিট
+- 👁️ পে-স্লিপ দেখুন
+- 💰 পেমেন্ট নিন (only if not fully paid)
+- 🖨️ PDF ডাউনলোড
+- 🔄 শুধু এই কর্মীর Regenerate
 
----
+এতে row narrow থাকবে, icon scatter হবে না।
 
-## ২. AdminNotificationBell-এ HR events যোগ
+### Responsive
 
-`src/components/notifications/AdminNotificationBell.tsx`-এ ৫টা নতুন kind যোগ:
-- `leave` — pending `leave_applications`
-- `advance` — pending `salary_advance_requests`
-- `resignation` — pending `resignation_requests`
-- `requisition` — pending `requisitions` (employee type)
-- `profile_change` — pending `profile_change_requests`
+- Card-এর ভিতরে `overflow-x-auto` দিয়ে wrap
+- ছোট screen-এ horizontal scroll, কিন্তু row height fixed thin (~48px)
+- Mobile-এ "টেমপ্লেট" column hide (`hidden md:table-cell`)
+- "পরিশোধিত/বকেয়া" column-এ `hidden sm:table-cell`
 
-প্রতিটি item-এর click → unified hub-এর সংশ্লিষ্ট tab-এ নিয়ে যাবে। Realtime channel subscribe হবে এই ৫ table-এ।
+### Header bar simplification
 
-**খাবার order notification noise হবে** (প্রতিদিন বহু order) — তাই bell-এ আলাদা item নয়, শুধু hub-এ আজকের count দেখানো হবে।
+বর্তমান toolbar-এ ৪টা বড় button (Generate / View / Download PDF / Regenerate) আছে — এগুলো রাখব কিন্তু selected.size > 0 হলেই display, না হলে শুধু Generate। এতে header পরিষ্কার হবে।
 
----
+### Status calculation একই
 
-## ৩. HR app role (migration)
+`net_salary`, `paid_amount`, `payment_status` field থেকে আগের মতই — কোনো business logic পরিবর্তন নেই, শুধু presentation।
 
-```sql
-INSERT INTO public.app_roles (id, name, status, is_protected, is_default)
-VALUES (gen_random_uuid(), 'HR', 'active', true, false)
-ON CONFLICT (name) DO NOTHING;
-```
+### যা পরিবর্তন হবে না
 
-এবং `app_role_modules`-এ HR role-এর জন্য পূর্ব-নির্ধারিত access:
-- সব `/dashboard/hr/*` pages (full access)
-- `/dashboard/hr/employee-hub` (full)
-- বাকি modules — no access
+- Generate / Regenerate / Pay / Edit dialog logic অপরিবর্তিত
+- Filter chips (সব / নিয়মিত / অতিরিক্ত / কম) অপরিবর্তিত
+- Loan cap fix (আগের message-এ করা) অপরিবর্তিত
 
-(Module key গুলো existing `app_role_modules` pattern থেকে নেওয়া হবে।)
+## ফাইল
 
----
+- `src/pages/dashboard/hr/Payslip.tsx` — শুধু list render block + toolbar minor tweak
 
-## ৪. Sidebar update
-
-`AppSidebar.tsx` HR group-এর শুরুতে যোগ:
-```
-{ title: "কর্মী আবেদন কেন্দ্র", url: "/dashboard/hr/employee-hub", badge: <count> }
-```
-
-`useSidebarBadges` hook update হবে যাতে pending count badge দেখায়।
-
----
-
-## যা change হবে না
-- Existing review pages (`LeaveManagement`, `AdvanceSalary`, `Resignations`, `ProfileApprovals`) অপরিবর্তিত থাকবে — শুধু new hub থেকে link করা হবে
-- payroll/payslip/attendance logic unchanged
-- `requisition_no` auto-generate trigger আগের session-এ যোগ হয়ে গেছে
-
----
-
-## প্রশ্ন (যদি confirm দরকার হয়)
-- "HR" role-এর জন্য `advance-salary` / `loans` / `resignations` approve করার ক্ষমতা থাকবে, নাকি শুধু view? — Default: full HR access ধরে নিচ্ছি।
-- পুরোনো dual-table (`advance_salary` vs `salary_advance_requests`) cleanup এখন scope-এ রাখব না — শুধু documentation note থাকবে।
+অন্য কোনো ফাইল ছোঁয়া হবে না।
