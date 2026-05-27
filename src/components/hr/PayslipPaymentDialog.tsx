@@ -82,6 +82,26 @@ export default function PayslipPaymentDialog({ payroll, onClose }: Props) {
         .eq("id", payroll.id);
       if (e2) throw e2;
 
+      // Post to accounts as an expense entry (salary expense)
+      const empName = payroll.employee_name || payroll.employees?.name || "";
+      const period = payroll.period_label || payroll.month || "";
+      const { error: e3 } = await supabase.from("expense_entries").insert({
+        amount,
+        description: `Salary payment${empName ? ` — ${empName}` : ""}${period ? ` (${period})` : ""}${remarks ? ` • ${remarks}` : ""}`,
+        expense_date: date,
+        category: "Salary",
+        status: "approved",
+        month: typeof payroll.month === "string" ? payroll.month.slice(0, 7) : null,
+        paid_by: paidFrom,
+        payment_method: paidFrom,
+        reference: `payroll:${payroll.id}`,
+      });
+      if (e3) {
+        // Don't block payment — just warn
+        console.error("expense_entries insert failed", e3);
+        toast.warning("পরিশোধ সফল, কিন্তু expense entry তৈরি ব্যর্থ");
+      }
+
       toast.success(status === "paid" ? "সম্পূর্ণ পরিশোধিত" : "আংশিক পরিশোধিত");
       qc.invalidateQueries({ queryKey: ["payroll-month"] });
       qc.invalidateQueries({ queryKey: ["payroll-payments"] });

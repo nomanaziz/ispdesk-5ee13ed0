@@ -125,7 +125,12 @@ export default function EmployeeView() {
               ) : (
                 <div className="space-y-2">
                   {(payrolls || []).map((p: any) => {
-                    const isPaid = p.status === "paid";
+                    const paid = Number(p.paid_amount || 0);
+                    const payable = Number(p.net_salary || 0);
+                    const due = Math.max(0, payable - paid);
+                    const pStatus = p.payment_status || p.status;
+                    const isPaid = pStatus === "paid";
+                    const isPartial = pStatus === "partial" || (paid > 0 && due > 0);
                     const label = p.period_label || periodLabel(p.month);
                     return (
                       <div key={p.id} className="flex items-center justify-between border rounded p-3 gap-3 flex-wrap">
@@ -137,16 +142,14 @@ export default function EmployeeView() {
                         </div>
                         <div>
                           <Badge
-                            className={isPaid ? "bg-green-600 hover:bg-green-700" : ""}
+                            className={isPaid ? "bg-green-600 hover:bg-green-700" : isPartial ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent" : ""}
                             variant={isPaid ? "default" : "outline"}
                           >
-                            {isPaid
-                              ? `Fully Paid: ৳${Number(p.net_salary).toLocaleString()}`
-                              : `Unpaid: ৳${Number(p.net_salary).toLocaleString()}`}
+                            {isPaid ? `Fully Paid: ৳${payable.toLocaleString()}` : isPartial ? `Partially Paid: ৳${paid.toLocaleString()} / ৳${payable.toLocaleString()}` : `Unpaid: ৳${payable.toLocaleString()}`}
                           </Badge>
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          ভাতা: ৳{Number(p.total_allowance || 0).toLocaleString()} • কর্তন: ৳{Number(p.total_deduction || 0).toLocaleString()}
+                          পরিশোধিত: ৳{paid.toLocaleString()} • বকেয়া: ৳{due.toLocaleString()} • ভাতা: ৳{Number(p.total_allowance || 0).toLocaleString()} • কর্তন: ৳{Number(p.total_deduction || 0).toLocaleString()}
                         </div>
                       </div>
                     );

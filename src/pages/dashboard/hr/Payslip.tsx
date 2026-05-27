@@ -449,21 +449,39 @@ export default function PayslipManager() {
                           )}
                         </p>
                       </div>
-                      {ex && (
-                        <>
-                          <Badge
-                            variant={ex.status === "paid" ? "default" : "outline"}
-                            className={ex.status === "paid" ? "bg-green-600" : ""}>
-                            {ex.status === "paid" ? "Fully Paid" : "Unpaid"}
-                          </Badge>
-                          <Button size="icon" variant="ghost" onClick={() => setPreviewId(ex.id)}>
-                            <FileText className="h-4 w-4 text-blue-600" />
-                          </Button>
-                          {ex.payment_status !== "paid" && (
-                            <Button size="sm" variant="default" onClick={() => setPayDialog(ex)}>Pay</Button>
-                          )}
-                        </>
-                      )}
+                      {ex && (() => {
+                        const paid = Number(ex.paid_amount || 0);
+                        const payable = Number(ex.net_salary || 0);
+                        const due = Math.max(0, payable - paid);
+                        const pStatus = ex.payment_status || ex.status;
+                        const isPaid = pStatus === "paid";
+                        const isPartial = pStatus === "partial" || (paid > 0 && due > 0);
+                        return (
+                          <>
+                            <div className="text-right min-w-[140px] text-xs">
+                              <div className="text-green-600">পরিশোধিত: ৳{paid.toLocaleString()}</div>
+                              <div className="text-destructive">বকেয়া: ৳{due.toLocaleString()}</div>
+                            </div>
+                            <Badge
+                              variant={isPaid ? "default" : "outline"}
+                              className={
+                                isPaid
+                                  ? "bg-green-600 hover:bg-green-700"
+                                  : isPartial
+                                    ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent"
+                                    : ""
+                              }>
+                              {isPaid ? "Fully Paid" : isPartial ? "Partially Paid" : "Unpaid"}
+                            </Badge>
+                            <Button size="icon" variant="ghost" onClick={() => setPreviewId(ex.id)}>
+                              <FileText className="h-4 w-4 text-blue-600" />
+                            </Button>
+                            {!isPaid && (
+                              <Button size="sm" variant="default" onClick={() => setPayDialog(ex)}>Pay</Button>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 );
