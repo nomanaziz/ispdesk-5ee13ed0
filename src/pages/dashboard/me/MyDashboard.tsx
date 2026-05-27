@@ -42,11 +42,11 @@ export default function MyDashboard() {
     enabled: !!empId,
     queryFn: async () => {
       const { data } = await supabase
-        .from("leave_balances" as any).select("balance, leave_type_id").eq("employee_id", empId!);
+        .from("leave_balances" as any).select("remaining_days").eq("employee_id", empId!);
       return (data as any[]) ?? [];
     },
   });
-  const leaveLeft = (leaveBalance ?? []).reduce((s, l: any) => s + Number(l.balance || 0), 0);
+  const leaveLeft = (leaveBalance ?? []).reduce((s, l: any) => s + Number(l.remaining_days || 0), 0);
 
   if (loading) return <div className="space-y-3">{[...Array(2)].map((_, i) => <Skeleton key={i} className="h-32" />)}</div>;
   if (!employee) {
