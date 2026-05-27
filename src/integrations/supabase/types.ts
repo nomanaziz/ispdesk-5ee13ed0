@@ -260,39 +260,54 @@ export type Database = {
       }
       app_users: {
         Row: {
+          access_expires_at: string | null
           auth_user_id: string | null
           created_at: string
           created_by: string | null
+          email: string | null
           employee_id: string | null
+          full_name: string | null
           id: string
           password: string
+          purpose: string | null
           role_id: string | null
           status: string
           updated_at: string
+          user_type: Database["public"]["Enums"]["app_user_type"]
           username: string
         }
         Insert: {
+          access_expires_at?: string | null
           auth_user_id?: string | null
           created_at?: string
           created_by?: string | null
+          email?: string | null
           employee_id?: string | null
+          full_name?: string | null
           id?: string
           password?: string
+          purpose?: string | null
           role_id?: string | null
           status?: string
           updated_at?: string
+          user_type?: Database["public"]["Enums"]["app_user_type"]
           username: string
         }
         Update: {
+          access_expires_at?: string | null
           auth_user_id?: string | null
           created_at?: string
           created_by?: string | null
+          email?: string | null
           employee_id?: string | null
+          full_name?: string | null
           id?: string
           password?: string
+          purpose?: string | null
           role_id?: string | null
           status?: string
           updated_at?: string
+          user_type?: Database["public"]["Enums"]["app_user_type"]
           username?: string
         }
         Relationships: [
@@ -12586,6 +12601,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_super: { Args: { _user_id: string }; Returns: boolean }
+      is_app_user_active: { Args: { _user_id: string }; Returns: boolean }
       is_employee_self: { Args: { _employee_id: string }; Returns: boolean }
       log_action: {
         Args: {
@@ -12674,6 +12690,7 @@ export type Database = {
       alert_channel: "dashboard" | "telegram"
       alert_type: "warning" | "critical" | "offline"
       app_role: "super_admin" | "admin" | "operator"
+      app_user_type: "internal" | "external" | "remote_support"
       billing_cycle: "monthly" | "quarterly" | "yearly"
       connection_type: "telnet" | "ssh"
       device_status: "online" | "offline" | "unknown"
@@ -12834,6 +12851,7 @@ export const Constants = {
       alert_channel: ["dashboard", "telegram"],
       alert_type: ["warning", "critical", "offline"],
       app_role: ["super_admin", "admin", "operator"],
+      app_user_type: ["internal", "external", "remote_support"],
       billing_cycle: ["monthly", "quarterly", "yearly"],
       connection_type: ["telnet", "ssh"],
       device_status: ["online", "offline", "unknown"],
