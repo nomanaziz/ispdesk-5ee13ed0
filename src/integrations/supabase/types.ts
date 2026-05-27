@@ -3645,6 +3645,87 @@ export type Database = {
         }
         Relationships: []
       }
+      conveyance_bills: {
+        Row: {
+          bill_date: string
+          created_at: string
+          employee_id: string
+          expense_entry_id: string | null
+          fare_amount: number
+          from_location: string
+          id: string
+          other_amount: number
+          other_note: string | null
+          purpose: string | null
+          receipt_url: string | null
+          review_remark: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_by_user: string | null
+          to_location: string
+          transport_mode: string
+          updated_at: string
+        }
+        Insert: {
+          bill_date?: string
+          created_at?: string
+          employee_id: string
+          expense_entry_id?: string | null
+          fare_amount?: number
+          from_location: string
+          id?: string
+          other_amount?: number
+          other_note?: string | null
+          purpose?: string | null
+          receipt_url?: string | null
+          review_remark?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by_user?: string | null
+          to_location: string
+          transport_mode: string
+          updated_at?: string
+        }
+        Update: {
+          bill_date?: string
+          created_at?: string
+          employee_id?: string
+          expense_entry_id?: string | null
+          fare_amount?: number
+          from_location?: string
+          id?: string
+          other_amount?: number
+          other_note?: string | null
+          purpose?: string | null
+          receipt_url?: string | null
+          review_remark?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by_user?: string | null
+          to_location?: string
+          transport_mode?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conveyance_bills_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conveyance_bills_expense_entry_id_fkey"
+            columns: ["expense_entry_id"]
+            isOneToOne: false
+            referencedRelation: "expense_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_refund_logs: {
         Row: {
           client_id: string | null
@@ -4547,6 +4628,57 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_facilities: {
+        Row: {
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          employee_id: string
+          facility_policy_id: string
+          id: string
+          notes: string | null
+          override_amount: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          employee_id: string
+          facility_policy_id: string
+          id?: string
+          notes?: string | null
+          override_amount?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          employee_id?: string
+          facility_policy_id?: string
+          id?: string
+          notes?: string | null
+          override_amount?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_facilities_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_facilities_facility_policy_id_fkey"
+            columns: ["facility_policy_id"]
+            isOneToOne: false
+            referencedRelation: "facility_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_loans: {
         Row: {
           branch_id: string | null
@@ -4951,6 +5083,78 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      facility_policies: {
+        Row: {
+          active: boolean
+          amount: number
+          branch_id: string | null
+          company_share: number
+          created_at: string
+          description: string | null
+          employee_share: number
+          id: string
+          is_deduction: boolean
+          linked_payhead_id: string | null
+          mode: string
+          name: string
+          per_unit: string
+          trigger_condition: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount?: number
+          branch_id?: string | null
+          company_share?: number
+          created_at?: string
+          description?: string | null
+          employee_share?: number
+          id?: string
+          is_deduction?: boolean
+          linked_payhead_id?: string | null
+          mode: string
+          name: string
+          per_unit?: string
+          trigger_condition?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          branch_id?: string | null
+          company_share?: number
+          created_at?: string
+          description?: string | null
+          employee_share?: number
+          id?: string
+          is_deduction?: boolean
+          linked_payhead_id?: string | null
+          mode?: string
+          name?: string
+          per_unit?: string
+          trigger_condition?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facility_policies_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facility_policies_linked_payhead_id_fkey"
+            columns: ["linked_payhead_id"]
+            isOneToOne: false
+            referencedRelation: "payheads"
             referencedColumns: ["id"]
           },
         ]
@@ -12330,6 +12534,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_super: { Args: { _user_id: string }; Returns: boolean }
+      is_employee_self: { Args: { _employee_id: string }; Returns: boolean }
       log_action: {
         Args: {
           _action: string

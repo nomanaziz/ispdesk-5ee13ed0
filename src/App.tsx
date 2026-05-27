@@ -130,6 +130,9 @@ const HrAttendanceReport = lazy(() => import("@/pages/dashboard/hr/AttendanceRep
 const HrGeoPunch = lazy(() => import("@/pages/dashboard/hr/GeoPunch"));
 const HrAdvanceSalary = lazy(() => import("@/pages/dashboard/hr/AdvanceSalary"));
 const HrEmployeeLoans = lazy(() => import("@/pages/dashboard/hr/EmployeeLoans"));
+const HrFacilityPolicies = lazy(() => import("@/pages/dashboard/hr/FacilityPolicies"));
+const HrConveyanceBills = lazy(() => import("@/pages/dashboard/hr/ConveyanceBills"));
+const HrMyConveyance = lazy(() => import("@/pages/dashboard/hr/MyConveyance"));
 const DashboardLinks = lazy(() => import("@/pages/dashboard/Links"));
 
 // Access Management
@@ -590,6 +593,9 @@ const App = () => (
 
               <Route path="/dashboard/hr/advance-salary" element={<P><HrAdvanceSalary /></P>} />
               <Route path="/dashboard/hr/loans" element={<P><HrEmployeeLoans /></P>} />
+              <Route path="/dashboard/hr/facility-policies" element={<P><HrFacilityPolicies /></P>} />
+              <Route path="/dashboard/hr/conveyance-bills" element={<P><HrConveyanceBills /></P>} />
+              <Route path="/dashboard/hr/my-conveyance" element={<P><HrMyConveyance /></P>} />
 
               {/* Access Management */}
               <Route path="/dashboard/access/app-users" element={<P><AppUsers /></P>} />

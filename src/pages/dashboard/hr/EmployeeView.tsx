@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, User, Phone, Mail, MapPin, GraduationCap, Briefcase, Calendar, DollarSign, Edit } from "lucide-react";
 import { periodLabel } from "@/lib/payrollCompute";
+import EmployeeFacilitiesTab from "@/components/hr/EmployeeFacilitiesTab";
 
 export default function EmployeeView() {
   const { id } = useParams();
@@ -114,7 +115,12 @@ export default function EmployeeView() {
           <TabsTrigger value="history">বেতন ইতিহাস</TabsTrigger>
           <TabsTrigger value="personal">ব্যক্তিগত তথ্য</TabsTrigger>
           <TabsTrigger value="shift">শিফট / কর্মঘণ্টা</TabsTrigger>
+          <TabsTrigger value="facilities">সুবিধা</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="facilities" className="mt-4">
+          {id && <EmployeeFacilitiesTab employeeId={id} />}
+        </TabsContent>
 
         <TabsContent value="history" className="space-y-2 mt-4">
           <Card>
