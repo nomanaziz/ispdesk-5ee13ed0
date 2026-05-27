@@ -14,6 +14,26 @@ import { Textarea } from "@/components/ui/textarea";
 
 const DAYS = ["শনি", "রবি", "সোম", "মঙ্গল", "বুধ", "বৃহস্পতি", "শুক্র"];
 
+const PRESET_ITEMS: { category: string; items: string[] }[] = [
+  { category: "ভাত ও মূল খাবার", items: ["ভাত", "ফ্রাইড রাইস", "পোলাও", "খিচুড়ি", "বিরিয়ানি", "তেহারি", "কাচ্চি", "মোরগ পোলাও"] },
+  { category: "মাছ", items: ["রুই মাছ", "কাতলা মাছ", "ইলিশ মাছ", "পাবদা", "কই মাছ", "চিংড়ি", "শুটকি", "মাছের কালিয়া"] },
+  { category: "মাংস", items: ["মুরগি", "মুরগির ঝোল", "গরুর মাংস", "গরুর কালা ভুনা", "খাসির মাংস", "হাঁসের মাংস", "কাবাব"] },
+  { category: "ডাল ও সবজি", items: ["ডাল", "মুগ ডাল", "মসুর ডাল", "সবজি", "লাবড়া", "বেগুন ভাজি"] },
+  { category: "শাক", items: ["পালং শাক", "লাল শাক", "পুঁই শাক", "কলমি শাক", "লাউ শাক"] },
+  { category: "ভর্তা", items: ["আলু ভর্তা", "বেগুন ভর্তা", "শুটকি ভর্তা", "ডাল ভর্তা", "কালোজিরা ভর্তা", "টমেটো ভর্তা", "ধনেপাতা ভর্তা", "কাঁচা মরিচ ভর্তা"] },
+  { category: "মিষ্টি ও অন্যান্য", items: ["জর্দা", "পায়েস", "ফিরনি", "দই", "মিষ্টি", "সালাদ", "আচার", "পাপড়"] },
+  { category: "পানীয়", items: ["কোক", "সেভেনআপ", "বোরহানি", "লাচ্ছি", "পানি"] },
+];
+
+const DEFAULT_BANGALI_SET = ["ভাত", "ডাল", "সবজি", "মাছ", "মুরগি", "আলু ভর্তা", "সালাদ"];
+
+function parseItems(s: string): string[] {
+  return s.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
+}
+function joinItems(arr: string[]): string {
+  return arr.join(", ");
+}
+
 export default function Catering() {
   const qc = useQueryClient();
   const [svcOpen, setSvcOpen] = useState(false);

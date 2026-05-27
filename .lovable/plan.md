@@ -1,43 +1,52 @@
-আপনার তিনটা সমস্যা analyze করলাম। নিচের প্ল্যান অনুযায়ী কাজ করব:
 
-## ১. HR sidebar consolidation (২৩ → ১৪ items)
+## লক্ষ্য
 
-বর্তমানে HR ও পেরোলে ২৩টা sub-menu আছে। Settings/rule-জাতীয় পেজগুলো একত্রে "HR সেটিংস" পেজে ট্যাব আকারে আনব। এটাতে কোনো ডাটা/feature হারাবে না — শুধু একই জায়গায় থাকবে।
+`/dashboard/hr/catering` এর Menu editor dialog-এ common বাঙালি খাবারের একটা **preset suggestion library** যোগ করব। ক্লিক করলেই আইটেমটা textarea-তে add হয়ে যাবে — প্রতিবার টাইপ করতে হবে না।
 
-**HR সেটিংস পেজে নতুন tab structure:**
-- কর্মচারী ID (আগের মত)
-- উপস্থিতি settings (আগের মত)
-- পে-স্লিপ settings (আগের মত)
-- **উপস্থিতি নিয়ম** (AttendanceRules — নতুন ট্যাব)
-- **রিজাইন নিয়ম** (ResignRules — নতুন ট্যাব)
-- **সুবিধা পলিসি** (FacilityPolicies — নতুন ট্যাব)
-- **ডিপার্টমেন্ট** (Departments — নতুন ট্যাব)
-- **পদবী** (Positions — নতুন ট্যাব)
-- **পে-হেড** (Payheads — নতুন ট্যাব)
-- **শিফট ম্যানেজমেন্ট** (ShiftManagement — নতুন ট্যাব)
-- **ZKTeco ডিভাইস** (ZktecoDevices — নতুন ট্যাব)
+## পরিবর্তন
 
-পুরনো routes (`/dashboard/hr/departments` ইত্যাদি) কাজ করবে যাতে কোনো bookmark/link না ভাঙে।
+শুধু একটাই file: `src/pages/dashboard/hr/Catering.tsx`
 
-**Sidebar-এ যা থাকবে (১৪ items):**
-পেরোল, পে-স্লিপ, কর্মচারী তালিকা, বেতন শীট, অগ্রিম বেতন, কর্মী Loan, রিজাইনেশন, উপস্থিতি, ছুটি ম্যানেজমেন্ট, কনভেয়েন্স বিল, আমার কনভেয়েন্স, **ক্যাটারিং** (নতুন), HR সেটিংস।
+Menu edit dialog-এর ভিতরে (textarea-এর নিচে/উপরে) ক্যাটেগরি অনুযায়ী clickable badge chips দেখাব। ক্লিক → যদি আইটেমটা already textarea-তে না থাকে, তাহলে comma-separated হয়ে যোগ হবে।
 
-## ২. Catering admin menu যোগ
+## Preset library (categorized)
 
-`/dashboard/hr/catering` পেজটা ইতিমধ্যে কোডে আছে এবং সেখানে service/provider যোগ ও weekly menu সেট করার সম্পূর্ণ UI আছে — কিন্তু sidebar-এ link নাই, তাই আপনি খুঁজে পাচ্ছেন না। শুধু sidebar item যোগ করব ("ক্যাটারিং", icon: UtensilsCrossed)।
+```text
+ভাত ও মূল খাবার:
+  ভাত, ফ্রাইড রাইস, পোলাও, খিচুড়ি, বিরিয়ানি, তেহারি, কাচ্চি, মোরগ পোলাও
 
-Employee portal-এ `MyMeals` পেজ ইতিমধ্যে আছে, তারা সেখান থেকে order করতে পারবে।
+মাছ:
+  রুই মাছ, কাতলা মাছ, ইলিশ মাছ, পাবদা, কই মাছ, চিংড়ি, শুটকি, মাছের কালিয়া
 
-## ৩. Sample facility policies seed (৩টা)
+মাংস:
+  মুরগি, মুরগির ঝোল, গরুর মাংস, গরুর কালা ভুনা, খাসির মাংস, হাঁসের মাংস, কাবাব
 
-ডাটাবেজে ৩টা realistic policy insert করব যাতে আপনি বুঝতে পারেন:
+ডাল ও সবজি:
+  ডাল, মুগ ডাল, মসুর ডাল, সবজি, লাবড়া, বেগুন ভাজি, আলু ভর্তা
 
-1. **লাঞ্চ ভাতা** — type: food, mode: partial_subsidized, trigger: present_only, ৳50/day company share, ৳30/day employee share
-2. **বাড়ি ভাড়া ভাতা** — type: accommodation, mode: house_rent_allowance, trigger: always, ৳5000/month
-3. **ওভারটাইম খাবার ভাতা** — type: overtime_food, mode: per_duty_day_cash, trigger: overtime_only, ৳120/day
+শাক:
+  পালং শাক, লাল শাক, পুঁই শাক, কলমি শাক, লাউ শাক
 
-## Technical notes
-- `AppSidebar.tsx`: HR ও পেরোল section trim করব
-- `HrSettings.tsx`: নতুন ট্যাব যোগ করব, existing component গুলো reuse করব (re-import)
-- ৩টা policy insert করতে data insert query চালাব
-- Routes অপরিবর্তিত থাকবে — শুধু sidebar visibility বদলাবে
+ভর্তা:
+  আলু ভর্তা, বেগুন ভর্তা, শুটকি ভর্তা, ডাল ভর্তা, কালোজিরা ভর্তা,
+  টমেটো ভর্তা, ধনেপাতা ভর্তা, কাঁচা মরিচ ভর্তা
+
+মিষ্টি ও অন্যান্য:
+  জর্দা, পায়েস, ফিরনি, দই, মিষ্টি, সালাদ, আচার, পাপড়
+
+পানীয়:
+  কোক, সেভেনআপ, বোরহানি, লাচ্ছি, পানি
+```
+
+## UX
+
+- Dialog প্রশস্ত হবে (`max-w-2xl`) যাতে chips-এর জন্য জায়গা থাকে
+- প্রতিটা category-এর একটা ছোট heading + তার নিচে wrap হওয়া badge chips
+- Chips ছোট, hover effect, ক্লিকে textarea-তে যোগ
+- ইতিমধ্যে যোগ করা আইটেম highlighted/disabled দেখাবে
+- "সব ক্লিয়ার করুন" আর "Bangali default set" (এক ক্লিকে কয়েকটা common আইটেম) এর shortcut button
+
+## কাজের সুযোগ বাইরে
+
+- DB schema বা preset persist করার জন্য নতুন table — সব hard-coded constant থাকবে
+- অন্য কোনো page বা business logic বদলাবে না
