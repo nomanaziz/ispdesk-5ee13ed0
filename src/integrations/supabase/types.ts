@@ -2717,29 +2717,44 @@ export type Database = {
       catering_services: {
         Row: {
           active: boolean
+          address: string | null
           contact: string | null
           created_at: string
+          default_meal_price: number
+          email: string | null
           id: string
           name: string
           notes: string | null
+          owner_name: string | null
+          phone: string | null
           updated_at: string
         }
         Insert: {
           active?: boolean
+          address?: string | null
           contact?: string | null
           created_at?: string
+          default_meal_price?: number
+          email?: string | null
           id?: string
           name: string
           notes?: string | null
+          owner_name?: string | null
+          phone?: string | null
           updated_at?: string
         }
         Update: {
           active?: boolean
+          address?: string | null
           contact?: string | null
           created_at?: string
+          default_meal_price?: number
+          email?: string | null
           id?: string
           name?: string
           notes?: string | null
+          owner_name?: string | null
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -4952,6 +4967,7 @@ export type Database = {
         Row: {
           address: string | null
           branch_id: string | null
+          confirmation_date: string | null
           created_at: string
           date_of_birth: string | null
           default_in_time: string | null
@@ -4971,6 +4987,7 @@ export type Database = {
           id: string
           image_url: string | null
           institution: string | null
+          is_confirmed: boolean
           joining_date: string | null
           last_degree: string | null
           marital_status: string | null
@@ -4983,9 +5000,12 @@ export type Database = {
           personal_phone: string | null
           phone: string | null
           position_id: string | null
+          probation_end_date: string | null
+          probation_period_months: number
           punch_card_id: string | null
           reference: string | null
           salary: number | null
+          salary_at_confirmation: number | null
           show_on_website: boolean | null
           status: string
           sub_user_id: string | null
@@ -4995,12 +5015,14 @@ export type Database = {
           user_password: string | null
           user_permissions: Json
           user_username: string | null
+          weekly_off_days: number[]
           working_experience: string | null
           zkteco_device_id: string | null
         }
         Insert: {
           address?: string | null
           branch_id?: string | null
+          confirmation_date?: string | null
           created_at?: string
           date_of_birth?: string | null
           default_in_time?: string | null
@@ -5020,6 +5042,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           institution?: string | null
+          is_confirmed?: boolean
           joining_date?: string | null
           last_degree?: string | null
           marital_status?: string | null
@@ -5032,9 +5055,12 @@ export type Database = {
           personal_phone?: string | null
           phone?: string | null
           position_id?: string | null
+          probation_end_date?: string | null
+          probation_period_months?: number
           punch_card_id?: string | null
           reference?: string | null
           salary?: number | null
+          salary_at_confirmation?: number | null
           show_on_website?: boolean | null
           status?: string
           sub_user_id?: string | null
@@ -5044,12 +5070,14 @@ export type Database = {
           user_password?: string | null
           user_permissions?: Json
           user_username?: string | null
+          weekly_off_days?: number[]
           working_experience?: string | null
           zkteco_device_id?: string | null
         }
         Update: {
           address?: string | null
           branch_id?: string | null
+          confirmation_date?: string | null
           created_at?: string
           date_of_birth?: string | null
           default_in_time?: string | null
@@ -5069,6 +5097,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           institution?: string | null
+          is_confirmed?: boolean
           joining_date?: string | null
           last_degree?: string | null
           marital_status?: string | null
@@ -5081,9 +5110,12 @@ export type Database = {
           personal_phone?: string | null
           phone?: string | null
           position_id?: string | null
+          probation_end_date?: string | null
+          probation_period_months?: number
           punch_card_id?: string | null
           reference?: string | null
           salary?: number | null
+          salary_at_confirmation?: number | null
           show_on_website?: boolean | null
           status?: string
           sub_user_id?: string | null
@@ -5093,6 +5125,7 @@ export type Database = {
           user_password?: string | null
           user_permissions?: Json
           user_username?: string | null
+          weekly_off_days?: number[]
           working_experience?: string | null
           zkteco_device_id?: string | null
         }
@@ -12835,6 +12868,10 @@ export type Database = {
           tier_id: string
         }[]
       }
+      calc_prorated_leave: {
+        Args: { _annual_quota: number; _confirm_date: string }
+        Returns: number
+      }
       can_delete: { Args: { _module: string }; Returns: boolean }
       can_read: { Args: { _module: string }; Returns: boolean }
       can_write: { Args: { _module: string }; Returns: boolean }
@@ -12848,6 +12885,14 @@ export type Database = {
       }
       charge_pop_for_client_activation: {
         Args: { _client_id: string; _mikrotik_client_id?: string }
+        Returns: undefined
+      }
+      confirm_employee: {
+        Args: {
+          _confirm_date?: string
+          _employee_id: string
+          _new_salary?: number
+        }
         Returns: undefined
       }
       create_bw_invoice_manual_payment: {
@@ -13031,6 +13076,10 @@ export type Database = {
         }[]
       }
       public_payment_gateways: { Args: never; Returns: Json }
+      refresh_yearly_leave_balances: {
+        Args: { _year?: number }
+        Returns: number
+      }
       revert_mikrotik_client: { Args: { _mt_id: string }; Returns: Json }
       seed_default_pop_hierarchy_for_branch: {
         Args: { _branch_id: string }
