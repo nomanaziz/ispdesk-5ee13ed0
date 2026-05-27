@@ -813,11 +813,9 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Hero KPI Row — 4 large gradient cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 auto-rows-fr">
-
       {/* Hero KPI Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 auto-rows-fr">
+
         {showW("kpi_top", "kpi_total_clients") && (
           <KpiCard label="মোট ক্লায়েন্ট" value={num(d?.totalClients)} icon={Users} tone="primary" delta={joinDelta} caption="গত মাসের তুলনায়" to="/dashboard/clients/home" />
         )}
