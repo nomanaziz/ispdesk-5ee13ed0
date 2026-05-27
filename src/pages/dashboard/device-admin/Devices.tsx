@@ -187,7 +187,12 @@ export default function DeviceInventory() {
               ) : filtered.map((d, i) => {
                 const meta = CATEGORY_META[d.category] || CATEGORY_META.other;
                 const Icon = meta.icon;
-                const isDup = d.ip_address && dupIps.has(d.ip_address);
+                const dupKey = d.ip_address ? `${d.ip_address}:${d.port ?? "_"}` : null;
+                const isDup = dupKey && dupKeys.has(dupKey);
+                const isZk = d.source === "zkteco_devices";
+                const isMk = d.source === "mikrotik_devices";
+                const isManaged = d.source === "device_admin_managed_devices";
+                const canEdit = isZk || isMk || isManaged;
                 return (
                   <TableRow key={`${d.source}-${d.id}`}>
                     <TableCell>{i + 1}</TableCell>
@@ -200,9 +205,9 @@ export default function DeviceInventory() {
                     <TableCell className="font-medium">{d.name}</TableCell>
                     <TableCell className="font-mono text-sm">
                       <div className="flex items-center gap-2">
-                        {d.ip_address || "—"}
+                        <span>{d.ip_address || "—"}{d.port ? <span className="text-muted-foreground">:{d.port}</span> : null}</span>
                         {isDup && (
-                          <Badge variant="destructive" className="text-[10px] gap-1">
+                          <Badge variant="destructive" className="text-[10px] gap-1" title="একই IP ও একই port-এ একাধিক device আছে">
                             <AlertTriangle className="h-3 w-3" /> Duplicate
                           </Badge>
                         )}
@@ -216,24 +221,30 @@ export default function DeviceInventory() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button size="icon" variant="ghost" className="h-8 w-8" title="ইন্সপেক্ট" onClick={() => setInspectDevice({ id: d.id, name: d.name, type: d.category === "router" && d.vendor === "mikrotik" ? "mikrotik" : d.category })}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" title={isZk ? "ZKTeco device page-এ যান" : "ইন্সপেক্ট"} onClick={() => {
+                          if (isZk) { navigate("/dashboard/hr/zkteco-devices"); return; }
+                          setInspectDevice({ id: d.id, name: d.name, type: d.category === "router" && d.vendor === "mikrotik" ? "mikrotik" : d.category });
+                        }}>
                           <Search className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8" title="Edit" onClick={() => {
-                          if (d.source === "mikrotik_devices") {
-                            toast.info("MikroTik device — Mikrotik → Servers page থেকে edit করুন");
-                            navigate("/dashboard/mikrotik/servers");
-                            return;
-                          }
-                          if (d.source !== "device_admin_managed_devices") {
-                            toast.info("এই source-এর device এখান থেকে edit করা যায় না");
-                            return;
-                          }
-                          setEditTarget({ id: d.id, source: d.source });
-                          setAddOpen(true);
-                        }}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button size="icon" variant="ghost" className="h-8 w-8" title="Edit" onClick={() => {
+                            if (isMk) {
+                              toast.info("MikroTik device — Mikrotik → Servers page থেকে edit করুন");
+                              navigate("/dashboard/mikrotik/servers");
+                              return;
+                            }
+                            if (isZk) {
+                              toast.info("ZKTeco device — ZKTeco Devices page থেকে edit করুন");
+                              navigate("/dashboard/hr/zkteco-devices");
+                              return;
+                            }
+                            setEditTarget({ id: d.id, source: d.source });
+                            setAddOpen(true);
+                          }}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                         {canDelete && (
                           <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" title="Delete" onClick={() => setDeleteTarget(d)}>
                             <Trash2 className="h-4 w-4" />
@@ -245,6 +256,7 @@ export default function DeviceInventory() {
                   </TableRow>
                 );
               })}
+
             </TableBody>
           </Table>
         </CardContent>
