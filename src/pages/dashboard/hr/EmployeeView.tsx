@@ -16,6 +16,9 @@ import { useState } from "react";
 export default function EmployeeView() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [convertOpen, setConvertOpen] = useState(false);
+
+
 
   const { data: emp, isLoading } = useQuery({
     queryKey: ["employee-view", id],
