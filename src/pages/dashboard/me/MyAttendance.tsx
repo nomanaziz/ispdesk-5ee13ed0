@@ -29,8 +29,8 @@ export default function MyAttendance() {
             {(data ?? []).map((r: any) => (
               <TableRow key={r.id}>
                 <TableCell>{r.date}</TableCell>
-                <TableCell className="text-xs">{r.in_time || "—"}</TableCell>
-                <TableCell className="text-xs">{r.out_time || "—"}</TableCell>
+                <TableCell className="text-xs">{r.check_in || "—"}</TableCell>
+                <TableCell className="text-xs">{r.check_out || "—"}</TableCell>
                 <TableCell><Badge variant={r.status === "present" ? "default" : r.status === "absent" ? "destructive" : "outline"}>{r.status}</Badge></TableCell>
               </TableRow>
             ))}
