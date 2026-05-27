@@ -31,6 +31,7 @@ export default function PayslipManager() {
   const [empType, setEmpType] = useState<string>("active");
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
+  const [showRules, setShowRules] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [editEmp, setEditEmp] = useState<any | null>(null);
@@ -291,8 +292,33 @@ export default function PayslipManager() {
           <h1 className="text-2xl font-bold">পে-স্লিপ ম্যানেজার</h1>
           <p className="text-sm text-muted-foreground">HR & Payroll — পে-স্লিপ জেনারেট ও ম্যানেজমেন্ট</p>
         </div>
-        <Button variant="link" onClick={() => navigate("/dashboard/hr/payroll")}>View Rules »</Button>
+        <div className="flex gap-2">
+          <Button variant="link" onClick={() => setShowRules((s) => !s)}>
+            {showRules ? "Hide Rules «" : "View Rules »"}
+          </Button>
+          <Button variant="link" onClick={() => navigate("/dashboard/hr/payroll")}>Payroll Templates »</Button>
+        </div>
       </div>
+
+      {showRules && (
+        <Card>
+          <CardContent className="p-4 text-sm space-y-1.5 text-foreground/90">
+            <p>1. You can generate Payslip for <b>Last Not generated or Last Canceled Period</b> only.</p>
+            <p>2. Only <b>Previously Generated</b> and <b>Unpaid</b> Period can be <b>Regenerate</b>.</p>
+            <p>3. Generate a payslip will calculate payhead's amount from <b>current employee payheads</b>.</p>
+            <p>4. Regenerate a payslip will calculate payhead's amount from <b>previously generated payheads</b> for that Period.</p>
+            <p>5. Before Generate a payslip you can always go to{" "}
+              <button type="button" onClick={() => navigate("/dashboard/hr/settings")} className="text-primary underline">Payslip Generation Settings</button>{" "}
+              and change generate permission for the timing fees like <b>Late fee, Early out fee & Overtime fee</b>.
+            </p>
+            <p>6. You can <b>Cancel</b> a payslip, if that payslip is <b>not paid</b> yet.</p>
+            <p>7. You can <b>Update</b> a payslip, if that payslip is paid <b>partially</b> and when you need to recalculate that payslip <b>timing fees</b> for that period. You can do this many times until that payslip is fully paid.</p>
+            <p>8. If you make any mistake during selecting a period for a Generate Payslip, you can continue with the <b>Correctly Selected Employee</b>.</p>
+            <p>9. All <b>Previously Generated</b> and <b>not Canceled</b> Payslip can be View.</p>
+            <p>10. You can see Paid and Generated Status for each Period by clicking <b>View More</b>.</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filter bar */}
       <Card>
