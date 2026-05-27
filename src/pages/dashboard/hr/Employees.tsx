@@ -11,9 +11,10 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Search, Edit, Eye, DollarSign, Calendar, Users, Receipt } from "lucide-react";
+import { Plus, Search, Edit, Eye, DollarSign, Calendar, Users, Receipt, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import EmployeePayheadsDialog from "@/components/hr/EmployeePayheadsDialog";
 import EmployeeHolidaysDialog from "@/components/hr/EmployeeHolidaysDialog";
 
@@ -24,6 +25,8 @@ export default function Employees() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [payheadEmp, setPayheadEmp] = useState<any | null>(null);
   const [holidayEmp, setHolidayEmp] = useState<any | null>(null);
+  const [confirmEmp, setConfirmEmp] = useState<any | null>(null);
+  const [confirmSalary, setConfirmSalary] = useState<string>("");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -56,6 +59,25 @@ export default function Employees() {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       toast.success("স্ট্যাটাস আপডেট হয়েছে");
     },
+  });
+
+  const confirmEmployee = useMutation({
+    mutationFn: async () => {
+      if (!confirmEmp) return;
+      const { error } = await supabase.rpc("confirm_employee" as any, {
+        _employee_id: confirmEmp.id,
+        _confirm_date: new Date().toISOString().slice(0, 10),
+        _new_salary: confirmSalary ? Number(confirmSalary) : null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Confirmation সম্পন্ন — leave balance auto-create হয়েছে");
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      setConfirmEmp(null);
+      setConfirmSalary("");
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const filtered = (employees || [])
@@ -153,13 +175,14 @@ export default function Employees() {
                     <TableHead>ডিপার্টমেন্ট</TableHead>
                     <TableHead>পদবী</TableHead>
                     <TableHead>বেতন</TableHead>
+                    <TableHead>প্রবেশন</TableHead>
                     <TableHead>স্ট্যাটাস</TableHead>
                     <TableHead className="text-right">অ্যাকশন</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 && (
-                    <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">কোনো কর্মী পাওয়া যায়নি</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">কোনো কর্মী পাওয়া যায়নি</TableCell></TableRow>
                   )}
                   {filtered.map((emp: any) => (
                     <TableRow key={emp.id} className={selected.has(emp.id) ? "bg-muted/30" : ""}>
@@ -174,6 +197,18 @@ export default function Employees() {
                       <TableCell>{emp.positions?.name || "—"}</TableCell>
                       <TableCell>৳{Number(emp.salary || 0).toLocaleString()}</TableCell>
                       <TableCell>
+                        {emp.is_confirmed ? (
+                          <Badge variant="default" className="gap-1">
+                            <CheckCircle2 className="h-3 w-3" /> Confirmed
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">
+                            Probation
+                            {emp.probation_end_date ? ` → ${emp.probation_end_date}` : ""}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <Switch
                           checked={emp.status === "active"}
                           onCheckedChange={(checked) => toggleStatus.mutate({ id: emp.id, status: checked ? "active" : "inactive" })}
@@ -181,6 +216,12 @@ export default function Employees() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                          {!emp.is_confirmed && (
+                            <Button size="icon" variant="ghost" title="Confirm করুন"
+                              onClick={() => { setConfirmEmp(emp); setConfirmSalary(String(emp.salary || 0)); }}>
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            </Button>
+                          )}
                           <Button size="icon" variant="ghost" title="দেখুন"
                             onClick={() => navigate(`/dashboard/hr/employees/${emp.id}`)}>
                             <Eye className="h-4 w-4 text-blue-600" />
@@ -192,7 +233,7 @@ export default function Employees() {
                           <Button size="icon" variant="ghost" title="পে-হেডস" onClick={() => setPayheadEmp(emp)}>
                             <DollarSign className="h-4 w-4 text-amber-600" />
                           </Button>
-                          <Button size="icon" variant="ghost" title="ছুটি/ক্যালেন্ডার" onClick={() => setHolidayEmp(emp)}>
+                          <Button size="icon" variant="ghost" title="সাপ্তাহিক ছুটি" onClick={() => setHolidayEmp(emp)}>
                             <Calendar className="h-4 w-4 text-indigo-600" />
                           </Button>
                         </div>
@@ -208,6 +249,37 @@ export default function Employees() {
 
       <EmployeePayheadsDialog employee={payheadEmp} onClose={() => setPayheadEmp(null)} />
       <EmployeeHolidaysDialog employee={holidayEmp} onClose={() => setHolidayEmp(null)} />
+
+      <Dialog open={!!confirmEmp} onOpenChange={(o) => !o && setConfirmEmp(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>কর্মী Confirmation — {confirmEmp?.name}</DialogTitle>
+            <DialogDescription>
+              Confirm করলে এই বছরের বাকি মাসগুলোর জন্য prorated leave balance auto-create হবে (Casual + Sick)।
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>নতুন বেতন (optional increment)</Label>
+              <Input
+                type="number"
+                value={confirmSalary}
+                onChange={(e) => setConfirmSalary(e.target.value)}
+                placeholder="যেমন: 25000"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                বর্তমান বেতন: ৳{Number(confirmEmp?.salary || 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmEmp(null)}>বাতিল</Button>
+            <Button onClick={() => confirmEmployee.mutate()} disabled={confirmEmployee.isPending}>
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

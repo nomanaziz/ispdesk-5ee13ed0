@@ -18,7 +18,11 @@ export default function Catering() {
   const qc = useQueryClient();
   const [svcOpen, setSvcOpen] = useState(false);
   const [svcName, setSvcName] = useState("");
-  const [svcContact, setSvcContact] = useState("");
+  const [svcOwner, setSvcOwner] = useState("");
+  const [svcPhone, setSvcPhone] = useState("");
+  const [svcEmail, setSvcEmail] = useState("");
+  const [svcAddress, setSvcAddress] = useState("");
+  const [svcPrice, setSvcPrice] = useState("120");
   const [editingMenu, setEditingMenu] = useState<{ serviceId: string; day: number } | null>(null);
   const [items, setItems] = useState("");
   const [price, setPrice] = useState("0");
@@ -41,10 +45,23 @@ export default function Catering() {
 
   const addService = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("catering_services" as any).insert({ name: svcName, contact: svcContact || null });
+      const payload: any = {
+        name: svcName,
+        owner_name: svcOwner || null,
+        phone: svcPhone || null,
+        email: svcEmail || null,
+        address: svcAddress || null,
+        default_meal_price: Number(svcPrice) || 120,
+      };
+      const { error } = await supabase.from("catering_services" as any).insert(payload);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Service যোগ হয়েছে"); setSvcOpen(false); setSvcName(""); setSvcContact(""); qc.invalidateQueries({ queryKey: ["catering-services-admin"] }); },
+    onSuccess: () => {
+      toast.success("Service যোগ হয়েছে");
+      setSvcOpen(false);
+      setSvcName(""); setSvcOwner(""); setSvcPhone(""); setSvcEmail(""); setSvcAddress(""); setSvcPrice("120");
+      qc.invalidateQueries({ queryKey: ["catering-services-admin"] });
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -84,10 +101,18 @@ export default function Catering() {
         <CardContent className="space-y-6">
           {(services ?? []).map((s: any) => (
             <div key={s.id} className="border rounded p-3 space-y-2">
-              <div className="flex justify-between">
-                <div>
+              <div className="flex justify-between gap-3 flex-wrap">
+                <div className="space-y-0.5">
                   <p className="font-semibold">{s.name}</p>
-                  <p className="text-xs text-muted-foreground">{s.contact || "—"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    মালিক: {s.owner_name || "—"} • ফোন: {s.phone || "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {s.email || "—"} • {s.address || "—"}
+                  </p>
+                  <p className="text-xs">
+                    Default meal price: <span className="font-semibold">৳{Number(s.default_meal_price || 120).toLocaleString()}</span>
+                  </p>
                 </div>
                 <Badge variant={s.active ? "default" : "outline"}>{s.active ? "Active" : "Inactive"}</Badge>
               </div>
@@ -119,8 +144,14 @@ export default function Catering() {
         <DialogContent>
           <DialogHeader><DialogTitle>নতুন Catering Service</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>নাম *</Label><Input value={svcName} onChange={(e) => setSvcName(e.target.value)} /></div>
-            <div><Label>যোগাযোগ</Label><Input value={svcContact} onChange={(e) => setSvcContact(e.target.value)} /></div>
+            <div><Label>Service নাম *</Label><Input value={svcName} onChange={(e) => setSvcName(e.target.value)} placeholder="যেমন: রহিম ক্যাটারিং" /></div>
+            <div><Label>মালিকের নাম</Label><Input value={svcOwner} onChange={(e) => setSvcOwner(e.target.value)} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>ফোন</Label><Input value={svcPhone} onChange={(e) => setSvcPhone(e.target.value)} /></div>
+              <div><Label>ইমেইল</Label><Input type="email" value={svcEmail} onChange={(e) => setSvcEmail(e.target.value)} /></div>
+            </div>
+            <div><Label>ঠিকানা</Label><Input value={svcAddress} onChange={(e) => setSvcAddress(e.target.value)} /></div>
+            <div><Label>Default meal price (৳)</Label><Input type="number" value={svcPrice} onChange={(e) => setSvcPrice(e.target.value)} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSvcOpen(false)}>বাতিল</Button>
