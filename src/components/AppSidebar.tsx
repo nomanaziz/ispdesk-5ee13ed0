@@ -21,7 +21,7 @@ import {
 import { NavLink, useLocation } from "react-router-dom";
 import { Sidebar, SidebarContent, useSidebar } from "@/components/ui/sidebar";
 import { useEmployeeContext } from "@/hooks/useEmployeeContext";
-import { User as UserIcon, Utensils, ClipboardList as ClipboardListIcon } from "lucide-react";
+import { User as UserIcon, Utensils, UtensilsCrossed, ClipboardList as ClipboardListIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MenuIconTile, tintForLabel } from "@/components/sidebar/MenuIconTile";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -153,25 +153,18 @@ export const menuGroups: MenuGroup[] = [
     label: "HR ও পেরোল",
     icon: UserCog,
     items: [
-      { title: "ডিপার্টমেন্ট", url: "/dashboard/hr/departments", icon: Building2 },
-      { title: "পে-হেড", url: "/dashboard/hr/payheads", icon: DollarSign },
       { title: "পেরোল", url: "/dashboard/hr/payroll", icon: Wallet },
-      { title: "পদবী", url: "/dashboard/hr/positions", icon: Briefcase },
       { title: "পে-স্লিপ", url: "/dashboard/hr/payslip", icon: FileText },
       { title: "কর্মচারী তালিকা", url: "/dashboard/hr/employees", icon: Users },
       { title: "বেতন শীট", url: "/dashboard/hr/salary-sheet", icon: ScrollText },
       { title: "অগ্রিম বেতন", url: "/dashboard/hr/advance-salary", icon: Wallet },
       { title: "কর্মী Loan", url: "/dashboard/hr/loans", icon: DollarSign },
-      { title: "রিজাইন নিয়ম", url: "/dashboard/hr/resign-rules", icon: FileText },
       { title: "রিজাইনেশন", url: "/dashboard/hr/resignations", icon: UserX },
       { title: "উপস্থিতি", url: "/dashboard/hr/attendance", icon: CheckSquare },
-      { title: "শিফট ম্যানেজমেন্ট", url: "/dashboard/hr/shifts", icon: Clock },
-      { title: "ZKTeco ডিভাইস", url: "/dashboard/hr/zkteco-devices", icon: Server },
-      { title: "উপস্থিতি নিয়ম", url: "/dashboard/hr/attendance-rules", icon: Shield },
       { title: "ছুটি ম্যানেজমেন্ট", url: "/dashboard/hr/leave", icon: CalendarDays },
-      { title: "সুবিধা পলিসি", url: "/dashboard/hr/facility-policies", icon: Briefcase },
       { title: "কনভেয়েন্স বিল", url: "/dashboard/hr/conveyance-bills", icon: DollarSign },
       { title: "আমার কনভেয়েন্স", url: "/dashboard/hr/my-conveyance", icon: Wallet },
+      { title: "ক্যাটারিং", url: "/dashboard/hr/catering", icon: UtensilsCrossed },
       { title: "HR সেটিংস", url: "/dashboard/hr/settings", icon: Settings },
     ],
   },
