@@ -1,33 +1,30 @@
-# Payslip Manager — View Rules + আগের কাজ verify
+## লক্ষ্য
+ZKTeco ডিভাইস থেকে user pull যেন বাস্তবে কাজ করে এবং 0 user এলে কারণ/ডিবাগ তথ্য পরিষ্কার দেখা যায় — HR Payroll module শেষ করার জন্য এই অংশ final করা।
 
-## পরিবর্তন
+## কী করব
+1. **ZKTeco user pull protocol শক্ত করব**
+   - বর্তমান response দেখাচ্ছে device connect/auth OK, কিন্তু `USERTEMP_RRQ` থেকে `ACK_OK len=0` আসছে।
+   - Edge function-এ কয়েকটি fallback command/flow যোগ করব: direct `USERTEMP_RRQ`, buffered request, legacy payload variants, এবং alternate user record decoding.
+   - 72-byte/28-byte ছাড়াও common firmware-এর user buffer/header variation handle করব।
 
-### 1. Payslip Manager এ "View Rules" সংযোজন
-বর্তমান page-এ `View Rules »` বাটনটা শুধু Payroll page-এ navigate করে। Screenshot এর মত একটা **collapsible 10-পয়েন্ট rules panel** যোগ করব যা page-এ inline দেখা যাবে।
+2. **0 user হলে actionable message দেখাব**
+   - শুধু “0 জন user pull হয়েছে” না দেখিয়ে function log থেকে কারণ দেখাবে: connect/auth OK, কিন্তু device user data empty/unsupported response।
+   - UI-তে latest pull log/debug panel যোগ করব যাতে আপনি দেখেন কোন step পর্যন্ত কাজ করেছে।
 
-বাটনে ক্লিক করলে নিচের ১০টা নিয়ম toggle হবে:
+3. **User list auto-refresh/final UX**
+   - Pull success হলে Device Users tab/list refresh হবে।
+   - devices table এবং users tab দুই জায়গার pull button একই selected device ব্যবহার করবে।
+   - “0 user” হলে warning toast দেখাবে, success toast না।
 
-1. You can generate Payslip for **Last Not generated or Last Canceled Period** only.
-2. Only **Previously Generated** and **Unpaid** period can be **Regenerate**.
-3. Generate a payslip will calculate payhead's amount from **current employee payheads**.
-4. Regenerate a payslip will calculate payhead's amount from **previously generated payheads** for that period.
-5. Before generate a payslip you can always go to **Payslip Generation Settings** (link → `/dashboard/hr/settings` → Payslip tab) and change permission for **Late fee, Early out fee & Overtime fee**.
-6. You can **Cancel** a payslip, if that payslip is **not paid** yet.
-7. You can **Update** a payslip, if that payslip is paid **partially** — recalculate timing fees until fully paid.
-8. If you make any mistake selecting a period, continue with the **Correctly Selected Employee**.
-9. All **Previously Generated** and **not Canceled** payslips can be viewed.
-10. You can see Paid & Generated status for each period by clicking **View More**.
+4. **Deploy/test path**
+   - `zkteco-user-pull` edge function update করব।
+   - সম্ভব হলে function deploy/test করব এবং Supabase logs দেখে নিশ্চিত করব request নতুন logic hit করছে।
 
-### 2. "Assign a PayHead" verify
-দ্বিতীয় screenshot এর dialog (Basic Salary, Bonus, Early Out, Conveyance, Medical, House Rent — Addition/Deduction + Percentage/Amount) — এটা ইতিমধ্যে `Payroll.tsx` এর "Assign PayHead" dialog এ আছে এবং কাজ করছে।
+## Technical files
+- `supabase/functions/zkteco-user-pull/index.ts`
+- `supabase/functions/zkteco-user-pull/zk-connect.ts`
+- `supabase/functions/zkteco-user-pull/zkteco.ts`
+- `src/pages/dashboard/hr/ZktecoDevices.tsx`
 
-verify করব:
-- Default template ("Monthly Payroll") এ ৬টা payhead seed হয়েছে কিনা (আগের migration থেকে)
-- Dialog এ helper text যোগ: *"Provide Late Fee, Early Out fee & Overtime fee amount as per hour."*
-- কোনো gap থাকলে minor fix
-
-## ফাইল
-- `src/pages/dashboard/hr/Payslip.tsx` — View Rules toggle panel
-- `src/pages/dashboard/hr/Payroll.tsx` — Assign PayHead dialog এ helper hint যোগ (cosmetic)
-
-কোনো DB migration লাগবে না।
+## Note
+ডিভাইস connect/auth সফল হচ্ছে, তাই network/port/CommKey মূল সমস্যা না। সমস্যা সম্ভবত এই firmware user data ভিন্ন command/format-এ দিচ্ছে অথবা response empty দিচ্ছে; তাই fallback + clear diagnostics দরকার।
