@@ -835,14 +835,14 @@ const Dashboard = () => {
         <div className="lg:col-span-2 space-y-3">
           <SectionHeading title="সিস্টেম ওভারভিউ" hint="বর্তমান মাসের মূল মেট্রিক" />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            <MetricTile label="এই মাসের সেল" value={fmt(d?.thisMonthSales)} icon={TrendingUp} tone="violet" to={`/dashboard/billing/daily-collection?from=${monthStart}&to=${todayStr}`} />
-            <MetricTile label="আজকের সেল" value={fmt(d?.todaySales)} icon={DollarSign} tone="violet" to={`/dashboard/billing/daily-collection?date=${todayStr}`} />
-            <MetricTile label="বিলিং ক্লায়েন্ট" value={num(d?.billingClients)} icon={FileText} tone="violet" to="/dashboard/clients/home?billingStatus=Active" />
-            <MetricTile label="মেয়াদোত্তীর্ণ" value={num(d?.totalExpired)} icon={CalendarX} tone="amber" to="/dashboard/clients/home?status=expired" />
-            <MetricTile label="পোর্টাল অ্যাক্টিভ" value={num(d?.portalActive)} icon={ShieldCheck} tone="emerald" to="/dashboard/clients/home?billingStatus=Active" />
-            <MetricTile label="পোর্টাল ইনঅ্যাক্টিভ" value={num(d?.portalInactive)} icon={UserMinus} tone="rose" to="/dashboard/clients/home?billingStatus=Inactive" />
-            <MetricTile label="VIP ক্লায়েন্ট" value={num(d?.vipClients)} icon={Award} tone="amber" to="/dashboard/clients/home?vip=1" />
-            <MetricTile label="বকেয়া" value={fmt(d?.totalDueAmount)} icon={AlertTriangle} tone="rose" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />
+            {showW("system_overview", "this_month_sales") && <MetricTile label="এই মাসের সেল" value={fmt(d?.thisMonthSales)} icon={TrendingUp} tone="violet" to={`/dashboard/billing/daily-collection?from=${monthStart}&to=${todayStr}`} />}
+            {showW("system_overview", "today_sales") && <MetricTile label="আজকের সেল" value={fmt(d?.todaySales)} icon={DollarSign} tone="violet" to={`/dashboard/billing/daily-collection?date=${todayStr}`} />}
+            {showW("system_overview", "billing_clients") && <MetricTile label="বিলিং ক্লায়েন্ট" value={num(d?.billingClients)} icon={FileText} tone="violet" to="/dashboard/clients/home?billingStatus=Active" />}
+            {showW("system_overview", "expired_clients") && <MetricTile label="মেয়াদোত্তীর্ণ" value={num(d?.totalExpired)} icon={CalendarX} tone="amber" to="/dashboard/clients/home?status=expired" />}
+            {showW("system_overview", "portal_active") && <MetricTile label="পোর্টাল অ্যাক্টিভ" value={num(d?.portalActive)} icon={ShieldCheck} tone="emerald" to="/dashboard/clients/home?billingStatus=Active" />}
+            {showW("system_overview", "portal_inactive") && <MetricTile label="পোর্টাল ইনঅ্যাক্টিভ" value={num(d?.portalInactive)} icon={UserMinus} tone="rose" to="/dashboard/clients/home?billingStatus=Inactive" />}
+            {showW("system_overview", "vip_clients") && <MetricTile label="VIP ক্লায়েন্ট" value={num(d?.vipClients)} icon={Award} tone="amber" to="/dashboard/clients/home?vip=1" />}
+            {showW("system_overview", "total_due") && <MetricTile label="বকেয়া" value={fmt(d?.totalDueAmount)} icon={AlertTriangle} tone="rose" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />}
           </div>
         </div>
 
