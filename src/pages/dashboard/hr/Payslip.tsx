@@ -467,18 +467,21 @@ export default function PayslipManager() {
                   <TableHead>ধরন</TableHead>
                   <TableHead className="text-right">টেমপ্লেট</TableHead>
                   <TableHead className="text-right">এই মাসের পরিমাণ</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {editLines.map((l, i) => (
                   <TableRow key={l.payhead_id}>
-                    <TableCell className="font-medium">{l.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {l.name}{l.is_basic && <span className="text-xs text-muted-foreground ml-1">(মূল)</span>}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={l.type === "deduction" ? "destructive" : "default"}>
                         {l.type === "deduction" ? "কর্তন" : "ভাতা"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right text-muted-foreground">৳{l.base_amount.toLocaleString()}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">৳{Number(l.base_amount || 0).toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       <Input type="number" value={l.amount} className="w-28 ml-auto"
                         onChange={(e) => {
@@ -486,10 +489,30 @@ export default function PayslipManager() {
                           setEditLines((prev) => prev.map((x, idx) => idx === i ? { ...x, amount: v } : x));
                         }} />
                     </TableCell>
+                    <TableCell className="text-right">
+                      {!l.is_basic && (
+                        <Button size="sm" variant="ghost" onClick={() => removeLine(l.payhead_id)}>×</Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+            <div className="flex items-center gap-2 pt-3 border-t">
+              <span className="text-sm text-muted-foreground">অতিরিক্ত যোগ করুন:</span>
+              <Select value="" onValueChange={addExtraLine}>
+                <SelectTrigger className="w-64"><SelectValue placeholder="পে-হেড নির্বাচন করুন" /></SelectTrigger>
+                <SelectContent>
+                  {(allPayheads || [])
+                    .filter((p: any) => !editLines.find((l) => l.payhead_id === p.id))
+                    .map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} ({p.type === "deduction" ? "কর্তন" : "ভাতা"})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditEmp(null)}>বাতিল</Button>
