@@ -15,6 +15,7 @@ import {
 import { Link, Navigate } from "react-router-dom";
 import { useEmployeeContext } from "@/hooks/useEmployeeContext";
 import { useModulePermission } from "@/hooks/useModulePermissions";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import KpiCard from "@/components/dashboard/KpiCard";
 import MetricTile from "@/components/dashboard/MetricTile";
 import ResourceGauge from "@/components/dashboard/ResourceGauge";
