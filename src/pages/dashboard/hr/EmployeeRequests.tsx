@@ -39,7 +39,9 @@ function RequestList({ table, kind }: { table: string; kind: "advance" | "loan" 
   const { data } = useQuery({
     queryKey: ["emp-req-admin", table],
     queryFn: async () => {
-      const { data } = await supabase.from(table as any).select("*, employees(name, employee_id)").order("created_at", { ascending: false });
+      let q = supabase.from(table as any).select("*, employees(name, employee_id)");
+      if (table === "requisitions") q = q.eq("request_type", "employee");
+      const { data } = await q.order("created_at", { ascending: false });
       return (data as any[]) ?? [];
     },
   });
