@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bell, ShoppingBag, UserPlus, Wallet, AlertTriangle, CalendarClock, CheckCheck } from "lucide-react";
+import { Bell, ShoppingBag, UserPlus, Wallet, AlertTriangle, CalendarClock, CheckCheck, CalendarDays, UserX, ClipboardList, UserCog, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,7 +12,8 @@ import { formatDistanceToNow } from "date-fns";
 
 type Notif = {
   id: string;
-  kind: "order" | "request" | "paid" | "low_balance" | "subscription";
+  kind: "order" | "request" | "paid" | "low_balance" | "subscription"
+      | "leave" | "advance" | "resignation" | "requisition" | "profile_change" | "conveyance";
   title: string;
   meta: string;
   href: string;
@@ -20,11 +21,17 @@ type Notif = {
 };
 
 const KIND_META: Record<Notif["kind"], { icon: any; tone: string }> = {
-  order:        { icon: ShoppingBag,    tone: "text-pink-600 bg-pink-100 dark:bg-pink-500/15" },
-  request:      { icon: UserPlus,       tone: "text-blue-600 bg-blue-100 dark:bg-blue-500/15" },
-  paid:         { icon: Wallet,         tone: "text-emerald-600 bg-emerald-100 dark:bg-emerald-500/15" },
-  low_balance:  { icon: AlertTriangle,  tone: "text-amber-600 bg-amber-100 dark:bg-amber-500/15" },
-  subscription: { icon: CalendarClock,  tone: "text-violet-600 bg-violet-100 dark:bg-violet-500/15" },
+  order:          { icon: ShoppingBag,    tone: "text-pink-600 bg-pink-100 dark:bg-pink-500/15" },
+  request:        { icon: UserPlus,       tone: "text-blue-600 bg-blue-100 dark:bg-blue-500/15" },
+  paid:           { icon: Wallet,         tone: "text-emerald-600 bg-emerald-100 dark:bg-emerald-500/15" },
+  low_balance:    { icon: AlertTriangle,  tone: "text-amber-600 bg-amber-100 dark:bg-amber-500/15" },
+  subscription:   { icon: CalendarClock,  tone: "text-violet-600 bg-violet-100 dark:bg-violet-500/15" },
+  leave:          { icon: CalendarDays,   tone: "text-cyan-600 bg-cyan-100 dark:bg-cyan-500/15" },
+  advance:        { icon: Wallet,         tone: "text-orange-600 bg-orange-100 dark:bg-orange-500/15" },
+  resignation:    { icon: UserX,          tone: "text-red-600 bg-red-100 dark:bg-red-500/15" },
+  requisition:    { icon: ClipboardList,  tone: "text-indigo-600 bg-indigo-100 dark:bg-indigo-500/15" },
+  profile_change: { icon: UserCog,        tone: "text-fuchsia-600 bg-fuchsia-100 dark:bg-fuchsia-500/15" },
+  conveyance:     { icon: Receipt,        tone: "text-teal-600 bg-teal-100 dark:bg-teal-500/15" },
 };
 
 const SEEN_KEY = "admin-notif-seen-ids";
