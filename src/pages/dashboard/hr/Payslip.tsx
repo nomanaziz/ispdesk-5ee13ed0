@@ -278,12 +278,31 @@ export default function PayslipManager() {
             <Receipt className="h-4 w-4" /> Generate
           </Button>
           <Button variant="secondary" disabled={selected.size === 0} onClick={() => {
-            const firstId = Array.from(selected)[0];
-            const ex = (existing || []).find((p: any) => p.employee_id === firstId);
-            if (ex) setPreviewId(ex.id);
-            else toast.error("আগে পে-স্লিপ জেনারেট করুন");
+            const ids = Array.from(selected);
+            const payrollIds = ids
+              .map((eid) => (existing || []).find((p: any) => p.employee_id === eid)?.id)
+              .filter(Boolean) as string[];
+            if (payrollIds.length === 0) {
+              toast.error("আগে পে-স্লিপ জেনারেট করুন");
+              return;
+            }
+            if (payrollIds.length === 1) setPreviewId(payrollIds[0]);
+            else setBulkPreview(payrollIds);
           }} className="gap-2">
             <Eye className="h-4 w-4" /> View
+          </Button>
+          <Button variant="default" disabled={selected.size === 0} onClick={() => {
+            const ids = Array.from(selected);
+            const payrollIds = ids
+              .map((eid) => (existing || []).find((p: any) => p.employee_id === eid)?.id)
+              .filter(Boolean) as string[];
+            if (payrollIds.length === 0) {
+              toast.error("আগে পে-স্লিপ জেনারেট করুন");
+              return;
+            }
+            window.open(`/dashboard/hr/payslip/print?ids=${payrollIds.join(",")}`, "_blank");
+          }} className="gap-2 bg-blue-600 hover:bg-blue-700">
+            <Download className="h-4 w-4" /> Download PDF
           </Button>
           <Button variant="outline" onClick={() => handleGenerate("regenerate")} className="gap-2 text-orange-600">
             <RefreshCw className="h-4 w-4" /> Regenerate
