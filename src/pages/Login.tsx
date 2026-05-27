@@ -42,6 +42,22 @@ const LoginInner = () => {
         navigate("/dashboard");
         return;
       }
+
+      // 1) Try app_users (employee / external / remote-support) login
+      try {
+        const { data: appRes, error: appErr } = await supabase.functions.invoke("app-user-login", {
+          body: { username: id, password },
+        });
+        if (!appErr && appRes?.ok && appRes?.email) {
+          await signIn(appRes.email, password);
+          navigate("/dashboard");
+          return;
+        }
+      } catch (_) {
+        // fall through to portal login
+      }
+
+      // 2) Fallback: portal login (BW customer / reseller / client)
       const result = await portalLogin(id, password);
       if (result.error) {
         toast({ title: t("লগইন ব্যর্থ", "Login failed"), description: result.error, variant: "destructive" });

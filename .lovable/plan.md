@@ -1,77 +1,47 @@
-# Employee Default Role Lock + External/Remote App User
+# EMP001 দিয়ে App User লগইন — ব্রিজ Setup
 
-## কী বদলাবে
+## সমস্যা
+Login page-এ `@` না থাকলে portal login (BW/reseller/client) চেষ্টা করে — `app_users` টেবিলে EMP001 আছে কিন্তু সেটা auth flow-এ যুক্ত না। তাই EMP001/EMP001 দিয়ে কোনোভাবেই ঢোকা যাচ্ছে না।
 
-### 1. Employee role এখন fixed
-- App User dialog-এ যখন কোনো **Employee** select করা হবে, primary role automatically `Employee` হয়ে যাবে এবং dropdown **disabled/locked** থাকবে (পরিবর্তনযোগ্য না)।
-- পাশে badge: "🔒 Employee — fixed for all staff"
-- শুধু **অতিরিক্ত role** (Billing, HR, Accounts, Technician ইত্যাদি) checkbox দিয়ে যোগ করা যাবে।
-- DB trigger update — employee-linked app_user-এর `role_id` সবসময় Employee force করবে (UI bypass হলেও protect)।
+## সমাধান (সহজ পদ্ধতি)
 
-### 2. Employee role permissions পরিপূর্ণ করা
-Employee role-এ এই module-গুলো ইতিমধ্যেই আছে — Salary/Payslip, Attendance, Leave, Conveyance, Lunch Order, Facilities, Profile। যোগ হবে:
-- **My Requisition** — product/equipment requisition (screwdriver, tools ইত্যাদি) আবেদন
-- **My Accommodation** — নিজের accommodation view (ইতিমধ্যে My Facilities-এ আছে, আলাদা করা হবে স্পষ্টতার জন্য)
-- **My Salary Sheet** — শুধু নিজেরটা, অন্যদের না (RLS দিয়ে enforce)
+Employee/External app_users-কে Supabase auth-এর সাথে bridge করা হবে synthetic email দিয়ে। Login page-এ username লিখলে সেটা automatic সঠিক জায়গায় route হবে।
 
-### 3. External / Remote Support User (নতুন)
-`app_users`-এ নতুন কলাম যোগ:
-- `user_type` enum: `internal` (default), `external`, `remote_support`
-- `access_expires_at timestamptz NULL` — null = permanent, value থাকলে সেই সময়ের পর login বন্ধ
-- `purpose text` — কেন access দেওয়া হলো (vendor demo, troubleshooting ইত্যাদি)
-- `created_by_note text`
+### 1. Edge Function — `app-user-login`
+- Public (no JWT verify), input: `{ username, password }`
+- করণীয়:
+  1. `app_users` থেকে username + password match খোঁজে (status='active', `access_expires_at` valid)
+  2. `auth_user_id` থাকলে সেটার email return করে
+  3. না থাকলে synthetic email `<username>@appuser.local` দিয়ে Supabase admin API দিয়ে auth user বানায়, app_users-এ `auth_user_id` + `email` save করে
+  4. Return: `{ email, ok: true }` — client সেই email + একই password দিয়ে `signInWithPassword` করবে
+- যদি expired/inactive → meaningful error message
 
-**Login enforcement**: Auth context check করবে `access_expires_at < now()` হলে session terminate।
+### 2. Login Page (`src/pages/Login.tsx`)
+- Identifier-এ `@` নেই হলে নতুন order:
+  1. প্রথমে `app-user-login` edge function call (এটা employees/external জন্য)
+  2. সফল হলে synthetic email + password দিয়ে `signIn()` → `/dashboard`
+  3. ব্যর্থ হলে fallback portal login (BW/reseller/client) — যেমন এখন আছে
 
-**External user-এ Employee role auto-attach হবে না** (trigger condition: শুধু `user_type='internal'` হলে)। External user যে role দেয়া হবে শুধু সেটাই কাজ করবে।
+### 3. Backfill
+- বিদ্যমান EMP001 row-এ `auth_user_id` NULL — প্রথম login attempt-ই trigger করবে auth account বানানো (lazy provisioning)। আলাদা migration লাগবে না।
 
-### 4. AppUsers পেজ UI বদল
-- উপরে tab: **Internal | External | Remote Support | All**
-- "নতুন App User" বাটনে dropdown:
-  - **Employee থেকে বানান** → existing ConvertToAppUserDialog (Employee role locked)
-  - **External User যোগ করুন** → নতুন dialog: name, email, username, password, primary role, expiry date, purpose
-  - **Remote Support Access দিন** → একই form কিন্তু default expiry = 24 ঘণ্টা, role = "Remote Support" (নতুন protected role)
-- Table-এ extra column: Type badge (Internal/External/Remote), Expiry countdown ("৩ দিন বাকি", "Expired")।
-
-### 5. নতুন protected role: `Remote Support`
-- Read-only access — শুধু device monitoring, ticket view
-- কোনো customer/billing data নয়
+### 4. AuthContext — Expiry Guard
+- Session load হলে `app_users` থেকে current user-এর `access_expires_at` check, expired হলে force `signOut()` + toast।
 
 ## টেকনিক্যাল
 
-### Migration
-```sql
--- 1. New type + columns
-CREATE TYPE app_user_type AS ENUM ('internal','external','remote_support');
-ALTER TABLE app_users
-  ADD COLUMN user_type app_user_type NOT NULL DEFAULT 'internal',
-  ADD COLUMN access_expires_at timestamptz,
-  ADD COLUMN purpose text;
+- **Secret needed**: edge function `SUPABASE_SERVICE_ROLE_KEY` (auto-available in Deno env)
+- **Files**:
+  - `supabase/functions/app-user-login/index.ts` (নতুন)
+  - `supabase/config.toml` — function register `verify_jwt = false`
+  - `src/pages/Login.tsx` — handleSubmit-এ extra try branch
+  - `src/contexts/AuthContext.tsx` — expiry guard
+- **Security note**: app_users-এ password এখন plaintext। সহজ রাখার জন্য এভাবেই থাকছে; ভবিষ্যতে hash (bcrypt) করা যাবে।
 
--- 2. New protected role "Remote Support" with read-only modules
-INSERT INTO app_roles(name, is_protected, status) VALUES ('Remote Support', true, 'Active');
--- Plus app_role_modules: Devices view, Network monitoring view, Tickets view
+## ফলাফল
 
--- 3. Employee role gets My Requisition module
-INSERT INTO app_role_modules (role_id, module_group, module_name, enabled, permission) ...
-
--- 4. Update auto-attach trigger: only when user_type='internal' AND employee_id IS NOT NULL
--- 5. New trigger: force role_id='Employee' when user_type='internal' AND employee_id NOT NULL
--- 6. Expiry enforcement: function/policy that checks access_expires_at on login
-```
-
-### Files
-- `src/pages/dashboard/access/AppUsers.tsx` — tabs, type column, expiry display, type-aware dialog
-- `src/components/hr/ConvertToAppUserDialog.tsx` — role select disabled when employee
-- `src/components/access/ExternalUserDialog.tsx` (নতুন) — external/remote-support flow
-- `src/contexts/AuthContext.tsx` — expiry check on session load
-- (অপশনাল) নতুন page `src/pages/dashboard/hr/MyRequisition.tsx` — placeholder
-
-## Scope বহির্ভূত
-- Requisition-এর পুরো workflow (approval, tracking) — পরে আলাদা plan
-- Remote support session recording/audit — পরে
+EMP001 দিয়ে username=EMP001, password=EMP001 লিখলেই auto দাশবোর্ডে ঢুকবে। External / Remote support user-ও একইভাবে তাদের username দিয়ে ঢুকবে। Expired user blocked থাকবে।
 
 ## প্রশ্ন
-1. Remote support default expiry **24 ঘণ্টা** ঠিক আছে, না-কি অন্য default (যেমন ৪ ঘণ্টা)?
-2. External user-এর জন্য কি **email-based login** চান (Supabase auth), না-কি existing username/password pattern? (এখন username/password ধরে এগোচ্ছি)
-3. Expired user-কে কি **auto-delete** হবে, না-কি শুধু **disabled** থেকে যাবে history-র জন্য? (Disabled রাখার পরিকল্পনা — manual cleanup)
+1. Synthetic email format `EMP001@appuser.local` ঠিক আছে, না-কি অন্য domain (যেমন `@ispdesk.internal`) চান?
+2. App_users-এর password এখন plaintext — এটা hash করতে চান এখনই, না-কি পরে?
