@@ -30,6 +30,20 @@ const Cart = lazy(() => import("@/pages/public/Cart"));
 const Checkout = lazy(() => import("@/pages/public/Checkout"));
 const OrderTrack = lazy(() => import("@/pages/public/OrderTrack"));
 
+// Employee self-service
+const MyShell = lazy(() => import("@/components/me/MyShell"));
+const MyDashboard = lazy(() => import("@/pages/dashboard/me/MyDashboard"));
+const MyProfile = lazy(() => import("@/pages/dashboard/me/MyProfile"));
+const MyAttendance = lazy(() => import("@/pages/dashboard/me/MyAttendance"));
+const MyLeave = lazy(() => import("@/pages/dashboard/me/MyLeave"));
+const MyPayslip = lazy(() => import("@/pages/dashboard/me/MyPayslip"));
+const MyRequestPage = lazy(() => import("@/pages/dashboard/me/MyRequestPage"));
+const MyMeals = lazy(() => import("@/pages/dashboard/me/MyMeals"));
+const MyRequisitions = lazy(() => import("@/pages/dashboard/me/MyRequisitions"));
+const HrCatering = lazy(() => import("@/pages/dashboard/hr/Catering"));
+const HrProfileApprovals = lazy(() => import("@/pages/dashboard/hr/ProfileApprovals"));
+const HrEmployeeRequests = lazy(() => import("@/pages/dashboard/hr/EmployeeRequests"));
+
 // Shop Admin
 const ShopCategories = lazy(() => import("@/pages/dashboard/shop/Categories"));
 const ShopProducts = lazy(() => import("@/pages/dashboard/shop/Products"));
