@@ -31,6 +31,7 @@ export default function PayslipManager() {
   const [empType, setEmpType] = useState<string>("active");
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
+  const [showRules, setShowRules] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [editEmp, setEditEmp] = useState<any | null>(null);
