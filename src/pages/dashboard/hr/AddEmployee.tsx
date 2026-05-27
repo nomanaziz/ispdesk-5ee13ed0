@@ -244,6 +244,10 @@ export default function AddEmployee() {
       delete payload.personal_phone;
       delete payload.division_id;
       delete payload.district_id;
+      // Attach ZKTeco device user id when converting from device
+      if (!editId && fromDeviceUserRowId && prefDeviceUserId) {
+        payload.device_user_id = prefDeviceUserId;
+      }
       // Nullify empty uuid / date / time / numeric fields to avoid Postgres syntax errors
       const nullableKeys = [
         "department_id", "position_id", "zkteco_device_id", "payroll_template_id", "default_shift_id",
@@ -267,8 +271,9 @@ export default function AddEmployee() {
       if (editId) {
         const { error } = await supabase.from("employees").update(payload).eq("id", editId);
         if (error) throw error;
+        return { id: editId } as any;
       } else {
-        const { error } = await supabase.from("employees").insert(payload);
+        const { data: inserted, error } = await supabase.from("employees").insert(payload).select("id").single();
         if (error) throw error;
         // Increment auto ID counter
         if (autoIdMode && hrSettings) {
@@ -277,13 +282,25 @@ export default function AddEmployee() {
             setting_value: { ...config, next_number: (config.next_number || 1) + 1 },
           }).eq("setting_key", "employee_id_config");
         }
+        // Auto-map: link the ZKTeco device user row to this new employee
+        if (fromDeviceUserRowId && inserted?.id) {
+          await supabase.from("zkteco_device_users")
+            .update({ mapped_employee_id: inserted.id })
+            .eq("id", fromDeviceUserRowId);
+        }
+        return inserted as any;
       }
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       queryClient.invalidateQueries({ queryKey: ["hr-settings-employee-id"] });
-      toast.success(editId ? "কর্মী আপডেট হয়েছে" : "কর্মী যোগ হয়েছে");
-      navigate("/dashboard/hr/employees");
+      queryClient.invalidateQueries({ queryKey: ["zkteco-device-users"] });
+      toast.success(editId ? "কর্মী আপডেট হয়েছে" : fromDeviceUserRowId ? "কর্মী যোগ ও device-এর সাথে map সম্পন্ন" : "কর্মী যোগ হয়েছে");
+      if (fromDeviceUserRowId && res?.id) {
+        navigate(`/dashboard/hr/employees/${res.id}`);
+      } else {
+        navigate("/dashboard/hr/employees");
+      }
     },
     onError: (e: any) => toast.error(e.message),
   });
