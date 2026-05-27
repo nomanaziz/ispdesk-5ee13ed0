@@ -337,6 +337,32 @@ export default function AppUsers() {
               </Select>
             </div>
             <div>
+              <Label>অতিরিক্ত Role (Department-ভিত্তিক)</Label>
+              <div className="rounded-md border p-2 grid grid-cols-2 gap-2 max-h-40 overflow-auto">
+                {roles
+                  .filter((r) => r.id !== form.role_id && r.id !== EMPLOYEE_ROLE_ID)
+                  .map((r) => (
+                    <label key={r.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={form.extra_role_ids.includes(r.id)}
+                        onCheckedChange={() =>
+                          setForm((f) => ({
+                            ...f,
+                            extra_role_ids: f.extra_role_ids.includes(r.id)
+                              ? f.extra_role_ids.filter((x) => x !== r.id)
+                              : [...f.extra_role_ids, r.id],
+                          }))
+                        }
+                      />
+                      {r.name}
+                    </label>
+                  ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Billing, HR, Accounts ইত্যাদি বাড়তি permission। Employee role auto-attached।
+              </p>
+
+            <div>
               <Label>Status</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
