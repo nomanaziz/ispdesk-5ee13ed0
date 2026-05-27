@@ -65,6 +65,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "advance_salary_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
         ]
       }
       affiliates: {
@@ -256,6 +263,13 @@ export type Database = {
             referencedRelation: "app_users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "app_user_extra_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "my_app_user"
+            referencedColumns: ["id"]
+          },
         ]
       }
       app_users: {
@@ -316,6 +330,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_users_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
             referencedColumns: ["id"]
           },
           {
@@ -440,6 +461,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "assets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
         ]
       }
       attendance: {
@@ -510,6 +538,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
             referencedColumns: ["id"]
           },
           {
@@ -3045,6 +3080,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "client_request_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "client_request_assignments_request_id_fkey"
             columns: ["request_id"]
             isOneToOne: false
@@ -3865,6 +3907,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "conveyance_bills_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "conveyance_bills_expense_entry_id_fkey"
             columns: ["expense_entry_id"]
             isOneToOne: false
@@ -4083,6 +4132,13 @@ export type Database = {
             columns: ["app_user_id"]
             isOneToOne: false
             referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dashboard_widget_permissions_app_user_id_fkey"
+            columns: ["app_user_id"]
+            isOneToOne: false
+            referencedRelation: "my_app_user"
             referencedColumns: ["id"]
           },
         ]
@@ -4857,6 +4913,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employee_facilities_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "employee_facilities_facility_policy_id_fkey"
             columns: ["facility_policy_id"]
             isOneToOne: false
@@ -4919,6 +4982,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "employee_loans_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
         ]
       }
       employee_shift_assignments: {
@@ -4952,6 +5022,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_shift_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
             referencedColumns: ["id"]
           },
           {
@@ -5911,6 +5988,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "leave_applications_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
         ]
       }
       leave_balances: {
@@ -5957,6 +6041,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_balances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
             referencedColumns: ["id"]
           },
         ]
@@ -6232,6 +6323,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "loan_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
         ]
       }
       meal_orders: {
@@ -6277,6 +6375,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_orders_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
             referencedColumns: ["id"]
           },
           {
@@ -7636,6 +7741,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "payroll_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
         ]
       }
       payroll_details: {
@@ -8808,6 +8920,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "profile_change_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -9192,6 +9311,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "rejoin_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "rejoin_requests_new_department_id_fkey"
             columns: ["new_department_id"]
             isOneToOne: false
@@ -9272,6 +9398,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisitions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
             referencedColumns: ["id"]
           },
           {
@@ -9751,6 +9884,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "resignation_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
         ]
       }
       resignations: {
@@ -9813,6 +9953,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "resignations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
         ]
       }
       salary_advance_requests: {
@@ -9858,6 +10005,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_advance_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
             referencedColumns: ["id"]
           },
         ]
@@ -9939,6 +10093,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_sheets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
             referencedColumns: ["id"]
           },
         ]
@@ -10926,6 +11087,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "support_ticket_assignees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "support_ticket_assignees_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
@@ -11527,6 +11695,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
             referencedColumns: ["id"]
           },
           {
@@ -12632,6 +12807,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "zkteco_attendance_logs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
         ]
       }
       zkteco_device_users: {
@@ -12696,6 +12878,13 @@ export type Database = {
             columns: ["mapped_employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zkteco_device_users_mapped_employee_id_fkey"
+            columns: ["mapped_employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
             referencedColumns: ["id"]
           },
         ]
@@ -12826,6 +13015,305 @@ export type Database = {
           user_id: string | null
         }
         Relationships: []
+      }
+      my_app_user: {
+        Row: {
+          access_expires_at: string | null
+          auth_user_id: string | null
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          employee_id: string | null
+          full_name: string | null
+          id: string | null
+          purpose: string | null
+          role_id: string | null
+          status: string | null
+          updated_at: string | null
+          user_type: Database["public"]["Enums"]["app_user_type"] | null
+          username: string | null
+        }
+        Insert: {
+          access_expires_at?: string | null
+          auth_user_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          employee_id?: string | null
+          full_name?: string | null
+          id?: string | null
+          purpose?: string | null
+          role_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_type?: Database["public"]["Enums"]["app_user_type"] | null
+          username?: string | null
+        }
+        Update: {
+          access_expires_at?: string | null
+          auth_user_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          employee_id?: string | null
+          full_name?: string | null
+          id?: string | null
+          purpose?: string | null
+          role_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_type?: Database["public"]["Enums"]["app_user_type"] | null
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_users_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_users_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "my_employee"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_users_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "app_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      my_employee: {
+        Row: {
+          address: string | null
+          branch_id: string | null
+          confirmation_date: string | null
+          created_at: string | null
+          date_of_birth: string | null
+          default_in_time: string | null
+          default_out_time: string | null
+          default_shift_id: string | null
+          department_id: string | null
+          device_user_id: string | null
+          district: string | null
+          district_id: string | null
+          division_id: string | null
+          email: string | null
+          employee_id: string | null
+          facebook_link: string | null
+          gender: string | null
+          guardian_phone: string | null
+          has_user_access: boolean | null
+          id: string | null
+          image_url: string | null
+          institution: string | null
+          is_confirmed: boolean | null
+          joining_date: string | null
+          last_degree: string | null
+          marital_status: string | null
+          name: string | null
+          nid_number: string | null
+          office_phone: string | null
+          passing_year: string | null
+          payroll_template_id: string | null
+          permanent_address: string | null
+          personal_phone: string | null
+          phone: string | null
+          position_id: string | null
+          probation_end_date: string | null
+          probation_period_months: number | null
+          punch_card_id: string | null
+          reference: string | null
+          salary: number | null
+          salary_at_confirmation: number | null
+          show_on_website: boolean | null
+          status: string | null
+          sub_user_id: string | null
+          upazila: string | null
+          upazila_id: string | null
+          updated_at: string | null
+          user_permissions: Json | null
+          weekly_off_days: number[] | null
+          working_experience: string | null
+          zkteco_device_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          branch_id?: string | null
+          confirmation_date?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          default_in_time?: string | null
+          default_out_time?: string | null
+          default_shift_id?: string | null
+          department_id?: string | null
+          device_user_id?: string | null
+          district?: string | null
+          district_id?: string | null
+          division_id?: string | null
+          email?: string | null
+          employee_id?: string | null
+          facebook_link?: string | null
+          gender?: string | null
+          guardian_phone?: string | null
+          has_user_access?: boolean | null
+          id?: string | null
+          image_url?: string | null
+          institution?: string | null
+          is_confirmed?: boolean | null
+          joining_date?: string | null
+          last_degree?: string | null
+          marital_status?: string | null
+          name?: string | null
+          nid_number?: string | null
+          office_phone?: string | null
+          passing_year?: string | null
+          payroll_template_id?: string | null
+          permanent_address?: string | null
+          personal_phone?: string | null
+          phone?: string | null
+          position_id?: string | null
+          probation_end_date?: string | null
+          probation_period_months?: number | null
+          punch_card_id?: string | null
+          reference?: string | null
+          salary?: number | null
+          salary_at_confirmation?: number | null
+          show_on_website?: boolean | null
+          status?: string | null
+          sub_user_id?: string | null
+          upazila?: string | null
+          upazila_id?: string | null
+          updated_at?: string | null
+          user_permissions?: Json | null
+          weekly_off_days?: number[] | null
+          working_experience?: string | null
+          zkteco_device_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          branch_id?: string | null
+          confirmation_date?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          default_in_time?: string | null
+          default_out_time?: string | null
+          default_shift_id?: string | null
+          department_id?: string | null
+          device_user_id?: string | null
+          district?: string | null
+          district_id?: string | null
+          division_id?: string | null
+          email?: string | null
+          employee_id?: string | null
+          facebook_link?: string | null
+          gender?: string | null
+          guardian_phone?: string | null
+          has_user_access?: boolean | null
+          id?: string | null
+          image_url?: string | null
+          institution?: string | null
+          is_confirmed?: boolean | null
+          joining_date?: string | null
+          last_degree?: string | null
+          marital_status?: string | null
+          name?: string | null
+          nid_number?: string | null
+          office_phone?: string | null
+          passing_year?: string | null
+          payroll_template_id?: string | null
+          permanent_address?: string | null
+          personal_phone?: string | null
+          phone?: string | null
+          position_id?: string | null
+          probation_end_date?: string | null
+          probation_period_months?: number | null
+          punch_card_id?: string | null
+          reference?: string | null
+          salary?: number | null
+          salary_at_confirmation?: number | null
+          show_on_website?: boolean | null
+          status?: string | null
+          sub_user_id?: string | null
+          upazila?: string | null
+          upazila_id?: string | null
+          updated_at?: string | null
+          user_permissions?: Json | null
+          weekly_off_days?: number[] | null
+          working_experience?: string | null
+          zkteco_device_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_default_shift_id_fkey"
+            columns: ["default_shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "districts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_payroll_template_id_fkey"
+            columns: ["payroll_template_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_upazila_id_fkey"
+            columns: ["upazila_id"]
+            isOneToOne: false
+            referencedRelation: "upazilas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_zkteco_device_id_fkey"
+            columns: ["zkteco_device_id"]
+            isOneToOne: false
+            referencedRelation: "zkteco_devices"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sms_templates_effective: {
         Row: {
