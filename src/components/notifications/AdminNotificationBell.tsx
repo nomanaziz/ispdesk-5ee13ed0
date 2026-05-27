@@ -47,7 +47,7 @@ async function fetchNotifications(): Promise<Notif[]> {
   const next7 = new Date(Date.now() + 7 * 86400_000).toISOString();
   const out: Notif[] = [];
 
-  const [orders, requests, paid, lowBal, subs] = await Promise.all([
+  const [orders, requests, paid, lowBal, subs, leaves, advances, resigs, reqs, profCh, conv] = await Promise.all([
     supabase.from("shop_orders")
       .select("id, order_no, customer_name, total, created_at, order_status")
       .gte("created_at", sevenAgo)
@@ -72,6 +72,31 @@ async function fetchNotifications(): Promise<Notif[]> {
       .not("panel_subscription_expires_at", "is", null)
       .lte("panel_subscription_expires_at", next7)
       .order("panel_subscription_expires_at", { ascending: true }).limit(15),
+    supabase.from("leave_applications")
+      .select("id, start_date, end_date, days, status, created_at, employees(name)")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false }).limit(20),
+    supabase.from("salary_advance_requests" as any)
+      .select("id, amount, status, created_at, employees(name)")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false }).limit(20),
+    supabase.from("resignation_requests" as any)
+      .select("id, effective_date, status, created_at, employees(name)")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false }).limit(20),
+    supabase.from("requisitions" as any)
+      .select("id, item_name, quantity, status, created_at, request_type, employees(name)")
+      .eq("status", "pending")
+      .eq("request_type", "employee")
+      .order("created_at", { ascending: false }).limit(20),
+    supabase.from("profile_change_requests" as any)
+      .select("id, status, created_at, employees(name)")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false }).limit(20),
+    supabase.from("conveyance_bills" as any)
+      .select("id, bill_date, fare_amount, other_amount, status, created_at, employees(name)")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false }).limit(20),
   ]);
 
   (orders.data || []).forEach((o: any) => out.push({
@@ -108,6 +133,42 @@ async function fetchNotifications(): Promise<Notif[]> {
       href: `/dashboard/bw-sale/panel-pricing`, createdAt: s.panel_subscription_expires_at,
     });
   });
+  (leaves.data || []).forEach((l: any) => out.push({
+    id: `leave:${l.id}`, kind: "leave",
+    title: `ছুটির আবেদন — ${l.employees?.name || "কর্মী"}`,
+    meta: `${l.start_date} → ${l.end_date} · ${l.days || 0} দিন`,
+    href: `/dashboard/hr/employee-hub?tab=leave`, createdAt: l.created_at,
+  }));
+  (advances.data || []).forEach((a: any) => out.push({
+    id: `adv:${a.id}`, kind: "advance",
+    title: `অগ্রিম বেতন — ${a.employees?.name || "কর্মী"}`,
+    meta: `৳${Number(a.amount || 0).toLocaleString()}`,
+    href: `/dashboard/hr/employee-hub?tab=advance`, createdAt: a.created_at,
+  }));
+  (resigs.data || []).forEach((r: any) => out.push({
+    id: `resig:${r.id}`, kind: "resignation",
+    title: `পদত্যাগ — ${r.employees?.name || "কর্মী"}`,
+    meta: `কার্যকর: ${r.effective_date || "—"}`,
+    href: `/dashboard/hr/employee-hub?tab=resignation`, createdAt: r.created_at,
+  }));
+  (reqs.data || []).forEach((r: any) => out.push({
+    id: `rq:${r.id}`, kind: "requisition",
+    title: `রিকুইজিশন — ${r.employees?.name || "কর্মী"}`,
+    meta: `${r.item_name || "—"} × ${r.quantity || 1}`,
+    href: `/dashboard/hr/employee-hub?tab=requisition`, createdAt: r.created_at,
+  }));
+  (profCh.data || []).forEach((p: any) => out.push({
+    id: `pc:${p.id}`, kind: "profile_change",
+    title: `প্রোফাইল পরিবর্তন — ${p.employees?.name || "কর্মী"}`,
+    meta: `Approval pending`,
+    href: `/dashboard/hr/employee-hub?tab=profile`, createdAt: p.created_at,
+  }));
+  (conv.data || []).forEach((c: any) => out.push({
+    id: `conv:${c.id}`, kind: "conveyance",
+    title: `কনভেয়েন্স বিল — ${c.employees?.name || "কর্মী"}`,
+    meta: `${c.bill_date} · ৳${Number((c.fare_amount || 0) + (c.other_amount || 0)).toLocaleString()}`,
+    href: `/dashboard/hr/employee-hub?tab=conveyance`, createdAt: c.created_at,
+  }));
 
   out.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
   return out;
