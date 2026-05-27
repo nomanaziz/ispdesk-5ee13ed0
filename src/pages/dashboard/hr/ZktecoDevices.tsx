@@ -40,6 +40,8 @@ export default function ZktecoDevices() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(blankForm);
   const [activeDeviceId, setActiveDeviceId] = useState<string>("");
+  const [lastPullDebug, setLastPullDebug] = useState<{ log?: string[]; warning?: string; pulled_count?: number; device_user_count?: number | null } | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   const { data: devices, isLoading } = useQuery({
     queryKey: ["zkteco-devices"],
@@ -146,11 +148,19 @@ export default function ZktecoDevices() {
       return data;
     },
     onSuccess: (data: any) => {
+      setLastPullDebug(data);
       if (data?.ok === false) {
         toast.error(data.error || "User pull ব্যর্থ");
+        setShowDebug(true);
         return;
       }
-      toast.success(`${data?.pulled_count || 0} জন user pull হয়েছে`);
+      const n = data?.pulled_count || 0;
+      if (n === 0) {
+        toast.warning(data?.warning || "0 user pull হয়েছে — debug log দেখুন");
+        setShowDebug(true);
+      } else {
+        toast.success(`${n} জন user pull হয়েছে`);
+      }
       refetchDeviceUsers();
     },
     onError: (e: any) => toast.error(`Pull ব্যর্থ: ${e.message}`),

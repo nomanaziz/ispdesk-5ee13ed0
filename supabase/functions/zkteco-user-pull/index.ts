@@ -1,7 +1,25 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2/cors";
-import { CMD, decodeUsers } from "./zkteco.ts";
+import { CMD, createPacket, readPacket, sendPacket, decodeUsers, parseOptionString } from "./zkteco.ts";
 import { zkConnect, zkExit, zkReadLongData, zkReadWithBuffer } from "./zk-connect.ts";
+
+const encoder = new TextEncoder();
+
+async function tryGetUserCount(sess: any, log: string[]): Promise<number | null> {
+  try {
+    await sendPacket(sess.conn, createPacket(CMD.OPTIONS_RRQ, sess.sessionId, ++sess.replyId, encoder.encode("~UserCount\0")));
+    const r = await readPacket(sess.conn, 4000);
+    if (r.command === CMD.ACK_OK) {
+      const v = parseOptionString(r.data, "~UserCount");
+      log.push(`~UserCount=${v}`);
+      return v ? parseInt(v, 10) : null;
+    }
+    log.push(`~UserCount unexpected cmd=${r.command}`);
+  } catch (e: any) {
+    log.push(`~UserCount failed: ${e?.message || e}`);
+  }
+  return null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -39,6 +57,7 @@ Deno.serve(async (req) => {
 
     let users: any[] = [];
     let logArr: string[] = [];
+    let userCount: number | null = null;
     try {
       const sess = await zkConnect({
         host: device.ip_address,
@@ -47,19 +66,44 @@ Deno.serve(async (req) => {
       });
       logArr = sess.log;
       try {
-        // Primary: pyzk-style read_with_buffer (works on most modern firmwares)
-        let data: Uint8Array;
+        // Try to get advertised user count first (helps diagnose empty responses)
+        userCount = await tryGetUserCount(sess, logArr);
+
+        // Strategy A: pyzk-style read_with_buffer
+        let data: Uint8Array | null = null;
         try {
           data = await zkReadWithBuffer(sess, CMD.USERTEMP_RRQ, 0, 0);
-          logArr.push(`read_with_buffer bytes=${data.length}`);
+          logArr.push(`[A] buffer bytes=${data.length}`);
           users = decodeUsers(data);
-          logArr.push(`buffer decoded ${users.length} users`);
-        } catch (be: any) {
-          logArr.push(`buffer flow failed: ${be?.message || be}; trying legacy`);
-          data = await zkReadLongData(sess, CMD.USERTEMP_RRQ, new Uint8Array([0x05, 0x00, 0x00, 0x00, 0x00]));
-          logArr.push(`legacy bytes=${data.length}`);
-          users = decodeUsers(data);
-          logArr.push(`legacy decoded ${users.length} users`);
+          logArr.push(`[A] decoded ${users.length} users`);
+        } catch (e: any) {
+          logArr.push(`[A] failed: ${e?.message || e}`);
+        }
+
+        // Strategy B: plain USERTEMP_RRQ with no payload → PREPARE_DATA stream
+        if (users.length === 0) {
+          try {
+            const d = await zkReadLongData(sess, CMD.USERTEMP_RRQ, new Uint8Array());
+            logArr.push(`[B] bytes=${d.length}`);
+            const u = decodeUsers(d);
+            logArr.push(`[B] decoded ${u.length} users`);
+            if (u.length > 0) users = u;
+          } catch (e: any) {
+            logArr.push(`[B] failed: ${e?.message || e}`);
+          }
+        }
+
+        // Strategy C: legacy USERTEMP_RRQ with 5-byte payload [0x05,0,0,0,0]
+        if (users.length === 0) {
+          try {
+            const d = await zkReadLongData(sess, CMD.USERTEMP_RRQ, new Uint8Array([0x05, 0x00, 0x00, 0x00, 0x00]));
+            logArr.push(`[C] bytes=${d.length}`);
+            const u = decodeUsers(d);
+            logArr.push(`[C] decoded ${u.length} users`);
+            if (u.length > 0) users = u;
+          } catch (e: any) {
+            logArr.push(`[C] failed: ${e?.message || e}`);
+          }
         }
       } finally {
         await zkExit(sess);
@@ -70,6 +114,7 @@ Deno.serve(async (req) => {
         ok: false,
         code: "DEVICE_UNREACHABLE",
         error: `User pull ব্যর্থ: ${String(e?.message || e)}`,
+        log: logArr,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -112,9 +157,17 @@ Deno.serve(async (req) => {
       }
     }
 
+    const warning = users.length === 0
+      ? (userCount && userCount > 0
+        ? `Device-এ ${userCount} জন user আছে, কিন্তু firmware কোনো recognized command-এ user data return করেনি। Device firmware/model জানালে আমরা আরো command চেষ্টা করতে পারি।`
+        : `Device 0 user report করেছে — machine-এ আগে user enroll করা হয়েছে কিনা চেক করুন (Menu → User Mgt)।`)
+      : null;
+
     return new Response(JSON.stringify({
       ok: true,
       pulled_count: users.length,
+      device_user_count: userCount,
+      warning,
       sample: users.slice(0, 5),
       log: logArr,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
