@@ -2714,6 +2714,80 @@ export type Database = {
           },
         ]
       }
+      catering_services: {
+        Row: {
+          active: boolean
+          contact: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          contact?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          contact?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      catering_weekly_menu: {
+        Row: {
+          active: boolean
+          created_at: string
+          cutoff_time: string | null
+          day_of_week: number
+          id: string
+          items: Json
+          price: number
+          service_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          cutoff_time?: string | null
+          day_of_week: number
+          id?: string
+          items?: Json
+          price?: number
+          service_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          cutoff_time?: string | null
+          day_of_week?: number
+          id?: string
+          items?: Json
+          price?: number
+          service_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catering_weekly_menu_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "catering_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       change_requests: {
         Row: {
           approved_at: string | null
@@ -3955,6 +4029,45 @@ export type Database = {
             columns: ["package_id"]
             isOneToOne: false
             referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_widget_permissions: {
+        Row: {
+          app_user_id: string
+          created_at: string
+          granted_by: string | null
+          id: string
+          widget_key: string
+        }
+        Insert: {
+          app_user_id: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          widget_key: string
+        }
+        Update: {
+          app_user_id?: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          widget_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_widget_permissions_app_user_id_fkey"
+            columns: ["app_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user_effective_modules"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "dashboard_widget_permissions_app_user_id_fkey"
+            columns: ["app_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
             referencedColumns: ["id"]
           },
         ]
@@ -6034,6 +6147,110 @@ export type Database = {
             columns: ["payroll_id"]
             isOneToOne: false
             referencedRelation: "payroll"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_requests: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          employee_id: string
+          id: string
+          reason: string | null
+          reject_reason: string | null
+          status: string
+          tenure_months: number
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          reason?: string | null
+          reject_reason?: string | null
+          status?: string
+          tenure_months?: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          reason?: string | null
+          reject_reason?: string | null
+          status?: string
+          tenure_months?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_orders: {
+        Row: {
+          created_at: string
+          deducted_in_payroll: boolean
+          employee_id: string
+          id: string
+          menu_snapshot: Json | null
+          order_date: string
+          price: number
+          service_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deducted_in_payroll?: boolean
+          employee_id: string
+          id?: string
+          menu_snapshot?: Json | null
+          order_date: string
+          price?: number
+          service_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deducted_in_payroll?: boolean
+          employee_id?: string
+          id?: string
+          menu_snapshot?: Json | null
+          order_date?: string
+          price?: number
+          service_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_orders_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_orders_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "catering_services"
             referencedColumns: ["id"]
           },
         ]
@@ -8516,6 +8733,50 @@ export type Database = {
           },
         ]
       }
+      profile_change_requests: {
+        Row: {
+          changes: Json
+          created_at: string
+          employee_id: string
+          id: string
+          reject_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          changes: Json
+          created_at?: string
+          employee_id: string
+          id?: string
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          changes?: Json
+          created_at?: string
+          employee_id?: string
+          id?: string
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_change_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           branch_id: string | null
@@ -9390,6 +9651,53 @@ export type Database = {
         }
         Relationships: []
       }
+      resignation_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          effective_date: string
+          employee_id: string
+          id: string
+          reason: string | null
+          reject_reason: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          effective_date: string
+          employee_id: string
+          id?: string
+          reason?: string | null
+          reject_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          effective_date?: string
+          employee_id?: string
+          id?: string
+          reason?: string | null
+          reject_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resignation_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resignations: {
         Row: {
           applied_rules: Json
@@ -9445,6 +9753,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "resignations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salary_advance_requests: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          employee_id: string
+          id: string
+          reason: string | null
+          reject_reason: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          reason?: string | null
+          reject_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          reason?: string | null
+          reject_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_advance_requests_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
@@ -12556,6 +12911,7 @@ export type Database = {
         }
         Returns: Json
       }
+      current_employee_id: { Args: never; Returns: string }
       extend_tenant_subscription: {
         Args: { _days: number; _tenant_id: string }
         Returns: string
