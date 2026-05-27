@@ -148,7 +148,7 @@ export type Database = {
           id: string
           module_group: string
           module_name: string
-          permission: string
+          permission: Database["public"]["Enums"]["perm_level"]
           role_id: string
         }
         Insert: {
@@ -157,7 +157,7 @@ export type Database = {
           id?: string
           module_group: string
           module_name: string
-          permission?: string
+          permission?: Database["public"]["Enums"]["perm_level"]
           role_id: string
         }
         Update: {
@@ -166,7 +166,7 @@ export type Database = {
           id?: string
           module_group?: string
           module_name?: string
-          permission?: string
+          permission?: Database["public"]["Enums"]["perm_level"]
           role_id?: string
         }
         Relationships: [
@@ -12767,7 +12767,7 @@ export type Database = {
         Row: {
           module_group: string | null
           module_name: string | null
-          permission: string | null
+          permission: Database["public"]["Enums"]["perm_level"] | null
           user_id: string | null
         }
         Relationships: []
@@ -12835,6 +12835,9 @@ export type Database = {
           tier_id: string
         }[]
       }
+      can_delete: { Args: { _module: string }; Returns: boolean }
+      can_read: { Args: { _module: string }; Returns: boolean }
+      can_write: { Args: { _module: string }; Returns: boolean }
       change_tenant_plan: {
         Args: {
           _billing_cycle?: Database["public"]["Enums"]["billing_cycle"]
@@ -12940,6 +12943,10 @@ export type Database = {
         }[]
       }
       get_user_branch: { Args: { _user_id: string }; Returns: string }
+      get_user_module_permission: {
+        Args: { _auth_uid?: string; _module: string }
+        Returns: Database["public"]["Enums"]["perm_level"]
+      }
       has_device_permission: {
         Args: {
           _branch_id?: string
@@ -12959,6 +12966,7 @@ export type Database = {
       is_admin_or_super: { Args: { _user_id: string }; Returns: boolean }
       is_app_user_active: { Args: { _user_id: string }; Returns: boolean }
       is_employee_self: { Args: { _employee_id: string }; Returns: boolean }
+      is_super_admin: { Args: { _auth_uid?: string }; Returns: boolean }
       log_action: {
         Args: {
           _action: string
@@ -13065,6 +13073,7 @@ export type Database = {
         | "hsgq"
         | "phyhome"
       onu_status: "online" | "offline"
+      perm_level: "none" | "read" | "write" | "full"
       pop_device_type: "generator" | "electric"
       power_status: "up" | "down" | "unknown"
       provisioning_status: "pending" | "running" | "success" | "failed"
@@ -13227,6 +13236,7 @@ export const Constants = {
         "phyhome",
       ],
       onu_status: ["online", "offline"],
+      perm_level: ["none", "read", "write", "full"],
       pop_device_type: ["generator", "electric"],
       power_status: ["up", "down", "unknown"],
       provisioning_status: ["pending", "running", "success", "failed"],
