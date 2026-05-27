@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Server, RefreshCw, Trash2, Wifi, WifiOff, Cloud, Users, DownloadCloud, UploadCloud, Link2, Unlink2, Search, X } from "lucide-react";
+import { Plus, Server, RefreshCw, Trash2, Wifi, WifiOff, Cloud, Users, DownloadCloud, UploadCloud, Link2, Unlink2, Search, X, UserPlus } from "lucide-react";
 
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 const ADMS_URL = `https://${PROJECT_ID}.supabase.co/functions/v1/zkteco-adms`;
