@@ -45,10 +45,23 @@ export default function Catering() {
 
   const addService = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("catering_services" as any).insert({ name: svcName, contact: svcContact || null });
+      const payload: any = {
+        name: svcName,
+        owner_name: svcOwner || null,
+        phone: svcPhone || null,
+        email: svcEmail || null,
+        address: svcAddress || null,
+        default_meal_price: Number(svcPrice) || 120,
+      };
+      const { error } = await supabase.from("catering_services" as any).insert(payload);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Service যোগ হয়েছে"); setSvcOpen(false); setSvcName(""); setSvcContact(""); qc.invalidateQueries({ queryKey: ["catering-services-admin"] }); },
+    onSuccess: () => {
+      toast.success("Service যোগ হয়েছে");
+      setSvcOpen(false);
+      setSvcName(""); setSvcOwner(""); setSvcPhone(""); setSvcEmail(""); setSvcAddress(""); setSvcPrice("120");
+      qc.invalidateQueries({ queryKey: ["catering-services-admin"] });
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
