@@ -1,122 +1,155 @@
-# Employee Portal & Granular Dashboard Permissions
+# RBAC v2 + Audit Log + Recycle Bin — Full Plan
 
-EMP001 এর মত employee login করলে এখন সব menu দেখা যাচ্ছে — কারণ `AppSidebar` এ কোনো role gating নাই। সবার জন্য একটাই sidebar render হচ্ছে। এই plan এ আমরা employee এর জন্য আলাদা portal experience তৈরি করব, এবং admin কে widget/menu level permission control দিব।
+## লক্ষ্য
+ISP ERP-এ admin/employee সবার জন্য একটাই unified permission system। প্রতিটি module-এ 3 ধরনের permission, একজন user একাধিক role পেতে পারবে (max-wins merge), সব admin action log হবে, এবং delete হওয়া data Super Admin recycle bin থেকে restore করতে পারবে।
 
 ---
 
-## 1. Employee Default Experience (Employee role only)
+## ১. Permission Model (3-tier)
 
-Employee এর fixed primary role `Employee` থাকলে sidebar এ শুধু এই menu গুলা দেখাবে:
+প্রতিটি module-এ এক user-এর জন্য permission level একটাই — এক বা একাধিক role থেকে merge হবে (highest wins):
 
-- **My Dashboard** (`/dashboard/me`) — personal home
-- **My Profile** (`/dashboard/me/profile`) — view/edit (edit → HR approval)
-- **My Attendance** (`/dashboard/me/attendance`) — শিফট, in/out, monthly summary
-- **My Leave** (`/dashboard/me/leave`) — balance, ছুটির আবেদন
-- **My Payslip** (`/dashboard/me/payslip`) — list + PDF download
-- **My Salary Advance** (`/dashboard/me/advance`) — অগ্রিম বেতনের আবেদন
-- **My Loan** (`/dashboard/me/loan`) — loan আবেদন
-- **My Resignation** (`/dashboard/me/resignation`) — resignation আবেদন
-- **My Meals** (`/dashboard/me/meals`) — catering daily order
-- **My Requisitions** (`/dashboard/me/requisitions`) — product/stationery requisition
+| Level | Read | Create | Update | Delete | Restore/Audit |
+|-------|------|--------|--------|--------|----------------|
+| `none` | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `read` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `write` | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `full` | ✅ | ✅ | ✅ | ✅ | ❌ |
 
-## 2. My Dashboard — Top Section (ছবির মত)
+**Special:**
+- `super_admin` সব কিছু পায়, কেউ তাকে delete/disable করতে পারবে না।
+- Recycle Bin + Audit Restore শুধু Super Admin (বা super_admin যাকে explicit grant দেয়)।
+- Employee-এর নিজস্ব data (own attendance, salary, leave) সবসময় read — permission লাগে না।
 
-স্ক্রিনের একদম উপরে ৪টা widget card:
+**Merge rule:** কোনো user-এর কোনো module-এ effective permission = `MAX(level)` across সব assigned roles। `full > write > read > none`.
 
-```text
-┌────────────┬────────────┬────────────┬────────────┐
-│  Profile   │ This Month │ Attendance │   Leave    │
-│  Name+ID   │  Payslip   │ Present/Abs│  Balance   │
-│ Department │  ৳XX,XXX   │  XX / XX   │  X days    │
-└────────────┴────────────┴────────────┴────────────┘
+---
+
+## ২. Database Changes
+
+বর্তমান tables (`app_roles`, `app_role_modules`, `app_user_extra_roles`, `app_user_effective_modules`) তে `permission` column already আছে কিন্তু enum/enforcement নাই। নতুন migration:
+
+### 2.1 Enum + column tighten
+```sql
+CREATE TYPE perm_level AS ENUM ('none','read','write','full');
+ALTER TABLE app_role_modules ALTER COLUMN permission TYPE perm_level USING permission::perm_level;
+ALTER TABLE app_user_effective_modules ALTER COLUMN permission TYPE perm_level USING permission::perm_level;
 ```
 
-এর নিচে: pending request status (advance/loan/leave), recent payslips, today's meal menu।
+### 2.2 Effective-permission function (max-wins)
+```sql
+CREATE FUNCTION get_user_module_permission(_user_id uuid, _module text)
+RETURNS perm_level LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT COALESCE(MAX(arm.permission), 'none'::perm_level)
+  FROM app_users u
+  LEFT JOIN app_user_extra_roles ext ON ext.user_id = u.id
+  LEFT JOIN app_role_modules arm 
+    ON arm.role_id IN (u.role_id, ext.role_id) 
+    AND arm.module_name = _module AND arm.enabled
+  WHERE u.auth_user_id = _user_id;
+$$;
+```
++ helper booleans: `can_read(_module)`, `can_write(_module)`, `can_delete(_module)`, `is_super_admin()`.
 
-## 3. Admin-Granted Extra Widgets (Second Role System)
+### 2.3 Audit log
+```sql
+CREATE TABLE admin_audit_log (
+  id uuid PK, tenant_id, actor_auth_id, actor_username,
+  action text,           -- 'create'|'update'|'delete'|'restore'|'login'|...
+  entity_type text,      -- 'client'|'employee'|'invoice'|...
+  entity_id uuid,
+  before jsonb, after jsonb,
+  ip text, user_agent text, created_at);
+```
+Generic trigger `log_audit()` attached to high-value tables (clients, employees, billing, payments, app_users, app_roles, …).
 
-Admin চাইলে employee কে কিছু admin dashboard widget দেখার permission দিতে পারবে। প্রত্যেক widget এর জন্য আলাদা toggle:
+### 2.4 Recycle bin (soft-delete)
+সব critical tables-এ `deleted_at timestamptz`, `deleted_by uuid` যোগ। RLS-এ default filter `deleted_at IS NULL`। আলাদা VIEW `recycle_bin` যা সব soft-deleted rows union করে — শুধু super_admin SELECT করতে পারবে। RPC:
+- `soft_delete(entity, id)` → sets deleted_at
+- `restore(entity, id)` → clears deleted_at (super_admin only)
+- `purge(entity, id)` → hard delete (super_admin only)
 
-- Today's Sale
-- This Month's Sale
-- Total Clients
-- Active/Inactive Clients
-- Billing Summary
-- Collection Summary
-- Pending Tickets
-- Network/OLT Overview
-- (extensible)
+Critical tables initial list: `clients`, `employees`, `app_users`, `app_roles`, `billing`, `invoices`, `payments`, `inventory_items`, `mikrotik_clients`, `onu_list`.
 
-Employee যদি কোনো widget এ access পায়, তখন তার "My Dashboard" এর নিচে "System Overview" section show হবে, শুধু allowed widget গুলা।
-
-## 4. Extra Module Access (Beyond Widgets)
-
-Employee এর primary `Employee` role lock থাকবে। Admin চাইলে অতিরিক্ত role (Billing, HR, Inventory, CRM) assign করতে পারবে — তখন সেই module এর menu sidebar এ যোগ হবে। এটা আগের architecture এই আছে, শুধু sidebar কে role-aware করতে হবে।
-
-## 5. Catering / Meal System (নতুন module)
-
-**Admin side** (`/dashboard/hr/catering`):
-- Catering Services list (নাম, contact, status)
-- প্রত্যেক service এর Weekly Menu (Sat→Fri, প্রত্যেক দিনের menu items + price)
-- Catering reports (কে কোন দিন কোন service order করেছে, total cost)
-
-**Employee side** (`/dashboard/me/meals`):
-- আজকের + আগামীকালের available menu (সব catering থেকে)
-- Order করার option, cutoff time এর আগে cancel
-- নিজের past orders + total cost this month (salary deduction এ যাবে)
-
-## 6. Profile Edit Approval Workflow
-
-- Employee profile field edit করলে → `profile_change_requests` table এ pending entry।
-- HR/Admin এর কাছে approval queue (`/dashboard/hr/profile-approvals`)।
-- Approve হলে actual `employees` row update হবে, audit log রাখা হবে।
-
----
-
-## Technical Notes
-
-### Database (new tables, migration লাগবে)
-
-1. **`dashboard_widget_permissions`** — `(app_user_id, widget_key)` — admin কোন widget allow করেছে
-2. **`catering_services`** — `id, name, contact, active`
-3. **`catering_weekly_menu`** — `service_id, day_of_week (0-6), items jsonb, price`
-4. **`meal_orders`** — `employee_id, service_id, order_date, menu_snapshot, price, status, deducted_in_payroll`
-5. **`profile_change_requests`** — `employee_id, changes jsonb, status, reviewed_by, reviewed_at`
-6. **`salary_advance_requests`** — `employee_id, amount, reason, status, approved_by`
-7. **`loan_requests`** — `employee_id, amount, tenure_months, reason, status`
-8. **`resignation_requests`** — `employee_id, effective_date, reason, status`
-
-সব table এ tenant scoped RLS, primary key gen_random_uuid, standard timestamps।
-
-### Frontend
-
-- **`useEmployeeContext` hook** — current logged in `app_user` → linked `employee` row, primary role, extra roles, widget permissions। সব employee page এই hook ব্যবহার করবে।
-- **`AppSidebar` refactor** — pure Employee role হলে only "My ..." menu group দেখাবে; extra role থাকলে সেই module গুলা যোগ হবে; admin/super_admin হলে আগের পুরা sidebar।
-- **`MyDashboard` page** — 4 fixed widgets উপরে + conditional "System Overview" grid নিচে।
-- **Per-widget components** + central registry: `{ key, label, component, defaultAllowedForRoles }`।
-- **`WidgetPermissionsTab`** in App Users edit dialog — checkbox list of widget keys।
-
-### Routing
-
-নতুন `me/*` route group, সবগুলা `ProtectedRoute` এর ভিতরে, কিন্তু আলাদা layout ব্যবহার করতে পারে (same `DashboardLayout`, শুধু sidebar যা filter করবে)।
-
-### Out of Scope (পরে)
-
-- Meal cost কে actual payroll cycle এ auto deduct করার logic (এই plan এ schema field রাখব, calculation পরে)
-- Loan EMI auto schedule generation
-- Mobile-optimized employee shell
+### 2.5 RLS update
+সব module table-এর existing RLS-এ permission check inject:
+```sql
+USING (can_read('clients'))
+WITH CHECK (TG_OP='INSERT' AND can_write('clients') 
+         OR TG_OP='UPDATE' AND can_write('clients')
+         OR TG_OP='DELETE' AND can_delete('clients'))
+```
 
 ---
 
-## Suggested Execution Order
+## ৩. Frontend Changes
 
-1. Migration: 8 new tables + RLS + GRANTs
-2. `useEmployeeContext` + sidebar role-aware refactor
-3. `My Dashboard` + 4 top widgets + payslip/attendance/leave pages
-4. Profile edit + approval workflow
-5. Advance / Loan / Resignation request pages + admin approval queues
-6. Catering admin module + employee meal ordering
-7. Widget registry + admin permission UI + System Overview section
-8. Requisition page (employee side, ties into existing requisition system if present)
+### 3.1 `usePermission` hook rewrite
+```ts
+const { level, canRead, canWrite, canDelete, isSuperAdmin } = useModulePermission('clients');
+```
+এক query-তে user-এর সব module-এর effective permission cache হবে (5 min stale)। যেহেতু "client menu আছে কিন্তু data নাই" বর্তমান bug — sidebar item visibility = `canRead`, page guard = `canRead`, add button = `canWrite`, delete button = `canDelete`.
 
-প্রত্যেক step আলাদা message এ implement করব যাতে review করা সহজ হয়।
+### 3.2 Sidebar gating
+`AppSidebar`-এ প্রতিটা menu item-এ `module` key যোগ → effective permission-এ filter। Employee role-এ default শুধু "My *" menus (আগের plan অনুযায়ী)।
+
+### 3.3 Role management UI
+`/dashboard/access/roles` কে refactor:
+- Role create/edit dialog-এ module tree (group → module) + প্রতি row-এ radio `none/read/write/full`।
+- User edit dialog-এ multi-role selector (primary role + extra roles), preview effective permission table।
+
+### 3.4 Recycle Bin page (super_admin only)
+`/dashboard/access/recycle-bin` — entity dropdown + deleted rows list + Restore/Purge button + filter by date/actor.
+
+### 3.5 Audit Log page (super_admin only)
+`/dashboard/access/audit-log` — filterable timeline (actor, entity, action, date), JSON diff view, "Restore this version" for update logs.
+
+### 3.6 Action button guards
+Reusable `<Guarded module="clients" need="write">` wrapper — child render হবে শুধু permission থাকলে।
+
+---
+
+## ৪. Bug Fix: "Client menu আছে, data নাই"
+বর্তমানে sidebar item দেখায় কিন্তু `clients` table-এর RLS-এ tenant filter পাশাপাশি role check নাই, ফলে empty list। নতুন `can_read('clients')` যোগ + role-এ যদি permission থাকে তাহলে data আসবে। যাচাই: EMP001 কে temporary `clients: read` দিয়ে test।
+
+---
+
+## ৫. Multi-Role Examples
+- User U1 → Role A (`clients: read`) + Role B (`clients: write`) → effective `write` (create/edit পারবে, delete নাই)।
+- User U2 → Role HR (`employees: full`) + Role Billing (`billing: read`) → HR-এ delete করতে পারবে, Billing-এ শুধু দেখবে।
+
+---
+
+## ৬. Protection Rules
+- `super_admin` role `is_protected=true` — delete/rename blocked।
+- Main super_admin user (system first user) কে কেউ disable/delete করতে পারবে না (trigger check)।
+- যদি কেউ bulk delete clients করে → soft delete only, super_admin restore করতে পারবে।
+
+---
+
+## ৭. Execution Order (4 phases)
+
+**Phase 1 — DB foundation** (1 migration)
+- perm_level enum, effective-permission function, audit_log table + generic trigger, soft-delete columns on 10 critical tables, recycle_bin view, RPCs.
+
+**Phase 2 — Permission enforcement**
+- RLS update on top 10 tables। `usePermission` rewrite। `<Guarded>` component।
+
+**Phase 3 — UI**
+- Role editor refactor (module tree + 4-level radio)। User dialog: multi-role + effective preview।
+
+**Phase 4 — Super Admin tools**
+- Recycle Bin page। Audit Log page with restore। Super-admin protection triggers।
+
+---
+
+## ৮. Out of Scope (এই plan-এ নয়)
+- Field-level permission (column hide)
+- Row-level sharing rules (e.g., "শুধু নিজের branch-এর clients")  — পরে branch-scoped permission আনব
+- Audit log retention/archival
+- Mobile shell
+
+---
+
+## অনুমোদন
+এই 4 phase-এর full plan-এ এগোবো? নাকি প্রথমে শুধু Phase 1+2 (foundation + bug fix) করব এবং Recycle Bin/Audit Log পরে?
