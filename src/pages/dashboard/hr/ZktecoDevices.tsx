@@ -383,6 +383,23 @@ export default function ZktecoDevices() {
             </Button>
           </div>
 
+          {lastPullDebug && (
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm">শেষ Pull-এর Debug Log {typeof lastPullDebug.device_user_count === "number" ? `(device user count: ${lastPullDebug.device_user_count})` : ""}</CardTitle>
+                <Button size="sm" variant="ghost" onClick={() => setShowDebug((v) => !v)}>{showDebug ? "Hide" : "Show"}</Button>
+              </CardHeader>
+              {showDebug && (
+                <CardContent>
+                  {lastPullDebug.warning && (
+                    <div className="mb-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">{lastPullDebug.warning}</div>
+                  )}
+                  <pre className="text-xs bg-muted/40 rounded p-2 overflow-x-auto max-h-64 whitespace-pre-wrap">{(lastPullDebug.log || []).join("\n") || "(empty)"}</pre>
+                </CardContent>
+              )}
+            </Card>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Device Users list */}
             <Card>
