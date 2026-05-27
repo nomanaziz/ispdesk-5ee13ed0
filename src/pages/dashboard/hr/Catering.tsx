@@ -181,13 +181,62 @@ export default function Catering() {
       </Dialog>
 
       <Dialog open={!!editingMenu} onOpenChange={(o) => !o && setEditingMenu(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Menu — {editingMenu && DAYS[editingMenu.day]}বার</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>আইটেম (কমা বা নতুন লাইন দিয়ে আলাদা করুন)</Label>
-              <Textarea value={items} onChange={(e) => setItems(e.target.value)} rows={4} placeholder="ভাত, মাছ, ডাল, ভর্তা" />
+              <Textarea value={items} onChange={(e) => setItems(e.target.value)} rows={3} placeholder="ভাত, মাছ, ডাল, ভর্তা" />
             </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" type="button"
+                onClick={() => {
+                  const existing = parseItems(items);
+                  const merged = Array.from(new Set([...existing, ...DEFAULT_BANGALI_SET]));
+                  setItems(joinItems(merged));
+                }}>
+                + বাঙালি default set
+              </Button>
+              <Button size="sm" variant="ghost" type="button" onClick={() => setItems("")}>
+                সব ক্লিয়ার
+              </Button>
+            </div>
+
+            <div className="border rounded p-3 space-y-3 bg-muted/30">
+              <p className="text-xs text-muted-foreground">দ্রুত যোগ করতে ক্লিক করুন:</p>
+              {PRESET_ITEMS.map((cat) => {
+                const current = parseItems(items);
+                return (
+                  <div key={cat.category}>
+                    <p className="text-xs font-semibold mb-1.5 text-foreground">{cat.category}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {cat.items.map((it) => {
+                        const added = current.includes(it);
+                        return (
+                          <Badge
+                            key={it}
+                            variant={added ? "default" : "outline"}
+                            className="cursor-pointer hover:bg-primary/20 transition"
+                            onClick={() => {
+                              const cur = parseItems(items);
+                              if (added) {
+                                setItems(joinItems(cur.filter((x) => x !== it)));
+                              } else {
+                                setItems(joinItems([...cur, it]));
+                              }
+                            }}
+                          >
+                            {added ? "✓ " : "+ "}{it}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
             <div><Label>মূল্য (৳)</Label><Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} /></div>
           </div>
           <DialogFooter>
