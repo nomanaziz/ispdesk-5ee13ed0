@@ -11,9 +11,10 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Search, Edit, Eye, DollarSign, Calendar, Users, Receipt } from "lucide-react";
+import { Plus, Search, Edit, Eye, DollarSign, Calendar, Users, Receipt, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import EmployeePayheadsDialog from "@/components/hr/EmployeePayheadsDialog";
 import EmployeeHolidaysDialog from "@/components/hr/EmployeeHolidaysDialog";
 
