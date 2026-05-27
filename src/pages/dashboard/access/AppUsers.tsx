@@ -146,18 +146,37 @@ export default function AppUsers() {
     };
     if (!editing || form.password) payload.password = form.password;
 
+    let userId = editing?.id as string | undefined;
     if (editing) {
       const { error } = await supabase.from("app_users").update(payload).eq("id", editing.id);
       if (error) return toast.error(error.message);
       toast.success("আপডেট হয়েছে");
     } else {
-      const { error } = await supabase.from("app_users").insert(payload);
+      const { data, error } = await supabase.from("app_users").insert(payload).select("id").single();
       if (error) return toast.error(error.message);
+      userId = data?.id;
       toast.success("App User তৈরি হয়েছে");
     }
+
+    // Sync extra roles (exclude primary role to avoid duplicates with trigger-attached Employee)
+    if (userId) {
+      await supabase.from("app_user_extra_roles").delete().eq("user_id", userId);
+      const extras = form.extra_role_ids.filter((rid) => rid && rid !== form.role_id);
+      // Always ensure Employee role attaches when linked to an employee (trigger covers insert; we re-add on edit)
+      if (form.employee_id && form.role_id !== EMPLOYEE_ROLE_ID && !extras.includes(EMPLOYEE_ROLE_ID)) {
+        extras.push(EMPLOYEE_ROLE_ID);
+      }
+      if (extras.length > 0) {
+        await supabase
+          .from("app_user_extra_roles")
+          .insert(extras.map((rid) => ({ user_id: userId!, role_id: rid })));
+      }
+    }
+
     setDialogOpen(false);
     load();
   };
+
 
   const toggleStatus = async (u: AppUser) => {
     const next = u.status === "Active" ? "Inactive" : "Active";
