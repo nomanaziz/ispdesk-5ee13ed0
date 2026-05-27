@@ -9,8 +9,16 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Save, Settings, Clock, FileText, IdCard } from "lucide-react";
+import { Save, Settings, Clock, FileText, IdCard, Building2, Briefcase, DollarSign, Shield, UserX, Server, ScrollText } from "lucide-react";
 import { DEFAULT_ATTENDANCE, DEFAULT_PAYSLIP, type AttendanceSettings, type PayslipSettings } from "@/hooks/useHrPayrollSettings";
+import Departments from "./Departments";
+import Positions from "./Positions";
+import Payheads from "./Payheads";
+import AttendanceRules from "./AttendanceRules";
+import ResignRules from "./ResignRules";
+import FacilityPolicies from "./FacilityPolicies";
+import ShiftManagement from "./ShiftManagement";
+import ZktecoDevices from "./ZktecoDevices";
 
 const DAYS = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
 
