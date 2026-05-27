@@ -1,62 +1,77 @@
-# Employee → App User দ্রুত Conversion + Default Employee Role
+# Employee Default Role Lock + External/Remote App User
 
-## সমস্যা
-1. **App Users** পেজে Employee dropdown খালি দেখাচ্ছে — কারণ `AppUsers.tsx` `status='Active'` (বড় হাতের A) দিয়ে filter করছে, কিন্তু `employees` table-এ সব status = `active` (ছোট হাতের a)।
-2. Employee থেকে app user বানাতে এখন Access > App Users-এ গিয়ে manually সব fill করতে হয় — slow।
-3. কোনো employee app_user হলে তার Department/special role (Billing, HR ইত্যাদি) থাকুক বা না থাকুক, **Employee self-service permissions** (food order, conveyance, attendance, payslip, leave) সবসময় থাকা উচিত। এখন একটাই `role_id` রাখা যায়, তাই common Employee permissions হারিয়ে যায়।
+## কী বদলাবে
 
-## সমাধান
+### 1. Employee role এখন fixed
+- App User dialog-এ যখন কোনো **Employee** select করা হবে, primary role automatically `Employee` হয়ে যাবে এবং dropdown **disabled/locked** থাকবে (পরিবর্তনযোগ্য না)।
+- পাশে badge: "🔒 Employee — fixed for all staff"
+- শুধু **অতিরিক্ত role** (Billing, HR, Accounts, Technician ইত্যাদি) checkbox দিয়ে যোগ করা যাবে।
+- DB trigger update — employee-linked app_user-এর `role_id` সবসময় Employee force করবে (UI bypass হলেও protect)।
 
-### 1. Employee dropdown বাগ ফিক্স (`AppUsers.tsx`)
-- Filter বদলাবে: `.eq("status","Active")` → `.ilike("status","active")` (case-insensitive)
-- যেসব employee-র ইতিমধ্যে app_user আছে তাদের dropdown থেকে hide করব (duplicate ঠেকাতে), edit mode-এ current employee দেখা যাবে
+### 2. Employee role permissions পরিপূর্ণ করা
+Employee role-এ এই module-গুলো ইতিমধ্যেই আছে — Salary/Payslip, Attendance, Leave, Conveyance, Lunch Order, Facilities, Profile। যোগ হবে:
+- **My Requisition** — product/equipment requisition (screwdriver, tools ইত্যাদি) আবেদন
+- **My Accommodation** — নিজের accommodation view (ইতিমধ্যে My Facilities-এ আছে, আলাদা করা হবে স্পষ্টতার জন্য)
+- **My Salary Sheet** — শুধু নিজেরটা, অন্যদের না (RLS দিয়ে enforce)
 
-### 2. "App User বানান" কুইক বাটন
-- **EmployeeView.tsx** এবং **Employees list** পেজে একটা `App User বানান` বাটন
-- ক্লিক করলে modal খুলবে — username (default: employee_id বা name slug), password, confirm password, role (default: Employee)
-- Submit করলে `app_users` row তৈরি, `employee_id` link হবে, একই সাথে Supabase auth user create হবে (যদি email থাকে) — supabase edge function বা existing flow ব্যবহার
-- যদি আগেই app_user থাকে তাহলে button-এ `App User আছে` দেখাবে, ক্লিক করলে edit খুলবে
+### 3. External / Remote Support User (নতুন)
+`app_users`-এ নতুন কলাম যোগ:
+- `user_type` enum: `internal` (default), `external`, `remote_support`
+- `access_expires_at timestamptz NULL` — null = permanent, value থাকলে সেই সময়ের পর login বন্ধ
+- `purpose text` — কেন access দেওয়া হলো (vendor demo, troubleshooting ইত্যাদি)
+- `created_by_note text`
 
-### 3. Default "Employee" role auto-attach
-Schema change ছাড়া সহজ approach:
-- **নতুন junction table** `public.app_user_extra_roles (user_id uuid, role_id uuid)` — multi-role support
-- Trigger: কোনো `app_users` row insert হলে যদি linked `employee_id` থাকে, তাহলে automatic ভাবে Employee role-এর entry `app_user_extra_roles`-এ ঢুকবে (যদি primary role অন্য কিছু হয়)
-- **Helper view** `public.app_user_effective_modules` — primary role এর modules + extra roles এর modules union, যাতে UI/sidebar এক জায়গা থেকে effective permissions পড়তে পারে
-- UI-তে App User edit dialog-এ "অতিরিক্ত Role" multi-select যোগ হবে (Billing, HR, Accounts, Technician ইত্যাদি)
+**Login enforcement**: Auth context check করবে `access_expires_at < now()` হলে session terminate।
 
-### 4. AppUsers list-এ visual
-- প্রতিটি row-এ primary role-এর পাশে badge হিসেবে extra roles দেখাবে (e.g., `Employee + Billing`)
+**External user-এ Employee role auto-attach হবে না** (trigger condition: শুধু `user_type='internal'` হলে)। External user যে role দেয়া হবে শুধু সেটাই কাজ করবে।
+
+### 4. AppUsers পেজ UI বদল
+- উপরে tab: **Internal | External | Remote Support | All**
+- "নতুন App User" বাটনে dropdown:
+  - **Employee থেকে বানান** → existing ConvertToAppUserDialog (Employee role locked)
+  - **External User যোগ করুন** → নতুন dialog: name, email, username, password, primary role, expiry date, purpose
+  - **Remote Support Access দিন** → একই form কিন্তু default expiry = 24 ঘণ্টা, role = "Remote Support" (নতুন protected role)
+- Table-এ extra column: Type badge (Internal/External/Remote), Expiry countdown ("৩ দিন বাকি", "Expired")।
+
+### 5. নতুন protected role: `Remote Support`
+- Read-only access — শুধু device monitoring, ticket view
+- কোনো customer/billing data নয়
 
 ## টেকনিক্যাল
 
 ### Migration
 ```sql
-CREATE TABLE public.app_user_extra_roles (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES public.app_users(id) ON DELETE CASCADE,
-  role_id uuid NOT NULL REFERENCES public.app_roles(id) ON DELETE CASCADE,
-  created_at timestamptz DEFAULT now(),
-  UNIQUE(user_id, role_id)
-);
--- GRANT + RLS (admin manage, self read)
+-- 1. New type + columns
+CREATE TYPE app_user_type AS ENUM ('internal','external','remote_support');
+ALTER TABLE app_users
+  ADD COLUMN user_type app_user_type NOT NULL DEFAULT 'internal',
+  ADD COLUMN access_expires_at timestamptz,
+  ADD COLUMN purpose text;
 
--- Trigger: app_users insert হলে যদি employee_id != null এবং primary role != Employee,
--- তাহলে Employee role auto-add app_user_extra_roles-এ
+-- 2. New protected role "Remote Support" with read-only modules
+INSERT INTO app_roles(name, is_protected, status) VALUES ('Remote Support', true, 'Active');
+-- Plus app_role_modules: Devices view, Network monitoring view, Tickets view
 
--- View: app_user_effective_modules — union of primary role's app_role_modules
--- + extra roles' app_role_modules, with enabled=true
+-- 3. Employee role gets My Requisition module
+INSERT INTO app_role_modules (role_id, module_group, module_name, enabled, permission) ...
+
+-- 4. Update auto-attach trigger: only when user_type='internal' AND employee_id IS NOT NULL
+-- 5. New trigger: force role_id='Employee' when user_type='internal' AND employee_id NOT NULL
+-- 6. Expiry enforcement: function/policy that checks access_expires_at on login
 ```
 
 ### Files
-- `src/pages/dashboard/access/AppUsers.tsx` — status filter fix, exclude already-converted employees, extra_roles multi-select UI, badges
-- `src/pages/dashboard/hr/EmployeeView.tsx` — "App User বানান" বাটন + dialog (AppUsers create dialog reuse)
-- `src/pages/dashboard/hr/Employees.tsx` (যদি list থাকে) — row action: "App User বানান"
-- নতুন component: `src/components/hr/ConvertToAppUserDialog.tsx`
+- `src/pages/dashboard/access/AppUsers.tsx` — tabs, type column, expiry display, type-aware dialog
+- `src/components/hr/ConvertToAppUserDialog.tsx` — role select disabled when employee
+- `src/components/access/ExternalUserDialog.tsx` (নতুন) — external/remote-support flow
+- `src/contexts/AuthContext.tsx` — expiry check on session load
+- (অপশনাল) নতুন page `src/pages/dashboard/hr/MyRequisition.tsx` — placeholder
 
 ## Scope বহির্ভূত
-- Effective permissions দিয়ে actual page-level enforcement (Sidebar gating) — পরের আলাদা task
-- Catering order, Leave management-এর full UI — আগেই আলাদা plan
+- Requisition-এর পুরো workflow (approval, tracking) — পরে আলাদা plan
+- Remote support session recording/audit — পরে
 
 ## প্রশ্ন
-1. "App User বানান" ক্লিক করলে কি **password manually** দেবেন, না-কি system auto-generate করে SMS/Email-এ পাঠাবে? (এখন manual ধরে এগোচ্ছি)
-2. একই employee-র জন্য কি **একাধিক app_user** allow করব, না one-to-one strict?
+1. Remote support default expiry **24 ঘণ্টা** ঠিক আছে, না-কি অন্য default (যেমন ৪ ঘণ্টা)?
+2. External user-এর জন্য কি **email-based login** চান (Supabase auth), না-কি existing username/password pattern? (এখন username/password ধরে এগোচ্ছি)
+3. Expired user-কে কি **auto-delete** হবে, না-কি শুধু **disabled** থেকে যাবে history-র জন্য? (Disabled রাখার পরিকল্পনা — manual cleanup)
