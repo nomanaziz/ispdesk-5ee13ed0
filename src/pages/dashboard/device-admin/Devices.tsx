@@ -34,6 +34,7 @@ type Row = {
   id: string;
   name: string;
   ip_address: string | null;
+  port: number | null;
   status: string | null;
   location?: string | null;
   category: string;
@@ -61,31 +62,34 @@ export default function DeviceInventory() {
     queryKey: ["device_admin_inventory"],
     queryFn: async (): Promise<Row[]> => {
       const [mk, olt, sw, zk, mg] = await Promise.all([
-        supabase.from("mikrotik_devices").select("id,name,ip_address,status"),
-        supabase.from("olt_devices").select("id,name,ip_address,status,vendor"),
+        supabase.from("mikrotik_devices").select("id,name,ip_address,status,api_port"),
+        supabase.from("olt_devices").select("id,name,ip_address,status,vendor,port"),
         supabase.from("pop_devices").select("id,name,ip_address,status"),
-        supabase.from("zkteco_devices").select("id,name,ip_address,status,location"),
-        supabase.from("device_admin_managed_devices").select("id,name,category,vendor,ip_address,status,location"),
+        supabase.from("zkteco_devices").select("id,name,ip_address,status,location,port"),
+        supabase.from("device_admin_managed_devices").select("id,name,category,vendor,ip_address,status,location,port"),
       ]);
       const managedIds = new Set(((mg.data ?? []) as any[]).map((d) => d.id));
       return [
-        ...((mk.data ?? []) as any[]).map((d) => ({ ...d, category: "router", vendor: "mikrotik", source: "mikrotik_devices" as const })),
-        // skip olt rows that are mirrors of managed_devices (same id) to avoid duplicate listing
+        ...((mk.data ?? []) as any[]).map((d) => ({ ...d, port: d.api_port ?? null, category: "router", vendor: "mikrotik", source: "mikrotik_devices" as const })),
         ...((olt.data ?? []) as any[])
           .filter((d) => !managedIds.has(d.id))
-          .map((d) => ({ ...d, category: "olt", vendor: d.vendor || "—", source: "olt_devices" as const })),
-        ...((sw.data ?? []) as any[]).map((d) => ({ ...d, category: "switch", vendor: "—", source: "pop_devices" as const })),
-        ...((zk.data ?? []) as any[]).map((d) => ({ ...d, category: "zkteco", vendor: "zkteco", source: "zkteco_devices" as const })),
-        ...((mg.data ?? []) as any[]).map((d) => ({ ...d, category: d.category || "other", vendor: d.vendor || "—", source: "device_admin_managed_devices" as const })),
+          .map((d) => ({ ...d, port: d.port ?? null, category: "olt", vendor: d.vendor || "—", source: "olt_devices" as const })),
+        ...((sw.data ?? []) as any[]).map((d) => ({ ...d, port: null, category: "switch", vendor: "—", source: "pop_devices" as const })),
+        ...((zk.data ?? []) as any[]).map((d) => ({ ...d, port: d.port ?? null, category: "zkteco", vendor: "zkteco", source: "zkteco_devices" as const })),
+        ...((mg.data ?? []) as any[]).map((d) => ({ ...d, port: d.port ?? null, category: d.category || "other", vendor: d.vendor || "—", source: "device_admin_managed_devices" as const })),
       ];
     },
   });
 
-  // duplicate IP map
-  const dupIps = useMemo(() => {
+  // duplicate (ip + port) map — same IP on different ports (e.g. port-forwarding) is not a duplicate
+  const dupKeys = useMemo(() => {
     const counts: Record<string, number> = {};
-    data.forEach((d) => { if (d.ip_address) counts[d.ip_address] = (counts[d.ip_address] || 0) + 1; });
-    return new Set(Object.entries(counts).filter(([, n]) => n > 1).map(([ip]) => ip));
+    data.forEach((d) => {
+      if (!d.ip_address) return;
+      const k = `${d.ip_address}:${d.port ?? "_"}`;
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    return new Set(Object.entries(counts).filter(([, n]) => n > 1).map(([k]) => k));
   }, [data]);
 
   const vendorOptions = useMemo(() => {
@@ -100,6 +104,7 @@ export default function DeviceInventory() {
     if (search && !`${d.name} ${d.ip_address || ""}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
 
   const del = useMutation({
     mutationFn: async (row: Row) => {
