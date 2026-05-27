@@ -100,7 +100,7 @@ export default function AppUsers() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ employee_id: "", username: "", password: "", confirm: "", role_id: "", status: "Active" });
+    setForm({ employee_id: "", username: "", password: "", confirm: "", role_id: EMPLOYEE_ROLE_ID, status: "Active", extra_role_ids: [] });
     setDialogOpen(true);
   };
 
@@ -113,9 +113,11 @@ export default function AppUsers() {
       confirm: "",
       role_id: u.role_id || "",
       status: u.status,
+      extra_role_ids: (u.extra_roles || []).map((er) => er.role_id),
     });
     setDialogOpen(true);
   };
+
 
   const handleEmployeeSelect = (empId: string) => {
     const emp = employees.find((e) => e.id === empId);
