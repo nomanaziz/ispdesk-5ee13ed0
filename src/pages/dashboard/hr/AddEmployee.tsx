@@ -159,6 +159,17 @@ export default function AddEmployee() {
     }
   }, [hrSettings, editId]);
 
+  // Prefill from ZKTeco device user (one-click convert)
+  useEffect(() => {
+    if (editId || !fromDeviceUserRowId) return;
+    setForm((p) => ({
+      ...p,
+      name: prefName || p.name,
+      punch_card_id: prefCard || prefDeviceUserId || p.punch_card_id,
+      zkteco_device_id: prefDeviceId || p.zkteco_device_id,
+    }));
+  }, [fromDeviceUserRowId, prefName, prefCard, prefDeviceId, prefDeviceUserId, editId]);
+
   useEffect(() => {
     if (editId) {
       supabase.from("employees").select("*").eq("id", editId).single().then(({ data }) => {
