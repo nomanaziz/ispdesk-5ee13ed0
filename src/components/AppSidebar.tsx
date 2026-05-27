@@ -31,6 +31,8 @@ import { useSidebarBadges } from "@/hooks/useSidebarBadges";
 import ispDeskLogo from "@/assets/isp-desk-logo.png";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useModulePermissions } from "@/hooks/useModulePermissions";
+import { GROUP_MODULE, ALWAYS_VISIBLE_GROUPS } from "@/lib/menuModuleMap";
 
 export interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
 export interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
