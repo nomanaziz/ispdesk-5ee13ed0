@@ -420,106 +420,145 @@ export default function PayslipManager() {
         ))}
       </div>
 
-      {/* Employee list */}
+      {/* Employee list — compact table */}
       <Card>
         <CardHeader className="pb-2 flex flex-row items-center gap-3">
           <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
-          <CardTitle className="text-base">Select All Employee <Badge variant="secondary">{filtered.length}</Badge>{selected.size > 0 && <Badge className="ml-2">{selected.size} নির্বাচিত</Badge>}</CardTitle>
+          <CardTitle className="text-base">
+            সকল কর্মী <Badge variant="secondary">{filtered.length}</Badge>
+            {selected.size > 0 && <Badge className="ml-2">{selected.size} নির্বাচিত</Badge>}
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {empLoading ? (
-            <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
+            <div className="space-y-2 p-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
           ) : (
-            <div className="divide-y">
-              {filtered.map((emp: any) => {
-                const c = computed[emp.id];
-                const ex = existingByEmp.get(emp.id);
-                const tplName = emp.payroll_templates?.name || "Monthly Payroll (Default)";
-                const tplType = emp.payroll_templates?.payroll_type || "Monthly";
-                const total = ex ? Number(ex.net_salary) : (c ? c.net_salary : 0);
-                const tplTotal = c ? c.net_salary : 0;
-                const diff = ex && c ? Number(ex.net_salary) - tplTotal : 0;
-                return (
-                  <div key={emp.id} className="py-3 flex flex-wrap items-center gap-4">
-                    <Checkbox checked={selected.has(emp.id)} onCheckedChange={() => toggleOne(emp.id)} />
-                    <div className="min-w-[160px]">
-                      <p className="font-medium">{emp.name}</p>
-                      <button className="text-xs text-blue-600 hover:underline"
-                        onClick={() => navigate(`/dashboard/hr/employees/${emp.id}`)}>
-                        View More... »
-                      </button>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-xs text-muted-foreground">পেরোল টেমপ্লেট</div>
-                      <div className="bg-muted/40 rounded px-3 py-1.5 min-w-[200px]">
-                        {periodLabel(month)} ({tplName})
-                      </div>
-                    </div>
-                    <div className="text-sm flex-1 min-w-[200px]">
-                      <p className="text-muted-foreground">
-                        Generate Payslip for: <span className="text-pink-600 font-medium">{periodLabel(month)}</span>
-                      </p>
-                      <p className="text-blue-600">
-                        --» {emp.positions?.name || "—"} <span className="text-muted-foreground">({tplType} Payroll)</span>
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button size="icon" variant="ghost" onClick={() => openEdit(emp)} title="এডিট পে-হেডস">
-                        <Edit2 className="h-4 w-4 text-amber-600" />
-                      </Button>
-                      <div className="text-right min-w-[140px]">
-                        <p className="text-xs text-muted-foreground">Payheads Total</p>
-                        <p className="font-bold">
-                          ৳{total.toLocaleString()}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead className="min-w-[160px]">কর্মী</TableHead>
+                    <TableHead className="hidden md:table-cell">টেমপ্লেট</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">পেহেডস টোটাল</TableHead>
+                    <TableHead className="hidden sm:table-cell text-right whitespace-nowrap">পরিশোধিত / বকেয়া</TableHead>
+                    <TableHead className="whitespace-nowrap">স্ট্যাটাস</TableHead>
+                    <TableHead className="w-20 text-right">অ্যাকশন</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.length === 0 && (
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">কর্মী পাওয়া যায়নি</TableCell></TableRow>
+                  )}
+                  {filtered.map((emp: any) => {
+                    const c = computed[emp.id];
+                    const ex = existingByEmp.get(emp.id);
+                    const tplName = emp.payroll_templates?.name || "Monthly (Default)";
+                    const total = ex ? Number(ex.net_salary) : (c ? c.net_salary : 0);
+                    const tplTotal = c ? c.net_salary : 0;
+                    const diff = ex && c ? Number(ex.net_salary) - tplTotal : 0;
+                    const paid = Number(ex?.paid_amount || 0);
+                    const payable = Number(ex?.net_salary || 0);
+                    const due = ex ? Math.max(0, payable - paid) : 0;
+                    const pStatus = ex?.payment_status || ex?.status;
+                    const isPaid = pStatus === "paid";
+                    const isPartial = pStatus === "partial" || (paid > 0 && due > 0);
+
+                    return (
+                      <TableRow key={emp.id} className="text-sm">
+                        <TableCell className="py-2">
+                          <Checkbox checked={selected.has(emp.id)} onCheckedChange={() => toggleOne(emp.id)} />
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <button onClick={() => navigate(`/dashboard/hr/employees/${emp.id}`)} className="text-left hover:underline">
+                            <div className="font-medium leading-tight">{emp.name}</div>
+                            <div className="text-xs text-muted-foreground font-mono">{emp.employee_id}</div>
+                          </button>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell py-2">
+                          <div className="text-xs">{periodLabel(month)}</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[180px]">{tplName}</div>
+                        </TableCell>
+                        <TableCell className="py-2 text-right whitespace-nowrap">
+                          <span className="font-semibold">৳{total.toLocaleString()}</span>
                           {diff !== 0 && (
                             <span className={`text-xs ml-1 ${diff > 0 ? "text-green-600" : "text-destructive"}`}>
                               ({diff > 0 ? "+" : ""}{diff})
                             </span>
                           )}
-                        </p>
-                      </div>
-                      {ex && (() => {
-                        const paid = Number(ex.paid_amount || 0);
-                        const payable = Number(ex.net_salary || 0);
-                        const due = Math.max(0, payable - paid);
-                        const pStatus = ex.payment_status || ex.status;
-                        const isPaid = pStatus === "paid";
-                        const isPartial = pStatus === "partial" || (paid > 0 && due > 0);
-                        return (
-                          <>
-                            <div className="text-right min-w-[140px] text-xs">
-                              <div className="text-green-600">পরিশোধিত: ৳{paid.toLocaleString()}</div>
-                              <div className="text-destructive">বকেয়া: ৳{due.toLocaleString()}</div>
-                            </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell py-2 text-right whitespace-nowrap text-xs">
+                          {ex ? (
+                            <>
+                              <div className="text-green-600">৳{paid.toLocaleString()}</div>
+                              <div className="text-destructive">৳{due.toLocaleString()}</div>
+                            </>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="py-2">
+                          {ex ? (
                             <Badge
                               variant={isPaid ? "default" : "outline"}
                               className={
-                                isPaid
-                                  ? "bg-green-600 hover:bg-green-700"
-                                  : isPartial
-                                    ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent"
-                                    : ""
+                                isPaid ? "bg-green-600 hover:bg-green-700"
+                                : isPartial ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent"
+                                : ""
                               }>
-                              {isPaid ? "Fully Paid" : isPartial ? "Partially Paid" : "Unpaid"}
+                              {isPaid ? "পরিশোধিত" : isPartial ? "আংশিক" : "অপরিশোধিত"}
                             </Badge>
-                            <Button size="icon" variant="ghost" onClick={() => setPreviewId(ex.id)}>
-                              <FileText className="h-4 w-4 text-blue-600" />
-                            </Button>
-                            {!isPaid && (
-                              <Button size="sm" variant="default" onClick={() => setPayDialog(ex)}>Pay</Button>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                );
-              })}
-              {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">কর্মী পাওয়া যায়নি</p>}
+                          ) : <Badge variant="outline" className="text-muted-foreground">তৈরি হয়নি</Badge>}
+                        </TableCell>
+                        <TableCell className="py-2 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="icon" variant="ghost" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
+                              <DropdownMenuItem onClick={() => openEdit(emp)}>
+                                <Edit2 className="h-4 w-4 mr-2 text-amber-600" /> পে-হেডস এডিট
+                              </DropdownMenuItem>
+                              {ex && (
+                                <DropdownMenuItem onClick={() => setPreviewId(ex.id)}>
+                                  <Eye className="h-4 w-4 mr-2 text-blue-600" /> পে-স্লিপ দেখুন
+                                </DropdownMenuItem>
+                              )}
+                              {ex && !isPaid && (
+                                <DropdownMenuItem onClick={() => setPayDialog(ex)}>
+                                  <Receipt className="h-4 w-4 mr-2 text-green-600" /> পেমেন্ট নিন
+                                </DropdownMenuItem>
+                              )}
+                              {ex && (
+                                <DropdownMenuItem onClick={() => window.open(`/dashboard/hr/payslip/print?ids=${ex.id}`, "_blank")}>
+                                  <Download className="h-4 w-4 mr-2" /> PDF ডাউনলোড
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={async () => {
+                                try {
+                                  const overrides = ex?.adjustments && Array.isArray(ex.adjustments) ? ex.adjustments : [];
+                                  await persistPayroll(emp, overrides, { regenerate: !!ex });
+                                  await refetchExisting();
+                                  toast.success(ex ? "পুনঃজেনারেট হয়েছে" : "জেনারেট হয়েছে");
+                                } catch (e: any) { toast.error(e.message); }
+                              }}>
+                                <RefreshCw className="h-4 w-4 mr-2 text-orange-600" />
+                                {ex ? "পুনঃজেনারেট" : "জেনারেট"}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
       </Card>
+
 
       <PayslipPaymentDialog payroll={payDialog} onClose={() => setPayDialog(null)} />
 
