@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Server, RefreshCw, Trash2, Wifi, WifiOff, Cloud, Users, DownloadCloud, UploadCloud, Link2, Unlink2, Search, X } from "lucide-react";
+import { Plus, Server, RefreshCw, Trash2, Wifi, WifiOff, Cloud, Users, DownloadCloud, UploadCloud, Link2, Unlink2, Search, X, UserPlus } from "lucide-react";
 
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 const ADMS_URL = `https://${PROJECT_ID}.supabase.co/functions/v1/zkteco-adms`;
@@ -38,6 +39,7 @@ const blankForm: FormState = {
 
 export default function ZktecoDevices() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(blankForm);
@@ -498,10 +500,30 @@ export default function ZktecoDevices() {
                                 </Button>
                               </div>
                             ) : (
-                              <EmployeeMapPicker
-                                employees={employees || []}
-                                onSelect={(empId) => mapMutation.mutate({ deviceUserRowId: u.id, employeeId: empId, deviceUserId: u.device_user_id })}
-                              />
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <EmployeeMapPicker
+                                  employees={employees || []}
+                                  onSelect={(empId) => mapMutation.mutate({ deviceUserRowId: u.id, employeeId: empId, deviceUserId: u.device_user_id })}
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 gap-1 text-xs"
+                                  title="এই device user থেকে নতুন Employee তৈরি করুন"
+                                  onClick={() => {
+                                    const params = new URLSearchParams({
+                                      from_device_user: u.id,
+                                      device_user_id: u.device_user_id || "",
+                                      device_id: u.device_id || "",
+                                      name: u.name || "",
+                                      card: u.card_no || "",
+                                    });
+                                    navigate(`/dashboard/hr/employees/add?${params.toString()}`);
+                                  }}
+                                >
+                                  <UserPlus className="h-3.5 w-3.5" /> Employee বানাও
+                                </Button>
+                              </div>
                             )}
                           </TableCell>
                         </TableRow>

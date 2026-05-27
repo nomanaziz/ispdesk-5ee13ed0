@@ -56,6 +56,11 @@ export default function AddEmployee() {
   const [form, setForm] = useState(initialForm);
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
+  const fromDeviceUserRowId = searchParams.get("from_device_user");
+  const prefDeviceUserId = searchParams.get("device_user_id");
+  const prefDeviceId = searchParams.get("device_id");
+  const prefName = searchParams.get("name");
+  const prefCard = searchParams.get("card");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
@@ -154,6 +159,17 @@ export default function AddEmployee() {
     }
   }, [hrSettings, editId]);
 
+  // Prefill from ZKTeco device user (one-click convert)
+  useEffect(() => {
+    if (editId || !fromDeviceUserRowId) return;
+    setForm((p) => ({
+      ...p,
+      name: prefName || p.name,
+      punch_card_id: prefCard || prefDeviceUserId || p.punch_card_id,
+      zkteco_device_id: prefDeviceId || p.zkteco_device_id,
+    }));
+  }, [fromDeviceUserRowId, prefName, prefCard, prefDeviceId, prefDeviceUserId, editId]);
+
   useEffect(() => {
     if (editId) {
       supabase.from("employees").select("*").eq("id", editId).single().then(({ data }) => {
@@ -228,6 +244,10 @@ export default function AddEmployee() {
       delete payload.personal_phone;
       delete payload.division_id;
       delete payload.district_id;
+      // Attach ZKTeco device user id when converting from device
+      if (!editId && fromDeviceUserRowId && prefDeviceUserId) {
+        payload.device_user_id = prefDeviceUserId;
+      }
       // Nullify empty uuid / date / time / numeric fields to avoid Postgres syntax errors
       const nullableKeys = [
         "department_id", "position_id", "zkteco_device_id", "payroll_template_id", "default_shift_id",
@@ -251,8 +271,9 @@ export default function AddEmployee() {
       if (editId) {
         const { error } = await supabase.from("employees").update(payload).eq("id", editId);
         if (error) throw error;
+        return { id: editId } as any;
       } else {
-        const { error } = await supabase.from("employees").insert(payload);
+        const { data: inserted, error } = await supabase.from("employees").insert(payload).select("id").single();
         if (error) throw error;
         // Increment auto ID counter
         if (autoIdMode && hrSettings) {
@@ -261,13 +282,25 @@ export default function AddEmployee() {
             setting_value: { ...config, next_number: (config.next_number || 1) + 1 },
           }).eq("setting_key", "employee_id_config");
         }
+        // Auto-map: link the ZKTeco device user row to this new employee
+        if (fromDeviceUserRowId && inserted?.id) {
+          await supabase.from("zkteco_device_users")
+            .update({ mapped_employee_id: inserted.id })
+            .eq("id", fromDeviceUserRowId);
+        }
+        return inserted as any;
       }
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       queryClient.invalidateQueries({ queryKey: ["hr-settings-employee-id"] });
-      toast.success(editId ? "কর্মী আপডেট হয়েছে" : "কর্মী যোগ হয়েছে");
-      navigate("/dashboard/hr/employees");
+      queryClient.invalidateQueries({ queryKey: ["zkteco-device-users"] });
+      toast.success(editId ? "কর্মী আপডেট হয়েছে" : fromDeviceUserRowId ? "কর্মী যোগ ও device-এর সাথে map সম্পন্ন" : "কর্মী যোগ হয়েছে");
+      if (fromDeviceUserRowId && res?.id) {
+        navigate(`/dashboard/hr/employees/${res.id}`);
+      } else {
+        navigate("/dashboard/hr/employees");
+      }
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -307,6 +340,14 @@ export default function AddEmployee() {
           </Button>
         </div>
       </div>
+
+      {fromDeviceUserRowId && !editId && (
+        <div className="border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950/30 p-3 rounded text-sm">
+          <strong>ZKTeco Device User #{prefDeviceUserId}</strong> ({prefName || "—"}) থেকে নতুন employee তৈরি হচ্ছে।
+          সংরক্ষণ করলে device-এর সাথে automatic map হয়ে যাবে এবং পূর্বের সব punch attendance report-এ দেখাবে।
+        </div>
+      )}
+
 
       {/* Employee ID */}
       <Card>

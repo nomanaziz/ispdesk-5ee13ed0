@@ -393,6 +393,11 @@ export type Database = {
           device_log_id: string | null
           employee_id: string
           id: string
+          punch_accuracy_m: number | null
+          punch_in_at: string | null
+          punch_lat: number | null
+          punch_lng: number | null
+          punch_out_at: string | null
           remarks: string | null
           shift_id: string | null
           source: string
@@ -406,6 +411,11 @@ export type Database = {
           device_log_id?: string | null
           employee_id: string
           id?: string
+          punch_accuracy_m?: number | null
+          punch_in_at?: string | null
+          punch_lat?: number | null
+          punch_lng?: number | null
+          punch_out_at?: string | null
           remarks?: string | null
           shift_id?: string | null
           source?: string
@@ -419,6 +429,11 @@ export type Database = {
           device_log_id?: string | null
           employee_id?: string
           id?: string
+          punch_accuracy_m?: number | null
+          punch_in_at?: string | null
+          punch_lat?: number | null
+          punch_lng?: number | null
+          punch_out_at?: string | null
           remarks?: string | null
           shift_id?: string | null
           source?: string
