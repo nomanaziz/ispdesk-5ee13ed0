@@ -215,9 +215,15 @@ export default function EmployeeView() {
           </Card>
         </TabsContent>
       </Tabs>
+      <ConvertToAppUserDialog
+        employee={emp ? { id: emp.id, name: emp.name, employee_id: emp.employee_id } : null}
+        open={convertOpen}
+        onOpenChange={setConvertOpen}
+      />
     </div>
   );
 }
+
 
 function Row({ icon, label, value }: { icon?: React.ReactNode; label: string; value: any }) {
   return (
