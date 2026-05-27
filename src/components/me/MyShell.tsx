@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, User, Calendar, FileText, Wallet,
-  HandCoins, LogOut as LogOutIcon, Clock, Utensils, ClipboardList,
+  LogOut as LogOutIcon, Clock, Utensils, ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +12,6 @@ const items = [
   { url: "/dashboard/me/leave", label: "ছুটি", icon: Calendar },
   { url: "/dashboard/me/payslip", label: "পে-স্লিপ", icon: FileText },
   { url: "/dashboard/me/advance", label: "অগ্রিম বেতন", icon: Wallet },
-  { url: "/dashboard/me/loan", label: "ঋণ", icon: HandCoins },
   { url: "/dashboard/me/resignation", label: "পদত্যাগ", icon: LogOutIcon },
   { url: "/dashboard/me/meals", label: "খাবার অর্ডার", icon: Utensils },
   { url: "/dashboard/me/requisitions", label: "রিকুইজিশন", icon: ClipboardList },
