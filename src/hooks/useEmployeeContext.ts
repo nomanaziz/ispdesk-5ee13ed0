@@ -34,7 +34,7 @@ export function useEmployeeContext(): EmployeeContext {
     queryFn: async () => {
       const { data: appUser } = await supabase
         .from("app_users" as any)
-        .select("*, app_roles(id,name), employees(*)")
+        .select("id, username, status, employee_id, role_id, auth_user_id, email, full_name, purpose, access_expires_at, user_type, created_at, updated_at, app_roles(id,name), employees(id, employee_id, name, email, phone, address, department_id, position_id, joining_date, salary, status, image_url, branch_id, default_shift_id, weekly_off_days, has_user_access, user_username, user_permissions)")
         .eq("auth_user_id", user!.id)
         .maybeSingle();
 
