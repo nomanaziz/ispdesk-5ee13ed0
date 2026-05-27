@@ -43,6 +43,7 @@ const MyRequisitions = lazy(() => import("@/pages/dashboard/me/MyRequisitions"))
 const HrCatering = lazy(() => import("@/pages/dashboard/hr/Catering"));
 const HrProfileApprovals = lazy(() => import("@/pages/dashboard/hr/ProfileApprovals"));
 const HrEmployeeRequests = lazy(() => import("@/pages/dashboard/hr/EmployeeRequests"));
+const HrEmployeeHub = lazy(() => import("@/pages/dashboard/hr/EmployeeHub"));
 
 // Shop Admin
 const ShopCategories = lazy(() => import("@/pages/dashboard/shop/Categories"));
