@@ -39,6 +39,7 @@ const blankForm: FormState = {
 
 export default function ZktecoDevices() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(blankForm);
