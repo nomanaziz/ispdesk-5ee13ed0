@@ -21,7 +21,7 @@ import {
 import { NavLink, useLocation } from "react-router-dom";
 import { Sidebar, SidebarContent, useSidebar } from "@/components/ui/sidebar";
 import { useEmployeeContext } from "@/hooks/useEmployeeContext";
-import { User as UserIcon, Utensils, ClipboardList as ClipboardListIcon } from "lucide-react";
+import { User as UserIcon, Utensils, UtensilsCrossed, ClipboardList as ClipboardListIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MenuIconTile, tintForLabel } from "@/components/sidebar/MenuIconTile";
 import { ScrollArea } from "@/components/ui/scroll-area";
