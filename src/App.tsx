@@ -126,6 +126,8 @@ const HrShiftManagement = lazy(() => import("@/pages/dashboard/hr/ShiftManagemen
 const HrZktecoDevices = lazy(() => import("@/pages/dashboard/hr/ZktecoDevices"));
 const HrAttendanceRules = lazy(() => import("@/pages/dashboard/hr/AttendanceRules"));
 const HrSettings = lazy(() => import("@/pages/dashboard/hr/HrSettings"));
+const HrAttendanceReport = lazy(() => import("@/pages/dashboard/hr/AttendanceReport"));
+const HrGeoPunch = lazy(() => import("@/pages/dashboard/hr/GeoPunch"));
 const HrAdvanceSalary = lazy(() => import("@/pages/dashboard/hr/AdvanceSalary"));
 const HrEmployeeLoans = lazy(() => import("@/pages/dashboard/hr/EmployeeLoans"));
 const DashboardLinks = lazy(() => import("@/pages/dashboard/Links"));
