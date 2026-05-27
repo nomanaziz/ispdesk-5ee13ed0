@@ -11,8 +11,8 @@ import { Check, X } from "lucide-react";
 
 const TABS = [
   { key: "salary_advance_requests", label: "অগ্রিম বেতন", kind: "advance" as const },
-  { key: "loan_requests", label: "ঋণ", kind: "loan" as const },
   { key: "resignation_requests", label: "পদত্যাগ", kind: "resignation" as const },
+  { key: "requisitions", label: "রিকুইজিশন", kind: "requisition" as const },
 ];
 
 export default function EmployeeRequests() {
