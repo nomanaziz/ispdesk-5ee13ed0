@@ -24,6 +24,7 @@ interface AppUser {
   created_at: string;
   employee?: { id: string; name: string; employee_id: string | null } | null;
   role?: { id: string; name: string } | null;
+  extra_roles?: { role_id: string; role: { id: string; name: string } | null }[];
 }
 
 interface Employee { id: string; name: string; employee_id: string | null; }
@@ -32,6 +33,7 @@ interface Role { id: string; name: string; is_protected: boolean; status: string
 export default function AppUsers() {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [takenEmployeeIds, setTakenEmployeeIds] = useState<Set<string>>(new Set());
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -46,11 +48,13 @@ export default function AppUsers() {
     confirm: "",
     role_id: "",
     status: "Active",
+    extra_role_ids: [] as string[],
   });
 
   const [resetTarget, setResetTarget] = useState<AppUser | null>(null);
   const [resetPwd, setResetPwd] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
+
 
   const load = async () => {
     setLoading(true);
