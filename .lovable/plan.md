@@ -1,96 +1,115 @@
+# Self-service portal — fixes + new modules
 
-## লক্ষ্য
+## 1. Critical bug fixes
 
-Admin portal-এ HR-এর কিছু core সুবিধা ও policy যোগ করা — default leave entitlement, probation logic, self check-in/out, shift roster, weekly holiday, conveyance bill, এবং catering provider + weekly menu admin UI। NAHID-কে test employee হিসেবে এই সব policy auto-assign হবে।
+### A. Attendance RLS (check-in fails)
+`attendance` has no INSERT/UPDATE policy for self — only admin ALL + self SELECT. Add:
+- `INSERT` for self: `WITH CHECK (employee_id = current_employee_id() AND source = 'self')`
+- `UPDATE` for self: only when `source='self'` and only own row (for check-out)
 
-## Phase 1 — Default Leave Policy + Probation Logic
+### B. Leave balance shows "set নেই"
+Balances exist in DB (CL/SL/EL etc.) but `MyLeave.tsx` & `MyDashboard.tsx` query wrong columns (`balance`, `leave_type_id`, `leave_types(name)`). Actual columns: `remaining_days`, `total_days`, `used_days`, `category_id`, with `leave_categories(name)`. Fix both files.
 
-1. দুটি default leave type seed করা: **Casual Leave (10/বছর)**, **Sick Leave (12/বছর)**।
-2. `employees` table-এ `probation_period_months` (default 3), `probation_end_date`, `confirmation_date`, `is_confirmed` column থাকবে।
-3. নতুন employee add করলে:
-   - probation start = joining date, end = joining + probation months।
-   - confirmation না হওয়া পর্যন্ত leave entitlement = 0 (খাবার সুবিধা থাকবে)।
-4. Confirmation action (HR button): salary increment field (optional) + auto leave balance assign।
-5. **Pro-rated leave calculation** (Jan–Dec basis):
-   - confirmation মাস থেকে December পর্যন্ত যত মাস বাকি, তত মাসের অনুপাতে leave।
-   - সূত্র: `floor(annual_quota × remaining_months / 12)`। কোনো fraction না।
-   - উদাহরণ: June-এ confirm → CL = floor(10×7/12)=5, SL = floor(12×7/12)=7।
-6. প্রতি বছর January-1 এ leave balance reset/refresh (manual বা scheduled — আপাতত admin button)।
-7. UI: Employee profile-এ **Leave Entitlement** panel — type, annual quota, current year balance, used, remaining।
+### C. Missing "ছুটির আবেদন" form
+`MyLeave.tsx` only shows balance + history. Add an application form (category dropdown from `leave_categories`, start/end date → auto compute days, reason). Insert into `leave_applications` with `status='pending'`.
 
-## Phase 2 — Self Check-in / Check-out (Employee)
+## 2. Restructure requests menu
 
-1. `/dashboard/me/attendance` page-এ **Check In** ও **Check Out** button যোগ।
-2. Employee নিজেই check_in/check_out push করতে পারবে (status = `pending_verify`)।
-3. Admin/HR-এর কাছে **Attendance Verification Queue** — approve/reject।
-4. Admin সরাসরি entry দিলে status = `verified` by default।
-5. Source field: `self` / `admin` / `device(zkteco)`।
+Drop loan. Merge concept: advance = the only kind of "salary loan".
 
-## Phase 3 — Shift Management (Roster)
+- Remove `/dashboard/me/loan` route + nav item.
+- Rename "অগ্রিম বেতন" → "অগ্রিম বেতন (Salary Advance)" — same form (amount + reason).
+- Remove "ঋণ" tab from admin `EmployeeRequests.tsx`.
 
-1. `shifts` table: name, start_time, end_time, branch_id।
-2. `employee_roster`: employee_id, date, shift_id।
-3. UI: **Roster Planner** page — Weekly বা Monthly view toggle।
-   - একসাথে multiple employee select → shift drag/assign।
-   - Bulk apply: "প্রতি শনি-বৃহঃ Shift A, শুক্র off"।
-4. Save করলে date-ভিত্তিক row insert হবে।
+## 3. Resignation — new rules
 
-## Phase 4 — Weekly Holiday per Employee
+DB: add to `resignation_requests`:
+- enforce single active request per employee (partial unique index on `employee_id` where `status IN ('pending','approved')`)
+- add `min_notice_days` (default 30) read from `resign_rules` or system setting
 
-1. Employee Action calender button-এর label পরিবর্তন → **"সাপ্তাহিক ছুটি"**।
-2. Dialog-এ Sat–Fri checkbox। Tick করলে `employees.weekly_off_days` (int array, e.g. `[5]` = Friday) save।
-3. Attendance generation / leave calculation এই দিনগুলো skip করবে — auto holiday।
+Self-side `MyRequestPage` resignation mode:
+- Date picker `min = today + 30 days`, no past dates. Helper text: "এক মাসের নিচে দিতে হলে admin-এর সাথে যোগাযোগ করুন।"
+- If existing pending/approved request → hide form, show current request with **Update** / **Cancel** (delete) buttons.
+- Admin retains override: can edit `effective_date` to any date from admin portal.
 
-## Phase 5 — Conveyance Bill
+## 4. Requisition module (employee → admin)
 
-1. `conveyance_bills` table: employee_id, date, from_location, to_location, purpose, amount, attachment, status (pending/approved/rejected), approver_id, remarks।
-2. Employee side: `/dashboard/me/conveyance` — submit form + history list।
-3. Admin side: `/dashboard/hr/conveyance` — pending queue → approve/reject → approved bills payroll-এ "Conveyance Reimbursement" allowance হিসেবে add option।
+Existing `requisitions` table is procurement-oriented (item_id, vendor_id). Extend for employee self-requests:
+- ALTER TABLE: add `employee_id uuid`, `item_name text`, `description text`, `category text` (tools/router/mobile/component/other), `request_type text default 'employee'`.
+- RLS: self can `INSERT` own + `SELECT` own; admin manages all.
+- Auto-number trigger reuse `requisition_no`.
 
-## Phase 6 — Catering Provider + Weekly Menu (Admin UI)
+Replace `MyRequisitions.tsx` placeholder with:
+- Form: item name, category, qty, estimated price, description.
+- History table with status badges.
 
-বর্তমানে `Catering.tsx`-এ basic service + day-wise menu আছে, কিন্তু **provider profile** ও **price/menu workflow** অসম্পূর্ণ। যোগ করব:
+Admin: hook into existing `EmployeeRequests.tsx` as a 3rd tab "রিকুইজিশন" (filter `request_type='employee'`) with approve/reject.
 
-1. `catering_services` expand: `owner_name`, `phone`, `email`, `address`, `default_meal_price` (৳120), `cutoff_time`, `is_active`।
-2. Weekly menu form উন্নত: item checkbox preset (ভাত, ডাল, সালাদ, ভর্তা) + main item dropdown (মুরগি, মাছ, beef) + price per day + "closed day" toggle।
-3. Subsidy rule: company default (none/half/full) + per-employee override।
-4. Admin দেখতে পাবে কোন provider কোন দিন কী menu, কত price।
+## 5. Payslip — full breakdown + PDF
 
-## Phase 7 — NAHID-কে test policy assign
+`MyPayslip.tsx` currently lists rows only. Add:
+- Row → "বিস্তারিত" dialog showing basic, allowances, deductions (from `payroll_details` joined to `payheads`), loan/advance deductions, net, paid, due.
+- Replace `window.print()` with a proper PDF download (reuse `src/lib/reportExport.ts` if available, else jsPDF) styled like admin payslip.
 
-1. Migration-এর শেষে NAHID-এর জন্য:
-   - confirmation_date = today (already passed probation ধরে)।
-   - CL balance = 10, SL balance = 12 (full year)।
-   - weekly_off = Friday।
-2. যাতে user সরাসরি login করে সব flow test করতে পারে।
+## 6. Admin employee profile — at-a-glance tabs
 
-## Technical changes summary
+In `src/pages/dashboard/hr/Employees.tsx` employee detail dialog, add tabs:
+Profile · হাজিরা (last 30d) · ছুটি (balance + applications) · পে-স্লিপ · অগ্রিম · পদত্যাগ · রিকুইজিশন
+Reuse same queries as self pages, scoped by `employee_id`.
 
-**Migrations:**
-- `leave_types` seed (CL, SL with default annual quota)
-- `employees` add: probation_period_months, probation_end_date, confirmation_date, is_confirmed, weekly_off_days, salary_at_confirmation
-- `leave_balances` ensure year-wise rows
-- new `shifts`, `employee_roster`, `conveyance_bills` tables (with GRANT + RLS)
-- `attendance` add: source, verification_status, verified_by
-- `catering_services` add: owner_name, phone, email, address, default_meal_price, cutoff_time
-- function `calc_prorated_leave(annual_quota, confirm_date)` returns int
-- function `confirm_employee(emp_id, new_salary?)` — sets confirmation, creates balance rows
+## Technical sections
 
-**Frontend files:**
-- `src/pages/dashboard/hr/LeavePolicy.tsx` (new) — default types + quota config
-- `src/pages/dashboard/hr/Employees.tsx` — probation/confirmation UI, weekly off dialog rename
-- `src/pages/dashboard/me/MyAttendance.tsx` — check-in/out button
-- `src/pages/dashboard/hr/AttendanceVerify.tsx` (new) — approval queue
-- `src/pages/dashboard/hr/Roster.tsx` (new) — weekly/monthly shift planner
-- `src/pages/dashboard/me/MyConveyance.tsx` + `src/pages/dashboard/hr/Conveyance.tsx`
-- `src/pages/dashboard/hr/Catering.tsx` — owner profile + improved menu form + subsidy rules
+### Migration
+```sql
+-- attendance self insert/update
+CREATE POLICY "Self can insert own attendance" ON public.attendance
+  FOR INSERT TO authenticated
+  WITH CHECK (employee_id = current_employee_id() AND source = 'self');
+CREATE POLICY "Self can update own attendance" ON public.attendance
+  FOR UPDATE TO authenticated
+  USING (employee_id = current_employee_id() AND source = 'self');
 
-## Implementation order
+-- resignation: single active
+CREATE UNIQUE INDEX one_active_resignation
+  ON public.resignation_requests(employee_id)
+  WHERE status IN ('pending','approved');
 
-1. Phase 1 (leave policy + probation) — foundation
-2. Phase 4 (weekly holiday) — quick win, ties to leave/attendance
-3. Phase 2 (self check-in/out + verify)
-4. Phase 3 (shift roster)
-5. Phase 5 (conveyance)
-6. Phase 6 (catering admin UI completion)
-7. NAHID seed at the end
+-- self can update/delete own pending resignation
+CREATE POLICY "self update pending resignation" ON public.resignation_requests
+  FOR UPDATE TO authenticated
+  USING (employee_id = current_employee_id() AND status = 'pending');
+CREATE POLICY "self delete pending resignation" ON public.resignation_requests
+  FOR DELETE TO authenticated
+  USING (employee_id = current_employee_id() AND status = 'pending');
+
+-- requisitions extend
+ALTER TABLE public.requisitions
+  ADD COLUMN IF NOT EXISTS employee_id uuid REFERENCES public.employees(id),
+  ADD COLUMN IF NOT EXISTS item_name text,
+  ADD COLUMN IF NOT EXISTS description text,
+  ADD COLUMN IF NOT EXISTS category text,
+  ADD COLUMN IF NOT EXISTS request_type text DEFAULT 'procurement';
+
+CREATE POLICY "Self can insert own requisition" ON public.requisitions
+  FOR INSERT TO authenticated
+  WITH CHECK (employee_id = current_employee_id() AND request_type = 'employee');
+CREATE POLICY "Self can view own requisition" ON public.requisitions
+  FOR SELECT TO authenticated
+  USING (employee_id = current_employee_id() OR is_admin_or_super(auth.uid()));
+CREATE POLICY "Self can update/cancel own pending requisition" ON public.requisitions
+  FOR UPDATE TO authenticated
+  USING (employee_id = current_employee_id() AND status = 'pending');
+```
+
+### Files to edit/create
+- `src/pages/dashboard/me/MyLeave.tsx` — fix columns + add application form
+- `src/pages/dashboard/me/MyDashboard.tsx` — fix leave balance query
+- `src/pages/dashboard/me/MyPayslip.tsx` — breakdown dialog + PDF
+- `src/pages/dashboard/me/MyRequisitions.tsx` — full module
+- `src/pages/dashboard/me/MyRequestPage.tsx` — new resignation rules (single, +30d, edit/cancel)
+- `src/components/me/MyShell.tsx` — drop "ঋণ" item
+- `src/App.tsx` — drop `/dashboard/me/loan` route
+- `src/pages/dashboard/hr/EmployeeRequests.tsx` — drop loan tab, add requisition tab
+- `src/pages/dashboard/hr/Employees.tsx` — tabbed at-a-glance view in detail dialog
+
+No backend changes outside the single migration above.
