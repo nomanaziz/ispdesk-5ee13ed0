@@ -1,57 +1,32 @@
-## সমস্যা
+## পরিবর্তন
 
-বর্তমান `Payslip.tsx`-এ employee list flex/wrap card style — প্রতিটা কর্মীর জন্য অনেক wide row, icon-only action button, সব scattered। ছোট screen-এ ভেঙে যায়।
+`src/pages/dashboard/hr/Payslip.tsx`-এর table-এ দুটো জিনিস ঠিক করব:
 
-## সমাধান — Table আকারে সংগঠিত
+### ১. Column width কমানো (ফাঁকা জায়গা কাটা)
 
-`src/pages/dashboard/hr/Payslip.tsx`-এর employee list section (line 394-493) সম্পূর্ণ replace করে `<Table>` ব্যবহার করব।
+- পেহেডস টোটাল, পরিশোধিত/বকেয়া, স্ট্যাটাস — তিনটার `whitespace-nowrap` থাকা সত্ত্বেও table cell flex-grow করে অনেক জায়গা নিচ্ছে
+- "কর্মী" column-কে `w-full` দিয়ে remaining জায়গা দখল করাব, বাকি column-গুলো `w-[1%] whitespace-nowrap` দিয়ে content-fit করব
+- ফলে নাম column প্রসারিত হবে, বাকিগুলো compact হবে
 
-### Table columns (8টা)
+### ২. Action button visible (dropdown বাদ)
 
-| # | Column | Content |
-|---|--------|---------|
-| 1 | checkbox | select |
-| 2 | কর্মী | নাম + ID (ছোট font) |
-| 3 | টেমপ্লেট | template name (truncate) |
-| 4 | পেহেডস টোটাল | net + diff badge |
-| 5 | পরিশোধিত / বকেয়া | দুই লাইনে |
-| 6 | স্ট্যাটাস | Badge (পরিশোধিত / আংশিক / অপরিশোধিত) |
-| 7 | অ্যাকশন | dropdown menu |
+DropdownMenu সরিয়ে একটা horizontal icon strip:
 
-### Action button — Bangla dropdown
+| Icon | Label (tooltip) | Color |
+|------|-----------------|-------|
+| ✏️ Edit2 | পে-হেডস এডিট | amber |
+| 👁️ Eye | পে-স্লিপ দেখুন | blue |
+| 💰 Receipt | পেমেন্ট নিন | green (only if unpaid/partial) |
+| ⬇️ Download | PDF ডাউনলোড | default |
+| 🔄 RefreshCw | পুনঃজেনারেট/জেনারেট | orange |
 
-প্রতি row-তে এক "অ্যাকশন ▾" button (DropdownMenu) — ভেতরে:
-- ✏️ পে-হেডস এডিট
-- 👁️ পে-স্লিপ দেখুন
-- 💰 পেমেন্ট নিন (only if not fully paid)
-- 🖨️ PDF ডাউনলোড
-- 🔄 শুধু এই কর্মীর Regenerate
+প্রতিটা icon button-এ shadcn `Tooltip` wrap, hover/click করলে Bangla label দেখাবে। Button size `h-7 w-7`, gap-1 — compact strip।
 
-এতে row narrow থাকবে, icon scatter হবে না।
+`TooltipProvider` page level-এ wrap করব (যদি না থাকে)।
 
-### Responsive
+### যা একই থাকবে
 
-- Card-এর ভিতরে `overflow-x-auto` দিয়ে wrap
-- ছোট screen-এ horizontal scroll, কিন্তু row height fixed thin (~48px)
-- Mobile-এ "টেমপ্লেট" column hide (`hidden md:table-cell`)
-- "পরিশোধিত/বকেয়া" column-এ `hidden sm:table-cell`
+- Mobile-এ "টেমপ্লেট" ও "পরিশোধিত/বকেয়া" column hide
+- সব business logic (generate, edit dialog, payment)
 
-### Header bar simplification
-
-বর্তমান toolbar-এ ৪টা বড় button (Generate / View / Download PDF / Regenerate) আছে — এগুলো রাখব কিন্তু selected.size > 0 হলেই display, না হলে শুধু Generate। এতে header পরিষ্কার হবে।
-
-### Status calculation একই
-
-`net_salary`, `paid_amount`, `payment_status` field থেকে আগের মতই — কোনো business logic পরিবর্তন নেই, শুধু presentation।
-
-### যা পরিবর্তন হবে না
-
-- Generate / Regenerate / Pay / Edit dialog logic অপরিবর্তিত
-- Filter chips (সব / নিয়মিত / অতিরিক্ত / কম) অপরিবর্তিত
-- Loan cap fix (আগের message-এ করা) অপরিবর্তিত
-
-## ফাইল
-
-- `src/pages/dashboard/hr/Payslip.tsx` — শুধু list render block + toolbar minor tweak
-
-অন্য কোনো ফাইল ছোঁয়া হবে না।
+ফাইল: শুধু `src/pages/dashboard/hr/Payslip.tsx`
