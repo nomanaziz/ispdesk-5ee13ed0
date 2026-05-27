@@ -141,6 +141,47 @@ export type Database = {
           },
         ]
       }
+      app_role_features: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          feature_key: string
+          id: string
+          role_id: string
+          scope: string
+          scope_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          feature_key: string
+          id?: string
+          role_id: string
+          scope: string
+          scope_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          feature_key?: string
+          id?: string
+          role_id?: string
+          scope?: string
+          scope_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_role_features_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "app_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_role_modules: {
         Row: {
           created_at: string
@@ -241,6 +282,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "app_roles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_user_extra_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user_effective_features"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "app_user_extra_roles_user_id_fkey"
@@ -4071,6 +4119,13 @@ export type Database = {
           widget_key?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "dashboard_widget_permissions_app_user_id_fkey"
+            columns: ["app_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user_effective_features"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "dashboard_widget_permissions_app_user_id_fkey"
             columns: ["app_user_id"]
@@ -12818,6 +12873,16 @@ export type Database = {
       }
     }
     Views: {
+      app_user_effective_features: {
+        Row: {
+          enabled: boolean | null
+          feature_key: string | null
+          scope: string | null
+          scope_key: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       app_user_effective_modules: {
         Row: {
           module_group: string | null
