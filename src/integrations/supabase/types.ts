@@ -9217,41 +9217,63 @@ export type Database = {
       requisitions: {
         Row: {
           approved_by: string | null
+          category: string | null
           created_at: string
+          description: string | null
+          employee_id: string | null
           estimated_cost: number | null
           id: string
           item_id: string | null
+          item_name: string | null
           notes: string | null
           quantity: number | null
+          request_type: string | null
           requisition_no: string
           status: string
           vendor_id: string | null
         }
         Insert: {
           approved_by?: string | null
+          category?: string | null
           created_at?: string
+          description?: string | null
+          employee_id?: string | null
           estimated_cost?: number | null
           id?: string
           item_id?: string | null
+          item_name?: string | null
           notes?: string | null
           quantity?: number | null
+          request_type?: string | null
           requisition_no: string
           status?: string
           vendor_id?: string | null
         }
         Update: {
           approved_by?: string | null
+          category?: string | null
           created_at?: string
+          description?: string | null
+          employee_id?: string | null
           estimated_cost?: number | null
           id?: string
           item_id?: string | null
+          item_name?: string | null
           notes?: string | null
           quantity?: number | null
+          request_type?: string | null
           requisition_no?: string
           status?: string
           vendor_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "requisitions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "requisitions_item_id_fkey"
             columns: ["item_id"]
