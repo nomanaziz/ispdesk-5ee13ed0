@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, User, Phone, Mail, MapPin, GraduationCap, Briefcase, Calendar, DollarSign, Edit } from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, MapPin, GraduationCap, Briefcase, Calendar, DollarSign, Edit, UserPlus } from "lucide-react";
 import { periodLabel } from "@/lib/payrollCompute";
 import EmployeeFacilitiesTab from "@/components/hr/EmployeeFacilitiesTab";
+import ConvertToAppUserDialog from "@/components/hr/ConvertToAppUserDialog";
+import { useState } from "react";
+
 
 export default function EmployeeView() {
   const { id } = useParams();
