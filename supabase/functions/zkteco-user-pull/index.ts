@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2/cors";
 import { CMD, decodeUsers } from "./zkteco.ts";
-import { zkConnect, zkExit, zkReadLongData } from "./zk-connect.ts";
+import { zkConnect, zkExit, zkReadLongData, zkReadWithBuffer } from "./zk-connect.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -47,9 +47,20 @@ Deno.serve(async (req) => {
       });
       logArr = sess.log;
       try {
-        const data = await zkReadLongData(sess, CMD.USERTEMP_RRQ, new Uint8Array([0x05, 0x00, 0x00, 0x00, 0x00]));
-        users = decodeUsers(data);
-        logArr.push(`Decoded ${users.length} users`);
+        // Primary: pyzk-style read_with_buffer (works on most modern firmwares)
+        let data: Uint8Array;
+        try {
+          data = await zkReadWithBuffer(sess, CMD.USERTEMP_RRQ, 0, 0);
+          logArr.push(`read_with_buffer bytes=${data.length}`);
+          users = decodeUsers(data);
+          logArr.push(`buffer decoded ${users.length} users`);
+        } catch (be: any) {
+          logArr.push(`buffer flow failed: ${be?.message || be}; trying legacy`);
+          data = await zkReadLongData(sess, CMD.USERTEMP_RRQ, new Uint8Array([0x05, 0x00, 0x00, 0x00, 0x00]));
+          logArr.push(`legacy bytes=${data.length}`);
+          users = decodeUsers(data);
+          logArr.push(`legacy decoded ${users.length} users`);
+        }
       } finally {
         await zkExit(sess);
       }
