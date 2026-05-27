@@ -1,52 +1,24 @@
+## সমস্যা
+`requisitions` table-এ `requisition_no` column NOT NULL কিন্তু default নাই। Employee form এটা পাঠায় না, তাই insert fail করে।
 
-## লক্ষ্য
+## সমাধান
+DB trigger দিয়ে `requisition_no` auto-generate করা — insert-এর সময় null হলে format `REQ-YYYYMMDD-XXXX` (random 4-digit) সেট হবে। Frontend-এ কোন change লাগবে না।
 
-`/dashboard/hr/catering` এর Menu editor dialog-এ common বাঙালি খাবারের একটা **preset suggestion library** যোগ করব। ক্লিক করলেই আইটেমটা textarea-তে add হয়ে যাবে — প্রতিবার টাইপ করতে হবে না।
+### Migration
+```sql
+CREATE OR REPLACE FUNCTION public.set_requisition_no()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.requisition_no IS NULL OR NEW.requisition_no = '' THEN
+    NEW.requisition_no := 'REQ-' || to_char(now(),'YYYYMMDD') || '-' || lpad((floor(random()*10000))::int::text, 4, '0');
+  END IF;
+  RETURN NEW;
+END;
+$$;
 
-## পরিবর্তন
-
-শুধু একটাই file: `src/pages/dashboard/hr/Catering.tsx`
-
-Menu edit dialog-এর ভিতরে (textarea-এর নিচে/উপরে) ক্যাটেগরি অনুযায়ী clickable badge chips দেখাব। ক্লিক → যদি আইটেমটা already textarea-তে না থাকে, তাহলে comma-separated হয়ে যোগ হবে।
-
-## Preset library (categorized)
-
-```text
-ভাত ও মূল খাবার:
-  ভাত, ফ্রাইড রাইস, পোলাও, খিচুড়ি, বিরিয়ানি, তেহারি, কাচ্চি, মোরগ পোলাও
-
-মাছ:
-  রুই মাছ, কাতলা মাছ, ইলিশ মাছ, পাবদা, কই মাছ, চিংড়ি, শুটকি, মাছের কালিয়া
-
-মাংস:
-  মুরগি, মুরগির ঝোল, গরুর মাংস, গরুর কালা ভুনা, খাসির মাংস, হাঁসের মাংস, কাবাব
-
-ডাল ও সবজি:
-  ডাল, মুগ ডাল, মসুর ডাল, সবজি, লাবড়া, বেগুন ভাজি, আলু ভর্তা
-
-শাক:
-  পালং শাক, লাল শাক, পুঁই শাক, কলমি শাক, লাউ শাক
-
-ভর্তা:
-  আলু ভর্তা, বেগুন ভর্তা, শুটকি ভর্তা, ডাল ভর্তা, কালোজিরা ভর্তা,
-  টমেটো ভর্তা, ধনেপাতা ভর্তা, কাঁচা মরিচ ভর্তা
-
-মিষ্টি ও অন্যান্য:
-  জর্দা, পায়েস, ফিরনি, দই, মিষ্টি, সালাদ, আচার, পাপড়
-
-পানীয়:
-  কোক, সেভেনআপ, বোরহানি, লাচ্ছি, পানি
+CREATE TRIGGER trg_set_requisition_no
+BEFORE INSERT ON public.requisitions
+FOR EACH ROW EXECUTE FUNCTION public.set_requisition_no();
 ```
 
-## UX
-
-- Dialog প্রশস্ত হবে (`max-w-2xl`) যাতে chips-এর জন্য জায়গা থাকে
-- প্রতিটা category-এর একটা ছোট heading + তার নিচে wrap হওয়া badge chips
-- Chips ছোট, hover effect, ক্লিকে textarea-তে যোগ
-- ইতিমধ্যে যোগ করা আইটেম highlighted/disabled দেখাবে
-- "সব ক্লিয়ার করুন" আর "Bangali default set" (এক ক্লিকে কয়েকটা common আইটেম) এর shortcut button
-
-## কাজের সুযোগ বাইরে
-
-- DB schema বা preset persist করার জন্য নতুন table — সব hard-coded constant থাকবে
-- অন্য কোনো page বা business logic বদলাবে না
+এটাই যথেষ্ট — existing data ও admin-side procurement requisitions দুটোই কাজ করবে।
