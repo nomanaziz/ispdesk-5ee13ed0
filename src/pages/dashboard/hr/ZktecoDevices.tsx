@@ -240,6 +240,24 @@ export default function ZktecoDevices() {
   // Push panel selection
   const [selectedEmpIds, setSelectedEmpIds] = useState<string[]>([]);
   const toggleEmp = (id: string) => setSelectedEmpIds((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
+  const [duSearch, setDuSearch] = useState("");
+  const [empSearch, setEmpSearch] = useState("");
+
+  const filteredDeviceUsers = (deviceUsers || []).filter((u: any) => {
+    if (!duSearch.trim()) return true;
+    const q = duSearch.toLowerCase();
+    return String(u.device_user_id || "").toLowerCase().includes(q)
+      || String(u.name || "").toLowerCase().includes(q)
+      || String(u.card_no || "").toLowerCase().includes(q)
+      || String(u.employee?.name || "").toLowerCase().includes(q)
+      || String(u.employee?.employee_id || "").toLowerCase().includes(q);
+  });
+  const filteredUnmapped = unmappedEmployees.filter((e: any) => {
+    if (!empSearch.trim()) return true;
+    const q = empSearch.toLowerCase();
+    return String(e.name || "").toLowerCase().includes(q)
+      || String(e.employee_id || "").toLowerCase().includes(q);
+  });
 
   return (
     <div className="space-y-6">
