@@ -249,6 +249,37 @@ export default function Employees() {
 
       <EmployeePayheadsDialog employee={payheadEmp} onClose={() => setPayheadEmp(null)} />
       <EmployeeHolidaysDialog employee={holidayEmp} onClose={() => setHolidayEmp(null)} />
+
+      <Dialog open={!!confirmEmp} onOpenChange={(o) => !o && setConfirmEmp(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>কর্মী Confirmation — {confirmEmp?.name}</DialogTitle>
+            <DialogDescription>
+              Confirm করলে এই বছরের বাকি মাসগুলোর জন্য prorated leave balance auto-create হবে (Casual + Sick)।
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>নতুন বেতন (optional increment)</Label>
+              <Input
+                type="number"
+                value={confirmSalary}
+                onChange={(e) => setConfirmSalary(e.target.value)}
+                placeholder="যেমন: 25000"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                বর্তমান বেতন: ৳{Number(confirmEmp?.salary || 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmEmp(null)}>বাতিল</Button>
+            <Button onClick={() => confirmEmployee.mutate()} disabled={confirmEmployee.isPending}>
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
