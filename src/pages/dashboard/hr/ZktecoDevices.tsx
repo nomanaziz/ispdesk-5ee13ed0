@@ -205,6 +205,26 @@ export default function ZktecoDevices() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const unlinkMutation = useMutation({
+    mutationFn: async ({ deviceUserRowId, employeeId }: { deviceUserRowId: string; employeeId?: string }) => {
+      const { error: e1 } = await supabase.from("zkteco_device_users")
+        .update({ mapped_employee_id: null }).eq("id", deviceUserRowId);
+      if (e1) throw e1;
+      if (employeeId) {
+        const { error: e2 } = await supabase.from("employees")
+          .update({ device_user_id: null, zkteco_device_id: null })
+          .eq("id", employeeId);
+        if (e2) throw e2;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Unlink সম্পন্ন");
+      refetchDeviceUsers();
+      qc.invalidateQueries({ queryKey: ["all-employees-mini"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const resetForm = () => { setOpen(false); setEditId(null); setForm(blankForm); };
   const openEdit = (d: any) => {
     setEditId(d.id);
