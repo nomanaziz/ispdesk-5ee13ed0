@@ -215,6 +215,49 @@ export type Database = {
         }
         Relationships: []
       }
+      app_user_extra_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_user_extra_roles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "app_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_user_extra_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user_effective_modules"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "app_user_extra_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_users: {
         Row: {
           auth_user_id: string | null
@@ -12350,6 +12393,15 @@ export type Database = {
       }
     }
     Views: {
+      app_user_effective_modules: {
+        Row: {
+          module_group: string | null
+          module_name: string | null
+          permission: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       sms_templates_effective: {
         Row: {
           branch_id: string | null

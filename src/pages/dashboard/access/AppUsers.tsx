@@ -8,8 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Pencil, Trash2, KeyRound, Plus, Power } from "lucide-react";
+
+const EMPLOYEE_ROLE_ID = "33333333-3333-3333-3333-333333333333";
+
 
 interface AppUser {
   id: string;
@@ -20,6 +24,7 @@ interface AppUser {
   created_at: string;
   employee?: { id: string; name: string; employee_id: string | null } | null;
   role?: { id: string; name: string } | null;
+  extra_roles?: { role_id: string; role: { id: string; name: string } | null }[];
 }
 
 interface Employee { id: string; name: string; employee_id: string | null; }
@@ -28,6 +33,7 @@ interface Role { id: string; name: string; is_protected: boolean; status: string
 export default function AppUsers() {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [takenEmployeeIds, setTakenEmployeeIds] = useState<Set<string>>(new Set());
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -42,27 +48,39 @@ export default function AppUsers() {
     confirm: "",
     role_id: "",
     status: "Active",
+    extra_role_ids: [] as string[],
   });
 
   const [resetTarget, setResetTarget] = useState<AppUser | null>(null);
   const [resetPwd, setResetPwd] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
 
+
   const load = async () => {
     setLoading(true);
-    const [u, e, r] = await Promise.all([
+    const [u, e, r, x] = await Promise.all([
       supabase
         .from("app_users")
         .select("id, username, status, employee_id, role_id, created_at, employee:employees(id,name,employee_id), role:app_roles(id,name)")
         .order("created_at", { ascending: false }),
-      supabase.from("employees").select("id,name,employee_id").eq("status", "Active").order("name"),
+      supabase.from("employees").select("id,name,employee_id,status").ilike("status", "active").order("name"),
       supabase.from("app_roles").select("id,name,is_protected,status").eq("status", "Active").order("name"),
+      supabase.from("app_user_extra_roles").select("user_id, role_id, role:app_roles(id,name)"),
     ]);
-    if (u.error) toast.error(u.error.message); else setUsers((u.data as any) || []);
+    if (u.error) toast.error(u.error.message); else {
+      const list = (u.data as any[]) || [];
+      const byUser: Record<string, any[]> = {};
+      ((x.data as any[]) || []).forEach((er) => {
+        (byUser[er.user_id] ||= []).push(er);
+      });
+      setUsers(list.map((row) => ({ ...row, extra_roles: byUser[row.id] || [] })));
+      setTakenEmployeeIds(new Set(list.map((r2) => r2.employee_id).filter(Boolean)));
+    }
     if (!e.error) setEmployees((e.data as any) || []);
     if (!r.error) setRoles((r.data as any) || []);
     setLoading(false);
   };
+
 
   useEffect(() => { load(); }, []);
 
@@ -82,7 +100,7 @@ export default function AppUsers() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ employee_id: "", username: "", password: "", confirm: "", role_id: "", status: "Active" });
+    setForm({ employee_id: "", username: "", password: "", confirm: "", role_id: EMPLOYEE_ROLE_ID, status: "Active", extra_role_ids: [] });
     setDialogOpen(true);
   };
 
@@ -95,9 +113,11 @@ export default function AppUsers() {
       confirm: "",
       role_id: u.role_id || "",
       status: u.status,
+      extra_role_ids: (u.extra_roles || []).map((er) => er.role_id),
     });
     setDialogOpen(true);
   };
+
 
   const handleEmployeeSelect = (empId: string) => {
     const emp = employees.find((e) => e.id === empId);
@@ -126,18 +146,37 @@ export default function AppUsers() {
     };
     if (!editing || form.password) payload.password = form.password;
 
+    let userId = editing?.id as string | undefined;
     if (editing) {
       const { error } = await supabase.from("app_users").update(payload).eq("id", editing.id);
       if (error) return toast.error(error.message);
       toast.success("আপডেট হয়েছে");
     } else {
-      const { error } = await supabase.from("app_users").insert(payload);
+      const { data, error } = await supabase.from("app_users").insert(payload).select("id").single();
       if (error) return toast.error(error.message);
+      userId = data?.id;
       toast.success("App User তৈরি হয়েছে");
     }
+
+    // Sync extra roles (exclude primary role to avoid duplicates with trigger-attached Employee)
+    if (userId) {
+      await supabase.from("app_user_extra_roles").delete().eq("user_id", userId);
+      const extras = form.extra_role_ids.filter((rid) => rid && rid !== form.role_id);
+      // Always ensure Employee role attaches when linked to an employee (trigger covers insert; we re-add on edit)
+      if (form.employee_id && form.role_id !== EMPLOYEE_ROLE_ID && !extras.includes(EMPLOYEE_ROLE_ID)) {
+        extras.push(EMPLOYEE_ROLE_ID);
+      }
+      if (extras.length > 0) {
+        await supabase
+          .from("app_user_extra_roles")
+          .insert(extras.map((rid) => ({ user_id: userId!, role_id: rid })));
+      }
+    }
+
     setDialogOpen(false);
     load();
   };
+
 
   const toggleStatus = async (u: AppUser) => {
     const next = u.status === "Active" ? "Inactive" : "Active";
@@ -216,7 +255,15 @@ export default function AppUsers() {
                       </div>
                     ) : <span className="text-muted-foreground text-xs">—</span>}
                   </TableCell>
-                  <TableCell>{u.role?.name || <span className="text-muted-foreground text-xs">—</span>}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {u.role?.name ? <Badge>{u.role.name}</Badge> : <span className="text-muted-foreground text-xs">—</span>}
+                      {(u.extra_roles || []).map((er) => (
+                        er.role ? <Badge key={er.role_id} variant="outline" className="text-xs">+{er.role.name}</Badge> : null
+                      ))}
+                    </div>
+                  </TableCell>
+
                   <TableCell>
                     <Badge variant={u.status === "Active" ? "default" : "secondary"}>{u.status}</Badge>
                   </TableCell>
@@ -247,12 +294,23 @@ export default function AppUsers() {
               <Select value={form.employee_id} onValueChange={handleEmployeeSelect}>
                 <SelectTrigger><SelectValue placeholder="Employee সিলেক্ট করুন" /></SelectTrigger>
                 <SelectContent>
-                  {employees.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>{e.name} {e.employee_id ? `(${e.employee_id})` : ""}</SelectItem>
-                  ))}
+                  {employees
+                    .filter((e) => !takenEmployeeIds.has(e.id) || e.id === editing?.employee_id)
+                    .map((e) => (
+                      <SelectItem key={e.id} value={e.id}>{e.name} {e.employee_id ? `(${e.employee_id})` : ""}</SelectItem>
+                    ))}
+                  {employees.length === 0 && (
+                    <div className="p-2 text-xs text-muted-foreground">কোনো active employee নেই</div>
+                  )}
                 </SelectContent>
               </Select>
+              {form.employee_id && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Employee role-এর common permissions (food, attendance, payslip ইত্যাদি) auto-যুক্ত হবে।
+                </p>
+              )}
             </div>
+
             <div>
               <Label>Username *</Label>
               <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
@@ -279,6 +337,33 @@ export default function AppUsers() {
               </Select>
             </div>
             <div>
+              <Label>অতিরিক্ত Role (Department-ভিত্তিক)</Label>
+              <div className="rounded-md border p-2 grid grid-cols-2 gap-2 max-h-40 overflow-auto">
+                {roles
+                  .filter((r) => r.id !== form.role_id && r.id !== EMPLOYEE_ROLE_ID)
+                  .map((r) => (
+                    <label key={r.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={form.extra_role_ids.includes(r.id)}
+                        onCheckedChange={() =>
+                          setForm((f) => ({
+                            ...f,
+                            extra_role_ids: f.extra_role_ids.includes(r.id)
+                              ? f.extra_role_ids.filter((x) => x !== r.id)
+                              : [...f.extra_role_ids, r.id],
+                          }))
+                        }
+                      />
+                      {r.name}
+                    </label>
+                  ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Billing, HR, Accounts ইত্যাদি বাড়তি permission। Employee role auto-attached।
+              </p>
+            </div>
+            <div>
+
               <Label>Status</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

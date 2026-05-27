@@ -6,13 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, User, Phone, Mail, MapPin, GraduationCap, Briefcase, Calendar, DollarSign, Edit } from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, MapPin, GraduationCap, Briefcase, Calendar, DollarSign, Edit, UserPlus } from "lucide-react";
 import { periodLabel } from "@/lib/payrollCompute";
 import EmployeeFacilitiesTab from "@/components/hr/EmployeeFacilitiesTab";
+import ConvertToAppUserDialog from "@/components/hr/ConvertToAppUserDialog";
+import { useState } from "react";
+
 
 export default function EmployeeView() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [convertOpen, setConvertOpen] = useState(false);
+
+
 
   const { data: emp, isLoading } = useQuery({
     queryKey: ["employee-view", id],
@@ -66,8 +72,12 @@ export default function EmployeeView() {
           <h1 className="text-2xl font-bold">{emp.name}</h1>
           <p className="text-sm text-muted-foreground">{emp.employee_id} • {emp.departments?.name} • {emp.positions?.name}</p>
         </div>
+        <Button variant="outline" onClick={() => setConvertOpen(true)} className="gap-2">
+          <UserPlus className="h-4 w-4" /> App User বানান
+        </Button>
         <Button onClick={() => navigate(`/dashboard/hr/employees/add?edit=${emp.id}`)} className="gap-2">
           <Edit className="h-4 w-4" /> এডিট
+
         </Button>
       </div>
 
@@ -205,9 +215,15 @@ export default function EmployeeView() {
           </Card>
         </TabsContent>
       </Tabs>
+      <ConvertToAppUserDialog
+        employee={emp ? { id: emp.id, name: emp.name, employee_id: emp.employee_id } : null}
+        open={convertOpen}
+        onOpenChange={setConvertOpen}
+      />
     </div>
   );
 }
+
 
 function Row({ icon, label, value }: { icon?: React.ReactNode; label: string; value: any }) {
   return (
