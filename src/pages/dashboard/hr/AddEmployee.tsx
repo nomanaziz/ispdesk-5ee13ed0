@@ -341,6 +341,14 @@ export default function AddEmployee() {
         </div>
       </div>
 
+      {fromDeviceUserRowId && !editId && (
+        <div className="border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950/30 p-3 rounded text-sm">
+          <strong>ZKTeco Device User #{prefDeviceUserId}</strong> ({prefName || "—"}) থেকে নতুন employee তৈরি হচ্ছে।
+          সংরক্ষণ করলে device-এর সাথে automatic map হয়ে যাবে এবং পূর্বের সব punch attendance report-এ দেখাবে।
+        </div>
+      )}
+
+
       {/* Employee ID */}
       <Card>
         <CardHeader className="bg-primary/10 rounded-t-lg py-3">
