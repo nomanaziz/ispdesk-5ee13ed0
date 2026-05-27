@@ -34,6 +34,7 @@ type Row = {
   id: string;
   name: string;
   ip_address: string | null;
+  port: number | null;
   status: string | null;
   location?: string | null;
   category: string;
@@ -61,31 +62,34 @@ export default function DeviceInventory() {
     queryKey: ["device_admin_inventory"],
     queryFn: async (): Promise<Row[]> => {
       const [mk, olt, sw, zk, mg] = await Promise.all([
-        supabase.from("mikrotik_devices").select("id,name,ip_address,status"),
-        supabase.from("olt_devices").select("id,name,ip_address,status,vendor"),
+        supabase.from("mikrotik_devices").select("id,name,ip_address,status,api_port"),
+        supabase.from("olt_devices").select("id,name,ip_address,status,vendor,port"),
         supabase.from("pop_devices").select("id,name,ip_address,status"),
-        supabase.from("zkteco_devices").select("id,name,ip_address,status,location"),
-        supabase.from("device_admin_managed_devices").select("id,name,category,vendor,ip_address,status,location"),
+        supabase.from("zkteco_devices").select("id,name,ip_address,status,location,port"),
+        supabase.from("device_admin_managed_devices").select("id,name,category,vendor,ip_address,status,location,port"),
       ]);
       const managedIds = new Set(((mg.data ?? []) as any[]).map((d) => d.id));
       return [
-        ...((mk.data ?? []) as any[]).map((d) => ({ ...d, category: "router", vendor: "mikrotik", source: "mikrotik_devices" as const })),
-        // skip olt rows that are mirrors of managed_devices (same id) to avoid duplicate listing
+        ...((mk.data ?? []) as any[]).map((d) => ({ ...d, port: d.api_port ?? null, category: "router", vendor: "mikrotik", source: "mikrotik_devices" as const })),
         ...((olt.data ?? []) as any[])
           .filter((d) => !managedIds.has(d.id))
-          .map((d) => ({ ...d, category: "olt", vendor: d.vendor || "—", source: "olt_devices" as const })),
-        ...((sw.data ?? []) as any[]).map((d) => ({ ...d, category: "switch", vendor: "—", source: "pop_devices" as const })),
-        ...((zk.data ?? []) as any[]).map((d) => ({ ...d, category: "zkteco", vendor: "zkteco", source: "zkteco_devices" as const })),
-        ...((mg.data ?? []) as any[]).map((d) => ({ ...d, category: d.category || "other", vendor: d.vendor || "—", source: "device_admin_managed_devices" as const })),
+          .map((d) => ({ ...d, port: d.port ?? null, category: "olt", vendor: d.vendor || "—", source: "olt_devices" as const })),
+        ...((sw.data ?? []) as any[]).map((d) => ({ ...d, port: null, category: "switch", vendor: "—", source: "pop_devices" as const })),
+        ...((zk.data ?? []) as any[]).map((d) => ({ ...d, port: d.port ?? null, category: "zkteco", vendor: "zkteco", source: "zkteco_devices" as const })),
+        ...((mg.data ?? []) as any[]).map((d) => ({ ...d, port: d.port ?? null, category: d.category || "other", vendor: d.vendor || "—", source: "device_admin_managed_devices" as const })),
       ];
     },
   });
 
-  // duplicate IP map
-  const dupIps = useMemo(() => {
+  // duplicate (ip + port) map — same IP on different ports (e.g. port-forwarding) is not a duplicate
+  const dupKeys = useMemo(() => {
     const counts: Record<string, number> = {};
-    data.forEach((d) => { if (d.ip_address) counts[d.ip_address] = (counts[d.ip_address] || 0) + 1; });
-    return new Set(Object.entries(counts).filter(([, n]) => n > 1).map(([ip]) => ip));
+    data.forEach((d) => {
+      if (!d.ip_address) return;
+      const k = `${d.ip_address}:${d.port ?? "_"}`;
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    return new Set(Object.entries(counts).filter(([, n]) => n > 1).map(([k]) => k));
   }, [data]);
 
   const vendorOptions = useMemo(() => {
@@ -100,6 +104,7 @@ export default function DeviceInventory() {
     if (search && !`${d.name} ${d.ip_address || ""}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
 
   const del = useMutation({
     mutationFn: async (row: Row) => {
@@ -182,7 +187,12 @@ export default function DeviceInventory() {
               ) : filtered.map((d, i) => {
                 const meta = CATEGORY_META[d.category] || CATEGORY_META.other;
                 const Icon = meta.icon;
-                const isDup = d.ip_address && dupIps.has(d.ip_address);
+                const dupKey = d.ip_address ? `${d.ip_address}:${d.port ?? "_"}` : null;
+                const isDup = dupKey && dupKeys.has(dupKey);
+                const isZk = d.source === "zkteco_devices";
+                const isMk = d.source === "mikrotik_devices";
+                const isManaged = d.source === "device_admin_managed_devices";
+                const canEdit = isZk || isMk || isManaged;
                 return (
                   <TableRow key={`${d.source}-${d.id}`}>
                     <TableCell>{i + 1}</TableCell>
@@ -195,9 +205,9 @@ export default function DeviceInventory() {
                     <TableCell className="font-medium">{d.name}</TableCell>
                     <TableCell className="font-mono text-sm">
                       <div className="flex items-center gap-2">
-                        {d.ip_address || "—"}
+                        <span>{d.ip_address || "—"}{d.port ? <span className="text-muted-foreground">:{d.port}</span> : null}</span>
                         {isDup && (
-                          <Badge variant="destructive" className="text-[10px] gap-1">
+                          <Badge variant="destructive" className="text-[10px] gap-1" title="একই IP ও একই port-এ একাধিক device আছে">
                             <AlertTriangle className="h-3 w-3" /> Duplicate
                           </Badge>
                         )}
@@ -211,24 +221,30 @@ export default function DeviceInventory() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button size="icon" variant="ghost" className="h-8 w-8" title="ইন্সপেক্ট" onClick={() => setInspectDevice({ id: d.id, name: d.name, type: d.category === "router" && d.vendor === "mikrotik" ? "mikrotik" : d.category })}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" title={isZk ? "ZKTeco device page-এ যান" : "ইন্সপেক্ট"} onClick={() => {
+                          if (isZk) { navigate("/dashboard/hr/zkteco-devices"); return; }
+                          setInspectDevice({ id: d.id, name: d.name, type: d.category === "router" && d.vendor === "mikrotik" ? "mikrotik" : d.category });
+                        }}>
                           <Search className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8" title="Edit" onClick={() => {
-                          if (d.source === "mikrotik_devices") {
-                            toast.info("MikroTik device — Mikrotik → Servers page থেকে edit করুন");
-                            navigate("/dashboard/mikrotik/servers");
-                            return;
-                          }
-                          if (d.source !== "device_admin_managed_devices") {
-                            toast.info("এই source-এর device এখান থেকে edit করা যায় না");
-                            return;
-                          }
-                          setEditTarget({ id: d.id, source: d.source });
-                          setAddOpen(true);
-                        }}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button size="icon" variant="ghost" className="h-8 w-8" title="Edit" onClick={() => {
+                            if (isMk) {
+                              toast.info("MikroTik device — Mikrotik → Servers page থেকে edit করুন");
+                              navigate("/dashboard/mikrotik/servers");
+                              return;
+                            }
+                            if (isZk) {
+                              toast.info("ZKTeco device — ZKTeco Devices page থেকে edit করুন");
+                              navigate("/dashboard/hr/zkteco-devices");
+                              return;
+                            }
+                            setEditTarget({ id: d.id, source: d.source });
+                            setAddOpen(true);
+                          }}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                         {canDelete && (
                           <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" title="Delete" onClick={() => setDeleteTarget(d)}>
                             <Trash2 className="h-4 w-4" />
@@ -240,6 +256,7 @@ export default function DeviceInventory() {
                   </TableRow>
                 );
               })}
+
             </TableBody>
           </Table>
         </CardContent>
