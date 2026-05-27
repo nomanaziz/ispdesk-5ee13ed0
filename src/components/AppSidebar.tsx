@@ -928,17 +928,33 @@ export function AppSidebar() {
     ],
   };
 
+  const perms = useModulePermissions();
+
   const orderedGroups = useMemo(() => {
     if (isEmployeeOnly) return [EMPLOYEE_GROUP];
     const baseGroups = [EMPLOYEE_GROUP, ...menuGroups];
-    const allLabels = baseGroups.map((g) => g.label);
+
+    // Permission filter: Super Admin sees all; others only see groups
+    // whose mapped module has at least 'read'. Always-visible groups
+    // (e.g. employee self-service panel) bypass the check.
+    const allowed = perms.loading
+      ? baseGroups // while loading, render nothing visible below
+      : baseGroups.filter((g) => {
+          if (perms.isSuperAdmin) return true;
+          if (ALWAYS_VISIBLE_GROUPS.has(g.label)) return true;
+          const mod = GROUP_MODULE[g.label];
+          if (!mod) return false; // unmapped → hide for safety
+          return perms.canRead(mod);
+        });
+
+    const allLabels = allowed.map((g) => g.label);
     const validSaved = savedOrder.filter((l) => allLabels.includes(l));
     const missing = allLabels.filter((l) => !validSaved.includes(l));
     const finalOrder = [...validSaved, ...missing];
     return finalOrder
-      .map((l) => baseGroups.find((g) => g.label === l)!)
+      .map((l) => allowed.find((g) => g.label === l)!)
       .filter(Boolean);
-  }, [savedOrder, isEmployeeOnly]);
+  }, [savedOrder, isEmployeeOnly, perms.loading, perms.isSuperAdmin, perms.map]);
 
   const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
