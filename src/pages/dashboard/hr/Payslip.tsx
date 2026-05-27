@@ -12,8 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Receipt, RefreshCw, Eye, FileText, Search, Edit2, Printer, Download, MoreHorizontal } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Receipt, RefreshCw, Eye, FileText, Search, Edit2, Printer, Download } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { computeForEmployee, periodLabel, monthToDate, type ComputedPayroll } from "@/lib/payrollCompute";
 import { getDeductionsForEmployee, applyDeductions, reverseDeductions } from "@/lib/payrollDeductions";
 import PayslipPaymentDialog from "@/components/hr/PayslipPaymentDialog";
