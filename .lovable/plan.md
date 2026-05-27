@@ -1,66 +1,52 @@
-## পরিকল্পনা: Payslip Payment + Advance Salary + Loan Management
+## পরিকল্পনা: Bulk Payslip PDF View + Download
 
-### ১. Payslip Pay Dialog (`PayslipPaymentDialog.tsx` — নতুন)
-Payslip-এর "Pay" button click করলে modal খুলবে (আপনার screenshot অনুযায়ী):
-- **Total Payable / Total Paid / Pay Left** তিনটি স্ট্যাট
-- Radio: **Pay Full** / **Pay Partially**
-- `Pay` amount + `From` (cash/bank account select)
-- `Payment Date`, `Remarks`, `Send SMS` checkbox
-- Partial pay হলে payroll status → `partial`, full হলে → `paid`
-- প্রতিটি payment আলাদা row হিসেবে track হবে → multiple partial payments allowed
+### লক্ষ্য
+Multiple employee select করে একসাথে সবার পে-স্লিপ একটি PDF-এ দেখা ও download করা — যেন print করে কেটে কেটে দেয়া যায়। Single employee-এর payslip preview-ও একই professional design-এ দেখাবে (screenshot reference অনুযায়ী)।
 
-### ২. Advance Salary Module (`AdvanceSalary.tsx` — নতুন page)
-Menu: HR → **Advance Salary**
-- Employee select → Amount → Date → Reason → Approve/Reject
-- Status: pending / approved / paid / adjusted
-- **পরবর্তী মাসের payslip generate করার সময় approved advance auto-deduct** হবে (একবারে full amount minus)
+### ১. নতুন PayslipPrint component (`PayslipPrintView.tsx`)
+Screenshot-এর design অনুযায়ী একটি print-friendly payslip card:
+- হেডার: কোম্পানি নাম (branch name), "Pay Slip for the period of {Month-YY}", date range
+- ডান কোনায়: status badge (Fully Paid / Partial / Unpaid) + Download PDF button
+- Employee info grid (২ কলাম): Name, ID, Mobile, Pay Slip ID, Position, Joining Date
+- Payheads table: Payheads | Unit | Type | Addition | Amount | Deduction | Amount (screenshot-এর মতোই)
+- Totals row + Gross/Total Deduction/Net Salary footer table
+- নিচে loan/advance deduction breakdown (যদি থাকে)
+- Print CSS: A4 অর্ধেক পেজ প্রতি payslip → কেটে দেয়া সহজ
 
-### ৩. Employee Loan Module (`EmployeeLoans.tsx` — নতুন page)  
-Menu: HR → **Loans**
-- Employee select → Loan amount → Installments (3/4/6 মাস) → Start month
-- Auto-calculate: `monthly_installment = loan_amount / installments`
-- Status: active / completed / cancelled
-- **প্রতি মাসে payslip generate করার সময় installment auto-deduct** যতক্ষণ না সব installment শেষ হয়
-- Loan ledger: কত মাস paid, কত বাকি, remaining balance
+### ২. Bulk PDF generate
+- Payslip Manager-এ নতুন button: **"Download PDF"** (selection থাকলে enable)
+- Selected employee-দের জন্য PayslipPrintView গুলো একসাথে render করে browser-এর native print dialog খুলবে (window.print)
+- Print CSS: প্রতিটি payslip-এর পরে `page-break-after: always` → কেটে দিতে সুবিধা
+- "Save as PDF" option browser-এর print dialog থেকেই available
+- Bulk preview modal: scroll করে আগে দেখা যাবে, তারপর print
 
-### ৪. Payroll Generate Integration
-`payrollCompute.ts`-এ generate flow update:
-1. Base salary + payheads + attendance deduction (আগের মতো)
-2. **Minus**: ওই মাসের loan installment (active loans থেকে)
-3. **Minus**: previous month-এর approved advance (যদি adjusted না হয়ে থাকে)
-4. Net payable = final amount
-Payslip row-এ আলাদা breakdown দেখাবে: Gross / Loan Deduction / Advance Adjustment / Net
+### ৩. View action update
+বর্তমান View button আগে শুধু প্রথম selected দেখায় — এটা update:
+- ১ জন selected → ওই payslip preview
+- একাধিক selected → bulk preview modal (সবার payslip একসাথে scroll করে দেখা যাবে)
+- preview modal-এ "Download PDF" / "Print" button
 
-### ৫. Employee View Page Integration
-EmployeeView-এ নতুন tab:
-- **Advance History** — সব advance request ও status
-- **Loan History** — active/completed loans, installment progress bar
+### ৪. Single payslip preview redesign
+বর্তমান ছোট preview dialog কে full payslip layout-এ replace — screenshot-এর design মতো। Status badge উপরে ডানে। Download PDF button থাকবে।
 
-### Database Migration
-নতুন ৩টি table:
-
-**`payroll_payments`** — partial/full payment tracking  
-fields: payroll_id, amount, payment_date, paid_from (account), remarks, sms_sent
-
-**`advance_salary`**  
-fields: employee_id, amount, request_date, reason, status, approved_by, adjusted_in_month
-
-**`employee_loans`**  
-fields: employee_id, loan_amount, installments, monthly_installment, start_month, status, remaining_balance
-
-**`loan_installments`** (ledger)  
-fields: loan_id, month, amount, payroll_id, status
-
-Payroll table-এ যোগ: `paid_amount numeric`, `payment_status text` (unpaid/partial/paid), `loan_deduction numeric`, `advance_deduction numeric`
-
-### Routing
-- `/dashboard/hr/advance-salary`
-- `/dashboard/hr/loans`
-- Sidebar HR menu-তে দুটো নতুন item
+### ৫. PDF generation approach
+External library নয় — browser native `window.print()` + dedicated `/dashboard/hr/payslip/print` route ব্যবহার:
+- Print route URL: `/dashboard/hr/payslip/print?month=2025-12&ids=id1,id2,id3`
+- নতুন tab-এ open → render → auto-trigger print dialog
+- User চাইলে "Save as PDF" select করে PDF download করবে
+- Print-only CSS: sidebar/header hide, প্রতিটি payslip পেজে আলাদা
 
 ### ফাইলসমূহ
-- নতুন: `PayslipPaymentDialog.tsx`, `AdvanceSalary.tsx`, `EmployeeLoans.tsx`, `AdvanceDialog.tsx`, `LoanDialog.tsx`
-- Edit: `Payslip.tsx` (Pay button → dialog), `payrollCompute.ts` (loan/advance deduction), `EmployeeView.tsx` (২টি tab), `App.tsx` (route), sidebar config
-- Migration: ৪টি table + payroll column add
+- নতুন: `src/components/hr/PayslipPrintView.tsx` — single payslip layout
+- নতুন: `src/pages/dashboard/hr/PayslipPrint.tsx` — print-ready route (auto print)
+- নতুন: `src/components/hr/BulkPayslipPreview.tsx` — multi-employee scroll preview modal
+- Edit: `src/pages/dashboard/hr/Payslip.tsx` — View/Download PDF button update, single preview redesign
+- Edit: `src/App.tsx` — print route যোগ
+- Edit: `src/index.css` — `@media print` rules যোগ (page-break, hide chrome)
 
-প্ল্যান approve করলে আগে migration submit করব, তারপর code লিখব।
+### ব্যবহার
+1. মাস select → checkbox দিয়ে multiple employee select
+2. **View** click → modal-এ scroll করে সবার payslip দেখা
+3. **Download PDF** click → নতুন tab-এ all payslips print-ready render হয়ে print dialog খুলবে → "Save as PDF" → একটি PDF download → প্রিন্ট করে কেটে দিন
+
+Plan approve করলে এই অনুযায়ী implement করব।

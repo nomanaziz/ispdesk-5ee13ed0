@@ -12,10 +12,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Receipt, RefreshCw, Eye, FileText, Search, Edit2, Printer } from "lucide-react";
+import { Receipt, RefreshCw, Eye, FileText, Search, Edit2, Printer, Download } from "lucide-react";
 import { computeForEmployee, periodLabel, monthToDate, type ComputedPayroll } from "@/lib/payrollCompute";
 import { getDeductionsForEmployee, applyDeductions, reverseDeductions } from "@/lib/payrollDeductions";
 import PayslipPaymentDialog from "@/components/hr/PayslipPaymentDialog";
+import PayslipPrintView from "@/components/hr/PayslipPrintView";
 
 const currentMonth = new Date().toISOString().slice(0, 7);
 
@@ -35,6 +36,7 @@ export default function PayslipManager() {
   const [editEmp, setEditEmp] = useState<any | null>(null);
   const [editLines, setEditLines] = useState<any[]>([]);
   const [payDialog, setPayDialog] = useState<any | null>(null);
+  const [bulkPreview, setBulkPreview] = useState<string[] | null>(null);
 
   // Pre-select from URL ?ids=
   useEffect(() => {
@@ -276,12 +278,31 @@ export default function PayslipManager() {
             <Receipt className="h-4 w-4" /> Generate
           </Button>
           <Button variant="secondary" disabled={selected.size === 0} onClick={() => {
-            const firstId = Array.from(selected)[0];
-            const ex = (existing || []).find((p: any) => p.employee_id === firstId);
-            if (ex) setPreviewId(ex.id);
-            else toast.error("আগে পে-স্লিপ জেনারেট করুন");
+            const ids = Array.from(selected);
+            const payrollIds = ids
+              .map((eid) => (existing || []).find((p: any) => p.employee_id === eid)?.id)
+              .filter(Boolean) as string[];
+            if (payrollIds.length === 0) {
+              toast.error("আগে পে-স্লিপ জেনারেট করুন");
+              return;
+            }
+            if (payrollIds.length === 1) setPreviewId(payrollIds[0]);
+            else setBulkPreview(payrollIds);
           }} className="gap-2">
             <Eye className="h-4 w-4" /> View
+          </Button>
+          <Button variant="default" disabled={selected.size === 0} onClick={() => {
+            const ids = Array.from(selected);
+            const payrollIds = ids
+              .map((eid) => (existing || []).find((p: any) => p.employee_id === eid)?.id)
+              .filter(Boolean) as string[];
+            if (payrollIds.length === 0) {
+              toast.error("আগে পে-স্লিপ জেনারেট করুন");
+              return;
+            }
+            window.open(`/dashboard/hr/payslip/print?ids=${payrollIds.join(",")}`, "_blank");
+          }} className="gap-2 bg-blue-600 hover:bg-blue-700">
+            <Download className="h-4 w-4" /> Download PDF
           </Button>
           <Button variant="outline" onClick={() => handleGenerate("regenerate")} className="gap-2 text-orange-600">
             <RefreshCw className="h-4 w-4" /> Regenerate
@@ -431,37 +452,46 @@ export default function PayslipManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Preview dialog */}
+      {/* Preview dialog — single payslip */}
       <Dialog open={!!previewId} onOpenChange={(o) => !o && setPreviewId(null)}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" /> পে-স্লিপ — {preview?.period_label}</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2"><Receipt className="h-5 w-5" /> পে-স্লিপ — {preview?.period_label}</span>
+              <Button size="sm" onClick={() => preview && window.open(`/dashboard/hr/payslip/print?ids=${preview.id}`, "_blank")} className="gap-2 mr-6">
+                <Download className="h-4 w-4" /> Download PDF
+              </Button>
+            </DialogTitle>
           </DialogHeader>
           {preview && previewEmp && (
-            <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-2">
-                <div><span className="text-muted-foreground">নাম:</span> <strong>{previewEmp.name}</strong></div>
-                <div><span className="text-muted-foreground">আইডি:</span> <strong>{previewEmp.employee_id}</strong></div>
-                <div><span className="text-muted-foreground">ডিপার্টমেন্ট:</span> {previewEmp.departments?.name || "—"}</div>
-                <div><span className="text-muted-foreground">পদবী:</span> {previewEmp.positions?.name || "—"}</div>
-              </div>
-              <div className="border-t pt-2 space-y-1">
-                <Row label="মূল বেতন" value={`৳${Number(preview.basic_salary).toLocaleString()}`} />
-                <Row label="মোট ভাতা" value={`৳${Number(preview.total_allowance).toLocaleString()}`} positive />
-                <Row label="মোট কর্তন" value={`৳${Number(preview.total_deduction).toLocaleString()}`} negative />
-              </div>
-              <div className="bg-muted/40 rounded p-3 flex justify-between text-lg font-bold">
-                <span>নেট বেতন</span>
-                <span className="text-primary">৳{Number(preview.net_salary).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <Badge variant={preview.status === "paid" ? "default" : "secondary"} className={preview.status === "paid" ? "bg-green-600" : ""}>
-                  {preview.status === "paid" ? "পরিশোধিত" : "অপরিশোধিত"}
-                </Badge>
-                <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1"><Printer className="h-4 w-4" /> প্রিন্ট</Button>
-              </div>
-            </div>
+            <PayslipPrintView payroll={preview} employee={previewEmp} />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk preview dialog */}
+      <Dialog open={!!bulkPreview} onOpenChange={(o) => !o && setBulkPreview(null)}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>একাধিক পে-স্লিপ ({bulkPreview?.length})</span>
+              <Button size="sm" onClick={() => bulkPreview && window.open(`/dashboard/hr/payslip/print?ids=${bulkPreview.join(",")}`, "_blank")} className="gap-2 mr-6">
+                <Download className="h-4 w-4" /> Download PDF
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            {bulkPreview?.map((pid) => {
+              const p = (existing || []).find((x: any) => x.id === pid);
+              const e = p ? (employees || []).find((x: any) => x.id === p.employee_id) : null;
+              if (!p || !e) return null;
+              return (
+                <div key={pid} className="border rounded">
+                  <PayslipPrintView payroll={p} employee={e} />
+                </div>
+              );
+            })}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

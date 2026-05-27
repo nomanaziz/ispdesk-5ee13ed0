@@ -113,6 +113,7 @@ const HrPayheads = lazy(() => import("@/pages/dashboard/hr/Payheads"));
 const HrPayroll = lazy(() => import("@/pages/dashboard/hr/Payroll"));
 const HrPositions = lazy(() => import("@/pages/dashboard/hr/Positions"));
 const HrPayslip = lazy(() => import("@/pages/dashboard/hr/Payslip"));
+const HrPayslipPrint = lazy(() => import("@/pages/dashboard/hr/PayslipPrint"));
 const HrAddEmployee = lazy(() => import("@/pages/dashboard/hr/AddEmployee"));
 const HrEmployees = lazy(() => import("@/pages/dashboard/hr/Employees"));
 const HrEmployeeView = lazy(() => import("@/pages/dashboard/hr/EmployeeView"));
@@ -569,6 +570,7 @@ const App = () => (
               <Route path="/dashboard/hr/payroll" element={<P><HrPayroll /></P>} />
               <Route path="/dashboard/hr/positions" element={<P><HrPositions /></P>} />
               <Route path="/dashboard/hr/payslip" element={<P><HrPayslip /></P>} />
+              <Route path="/dashboard/hr/payslip/print" element={<P><HrPayslipPrint /></P>} />
               <Route path="/dashboard/hr/employees/add" element={<P><HrAddEmployee /></P>} />
               <Route path="/dashboard/hr/employees" element={<P><HrEmployees /></P>} />
               <Route path="/dashboard/hr/employees/:id" element={<P><HrEmployeeView /></P>} />
