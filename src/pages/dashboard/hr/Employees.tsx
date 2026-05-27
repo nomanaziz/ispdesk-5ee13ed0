@@ -197,6 +197,18 @@ export default function Employees() {
                       <TableCell>{emp.positions?.name || "—"}</TableCell>
                       <TableCell>৳{Number(emp.salary || 0).toLocaleString()}</TableCell>
                       <TableCell>
+                        {emp.is_confirmed ? (
+                          <Badge variant="default" className="gap-1">
+                            <CheckCircle2 className="h-3 w-3" /> Confirmed
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">
+                            Probation
+                            {emp.probation_end_date ? ` → ${emp.probation_end_date}` : ""}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <Switch
                           checked={emp.status === "active"}
                           onCheckedChange={(checked) => toggleStatus.mutate({ id: emp.id, status: checked ? "active" : "inactive" })}
@@ -204,6 +216,12 @@ export default function Employees() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                          {!emp.is_confirmed && (
+                            <Button size="icon" variant="ghost" title="Confirm করুন"
+                              onClick={() => { setConfirmEmp(emp); setConfirmSalary(String(emp.salary || 0)); }}>
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            </Button>
+                          )}
                           <Button size="icon" variant="ghost" title="দেখুন"
                             onClick={() => navigate(`/dashboard/hr/employees/${emp.id}`)}>
                             <Eye className="h-4 w-4 text-blue-600" />
@@ -215,7 +233,7 @@ export default function Employees() {
                           <Button size="icon" variant="ghost" title="পে-হেডস" onClick={() => setPayheadEmp(emp)}>
                             <DollarSign className="h-4 w-4 text-amber-600" />
                           </Button>
-                          <Button size="icon" variant="ghost" title="ছুটি/ক্যালেন্ডার" onClick={() => setHolidayEmp(emp)}>
+                          <Button size="icon" variant="ghost" title="সাপ্তাহিক ছুটি" onClick={() => setHolidayEmp(emp)}>
                             <Calendar className="h-4 w-4 text-indigo-600" />
                           </Button>
                         </div>
