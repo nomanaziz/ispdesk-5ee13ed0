@@ -1,129 +1,96 @@
+
 ## লক্ষ্য
 
-NAHID / EMP001 login করলে যেন নিজের employee profile ঠিকভাবে load হয়, এবং employee self-service moduleগুলো বাস্তবে কাজ করে: profile, attendance, leave, payslip, requests, meal order। Admin/HR side-এ catering service, weekly menu, subsidy, daily order summary এবং SMS/email পাঠানোর ব্যবস্থা যোগ করা হবে।
+Admin portal-এ HR-এর কিছু core সুবিধা ও policy যোগ করা — default leave entitlement, probation logic, self check-in/out, shift roster, weekly holiday, conveyance bill, এবং catering provider + weekly menu admin UI। NAHID-কে test employee হিসেবে এই সব policy auto-assign হবে।
 
-## Root cause
+## Phase 1 — Default Leave Policy + Probation Logic
 
-বর্তমানে NAHID-এর ডেটা DB-তে যুক্ত আছে:
+1. দুটি default leave type seed করা: **Casual Leave (10/বছর)**, **Sick Leave (12/বছর)**।
+2. `employees` table-এ `probation_period_months` (default 3), `probation_end_date`, `confirmation_date`, `is_confirmed` column থাকবে।
+3. নতুন employee add করলে:
+   - probation start = joining date, end = joining + probation months।
+   - confirmation না হওয়া পর্যন্ত leave entitlement = 0 (খাবার সুবিধা থাকবে)।
+4. Confirmation action (HR button): salary increment field (optional) + auto leave balance assign।
+5. **Pro-rated leave calculation** (Jan–Dec basis):
+   - confirmation মাস থেকে December পর্যন্ত যত মাস বাকি, তত মাসের অনুপাতে leave।
+   - সূত্র: `floor(annual_quota × remaining_months / 12)`। কোনো fraction না।
+   - উদাহরণ: June-এ confirm → CL = floor(10×7/12)=5, SL = floor(12×7/12)=7।
+6. প্রতি বছর January-1 এ leave balance reset/refresh (manual বা scheduled — আপাতত admin button)।
+7. UI: Employee profile-এ **Leave Entitlement** panel — type, annual quota, current year balance, used, remaining।
 
-- `employees`: EMP001 / NAHID আছে।
-- `app_users`: EMP001 user আছে এবং `employee_id` দিয়ে ওই employee row-এর সাথে linked।
+## Phase 2 — Self Check-in / Check-out (Employee)
 
-সমস্যা হচ্ছে RLS policy-তে `app_users`, `employees`, `attendance`, `leave_applications`, `leave_balances`, `payroll` মূলত admin-only read। তাই employee login করলে frontend নিজের `app_users -> employee` row পড়তে পারে না, ফলে “আপনার অ্যাকাউন্ট কোনো কর্মীর সাথে যুক্ত নয়” দেখাচ্ছে।
+1. `/dashboard/me/attendance` page-এ **Check In** ও **Check Out** button যোগ।
+2. Employee নিজেই check_in/check_out push করতে পারবে (status = `pending_verify`)।
+3. Admin/HR-এর কাছে **Attendance Verification Queue** — approve/reject।
+4. Admin সরাসরি entry দিলে status = `verified` by default।
+5. Source field: `self` / `admin` / `device(zkteco)`।
 
-## Phase 1 — EMP001/self-service access fix
+## Phase 3 — Shift Management (Roster)
 
-1. DB RLS ঠিক করব:
-   - logged-in employee নিজের `app_users` row দেখতে পারবে।
-   - নিজের `employees` row দেখতে পারবে।
-   - নিজের attendance, leave application, leave balance, payroll/payslip দেখতে পারবে।
-   - write access admin/HR-এর কাছেই থাকবে; employee শুধু নিজের allowed request submit করতে পারবে।
+1. `shifts` table: name, start_time, end_time, branch_id।
+2. `employee_roster`: employee_id, date, shift_id।
+3. UI: **Roster Planner** page — Weekly বা Monthly view toggle।
+   - একসাথে multiple employee select → shift drag/assign।
+   - Bulk apply: "প্রতি শনি-বৃহঃ Shift A, শুক্র off"।
+4. Save করলে date-ভিত্তিক row insert হবে।
 
-2. `useEmployeeContext` robust করব:
-   - আগে `app_users.auth_user_id = auth.uid()` দিয়ে linked employee আনবে।
-   - relation না এলে fallback হিসেবে current employee id resolve করবে।
-   - loading/error state পরিষ্কার দেখাবে, false “not linked” দেখাবে না।
+## Phase 4 — Weekly Holiday per Employee
 
-3. Self-service pages ঠিক করব:
-   - Attendance table-এর real columns `check_in/check_out` ব্যবহার করবে, এখন UI ভুলভাবে `in_time/out_time` পড়ছে।
-   - Profile/Leave/Payslip empty state ও error handling ঠিক করব।
+1. Employee Action calender button-এর label পরিবর্তন → **"সাপ্তাহিক ছুটি"**।
+2. Dialog-এ Sat–Fri checkbox। Tick করলে `employees.weekly_off_days` (int array, e.g. `[5]` = Friday) save।
+3. Attendance generation / leave calculation এই দিনগুলো skip করবে — auto holiday।
 
-## Phase 2 — Employee request modules ready করা
+## Phase 5 — Conveyance Bill
 
-1. Profile change request:
-   - Employee নিজের পরিবর্তনের আবেদন করবে।
-   - HR/Admin approve করলে employee table update হবে।
+1. `conveyance_bills` table: employee_id, date, from_location, to_location, purpose, amount, attachment, status (pending/approved/rejected), approver_id, remarks।
+2. Employee side: `/dashboard/me/conveyance` — submit form + history list।
+3. Admin side: `/dashboard/hr/conveyance` — pending queue → approve/reject → approved bills payroll-এ "Conveyance Reimbursement" allowance হিসেবে add option।
 
-2. Leave request:
-   - Employee ছুটির আবেদন করতে পারবে।
-   - HR/Admin pending leave approve/reject করতে পারবে।
-   - Leave balance view employee side-এ ঠিকভাবে দেখাবে।
+## Phase 6 — Catering Provider + Weekly Menu (Admin UI)
 
-3. Salary advance / loan / resignation:
-   - Existing request pages clean করব।
-   - Admin/HR review page-এ approve/reject, status, remarks properly রাখব।
+বর্তমানে `Catering.tsx`-এ basic service + day-wise menu আছে, কিন্তু **provider profile** ও **price/menu workflow** অসম্পূর্ণ। যোগ করব:
 
-4. Requisition:
-   - “শীঘ্রই আসছে” placeholder বাদ দিয়ে basic requisition request form + admin review workflow করব।
+1. `catering_services` expand: `owner_name`, `phone`, `email`, `address`, `default_meal_price` (৳120), `cutoff_time`, `is_active`।
+2. Weekly menu form উন্নত: item checkbox preset (ভাত, ডাল, সালাদ, ভর্তা) + main item dropdown (মুরগি, মাছ, beef) + price per day + "closed day" toggle।
+3. Subsidy rule: company default (none/half/full) + per-employee override।
+4. Admin দেখতে পাবে কোন provider কোন দিন কী menu, কত price।
 
-## Phase 3 — Catering service admin module
+## Phase 7 — NAHID-কে test policy assign
 
-Existing `/dashboard/hr/catering` module expand করব:
+1. Migration-এর শেষে NAHID-এর জন্য:
+   - confirmation_date = today (already passed probation ধরে)।
+   - CL balance = 10, SL balance = 12 (full year)।
+   - weekly_off = Friday।
+2. যাতে user সরাসরি login করে সব flow test করতে পারে।
 
-1. Catering service profile:
-   - service name
-   - owner name
-   - phone/contact
-   - email
-   - address
-   - active/inactive
+## Technical changes summary
 
-2. Weekly menu setup:
-   - Saturday–Friday menu setup থাকবে।
-   - item checkbox/preset support: ভাত, ডাল, সালাদ, ভর্তা ইত্যাদি।
-   - main item text/selection: মুরগি, মাছ, beef, fried rice ইত্যাদি।
-   - price per meal, default `৳120`।
-   - cutoff time।
-   - কোনোদিন খাবার বন্ধ থাকলে “closed day” হিসেবে mark করা যাবে।
+**Migrations:**
+- `leave_types` seed (CL, SL with default annual quota)
+- `employees` add: probation_period_months, probation_end_date, confirmation_date, is_confirmed, weekly_off_days, salary_at_confirmation
+- `leave_balances` ensure year-wise rows
+- new `shifts`, `employee_roster`, `conveyance_bills` tables (with GRANT + RLS)
+- `attendance` add: source, verification_status, verified_by
+- `catering_services` add: owner_name, phone, email, address, default_meal_price, cutoff_time
+- function `calc_prorated_leave(annual_quota, confirm_date)` returns int
+- function `confirm_employee(emp_id, new_salary?)` — sets confirmation, creates balance rows
 
-3. Subsidy rules:
-   - company-wide default: none / half / full।
-   - half হলে employee pays ৳60, company pays ৳60 for ৳120 meal।
-   - full হলে employee pays ৳0, company pays ৳120।
-   - specific employee override থাকবে, যেমন কোনো employee full subsidized হতে পারে।
-
-## Phase 4 — Employee meal order module
-
-`/dashboard/me/meals` উন্নত করব:
-
-1. Employee আজকের/নির্বাচিত দিনের menu দেখতে পারবে।
-2. Closed day হলে order button থাকবে না।
-3. Subsidy হিসাব দেখাবে:
-   - total price
-   - employee payable
-   - company subsidy
-4. Employee order/cancel করতে পারবে cutoff সময়ের মধ্যে।
-5. Duplicate order prevent থাকবে।
-6. নিজের monthly meal cost summary দেখাবে।
-
-## Phase 5 — Daily catering order summary + SMS/email
-
-Admin/HR side-এ order summary যোগ করব:
-
-1. Date-wise order dashboard:
-   - কোন catering service-এ কয়টা order পড়েছে।
-   - menu snapshot সহ total count।
-   - employee payable total, company subsidy total, total food cost।
-
-2. Send to catering owner:
-   - SMS/email message preview।
-   - Example: আজকের menu, total order count, delivery note।
-   - Existing SMS/email system থাকলে সেটার সাথে integrate করব; না থাকলে send action placeholder/log দিয়ে রাখব যাতে later gateway বসানো যায়।
-
-## Technical changes
-
-1. Supabase migration:
-   - self-read RLS policies for employee-linked data।
-   - catering tables-এ নতুন columns: owner/contact/email/address/default subsidy/settings।
-   - meal orders-এ employee_payable/company_subsidy/menu label/status fields যোগ করা।
-   - optional নতুন tables: `meal_subsidy_rules`, `meal_order_dispatches`, requisition tables if missing।
-
-2. Frontend files:
-   - `src/hooks/useEmployeeContext.ts`
-   - `src/pages/dashboard/me/*`
-   - `src/pages/dashboard/hr/Catering.tsx`
-   - `src/pages/dashboard/hr/EmployeeRequests.tsx`
-   - sidebar/menu mapping if new admin pages need visible menu links।
-
-3. Security:
-   - Employee নিজের data ছাড়া অন্য employee data পড়তে পারবে না।
-   - Admin/Super Admin manage করতে পারবে।
-   - Employee defaultভাবে main admin modules দেখবে না; শুধু `আমার প্যানেল` দেখবে।
+**Frontend files:**
+- `src/pages/dashboard/hr/LeavePolicy.tsx` (new) — default types + quota config
+- `src/pages/dashboard/hr/Employees.tsx` — probation/confirmation UI, weekly off dialog rename
+- `src/pages/dashboard/me/MyAttendance.tsx` — check-in/out button
+- `src/pages/dashboard/hr/AttendanceVerify.tsx` (new) — approval queue
+- `src/pages/dashboard/hr/Roster.tsx` (new) — weekly/monthly shift planner
+- `src/pages/dashboard/me/MyConveyance.tsx` + `src/pages/dashboard/hr/Conveyance.tsx`
+- `src/pages/dashboard/hr/Catering.tsx` — owner profile + improved menu form + subsidy rules
 
 ## Implementation order
 
-1. আগে NAHID/EMP001 linked employee load issue fix করব।
-2. তারপর attendance/leave/payslip self-view fix করব।
-3. তারপর meal/catering schema + admin setup page।
-4. তারপর employee meal order + subsidy হিসাব।
-5. শেষে daily summary এবং SMS/email dispatch flow।
+1. Phase 1 (leave policy + probation) — foundation
+2. Phase 4 (weekly holiday) — quick win, ties to leave/attendance
+3. Phase 2 (self check-in/out + verify)
+4. Phase 3 (shift roster)
+5. Phase 5 (conveyance)
+6. Phase 6 (catering admin UI completion)
+7. NAHID seed at the end
