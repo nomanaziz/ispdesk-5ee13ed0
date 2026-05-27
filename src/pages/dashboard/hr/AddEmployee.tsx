@@ -396,7 +396,10 @@ export default function AddEmployee() {
               </div>
               <div>
                 <Label>উপজেলা</Label>
-                <Select value={form.upazila} onValueChange={(v) => { const u = (upazilas || []).find((x: any) => x.id === v); set("upazila", u?.name || ""); }}>
+                <Select
+                  value={(upazilas || []).find((x: any) => x.name === form.upazila)?.id || ""}
+                  onValueChange={(v) => { const u = (upazilas || []).find((x: any) => x.id === v); set("upazila", u?.name || ""); }}
+                >
                   <SelectTrigger><SelectValue placeholder={form.district_id ? "নির্বাচন করুন" : "আগে জেলা নির্বাচন করুন"} /></SelectTrigger>
                   <SelectContent>{(upazilas || []).map((u: any) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
                 </Select>
