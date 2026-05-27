@@ -34,7 +34,7 @@ export default function EmployeeRequests() {
   );
 }
 
-function RequestList({ table, kind }: { table: string; kind: "advance" | "loan" | "resignation" }) {
+function RequestList({ table, kind }: { table: string; kind: "advance" | "loan" | "resignation" | "requisition" }) {
   const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["emp-req-admin", table],
