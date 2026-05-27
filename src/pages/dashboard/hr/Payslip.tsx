@@ -36,6 +36,7 @@ export default function PayslipManager() {
   const [editEmp, setEditEmp] = useState<any | null>(null);
   const [editLines, setEditLines] = useState<any[]>([]);
   const [payDialog, setPayDialog] = useState<any | null>(null);
+  const [bulkPreview, setBulkPreview] = useState<string[] | null>(null);
 
   // Pre-select from URL ?ids=
   useEffect(() => {
