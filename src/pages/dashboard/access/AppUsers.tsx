@@ -361,8 +361,9 @@ export default function AppUsers() {
               <p className="text-xs text-muted-foreground mt-1">
                 Billing, HR, Accounts ইত্যাদি বাড়তি permission। Employee role auto-attached।
               </p>
-
+            </div>
             <div>
+
               <Label>Status</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
