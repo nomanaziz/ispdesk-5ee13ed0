@@ -82,7 +82,7 @@ export default function AppRoles() {
     if (!selected || isReadOnly) return;
     setSavingPerms(true);
     const updates = modules.map((m) =>
-      supabase.from("app_role_modules").update({ enabled: m.enabled, permission: m.permission }).eq("id", m.id)
+      supabase.from("app_role_modules").update({ enabled: m.enabled, permission: m.permission as "none" | "read" | "write" | "full" }).eq("id", m.id)
     );
     const results = await Promise.all(updates);
     const err = results.find((r) => r.error);
