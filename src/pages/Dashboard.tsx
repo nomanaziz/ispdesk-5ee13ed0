@@ -746,8 +746,13 @@ function TopDueListCard({
 const Dashboard = () => {
   const { isEmployeeOnly, loading: empLoading } = useEmployeeContext();
   const { data: d, isLoading } = useStats();
-  if (empLoading) return null;
+  const dashPerm = useModulePermission("Dashboard");
+  if (empLoading || dashPerm.loading) return null;
   if (isEmployeeOnly) return <Navigate to="/dashboard/me" replace />;
+  // Non-admin without Dashboard module permission → send to their own panel.
+  if (!dashPerm.isSuperAdmin && !dashPerm.canRead) {
+    return <Navigate to="/dashboard/me" replace />;
+  }
 
   // Date helpers for filter links
   const now = new Date();
