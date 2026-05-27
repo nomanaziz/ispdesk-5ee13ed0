@@ -203,17 +203,63 @@ export default function PayslipManager() {
   };
 
   // --- Edit payheads (override per month) ---
-  const openEdit = (emp: any) => {
+  const openEdit = async (emp: any) => {
     setEditEmp(emp);
     const ex = existingByEmp.get(emp.id);
     const overrides = ex?.adjustments && Array.isArray(ex.adjustments) ? ex.adjustments : [];
     const c = computed[emp.id];
     if (!c) return;
-    const lines = c.lines.map((l) => {
+
+    // Prepend the Basic Salary line as editable
+    const { data: basicPh } = await supabase
+      .from("payheads")
+      .select("id,name,type")
+      .ilike("name", "basic salary")
+      .limit(1)
+      .maybeSingle();
+
+    const lines: any[] = [];
+    if (basicPh) {
+      lines.push({
+        payhead_id: (basicPh as any).id,
+        name: "Basic Salary",
+        type: "allowance",
+        amount_type: "amount",
+        base_amount: c.basic_salary,
+        amount: c.basic_salary,
+        is_basic: true,
+      });
+    }
+    for (const l of c.lines) {
       const ov = overrides.find((o: any) => o.payhead_id === l.payhead_id);
-      return { ...l, amount: ov ? Number(ov.amount) : l.amount };
-    });
+      lines.push({ ...l, amount: ov ? Number(ov.amount) : l.amount });
+    }
     setEditLines(lines);
+  };
+
+  const addExtraLine = (phId: string) => {
+    const ph = (allPayheads || []).find((p: any) => p.id === phId);
+    if (!ph) return;
+    if (editLines.find((l) => l.payhead_id === phId)) {
+      toast.error("ইতিমধ্যে যোগ করা আছে");
+      return;
+    }
+    setEditLines((prev) => [
+      ...prev,
+      {
+        payhead_id: ph.id,
+        name: ph.name,
+        type: ph.type === "deduction" ? "deduction" : "allowance",
+        amount_type: "amount",
+        base_amount: 0,
+        amount: 0,
+        is_manual: true,
+      },
+    ]);
+  };
+
+  const removeLine = (id: string) => {
+    setEditLines((prev) => prev.filter((l) => l.payhead_id !== id));
   };
 
   const saveEdit = async () => {
