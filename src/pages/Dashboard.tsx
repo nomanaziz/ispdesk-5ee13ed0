@@ -816,36 +816,20 @@ const Dashboard = () => {
       {/* Hero KPI Row — 4 large gradient cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 auto-rows-fr">
 
-        <KpiCard
-          label="মোট ক্লায়েন্ট"
-          value={num(d?.totalClients)}
-          icon={Users}
-          tone="primary"
-          delta={joinDelta}
-          caption="গত মাসের তুলনায়"
-          to="/dashboard/clients/home"
-        />
-        <KpiCard
-          label="অনলাইন ব্যবহারকারী"
-          value={num(d?.onlineOnu)}
-          icon={Wifi}
-          tone="success"
-          to="/dashboard/monitoring/online"
-        />
-        <KpiCard
-          label="সচল ক্লায়েন্ট"
-          value={num(d?.totalActive)}
-          icon={UserCheck}
-          tone="success"
-          to="/dashboard/clients/home?status=active"
-        />
-        <KpiCard
-          label="বন্ধ লাইন"
-          value={num(d?.blockedLineCount)}
-          icon={Ban}
-          tone="danger"
-          to="/dashboard/clients/home?mikrotikStatus=disabled"
-        />
+      {/* Hero KPI Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 auto-rows-fr">
+        {showW("kpi_top", "kpi_total_clients") && (
+          <KpiCard label="মোট ক্লায়েন্ট" value={num(d?.totalClients)} icon={Users} tone="primary" delta={joinDelta} caption="গত মাসের তুলনায়" to="/dashboard/clients/home" />
+        )}
+        {showW("kpi_top", "kpi_users") && (
+          <KpiCard label="অনলাইন ব্যবহারকারী" value={num(d?.onlineOnu)} icon={Wifi} tone="success" to="/dashboard/monitoring/online" />
+        )}
+        {showW("kpi_top", "kpi_active") && (
+          <KpiCard label="সচল ক্লায়েন্ট" value={num(d?.totalActive)} icon={UserCheck} tone="success" to="/dashboard/clients/home?status=active" />
+        )}
+        {showW("kpi_top", "kpi_earnings") && (
+          <KpiCard label="বন্ধ লাইন" value={num(d?.blockedLineCount)} icon={Ban} tone="danger" to="/dashboard/clients/home?mikrotikStatus=disabled" />
+        )}
       </div>
 
       {/* System Overview (left, 2/3) + Support / Operations (right, 1/3) */}
