@@ -15,6 +15,7 @@ import {
 import { Link, Navigate } from "react-router-dom";
 import { useEmployeeContext } from "@/hooks/useEmployeeContext";
 import { useModulePermission } from "@/hooks/useModulePermissions";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import KpiCard from "@/components/dashboard/KpiCard";
 import MetricTile from "@/components/dashboard/MetricTile";
 import ResourceGauge from "@/components/dashboard/ResourceGauge";
@@ -781,6 +782,10 @@ const Dashboard = () => {
   const paidPct = d && d.billingMonthRows > 0 ? (d.paidClients / d.billingMonthRows) * 100 : 0;
   const collectionPct = d && d.totalBillAmount > 0 ? (d.totalPaidAmount / d.totalBillAmount) * 100 : 0;
 
+  // Widget visibility per role
+  const { canWidget } = useFeatureFlags();
+  const showW = (section: string, key: string) => canWidget(section, key);
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -808,39 +813,21 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Hero KPI Row — 4 large gradient cards */}
+      {/* Hero KPI Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 auto-rows-fr">
 
-        <KpiCard
-          label="মোট ক্লায়েন্ট"
-          value={num(d?.totalClients)}
-          icon={Users}
-          tone="primary"
-          delta={joinDelta}
-          caption="গত মাসের তুলনায়"
-          to="/dashboard/clients/home"
-        />
-        <KpiCard
-          label="অনলাইন ব্যবহারকারী"
-          value={num(d?.onlineOnu)}
-          icon={Wifi}
-          tone="success"
-          to="/dashboard/monitoring/online"
-        />
-        <KpiCard
-          label="সচল ক্লায়েন্ট"
-          value={num(d?.totalActive)}
-          icon={UserCheck}
-          tone="success"
-          to="/dashboard/clients/home?status=active"
-        />
-        <KpiCard
-          label="বন্ধ লাইন"
-          value={num(d?.blockedLineCount)}
-          icon={Ban}
-          tone="danger"
-          to="/dashboard/clients/home?mikrotikStatus=disabled"
-        />
+        {showW("kpi_top", "kpi_total_clients") && (
+          <KpiCard label="মোট ক্লায়েন্ট" value={num(d?.totalClients)} icon={Users} tone="primary" delta={joinDelta} caption="গত মাসের তুলনায়" to="/dashboard/clients/home" />
+        )}
+        {showW("kpi_top", "kpi_users") && (
+          <KpiCard label="অনলাইন ব্যবহারকারী" value={num(d?.onlineOnu)} icon={Wifi} tone="success" to="/dashboard/monitoring/online" />
+        )}
+        {showW("kpi_top", "kpi_active") && (
+          <KpiCard label="সচল ক্লায়েন্ট" value={num(d?.totalActive)} icon={UserCheck} tone="success" to="/dashboard/clients/home?status=active" />
+        )}
+        {showW("kpi_top", "kpi_earnings") && (
+          <KpiCard label="বন্ধ লাইন" value={num(d?.blockedLineCount)} icon={Ban} tone="danger" to="/dashboard/clients/home?mikrotikStatus=disabled" />
+        )}
       </div>
 
       {/* System Overview (left, 2/3) + Support / Operations (right, 1/3) */}
@@ -848,38 +835,40 @@ const Dashboard = () => {
         <div className="lg:col-span-2 space-y-3">
           <SectionHeading title="সিস্টেম ওভারভিউ" hint="বর্তমান মাসের মূল মেট্রিক" />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            <MetricTile label="এই মাসের সেল" value={fmt(d?.thisMonthSales)} icon={TrendingUp} tone="violet" to={`/dashboard/billing/daily-collection?from=${monthStart}&to=${todayStr}`} />
-            <MetricTile label="আজকের সেল" value={fmt(d?.todaySales)} icon={DollarSign} tone="violet" to={`/dashboard/billing/daily-collection?date=${todayStr}`} />
-            <MetricTile label="বিলিং ক্লায়েন্ট" value={num(d?.billingClients)} icon={FileText} tone="violet" to="/dashboard/clients/home?billingStatus=Active" />
-            <MetricTile label="মেয়াদোত্তীর্ণ" value={num(d?.totalExpired)} icon={CalendarX} tone="amber" to="/dashboard/clients/home?status=expired" />
-            <MetricTile label="পোর্টাল অ্যাক্টিভ" value={num(d?.portalActive)} icon={ShieldCheck} tone="emerald" to="/dashboard/clients/home?billingStatus=Active" />
-            <MetricTile label="পোর্টাল ইনঅ্যাক্টিভ" value={num(d?.portalInactive)} icon={UserMinus} tone="rose" to="/dashboard/clients/home?billingStatus=Inactive" />
-            <MetricTile label="VIP ক্লায়েন্ট" value={num(d?.vipClients)} icon={Award} tone="amber" to="/dashboard/clients/home?vip=1" />
-            <MetricTile label="বকেয়া" value={fmt(d?.totalDueAmount)} icon={AlertTriangle} tone="rose" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />
+            {showW("system_overview", "this_month_sales") && <MetricTile label="এই মাসের সেল" value={fmt(d?.thisMonthSales)} icon={TrendingUp} tone="violet" to={`/dashboard/billing/daily-collection?from=${monthStart}&to=${todayStr}`} />}
+            {showW("system_overview", "today_sales") && <MetricTile label="আজকের সেল" value={fmt(d?.todaySales)} icon={DollarSign} tone="violet" to={`/dashboard/billing/daily-collection?date=${todayStr}`} />}
+            {showW("system_overview", "billing_clients") && <MetricTile label="বিলিং ক্লায়েন্ট" value={num(d?.billingClients)} icon={FileText} tone="violet" to="/dashboard/clients/home?billingStatus=Active" />}
+            {showW("system_overview", "expired_clients") && <MetricTile label="মেয়াদোত্তীর্ণ" value={num(d?.totalExpired)} icon={CalendarX} tone="amber" to="/dashboard/clients/home?status=expired" />}
+            {showW("system_overview", "portal_active") && <MetricTile label="পোর্টাল অ্যাক্টিভ" value={num(d?.portalActive)} icon={ShieldCheck} tone="emerald" to="/dashboard/clients/home?billingStatus=Active" />}
+            {showW("system_overview", "portal_inactive") && <MetricTile label="পোর্টাল ইনঅ্যাক্টিভ" value={num(d?.portalInactive)} icon={UserMinus} tone="rose" to="/dashboard/clients/home?billingStatus=Inactive" />}
+            {showW("system_overview", "vip_clients") && <MetricTile label="VIP ক্লায়েন্ট" value={num(d?.vipClients)} icon={Award} tone="amber" to="/dashboard/clients/home?vip=1" />}
+            {showW("system_overview", "total_due") && <MetricTile label="বকেয়া" value={fmt(d?.totalDueAmount)} icon={AlertTriangle} tone="rose" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />}
           </div>
         </div>
 
-        <div className="space-y-3">
-          <SectionHeading title="সিস্টেম রিসোর্স" hint="বর্তমান মাসের অগ্রগতি" />
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div className="grid grid-cols-3 gap-2">
-                <ResourceGauge label="ONU অনলাইন" value={onlinePct} tone="emerald" />
-                <ResourceGauge label="পেইড ক্লায়েন্ট" value={paidPct} tone="violet" />
-                <ResourceGauge label="কালেকশন" value={collectionPct} tone="violet" />
-              </div>
-              <Link to="/dashboard/sms" className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2.5 hover:bg-muted/60 transition">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600">
-                    <MessageSquare className="h-4 w-4" />
-                  </div>
-                  <span className="text-xs font-semibold text-foreground">SMS ব্যালেন্স</span>
+        {showW("system_resource", "resource_overview") && (
+          <div className="space-y-3">
+            <SectionHeading title="সিস্টেম রিসোর্স" hint="বর্তমান মাসের অগ্রগতি" />
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <ResourceGauge label="ONU অনলাইন" value={onlinePct} tone="emerald" />
+                  <ResourceGauge label="পেইড ক্লায়েন্ট" value={paidPct} tone="violet" />
+                  <ResourceGauge label="কালেকশন" value={collectionPct} tone="violet" />
                 </div>
-                <span className="text-base font-bold tabular-nums text-foreground">{String(d?.smsBalance ?? "0")}</span>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
+                <Link to="/dashboard/sms" className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2.5 hover:bg-muted/60 transition">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600">
+                      <MessageSquare className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs font-semibold text-foreground">SMS ব্যালেন্স</span>
+                  </div>
+                  <span className="text-base font-bold tabular-nums text-foreground">{String(d?.smsBalance ?? "0")}</span>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
       {/* POP Hero Row */}
@@ -996,6 +985,7 @@ const Dashboard = () => {
       </div>
 
       {/* Top Due — by category */}
+      {showW("top_due", "top_due_table") && (
       <div className="space-y-3">
         <SectionHeading title="টপ বকেয়া" hint="প্রতি ক্যাটাগরির শীর্ষ ২০ বকেয়াদার" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1041,8 +1031,10 @@ const Dashboard = () => {
           />
         </div>
       </div>
+      )}
 
       {/* Action required */}
+      {showW("action_needed", "action_panel") && (
       <div className="space-y-3">
         <SectionHeading title="অ্যাকশন প্রয়োজন" hint="দ্রুত পদক্ষেপ নিন" />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -1054,8 +1046,10 @@ const Dashboard = () => {
           <MetricTile label="পেন্ডিং টাস্ক" value={num(d?.pendingTasks)} icon={ListTodo} tone="violet" to="/dashboard/tasks?status=pending" />
         </div>
       </div>
+      )}
 
       {/* Finance summary */}
+      {showW("financial_summary", "financial_panel") && (
       <div className="space-y-3">
         <SectionHeading title="আর্থিক বিবরণ" hint="বর্তমান মাস" />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -1067,6 +1061,7 @@ const Dashboard = () => {
           <MetricTile label="ব্যয়" value={fmt(d?.expTM)} icon={TrendingDown} tone="rose" />
         </div>
       </div>
+      )}
 
       {/* 12-month trend (2/3) + compact বকেয়া list (1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
