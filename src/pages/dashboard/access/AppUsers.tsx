@@ -58,19 +58,29 @@ export default function AppUsers() {
 
   const load = async () => {
     setLoading(true);
-    const [u, e, r] = await Promise.all([
+    const [u, e, r, x] = await Promise.all([
       supabase
         .from("app_users")
         .select("id, username, status, employee_id, role_id, created_at, employee:employees(id,name,employee_id), role:app_roles(id,name)")
         .order("created_at", { ascending: false }),
-      supabase.from("employees").select("id,name,employee_id").eq("status", "Active").order("name"),
+      supabase.from("employees").select("id,name,employee_id,status").ilike("status", "active").order("name"),
       supabase.from("app_roles").select("id,name,is_protected,status").eq("status", "Active").order("name"),
+      supabase.from("app_user_extra_roles").select("user_id, role_id, role:app_roles(id,name)"),
     ]);
-    if (u.error) toast.error(u.error.message); else setUsers((u.data as any) || []);
+    if (u.error) toast.error(u.error.message); else {
+      const list = (u.data as any[]) || [];
+      const byUser: Record<string, any[]> = {};
+      ((x.data as any[]) || []).forEach((er) => {
+        (byUser[er.user_id] ||= []).push(er);
+      });
+      setUsers(list.map((row) => ({ ...row, extra_roles: byUser[row.id] || [] })));
+      setTakenEmployeeIds(new Set(list.map((r2) => r2.employee_id).filter(Boolean)));
+    }
     if (!e.error) setEmployees((e.data as any) || []);
     if (!r.error) setRoles((r.data as any) || []);
     setLoading(false);
   };
+
 
   useEffect(() => { load(); }, []);
 
