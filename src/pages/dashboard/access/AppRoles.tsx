@@ -29,7 +29,11 @@ interface Module {
   permission: string;
 }
 
-const PERMISSION_LEVELS = ["view", "edit", "delete"] as const;
+const PERMISSION_LEVELS: { value: "read" | "write" | "full"; label: string }[] = [
+  { value: "read",  label: "শুধু দেখা" },
+  { value: "write", label: "এডিট" },
+  { value: "full",  label: "পূর্ণ (ডিলিট সহ)" },
+];
 
 export default function AppRoles() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -216,12 +220,12 @@ export default function AppRoles() {
                             </label>
                             <select
                               disabled={isReadOnly || !m.enabled}
-                              value={m.permission}
+                              value={["read","write","full"].includes(m.permission) ? m.permission : "read"}
                               onChange={(e) => updateModule(m.id, { permission: e.target.value })}
                               className="text-xs border rounded px-2 py-1 bg-background disabled:opacity-50"
                             >
                               {PERMISSION_LEVELS.map((p) => (
-                                <option key={p} value={p}>{p}</option>
+                                <option key={p.value} value={p.value}>{p.label}</option>
                               ))}
                             </select>
                           </div>
