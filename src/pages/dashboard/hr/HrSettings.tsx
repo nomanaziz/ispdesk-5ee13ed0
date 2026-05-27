@@ -271,6 +271,15 @@ export default function HrSettings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="departments" className="mt-4"><Departments /></TabsContent>
+        <TabsContent value="positions" className="mt-4"><Positions /></TabsContent>
+        <TabsContent value="payheads" className="mt-4"><Payheads /></TabsContent>
+        <TabsContent value="attendance-rules" className="mt-4"><AttendanceRules /></TabsContent>
+        <TabsContent value="shifts" className="mt-4"><ShiftManagement /></TabsContent>
+        <TabsContent value="zkteco" className="mt-4"><ZktecoDevices /></TabsContent>
+        <TabsContent value="facility-policies" className="mt-4"><FacilityPolicies /></TabsContent>
+        <TabsContent value="resign-rules" className="mt-4"><ResignRules /></TabsContent>
       </Tabs>
     </div>
   );
