@@ -434,16 +434,17 @@ export default function PayslipManager() {
             <div className="space-y-2 p-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
           ) : (
             <div className="overflow-x-auto">
+            <TooltipProvider delayDuration={200}>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-10"></TableHead>
-                    <TableHead className="min-w-[160px]">কর্মী</TableHead>
-                    <TableHead className="hidden md:table-cell">টেমপ্লেট</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">পেহেডস টোটাল</TableHead>
-                    <TableHead className="hidden sm:table-cell text-right whitespace-nowrap">পরিশোধিত / বকেয়া</TableHead>
-                    <TableHead className="whitespace-nowrap">স্ট্যাটাস</TableHead>
-                    <TableHead className="w-20 text-right">অ্যাকশন</TableHead>
+                    <TableHead className="w-full">কর্মী</TableHead>
+                    <TableHead className="hidden md:table-cell whitespace-nowrap w-[1%]">টেমপ্লেট</TableHead>
+                    <TableHead className="text-right whitespace-nowrap w-[1%]">টোটাল</TableHead>
+                    <TableHead className="hidden sm:table-cell text-right whitespace-nowrap w-[1%]">পরিশোধিত / বকেয়া</TableHead>
+                    <TableHead className="whitespace-nowrap w-[1%]">স্ট্যাটাস</TableHead>
+                    <TableHead className="text-right whitespace-nowrap w-[1%]">অ্যাকশন</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -464,6 +465,17 @@ export default function PayslipManager() {
                     const isPaid = pStatus === "paid";
                     const isPartial = pStatus === "partial" || (paid > 0 && due > 0);
 
+                    const IconBtn = ({ label, color, onClick, children }: any) => (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="icon" variant="ghost" className={`h-7 w-7 ${color || ""}`} onClick={onClick}>
+                            {children}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{label}</TooltipContent>
+                      </Tooltip>
+                    );
+
                     return (
                       <TableRow key={emp.id} className="text-sm">
                         <TableCell className="py-2">
@@ -475,9 +487,9 @@ export default function PayslipManager() {
                             <div className="text-xs text-muted-foreground font-mono">{emp.employee_id}</div>
                           </button>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell py-2">
+                        <TableCell className="hidden md:table-cell py-2 whitespace-nowrap">
                           <div className="text-xs">{periodLabel(month)}</div>
-                          <div className="text-xs text-muted-foreground truncate max-w-[180px]">{tplName}</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[160px]">{tplName}</div>
                         </TableCell>
                         <TableCell className="py-2 text-right whitespace-nowrap">
                           <span className="font-semibold">৳{total.toLocaleString()}</span>
@@ -487,7 +499,7 @@ export default function PayslipManager() {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell py-2 text-right whitespace-nowrap text-xs">
+                        <TableCell className="hidden sm:table-cell py-2 text-right whitespace-nowrap text-xs leading-tight">
                           {ex ? (
                             <>
                               <div className="text-green-600">৳{paid.toLocaleString()}</div>
@@ -495,7 +507,7 @@ export default function PayslipManager() {
                             </>
                           ) : <span className="text-muted-foreground">—</span>}
                         </TableCell>
-                        <TableCell className="py-2">
+                        <TableCell className="py-2 whitespace-nowrap">
                           {ex ? (
                             <Badge
                               variant={isPaid ? "default" : "outline"}
@@ -508,34 +520,30 @@ export default function PayslipManager() {
                             </Badge>
                           ) : <Badge variant="outline" className="text-muted-foreground">তৈরি হয়নি</Badge>}
                         </TableCell>
-                        <TableCell className="py-2 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button size="icon" variant="ghost" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
-                              <DropdownMenuItem onClick={() => openEdit(emp)}>
-                                <Edit2 className="h-4 w-4 mr-2 text-amber-600" /> পে-হেডস এডিট
-                              </DropdownMenuItem>
-                              {ex && (
-                                <DropdownMenuItem onClick={() => setPreviewId(ex.id)}>
-                                  <Eye className="h-4 w-4 mr-2 text-blue-600" /> পে-স্লিপ দেখুন
-                                </DropdownMenuItem>
-                              )}
-                              {ex && !isPaid && (
-                                <DropdownMenuItem onClick={() => setPayDialog(ex)}>
-                                  <Receipt className="h-4 w-4 mr-2 text-green-600" /> পেমেন্ট নিন
-                                </DropdownMenuItem>
-                              )}
-                              {ex && (
-                                <DropdownMenuItem onClick={() => window.open(`/dashboard/hr/payslip/print?ids=${ex.id}`, "_blank")}>
-                                  <Download className="h-4 w-4 mr-2" /> PDF ডাউনলোড
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={async () => {
+                        <TableCell className="py-2 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-0.5">
+                            <IconBtn label="পে-হেডস এডিট" color="text-amber-600" onClick={() => openEdit(emp)}>
+                              <Edit2 className="h-4 w-4" />
+                            </IconBtn>
+                            {ex && (
+                              <IconBtn label="পে-স্লিপ দেখুন" color="text-blue-600" onClick={() => setPreviewId(ex.id)}>
+                                <Eye className="h-4 w-4" />
+                              </IconBtn>
+                            )}
+                            {ex && !isPaid && (
+                              <IconBtn label="পেমেন্ট নিন" color="text-green-600" onClick={() => setPayDialog(ex)}>
+                                <Receipt className="h-4 w-4" />
+                              </IconBtn>
+                            )}
+                            {ex && (
+                              <IconBtn label="PDF ডাউনলোড" onClick={() => window.open(`/dashboard/hr/payslip/print?ids=${ex.id}`, "_blank")}>
+                                <Download className="h-4 w-4" />
+                              </IconBtn>
+                            )}
+                            <IconBtn
+                              label={ex ? "পুনঃজেনারেট" : "জেনারেট"}
+                              color="text-orange-600"
+                              onClick={async () => {
                                 try {
                                   const overrides = ex?.adjustments && Array.isArray(ex.adjustments) ? ex.adjustments : [];
                                   await persistPayroll(emp, overrides, { regenerate: !!ex });
@@ -543,17 +551,17 @@ export default function PayslipManager() {
                                   toast.success(ex ? "পুনঃজেনারেট হয়েছে" : "জেনারেট হয়েছে");
                                 } catch (e: any) { toast.error(e.message); }
                               }}>
-                                <RefreshCw className="h-4 w-4 mr-2 text-orange-600" />
-                                {ex ? "পুনঃজেনারেট" : "জেনারেট"}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                              <RefreshCw className="h-4 w-4" />
+                            </IconBtn>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
                   })}
                 </TableBody>
               </Table>
+            </TooltipProvider>
+
             </div>
           )}
         </CardContent>
