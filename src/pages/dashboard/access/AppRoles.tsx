@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Plus, Trash2, Lock, Save } from "lucide-react";
+import RoleFeaturePanels from "./RoleFeaturePanels";
 
 interface Role {
   id: string;
@@ -235,6 +236,8 @@ export default function AppRoles() {
                   ))
                 )}
               </div>
+
+              <RoleFeaturePanels roleId={selected.id} readOnly={!!isReadOnly} />
             </>
           )}
         </Card>
