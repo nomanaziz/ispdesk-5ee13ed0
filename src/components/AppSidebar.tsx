@@ -902,7 +902,7 @@ export function AppSidebar() {
     setOpenGroupKey((prev) => (prev === key ? null : key));
   };
 
-  const { isEmployeeOnly } = useEmployeeContext();
+  const { isEmployeeOnly, isEmployee, appUser } = useEmployeeContext();
 
   const EMPLOYEE_GROUP: MenuGroup = {
     label: "আমার প্যানেল",
@@ -924,9 +924,15 @@ export function AppSidebar() {
 
   const perms = useModulePermissions();
 
+  // "আমার প্যানেল" শুধুমাত্র Employee role যুক্ত app_user এর জন্য।
+  // Super Admin / Admin / Operator (যাদের employee record নাই) এই panel দেখবে না।
+  const showEmployeePanel = isEmployee || !!appUser?.employee_id;
+
   const orderedGroups = useMemo(() => {
     if (isEmployeeOnly) return [EMPLOYEE_GROUP];
-    const baseGroups = [EMPLOYEE_GROUP, ...menuGroups];
+    const baseGroups = showEmployeePanel
+      ? [EMPLOYEE_GROUP, ...menuGroups]
+      : [...menuGroups];
 
     // Permission filter: Super Admin sees all; others only see groups
     // whose mapped module has at least 'read'. Always-visible groups
@@ -948,7 +954,7 @@ export function AppSidebar() {
     return finalOrder
       .map((l) => allowed.find((g) => g.label === l)!)
       .filter(Boolean);
-  }, [savedOrder, isEmployeeOnly, perms.loading, perms.isSuperAdmin, perms.map]);
+  }, [savedOrder, isEmployeeOnly, showEmployeePanel, perms.loading, perms.isSuperAdmin, perms.map]);
 
   const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
