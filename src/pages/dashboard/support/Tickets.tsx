@@ -53,19 +53,6 @@ export default function Tickets() {
   const [tab, setTab] = useState("accepted");
   const [search, setSearch] = useState("");
   const [newTicketOpen, setNewTicketOpen] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
-  useEffect(() => {
-    if (searchParams.get("new") === "1") {
-      setNewTicketOpen(true);
-      searchParams.delete("new");
-      setSearchParams(searchParams, { replace: true });
-    }
-    if (searchParams.get("mine") === "1") {
-      setMyOnly(true);
-      searchParams.delete("mine");
-      setSearchParams(searchParams, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [conversationOpen, setConversationOpen] = useState(false);
   const [solveDialogOpen, setSolveDialogOpen] = useState(false);
@@ -80,6 +67,19 @@ export default function Tickets() {
   const [assignSearch, setAssignSearch] = useState("");
   const [assignSms, setAssignSms] = useState(true);
   const [newComment, setNewComment] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setNewTicketOpen(true);
+      searchParams.delete("new");
+      setSearchParams(searchParams, { replace: true });
+    }
+    if (searchParams.get("mine") === "1") {
+      setMyOnly(true);
+      searchParams.delete("mine");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // New ticket form
   const [ticketForm, setTicketForm] = useState({
