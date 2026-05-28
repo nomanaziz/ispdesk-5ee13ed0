@@ -19,6 +19,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Save, ArrowLeft, AlertTriangle } from "lucide-react";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
+import { useBillingMode } from "@/lib/billingPolicy";
 
 export default function AddClient() {
   const navigate = useNavigate();
@@ -47,6 +48,7 @@ export default function AddClient() {
     username: "", remote_address: "", password: "", joining_date: format(new Date(), "yyyy-MM-dd"),
     monthly_bill: 0, billing_start_month: format(new Date(), "yyyy-MM"), expire_day: "10",
     reference_by: "", is_vip: false, connected_by: "", installed_by_ids: [] as string[],
+    billing_policy: "monthly",
     same_address: false,
     // Corporate-only fields
     company_name: "", trade_license_no: "", contact_person: "",
@@ -137,6 +139,7 @@ export default function AddClient() {
         installed_by_ids: prefill.installed_by_ids || prev.installed_by_ids,
         billing_start_month: prefill.billing_start_month || prev.billing_start_month,
         billing_status: prefill.billing_status || prev.billing_status,
+        billing_policy: (prefill.billing_policy === "date_to_date" ? "date_to_date" : "monthly"),
         is_vip: prefill.is_vip ?? prev.is_vip,
         joining_date: prefill.joining_date || prev.joining_date,
         reference_by: prefill.reference_by ?? prev.reference_by,
@@ -427,6 +430,7 @@ export default function AddClient() {
         connected_by: form.connected_by || null,
         installed_by_ids: form.installed_by_ids && form.installed_by_ids.length > 0 ? form.installed_by_ids : null,
         expire_day: form.billing_status === "Active" ? Number(form.expire_day || 10) : null,
+        billing_policy: form.billing_policy === "date_to_date" ? "date_to_date" : "monthly",
         mikrotik_status: mikrotikStatus,
         photo_url: photoUrl,
         // Branch + geo: POP-mode uses POP profile; Admin-mode auto-derives district/upazila/division from selected zone
