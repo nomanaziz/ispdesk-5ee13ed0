@@ -58,6 +58,23 @@ export default function RoleFeaturePanels({ roleId, readOnly }: Props) {
     }
   };
 
+  const toggleAll = async (scope: string, group: FeatureGroup, value: boolean) => {
+    if (readOnly) return;
+    const next = { ...features };
+    const rows = group.items.map((item) => {
+      next[makeKey(scope, group.scopeKey, item.key)] = value;
+      return { role_id: roleId, scope, scope_key: group.scopeKey, feature_key: item.key, enabled: value, updated_at: new Date().toISOString() };
+    });
+    setFeatures(next);
+    const { error } = await supabase
+      .from("app_role_features" as any)
+      .upsert(rows, { onConflict: "role_id,scope,scope_key,feature_key" });
+    if (error) {
+      toast.error(error.message);
+      load();
+    }
+  };
+
   const renderGroup = (scope: string, group: FeatureGroup) => {
     const groupId = `${scope}|${group.scopeKey}`;
     const isOpen = openGroups[groupId] ?? false;
@@ -66,21 +83,30 @@ export default function RoleFeaturePanels({ roleId, readOnly }: Props) {
     ).length;
     // Determine: if no rows exist for this group at all → "ডিফল্ট (সব চালু)"
     const hasAnyRow = group.items.some((i) => makeKey(scope, group.scopeKey, i.key) in features);
+    const allOn = hasAnyRow && enabledCount === group.items.length;
 
     return (
       <div key={groupId} className="border rounded-md">
-        <button
-          onClick={() => setOpenGroups((p) => ({ ...p, [groupId]: !isOpen }))}
-          className="w-full flex items-center justify-between p-3 hover:bg-muted/50 text-sm"
-        >
-          <div className="flex items-center gap-2">
+        <div className="w-full flex items-center justify-between p-3 hover:bg-muted/30 text-sm gap-2">
+          <button
+            onClick={() => setOpenGroups((p) => ({ ...p, [groupId]: !isOpen }))}
+            className="flex items-center gap-2 flex-1 text-left min-w-0"
+          >
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            <span className="font-medium">{group.label}</span>
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {hasAnyRow ? `${enabledCount}/${group.items.length} চালু` : "ডিফল্ট (সব চালু)"}
-          </span>
-        </button>
+            <span className="font-medium truncate">{group.label}</span>
+            <span className="text-xs text-muted-foreground ml-2 shrink-0">
+              {hasAnyRow ? `${enabledCount}/${group.items.length}` : "ডিফল্ট"}
+            </span>
+          </button>
+          <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0" onClick={(e) => e.stopPropagation()}>
+            সব
+            <Switch
+              checked={!hasAnyRow ? true : allOn}
+              disabled={readOnly}
+              onCheckedChange={(c) => toggleAll(scope, group, !!c)}
+            />
+          </label>
+        </div>
         {isOpen && (
           <div className="border-t p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
             {group.items.map((item) => {
@@ -102,6 +128,7 @@ export default function RoleFeaturePanels({ roleId, readOnly }: Props) {
       </div>
     );
   };
+
 
   if (loading) {
     return <p className="text-xs text-muted-foreground">লোড হচ্ছে...</p>;
