@@ -33,6 +33,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useModulePermissions } from "@/hooks/useModulePermissions";
 import { GROUP_MODULE, ALWAYS_VISIBLE_GROUPS } from "@/lib/menuModuleMap";
+import { ITEM_MODULE } from "@/lib/menuItemModuleMap";
 
 export interface MenuItem { title: string; url: string; icon: LucideIcon; titleEn?: string; }
 export interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[]; defaultOpen?: boolean; direct?: boolean; labelEn?: string; color?: string; }
@@ -934,18 +935,28 @@ export function AppSidebar() {
       ? [EMPLOYEE_GROUP, ...menuGroups]
       : [...menuGroups];
 
-    // Permission filter: Super Admin sees all; others only see groups
-    // whose mapped module has at least 'read'. Always-visible groups
-    // (e.g. employee self-service panel) bypass the check.
-    const allowed = perms.loading
-      ? [] // hide all menus until permissions resolved (prevents flash of full menu)
-      : baseGroups.filter((g) => {
-          if (perms.isSuperAdmin) return true;
-          if (ALWAYS_VISIBLE_GROUPS.has(g.label)) return true;
-          const mod = GROUP_MODULE[g.label];
-          if (!mod) return false; // unmapped → hide for safety
-          return perms.canRead(mod);
+    // Permission filter:
+    //  - Super Admin/Admin: সব দেখাবে
+    //  - Always-visible group (e.g. employee self-service): সব item দেখাবে
+    //  - অন্যথায়: প্রতিটি item ITEM_MODULE map অনুযায়ী filter; map-এ না থাকলে
+    //    parent group-এর permission check fallback হিসেবে কাজ করবে।
+    //  - Group তখনই দেখাবে যখন তার অন্তত একটা item allowed।
+    if (perms.loading) return []; // hide until resolved
+    const allowed = baseGroups
+      .map((g) => {
+        if (perms.isSuperAdmin) return g;
+        if (ALWAYS_VISIBLE_GROUPS.has(g.label)) return g;
+        const groupMod = GROUP_MODULE[g.label];
+        const groupHasAccess = groupMod ? perms.canRead(groupMod) : false;
+        const items = g.items.filter((it) => {
+          const m = ITEM_MODULE[it.url];
+          if (m) return perms.canReadItem(m.group, m.name);
+          return groupHasAccess; // unmapped item → fallback to group permission
         });
+        if (items.length === 0) return null;
+        return { ...g, items };
+      })
+      .filter(Boolean) as MenuGroup[];
 
     const allLabels = allowed.map((g) => g.label);
     const validSaved = savedOrder.filter((l) => allLabels.includes(l));
@@ -954,7 +965,7 @@ export function AppSidebar() {
     return finalOrder
       .map((l) => allowed.find((g) => g.label === l)!)
       .filter(Boolean);
-  }, [savedOrder, isEmployeeOnly, showEmployeePanel, perms.loading, perms.isSuperAdmin, perms.map]);
+  }, [savedOrder, isEmployeeOnly, showEmployeePanel, perms.loading, perms.isSuperAdmin, perms.map, perms.itemMap]);
 
   const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
