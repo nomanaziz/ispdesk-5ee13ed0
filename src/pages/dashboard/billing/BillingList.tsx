@@ -70,6 +70,8 @@ const currentMonth = () => {
 export default function BillingList() {
   const queryClient = useQueryClient();
   const { isPopMode, branchId } = usePopScope();
+  const perms = useModulePermissions();
+  const canReceive = perms.isSuperAdmin || perms.canWriteItem("CLIENTS", "Billing List") || perms.canWriteItem("CLIENTS", "Daily Collection");
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<BillingFilters>(() => {
     const f: BillingFilters = { ...defaultFilters, month: searchParams.get("month") || currentMonth() };
