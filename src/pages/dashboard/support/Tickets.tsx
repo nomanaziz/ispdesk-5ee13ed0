@@ -446,11 +446,13 @@ export default function Tickets() {
   const statusClass = (s: string) => {
     if (s === "solved") return "bg-green-600 text-white hover:bg-green-700";
     if (s === "processing") return "bg-orange-500 text-white hover:bg-orange-600 cursor-pointer";
+    if (s === "pending_approval") return "bg-purple-600 text-white hover:bg-purple-700";
     return "bg-yellow-500 text-white hover:bg-yellow-600";
   };
 
   const openSolveDialog = (t: any) => {
     setSolveTicket(t);
+    setResolutionNote(t.resolution_note || "");
     setSolveDialogOpen(true);
   };
 
