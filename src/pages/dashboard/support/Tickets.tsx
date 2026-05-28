@@ -424,6 +424,7 @@ export default function Tickets() {
     if (tab === "bw" && t.source !== "bw_reseller") return false;
     if (tab === "mac" && t.source !== "reseller") return false;
     if (tab === "pending" && t.status !== "pending") return false;
+    if (tab === "approval" && t.status !== "pending_approval") return false;
     if (tab === "accepted" && (t.source === "bw_reseller" || t.source === "reseller")) return false;
     if (myOnly && user?.id) {
       const mine = t.created_by === user.id || allAssignees.some((a: any) => a.ticket_id === t.id && (a.employees as any)?.sub_user_id === user.id);
