@@ -749,6 +749,7 @@ const Dashboard = () => {
   const { isEmployeeOnly, loading: empLoading } = useEmployeeContext();
   const { data: d, isLoading } = useStats();
   const dashPerm = useModulePermission("Dashboard");
+  const { canWidget } = useFeatureFlags();
   if (empLoading || dashPerm.loading) return null;
   if (isEmployeeOnly) return <Navigate to="/dashboard/me" replace />;
   // Non-admin without Dashboard module permission → send to their own panel.
@@ -782,9 +783,8 @@ const Dashboard = () => {
   const paidPct = d && d.billingMonthRows > 0 ? (d.paidClients / d.billingMonthRows) * 100 : 0;
   const collectionPct = d && d.totalBillAmount > 0 ? (d.totalPaidAmount / d.totalBillAmount) * 100 : 0;
 
-  // Widget visibility per role
-  const { canWidget } = useFeatureFlags();
   const showW = (section: string, key: string) => canWidget(section, key);
+
 
   if (isLoading) {
     return (
