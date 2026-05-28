@@ -22,6 +22,8 @@ const today = () => new Date().toISOString().slice(0, 10);
 export default function DailyCollection() {
   const queryClient = useQueryClient();
   const { isPopMode, branchId } = usePopScope();
+  const perms = useModulePermissions();
+  const canReceive = perms.isSuperAdmin || perms.canWriteItem("CLIENTS", "Daily Collection") || perms.canWriteItem("CLIENTS", "Billing List");
   const [fromDate, setFromDate] = useState(today());
   const [toDate, setToDate] = useState(today());
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
