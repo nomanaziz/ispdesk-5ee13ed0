@@ -108,7 +108,7 @@ export default function Tickets() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("support_tickets")
-        .select("*, support_categories(name), clients(name, client_id, contact, username), zones(name)")
+        .select("*, support_categories(name), clients(name, client_id, contact, username, billing_status, mac_address, remote_address, is_online), zones(name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
