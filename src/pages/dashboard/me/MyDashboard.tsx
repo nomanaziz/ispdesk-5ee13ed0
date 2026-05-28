@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User, Wallet, Calendar, ClipboardCheck } from "lucide-react";
+import { User, Wallet, Calendar, ClipboardCheck, TicketCheck } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function MyDashboard() {
   const { employee, primaryRoleName, extraRoleNames, widgetPermissions, loading } = useEmployeeContext();
@@ -47,6 +48,30 @@ export default function MyDashboard() {
     },
   });
   const leaveLeft = (leaveBalance ?? []).reduce((s, l: any) => s + Number(l.remaining_days || 0), 0);
+
+  // My assigned tickets (open / in-progress)
+  const { data: myTickets } = useQuery({
+    queryKey: ["my-assigned-tickets", empId],
+    enabled: !!empId,
+    queryFn: async () => {
+      const { data: links } = await supabase
+        .from("support_ticket_assignees")
+        .select("ticket_id")
+        .eq("employee_id", empId!);
+      const ids = (links ?? []).map((l: any) => l.ticket_id);
+      if (ids.length === 0) return { open: 0, processing: 0, pendingApproval: 0 };
+      const { data: ts } = await supabase
+        .from("support_tickets")
+        .select("id, status")
+        .in("id", ids);
+      const arr = (ts ?? []) as any[];
+      return {
+        open: arr.filter((t) => t.status === "pending" || t.status === "processing").length,
+        processing: arr.filter((t) => t.status === "processing").length,
+        pendingApproval: arr.filter((t) => t.status === "pending_approval").length,
+      };
+    },
+  });
 
   if (loading) return <div className="space-y-3">{[...Array(2)].map((_, i) => <Skeleton key={i} className="h-32" />)}</div>;
   if (!employee) {
@@ -114,6 +139,28 @@ export default function MyDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Assigned tickets — for employees who handle support */}
+      {(myTickets?.open ?? 0) + (myTickets?.pendingApproval ?? 0) > 0 && (
+        <Link to="/dashboard/support/tickets?mine=1" className="block">
+          <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 hover:shadow-md transition-shadow">
+            <CardContent className="p-4 flex items-center gap-4">
+              <TicketCheck className="h-10 w-10 text-orange-600" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs">আমাকে অ্যাসাইন করা টিকেট</div>
+                <p className="text-2xl font-bold mt-1">{myTickets?.open ?? 0} টি চলমান</p>
+                <div className="flex gap-2 mt-1 text-xs">
+                  <Badge variant="outline">প্রসেসিং: {myTickets?.processing ?? 0}</Badge>
+                  {(myTickets?.pendingApproval ?? 0) > 0 && (
+                    <Badge className="bg-purple-600 text-white">অনুমোদনের অপেক্ষায়: {myTickets?.pendingApproval}</Badge>
+                  )}
+                </div>
+              </div>
+              <Badge variant="outline" className="text-xs">দেখুন →</Badge>
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       {/* Extra widgets if admin granted any */}
       {widgetPermissions.length > 0 && (

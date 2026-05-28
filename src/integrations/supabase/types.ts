@@ -11074,18 +11074,24 @@ export type Database = {
       }
       support_tickets: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           assigned_to: string | null
           attachments: string[] | null
           box: string | null
           category_id: string | null
           client_id: string | null
+          client_online_at_solve: boolean | null
           complain_no: string | null
           created_at: string
           created_by: string | null
           description: string | null
           id: string
+          pending_approval_at: string | null
+          pending_approval_by: string | null
           priority: string | null
           processing_started_at: string | null
+          resolution_note: string | null
           resolved_at: string | null
           sms_notified: boolean | null
           solved_at: string | null
@@ -11100,18 +11106,24 @@ export type Database = {
           zone_id: string | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           assigned_to?: string | null
           attachments?: string[] | null
           box?: string | null
           category_id?: string | null
           client_id?: string | null
+          client_online_at_solve?: boolean | null
           complain_no?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
+          pending_approval_at?: string | null
+          pending_approval_by?: string | null
           priority?: string | null
           processing_started_at?: string | null
+          resolution_note?: string | null
           resolved_at?: string | null
           sms_notified?: boolean | null
           solved_at?: string | null
@@ -11126,18 +11138,24 @@ export type Database = {
           zone_id?: string | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           assigned_to?: string | null
           attachments?: string[] | null
           box?: string | null
           category_id?: string | null
           client_id?: string | null
+          client_online_at_solve?: boolean | null
           complain_no?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
+          pending_approval_at?: string | null
+          pending_approval_by?: string | null
           priority?: string | null
           processing_started_at?: string | null
+          resolution_note?: string | null
           resolved_at?: string | null
           sms_notified?: boolean | null
           solved_at?: string | null

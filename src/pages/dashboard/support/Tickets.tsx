@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEmployeeContext } from "@/hooks/useEmployeeContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, MessageSquare, Trash2, Users, TicketCheck, Clock, CheckCircle2, AlertTriangle, Send, FolderOpen, Play, X } from "lucide-react";
+import { Plus, Search, MessageSquare, Trash2, Users, TicketCheck, Clock, CheckCircle2, AlertTriangle, Send, FolderOpen, Play, X, ThumbsUp, ThumbsDown, Wifi, WifiOff } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -47,10 +48,25 @@ function LiveElapsed({ start, className = "" }: { start: string; className?: str
 
 export default function Tickets() {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const { isEmployee, isEmployeeOnly } = useEmployeeContext();
   const [tab, setTab] = useState("accepted");
   const [search, setSearch] = useState("");
   const [newTicketOpen, setNewTicketOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [conversationOpen, setConversationOpen] = useState(false);
+  const [solveDialogOpen, setSolveDialogOpen] = useState(false);
+  const [solveTicket, setSolveTicket] = useState<any>(null);
+  const [resolutionNote, setResolutionNote] = useState("");
+  // Default ON for employees so they only see their assigned tickets
+  const [myOnly, setMyOnly] = useState(isEmployeeOnly);
+  useEffect(() => { if (isEmployeeOnly) setMyOnly(true); }, [isEmployeeOnly]);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
+  const [assignDept, setAssignDept] = useState<string>("");
+  const [assignSearch, setAssignSearch] = useState("");
+  const [assignSms, setAssignSms] = useState(true);
+  const [newComment, setNewComment] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     if (searchParams.get("new") === "1") {
@@ -58,18 +74,12 @@ export default function Tickets() {
       searchParams.delete("new");
       setSearchParams(searchParams, { replace: true });
     }
+    if (searchParams.get("mine") === "1") {
+      setMyOnly(true);
+      searchParams.delete("mine");
+      setSearchParams(searchParams, { replace: true });
+    }
   }, [searchParams, setSearchParams]);
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
-  const [conversationOpen, setConversationOpen] = useState(false);
-  const [solveDialogOpen, setSolveDialogOpen] = useState(false);
-  const [solveTicket, setSolveTicket] = useState<any>(null);
-  const [myOnly, setMyOnly] = useState(false);
-  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
-  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
-  const [assignDept, setAssignDept] = useState<string>("");
-  const [assignSearch, setAssignSearch] = useState("");
-  const [assignSms, setAssignSms] = useState(true);
-  const [newComment, setNewComment] = useState("");
 
   // New ticket form
   const [ticketForm, setTicketForm] = useState({
@@ -98,7 +108,7 @@ export default function Tickets() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("support_tickets")
-        .select("*, support_categories(name), clients(name, client_id, contact, username), zones(name)")
+        .select("*, support_categories(name), clients(name, client_id, contact, username, billing_status, mac_address, remote_address, is_online), zones(name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -213,6 +223,7 @@ export default function Tickets() {
       total: thisMonth.length,
       pending: tickets.filter((t: any) => t.status === "pending").length,
       processing: tickets.filter((t: any) => t.status === "processing").length,
+      pendingApproval: tickets.filter((t: any) => t.status === "pending_approval").length,
       solved: tickets.filter((t: any) => t.status === "solved").length,
     };
   }, [tickets]);
@@ -320,17 +331,72 @@ export default function Tickets() {
     },
   });
 
-  // Resolve
+  // Resolve / mark for approval. Employees → pending_approval, admins → solved directly.
   const resolveMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("support_tickets").update({ status: "solved", solved_at: new Date().toISOString(), solved_by: user?.id || null }).eq("id", id);
+      const t = tickets.find((x: any) => x.id === id);
+      const clientOnline = (t?.clients as any)?.is_online ?? null;
+      const goPendingApproval = isEmployee && !isAdmin;
+      const payload: any = goPendingApproval
+        ? {
+            status: "pending_approval",
+            pending_approval_at: new Date().toISOString(),
+            pending_approval_by: user?.id || null,
+            resolution_note: resolutionNote || null,
+            client_online_at_solve: clientOnline,
+          }
+        : {
+            status: "solved",
+            solved_at: new Date().toISOString(),
+            solved_by: user?.id || null,
+            approved_by: user?.id || null,
+            approved_at: new Date().toISOString(),
+            resolution_note: resolutionNote || null,
+            client_online_at_solve: clientOnline,
+          };
+      const { error } = await supabase.from("support_tickets").update(payload).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("টিকেট সমাধান হয়েছে");
+      toast.success(isEmployee && !isAdmin ? "অনুমোদনের জন্য পাঠানো হয়েছে" : "টিকেট সমাধান হয়েছে");
       qc.invalidateQueries({ queryKey: ["support_tickets"] });
       setSolveDialogOpen(false);
       setSolveTicket(null);
+      setResolutionNote("");
+    },
+  });
+
+  // Approve a pending_approval ticket → solved
+  const approveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("support_tickets").update({
+        status: "solved",
+        solved_at: new Date().toISOString(),
+        solved_by: user?.id || null,
+        approved_by: user?.id || null,
+        approved_at: new Date().toISOString(),
+      }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("অনুমোদিত — টিকেট সমাধান");
+      qc.invalidateQueries({ queryKey: ["support_tickets"] });
+    },
+  });
+
+  // Reject pending_approval → back to processing
+  const rejectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("support_tickets").update({
+        status: "processing",
+        pending_approval_at: null,
+        pending_approval_by: null,
+      }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("অনুমোদন বাতিল — টিকেট পুনরায় চালু");
+      qc.invalidateQueries({ queryKey: ["support_tickets"] });
     },
   });
 
@@ -358,6 +424,7 @@ export default function Tickets() {
     if (tab === "bw" && t.source !== "bw_reseller") return false;
     if (tab === "mac" && t.source !== "reseller") return false;
     if (tab === "pending" && t.status !== "pending") return false;
+    if (tab === "approval" && t.status !== "pending_approval") return false;
     if (tab === "accepted" && (t.source === "bw_reseller" || t.source === "reseller")) return false;
     if (myOnly && user?.id) {
       const mine = t.created_by === user.id || allAssignees.some((a: any) => a.ticket_id === t.id && (a.employees as any)?.sub_user_id === user.id);
@@ -379,11 +446,13 @@ export default function Tickets() {
   const statusClass = (s: string) => {
     if (s === "solved") return "bg-green-600 text-white hover:bg-green-700";
     if (s === "processing") return "bg-orange-500 text-white hover:bg-orange-600 cursor-pointer";
+    if (s === "pending_approval") return "bg-purple-600 text-white hover:bg-purple-700";
     return "bg-yellow-500 text-white hover:bg-yellow-600";
   };
 
   const openSolveDialog = (t: any) => {
     setSolveTicket(t);
+    setResolutionNote(t.resolution_note || "");
     setSolveDialogOpen(true);
   };
 
@@ -434,6 +503,7 @@ export default function Tickets() {
         <TabsList>
           <TabsTrigger value="accepted">Accepted (Client's)</TabsTrigger>
           <TabsTrigger value="pending">Pending ({stats.pending})</TabsTrigger>
+          <TabsTrigger value="approval">Approval ({stats.pendingApproval})</TabsTrigger>
           <TabsTrigger value="mac">MAC Reseller's</TabsTrigger>
           <TabsTrigger value="bw">Bandwidth POP's</TabsTrigger>
         </TabsList>
@@ -547,15 +617,25 @@ export default function Tickets() {
                         ) : formatDuration(t.created_at, t.solved_at)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1 items-center">
+                        <div className="flex gap-1 items-center flex-wrap">
                           {canStart && (
                             <Button size="sm" className="h-7 px-2 text-[10px] bg-blue-600 hover:bg-blue-700 text-white" onClick={() => startWorkingMutation.mutate(t.id)}>
                               <Play className="h-3 w-3 mr-1" />Start
                             </Button>
                           )}
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openConversation(t.id)}><MessageSquare className="h-4 w-4" /></Button>
-                          {t.status !== "solved" && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSolveDialog(t)}><CheckCircle2 className="h-4 w-4 text-green-500" /></Button>
+                          {t.status !== "solved" && t.status !== "pending_approval" && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSolveDialog(t)} title="Mark as solved"><CheckCircle2 className="h-4 w-4 text-green-500" /></Button>
+                          )}
+                          {t.status === "pending_approval" && isAdmin && (
+                            <>
+                              <Button size="sm" className="h-7 px-2 text-[10px] bg-green-600 hover:bg-green-700 text-white" onClick={() => approveMutation.mutate(t.id)} title="Approve">
+                                <ThumbsUp className="h-3 w-3 mr-1" />Approve
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => rejectMutation.mutate(t.id)} title="Reject">
+                                <ThumbsDown className="h-3 w-3 mr-1" />Reject
+                              </Button>
+                            </>
                           )}
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteMutation.mutate(t.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
@@ -754,43 +834,70 @@ export default function Tickets() {
       </Dialog>
 
       {/* Solve Confirmation Dialog */}
-      <Dialog open={solveDialogOpen} onOpenChange={setSolveDialogOpen}>
+      <Dialog open={solveDialogOpen} onOpenChange={(o) => { setSolveDialogOpen(o); if (!o) setResolutionNote(""); }}>
         <DialogContent className="max-w-xl">
-          <DialogHeader><DialogTitle>Press Yes if solved</DialogTitle></DialogHeader>
-          {solveTicket && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">CONNECTIVITY STATUS</Label>
-                  <Input readOnly value={(solveTicket.clients as any)?.billing_status === "active" ? "Connected" : "Disconnected"} />
+          <DialogHeader>
+            <DialogTitle>
+              {isEmployee && !isAdmin ? "Submit for Approval" : "Press Yes if solved"}
+            </DialogTitle>
+          </DialogHeader>
+          {solveTicket && (() => {
+            const c: any = solveTicket.clients || {};
+            const isOnline = !!c.is_online;
+            return (
+              <div className="space-y-4">
+                {/* Big online/offline banner */}
+                <div className={`rounded-lg p-4 flex items-center gap-3 border-2 ${isOnline ? "bg-green-50 border-green-300" : "bg-red-50 border-red-300"}`}>
+                  {isOnline ? <Wifi className="h-8 w-8 text-green-600" /> : <WifiOff className="h-8 w-8 text-red-600" />}
+                  <div>
+                    <div className={`text-lg font-bold ${isOnline ? "text-green-700" : "text-red-700"}`}>
+                      ক্লায়েন্ট {isOnline ? "অনলাইন" : "অফলাইন"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {isOnline ? "ক্লায়েন্ট এখন অনলাইনে আছে — সমস্যা সম্ভবত সমাধান" : "ক্লায়েন্ট এখনো অফলাইনে — verify করে নিন"}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-xs">STATUS</Label>
-                  <Input readOnly value={solveTicket.status === "processing" ? "Offline" : "Online"} className="bg-destructive/10" />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">CONNECTIVITY STATUS</Label>
+                    <Input readOnly value={c.billing_status === "active" ? "Connected" : "Disconnected"} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">LIVE STATUS</Label>
+                    <Input readOnly value={isOnline ? "Online" : "Offline"} className={isOnline ? "bg-green-100" : "bg-destructive/10"} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">MAC ADDRESS / CALLER ID</Label>
+                    <Input readOnly value={c.mac_address || ""} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">IP ADDRESS</Label>
+                    <Input readOnly value={c.remote_address || ""} />
+                  </div>
                 </div>
+
                 <div>
-                  <Label className="text-xs">UPTIME</Label>
-                  <Input readOnly value="" placeholder="—" />
+                  <Label className="text-xs">Resolution Note (সমাধানের বিবরণ)</Label>
+                  <Textarea
+                    value={resolutionNote}
+                    onChange={(e) => setResolutionNote(e.target.value)}
+                    rows={3}
+                    placeholder="কী সমস্যা ছিল এবং কীভাবে সমাধান হয়েছে লিখুন..."
+                  />
                 </div>
-                <div>
-                  <Label className="text-xs">LAST LOGOUT TIME</Label>
-                  <Input readOnly value={format(new Date(), "dd/MM/yyyy hh:mm a")} />
-                </div>
-                <div>
-                  <Label className="text-xs">MAC ADDRESS / CALLER ID</Label>
-                  <Input readOnly value={(solveTicket.clients as any)?.mac_address || ""} />
-                </div>
-                <div>
-                  <Label className="text-xs">IP ADDRESS</Label>
-                  <Input readOnly value={(solveTicket.clients as any)?.remote_address || ""} />
+
+                <div className="bg-muted/50 p-3 rounded text-xs space-y-1">
+                  <div><strong>টিকেট:</strong> {solveTicket.ticket_no} — {solveTicket.subject}</div>
+                  <div><strong>ক্লায়েন্ট:</strong> {c.name || "—"}</div>
+                  {isEmployee && !isAdmin && (
+                    <div className="text-purple-700 mt-2">⚠ এটি অনুমোদনের জন্য পাঠানো হবে। Admin অনুমোদন দিলে চূড়ান্ত solved হবে।</div>
+                  )}
                 </div>
               </div>
-              <div className="bg-muted/50 p-3 rounded text-xs space-y-1">
-                <div><strong>টিকেট:</strong> {solveTicket.ticket_no} — {solveTicket.subject}</div>
-                <div><strong>ক্লায়েন্ট:</strong> {(solveTicket.clients as any)?.name || "—"}</div>
-              </div>
-            </div>
-          )}
+            );
+          })()}
           <DialogFooter>
             <Button variant="destructive" onClick={() => setSolveDialogOpen(false)}>Cancel</Button>
             <Button
@@ -798,7 +905,9 @@ export default function Tickets() {
               onClick={() => solveTicket && resolveMutation.mutate(solveTicket.id)}
               disabled={resolveMutation.isPending}
             >
-              {resolveMutation.isPending ? "সেভ হচ্ছে..." : "Yes, Solved"}
+              {resolveMutation.isPending
+                ? "সেভ হচ্ছে..."
+                : (isEmployee && !isAdmin ? "Submit for Approval" : "Yes, Solved")}
             </Button>
           </DialogFooter>
         </DialogContent>
