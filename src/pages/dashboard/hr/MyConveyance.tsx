@@ -96,15 +96,16 @@ export default function MyConveyance() {
     mutationFn: async () => {
       if (!empId) throw new Error("Employee record না পাওয়া গেছে");
       let receipt_url: string | null = null;
+      const { data: u } = await supabase.auth.getUser();
       if (form.receipt_file) {
         const ext = form.receipt_file.name.split(".").pop();
-        const path = `${empId}/${Date.now()}.${ext}`;
+        // Folder must be auth.uid() to satisfy storage RLS (owner-scoped upload)
+        const path = `${u.user?.id}/${empId}/${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage.from("conveyance-receipts").upload(path, form.receipt_file);
         if (upErr) throw upErr;
         const { data: pub } = supabase.storage.from("conveyance-receipts").getPublicUrl(path);
         receipt_url = pub.publicUrl;
       }
-      const { data: u } = await supabase.auth.getUser();
       const { error } = await supabase.from("conveyance_bills" as any).insert({
         employee_id: empId,
         bill_date: form.bill_date,
