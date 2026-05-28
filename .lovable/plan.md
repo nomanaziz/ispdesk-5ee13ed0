@@ -1,61 +1,66 @@
-# Billing Mode সেটআপ — Monthly / Date-to-Date / Hybrid
+## সমস্যা যেটা পাওয়া গেছে
 
-## লক্ষ্য
-System-wide তিনটি billing mode support করা:
-1. **Monthly (month-to-month)** — সব client প্রতি মাসের একটি নির্দিষ্ট তারিখে (যেমন ১ তারিখে) bill পাবে; expiry সেই মাসের শেষে।
-2. **Date-to-Date** — যে তারিখে line চালু, পরের মাসের সেই তারিখেই expire; expiry-র একদিন আগে bill auto-generate, pay না হলে next day inactive।
-3. **Hybrid** — দুটোই enabled; প্রতিটি client-এ আলাদা mode select করা যাবে। শুধু hybrid mode-এ client form/edit page-এ "Billing Policy" option দেখাবে। Monthly বা Date-to-Date selected থাকলে option লুকানো (force-applied)।
+- Sidebar-এ **বিলিং তালিকা** আছে **All Clients** গ্রুপের ভিতরে, কিন্তু permission map-এ এটা আলাদা **BILLING > Billing List** হিসেবে আছে। তাই All Clients permission দিলেও billing option/action consistent হচ্ছে না।
+- **হোম ক্লায়েন্ট / কর্পোরেট ক্লায়েন্ট / বিলিং তালিকা** একই visible menu hierarchy-এর অধীনে থাকলেও permission table-এ আলাদা আলাদা পুরনো group/name দিয়ে মিশ্রভাবে রাখা হয়েছে।
+- Bill paid / bill receive করতে গেলে frontend button দেখা গেলেও database RLS এখনো মূলত admin-only billing write ধরে রেখেছে, তাই employee permission পেলেও payment save করতে পারে না।
+- Employee role-এর উদ্দেশ্য self-service/contact-level access; full HR payroll admin menu employee role থেকে খুলে যাওয়া উচিত না।
 
-## পরিবর্তনের scope
+## ঠিক করার পরিকল্পনা
 
-### 1. System settings (পিরিয়ড সেটআপ পেজ)
-`src/pages/dashboard/system/Periods.tsx` এবং `billing_periods` setting-এ `billing_mode` এর তিনটি option:
-- `monthly`
-- `date_to_date`
-- `hybrid`
+### 1. Menu-কে single source of truth করা
+- `menuItemModuleMap.ts`-এ All Clients গ্রুপের সব item একই group-এ আনব:
+  - `CLIENTS > New Request`
+  - `CLIENTS > Home Clients`
+  - `CLIENTS > Corporate Clients`
+  - `CLIENTS > Billing List`
+  - `CLIENTS > Daily Collection`
+  - `CLIENTS > Installation Fee`
+  - `CLIENTS > Left Clients`
+  - `CLIENTS > Scheduler`
+  - `CLIENTS > Change Request`
+  - `CLIENTS > Portal Manage`
+  - `CLIENTS > Update Requests`
+- `/dashboard/billing/cycle-settings` যেহেতু System menu-তে আছে, এটাকে `SYSTEM > Billing Cycle Settings` করব।
+- Inventory category permission issue যেন না থাকে, `/dashboard/inventory/categories` অবশ্যই `INVENTORY > Categories` হিসেবেই থাকবে এবং role table-এ seed নিশ্চিত করব।
 
-প্রতিটির পাশে একটি ছোট ব্যাখ্যা — কোনটা select করলে কী হবে। Hybrid select করলে একটি info box: "প্রতিটি client-এ আলাদা policy বেছে নিতে হবে।"
+### 2. Role permission table menu অনুযায়ী sync করা
+- Database migration দিয়ে সব role-এর জন্য visible sidebar menu items অনুযায়ী missing permission rows add করব।
+- পুরনো `BILLING > Billing List / Daily Collection / Installation Fee` permission থাকলে তার enabled + permission level নতুন `CLIENTS > Billing List / Daily Collection / Installation Fee` row-তে copy করব, যাতে existing roles ভাঙে না।
+- এরপর sidebar ও role permission screen একই item list দেখাবে; All Clients-এর ভিতরের item আর আলাদা Billing group হিসেবে কাজ করবে না।
 
-### 2. Clients table-এ per-client mode
-নতুন column: `clients.billing_policy` (`text`, nullable, values: `monthly` | `date_to_date`)।
-- Hybrid mode-এ এই column-এর value কাজ করবে। null হলে default `monthly`।
-- Non-hybrid mode-এ system setting-ই উৎস; per-client value ignore।
+### 3. Bill paid / receive permission ঠিক করা
+- Billing List page-এ:
+  - `CLIENTS > Billing List` write/full থাকলে row-level “পরিশোধ” button দেখাবে।
+  - read-only হলে শুধু bill status/due দেখা যাবে, paid করার button থাকবে না।
+- Daily Collection page-এ:
+  - `CLIENTS > Daily Collection` write/full থাকলে “রিসিভ বিল” action থাকবে।
+  - read-only হলে collection list দেখা যাবে, receive action থাকবে না।
 
-### 3. Add/Edit Client UI
-`AddClient.tsx` (এবং edit flow)-এ একটি "Billing Policy" select field যোগ করা হবে যা **শুধু তখনই render হবে** যখন system `billing_mode === 'hybrid'`। দুটো option: Monthly / Date-to-Date। সেটি `billing_policy` column-এ save হবে।
+### 4. Database RLS update করা
+- `billing` table:
+  - read: `CLIENTS > Billing List` অথবা `CLIENTS > Daily Collection` read permission থাকলে দেখা যাবে।
+  - write: bill receive/generate করার জন্য একই item-এর write permission লাগবে।
+- `bill_collections` table:
+  - read/write permission একইভাবে All Clients-এর Billing List/Daily Collection permission থেকে চলবে।
+- `income_entries` insert:
+  - bill receive করলে income entry create হয়, তাই billing write permission থাকলে insert allow করব।
 
-### 4. Effective policy resolver (নতুন helper)
-`src/lib/billingPolicy.ts`:
-```ts
-resolveClientBillingPolicy(systemMode, client): 'monthly' | 'date_to_date'
-```
-- system `monthly` → সর্বদা monthly
-- system `date_to_date` → সর্বদা date_to_date
-- system `hybrid` → `client.billing_policy ?? 'monthly'`
+### 5. Page/route protection align করা
+- Sidebar hidden থাকলেও direct URL দিলে page খুলে যাওয়া কমাতে route/page-level guard যোগ করব।
+- Guard `ITEM_MODULE` map থেকে permission check করবে, যাতে menu ও page access একই logic follow করে।
 
-সব billing-related code (bill generation, expiry calc, UI badge) এই একটি helper ব্যবহার করবে।
+### 6. Employee role cleanup
+- Protected Employee role-এ admin HR/Payroll module rows disabled থাকবে।
+- শুধু `আমার প্যানেল` self-service items employee-এর জন্য থাকবে।
+- Employee contact number দেখানোর প্রয়োজন থাকলে সেটা `HR_PAYROLL > Employees` read permission দেওয়া custom/extra role দিয়ে করা যাবে, পুরো HR payroll খুলবে না।
 
-### 5. Billing engines update
-- **Monthly path** (existing `generate-monthly-billing` edge function) — শুধু সেই client-দের process করবে যাদের effective policy `monthly`।
-- **Date-to-Date path** (নতুন edge function `generate-date-to-date-billing` অথবা existing enforce-billing-এ extend) — প্রতিদিন run হয়ে চেক করবে: যেসব client-এর `expire_date` আগামীকাল, তাদের জন্য আজ ১ মাসের নতুন bill issue করবে; `expire_date` পেরিয়ে গেলে এবং unpaid থাকলে status → inactive।
-- Existing daily cron / enforce-billing-এ branching: effective policy অনুযায়ী কোন logic চলবে তা ঠিক হবে।
+## Verification
 
-### 6. Client list / detail UI
-"Exp Date" column-এর পাশে policy badge (M / D2D) — শুধু hybrid mode-এ visible, যাতে operator চিনতে পারে কে কোন policy-তে আছে।
-
-## এই plan-এ যা **নেই**
-- BW Sale / BW Buy এর internal pro-rate logic অপরিবর্তিত (ওগুলো subscription-segment ভিত্তিক, পৃথক)।
-- Suspend/disable cron-এর core logic পরিবর্তন হচ্ছে না — শুধু policy-aware branch যোগ হচ্ছে।
-- বিদ্যমান client-দের data migration প্রয়োজন নেই; null → monthly default।
-
-## Technical notes (non-blocking)
-- Migration: `ALTER TABLE public.clients ADD COLUMN billing_policy text CHECK (billing_policy IN ('monthly','date_to_date')) NULL;`
-- `Periods.tsx` config schema-তে `billing_mode` enum update + hybrid option।
-- কোনো existing screen-এ visible change নেই যতক্ষণ না admin hybrid select করেন।
-
-## যাচাই
-1. System mode = monthly → AddClient-এ policy field দেখাবে না; সব client monthly billing।
-2. System mode = date_to_date → field দেখাবে না; সব client D2D।
-3. System mode = hybrid → field দেখাবে; একজন client-কে D2D, আরেকজনকে monthly করে confirm করতে হবে যে দুই engine দুটোকে আলাদাভাবে process করছে।
-
-Approve করলে migration + code changes একসাথে apply করা হবে।
+- Employee/custom role-এ `CLIENTS > Billing List = write` দিলে:
+  - All Clients-এর ভিতরে Billing List দেখা যাবে।
+  - billing list page খুলবে।
+  - unpaid/partial bill-এ “পরিশোধ” button দেখা যাবে।
+  - payment submit করলে RLS error ছাড়াই billing, bill_collections, income_entries update হবে।
+- শুধু read দিলে page দেখা যাবে, কিন্তু paid/receive action থাকবে না।
+- `INVENTORY > Categories` read দিলে Inventory group-এর Category menu দেখা যাবে।
+- Employee role শুধুমাত্র আমার প্যানেল দেখাবে, full HR payroll admin menu নয়।
