@@ -897,6 +897,7 @@ const Dashboard = () => {
 
 
       {/* Most Problem Solver */}
+      {showW("tickets_overview", "top_solver_chart") && (
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -925,6 +926,8 @@ const Dashboard = () => {
           )}
         </CardContent>
       </Card>
+      )}
+
 
       {/* Traffic / chart (2/3) + Top Active Users (1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
