@@ -40,6 +40,7 @@ const MyPayslip = lazy(() => import("@/pages/dashboard/me/MyPayslip"));
 const MyRequestPage = lazy(() => import("@/pages/dashboard/me/MyRequestPage"));
 const MyMeals = lazy(() => import("@/pages/dashboard/me/MyMeals"));
 const MyRequisitions = lazy(() => import("@/pages/dashboard/me/MyRequisitions"));
+const PanelVisibilityDebug = lazy(() => import("@/pages/dashboard/debug/PanelVisibilityDebug"));
 const HrCatering = lazy(() => import("@/pages/dashboard/hr/Catering"));
 const HrProfileApprovals = lazy(() => import("@/pages/dashboard/hr/ProfileApprovals"));
 const HrEmployeeRequests = lazy(() => import("@/pages/dashboard/hr/EmployeeRequests"));
@@ -528,6 +529,7 @@ const App = () => (
               <Route path="/dashboard/billing-overview" element={<P><CompanyOverview /></P>} />
               <Route path="/dashboard/olt-overview" element={<P><OltOverview /></P>} />
               <Route path="/dashboard/_icons" element={<P><IconPreview /></P>} />
+              <Route path="/dashboard/debug/panel-visibility" element={<P><PanelVisibilityDebug /></P>} />
 
               {/* Employee self-service */}
               <Route path="/dashboard/me" element={<P><MyShell /></P>}>
