@@ -19,6 +19,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Save, ArrowLeft, AlertTriangle } from "lucide-react";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
+import { useBillingMode } from "@/lib/billingPolicy";
 
 export default function AddClient() {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ export default function AddClient() {
   const location = useLocation();
   const { isPopMode, isBwPanel, branchId, popId, tariffId, popName, districtId, upazilaId } = usePopScope();
   const prefill = location.state?.prefill;
+  const { isHybrid: isHybridBilling } = useBillingMode();
   const requestId = location.state?.request_id;
   const editMode = location.state?.editMode === true;
   const editClientId = prefill?.id;
@@ -47,6 +49,7 @@ export default function AddClient() {
     username: "", remote_address: "", password: "", joining_date: format(new Date(), "yyyy-MM-dd"),
     monthly_bill: 0, billing_start_month: format(new Date(), "yyyy-MM"), expire_day: "10",
     reference_by: "", is_vip: false, connected_by: "", installed_by_ids: [] as string[],
+    billing_policy: "monthly",
     same_address: false,
     // Corporate-only fields
     company_name: "", trade_license_no: "", contact_person: "",
@@ -137,6 +140,7 @@ export default function AddClient() {
         installed_by_ids: prefill.installed_by_ids || prev.installed_by_ids,
         billing_start_month: prefill.billing_start_month || prev.billing_start_month,
         billing_status: prefill.billing_status || prev.billing_status,
+        billing_policy: (prefill.billing_policy === "date_to_date" ? "date_to_date" : "monthly"),
         is_vip: prefill.is_vip ?? prev.is_vip,
         joining_date: prefill.joining_date || prev.joining_date,
         reference_by: prefill.reference_by ?? prev.reference_by,
@@ -427,6 +431,7 @@ export default function AddClient() {
         connected_by: form.connected_by || null,
         installed_by_ids: form.installed_by_ids && form.installed_by_ids.length > 0 ? form.installed_by_ids : null,
         expire_day: form.billing_status === "Active" ? Number(form.expire_day || 10) : null,
+        billing_policy: form.billing_policy === "date_to_date" ? "date_to_date" : "monthly",
         mikrotik_status: mikrotikStatus,
         photo_url: photoUrl,
         // Branch + geo: POP-mode uses POP profile; Admin-mode auto-derives district/upazila/division from selected zone
@@ -472,7 +477,7 @@ export default function AddClient() {
           payload.mikrotik_status = mikrotikStatus;
         }
 
-        const { error } = await supabase.from("clients").update(payload).eq("id", editClientId);
+        const { error } = await supabase.from("clients").update(payload as any).eq("id", editClientId);
         if (error) throw error;
       } else {
         if (shouldSyncMikrotik) {
@@ -505,7 +510,7 @@ export default function AddClient() {
           return;
         }
 
-        const { data: insertedClient, error } = await supabase.from("clients").insert(payload).select("id").single();
+        const { data: insertedClient, error } = await supabase.from("clients").insert(payload as any).select("id").single();
         if (error) throw error;
 
         // Auto-generate billing record — prorated for first month if mid-month join (admin mode only;
@@ -1119,6 +1124,21 @@ export default function AddClient() {
                   প্রতি মাসের এই তারিখে line বন্ধ হবে (Date-to-Date tariff হলে validity এই তারিখ থেকেই গণনা হবে)।
                 </p>
               </div>
+              {isHybridBilling && (
+                <div>
+                  <Label>Billing Policy *</Label>
+                  <Select value={form.billing_policy || "monthly"} onValueChange={v => setField("billing_policy", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly (মাস টু মাস)</SelectItem>
+                      <SelectItem value="date_to_date">Date-to-Date (চালু তারিখ অনুযায়ী)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Hybrid mode চালু — এই ক্লায়েন্ট কোন policy-তে চলবে নির্ধারণ করুন।
+                  </p>
+                </div>
+              )}
             </>
           )}
           <div>

@@ -16,6 +16,12 @@ interface PeriodsConfig {
 
 const defaults: PeriodsConfig = { billing_mode: "month_to_month", cycle_type: "monthly", billing_day: 1, grace_period_days: 5, auto_generate: true };
 
+const MODE_HELP: Record<string, string> = {
+  month_to_month: "সব ক্লায়েন্ট প্রতি মাসের নির্দিষ্ট তারিখে একসাথে বিল পাবে।",
+  date_to_date: "প্রতি ক্লায়েন্ট নিজের চালু তারিখ অনুযায়ী বিল পাবে; expiry এর ১ দিন আগে bill তৈরি হবে।",
+  hybrid: "দুই policy-ই enabled — প্রতিটি ক্লায়েন্টে আলাদা করে Monthly বা Date-to-Date বেছে নিতে হবে।",
+};
+
 export default function Periods() {
   const { value, isLoading, save, isSaving } = useSystemSetting<PeriodsConfig>("billing_periods", defaults);
   const [form, setForm] = useState<PeriodsConfig>(defaults);
@@ -49,15 +55,14 @@ export default function Periods() {
                 <Select value={form.billing_mode} onValueChange={v => setForm(p => ({ ...p, billing_mode: v }))}>
                   <SelectTrigger className="pl-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="month_to_month">মাস টু মাস</SelectItem>
-                    <SelectItem value="date_to_date">ডেট টু ডেট</SelectItem>
+                    <SelectItem value="month_to_month">Monthly (মাস টু মাস)</SelectItem>
+                    <SelectItem value="date_to_date">Date-to-Date (ডেট টু ডেট)</SelectItem>
+                    <SelectItem value="hybrid">Hybrid (দুটোই)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {form.billing_mode === "month_to_month"
-                  ? "সকল ক্লায়েন্টের বিল একই তারিখে জেনারেট হবে"
-                  : "প্রতিটি ক্লায়েন্টের কানেকশন তারিখ অনুযায়ী বিল জেনারেট হবে"}
+                {MODE_HELP[form.billing_mode] || ""}
               </p>
             </div>
             <div>
