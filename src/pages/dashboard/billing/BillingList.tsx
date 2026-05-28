@@ -36,6 +36,7 @@ import { callPortal } from "@/lib/portalApi";
 import { getBillStatus } from "@/lib/billingStatus";
 import { DataTableCard } from "@/components/common/DataTableCard";
 import { useColumnVisibility, type ColumnDef } from "@/hooks/useColumnVisibility";
+import { useModulePermissions } from "@/hooks/useModulePermissions";
 
 const BILLING_LIST_COLUMNS: ColumnDef[] = [
   { key: "select", label: "Select", required: true },
@@ -69,6 +70,8 @@ const currentMonth = () => {
 export default function BillingList() {
   const queryClient = useQueryClient();
   const { isPopMode, branchId } = usePopScope();
+  const perms = useModulePermissions();
+  const canReceive = perms.isSuperAdmin || perms.canWriteItem("CLIENTS", "Billing List") || perms.canWriteItem("CLIENTS", "Daily Collection");
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<BillingFilters>(() => {
     const f: BillingFilters = { ...defaultFilters, month: searchParams.get("month") || currentMonth() };
@@ -653,16 +656,20 @@ export default function BillingList() {
                       ) : isPartial ? (
                         <div className="flex items-center gap-1">
                           <Badge className="text-[10px] h-6 flex items-center bg-amber-500/20 text-amber-600 border-amber-500/30" variant="outline">আংশিক</Badge>
-                          <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
-                            পরিশোধ
-                          </Button>
+                          {canReceive && (
+                            <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
+                              পরিশোধ
+                            </Button>
+                          )}
                         </div>
                       ) : (
                         <div className="flex items-center gap-1">
                           <Badge variant="destructive" className="text-[10px] h-6 flex items-center">বকেয়া</Badge>
-                          <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
-                            পরিশোধ
-                          </Button>
+                          {canReceive && (
+                            <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
+                              পরিশোধ
+                            </Button>
+                          )}
                         </div>
                       )}
                     </TableCell>

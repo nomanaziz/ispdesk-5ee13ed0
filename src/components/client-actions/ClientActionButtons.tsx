@@ -36,6 +36,7 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
   const { isPopMode } = usePopScope();
   const perms = useModulePermissions();
   const canEdit = perms.isSuperAdmin || perms.canWriteItem("CLIENTS", "Client List") || perms.canWriteItem("CLIENTS", client?.client_type === "Corporate" ? "Corporate Clients" : "Home Clients");
+  const canBill = perms.isSuperAdmin || perms.canWriteItem("CLIENTS", "Billing List") || perms.canWriteItem("CLIENTS", "Daily Collection");
   const canDelete = perms.isSuperAdmin || perms.canDeleteItem("CLIENTS", "Client List") || perms.canDeleteItem("CLIENTS", client?.client_type === "Corporate" ? "Corporate Clients" : "Home Clients");
   const [statusOpen, setStatusOpen] = useState(false);
   const [packageOpen, setPackageOpen] = useState(false);
@@ -158,12 +159,12 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
                   <Edit className="mr-2 h-4 w-4" /> এডিট
                 </DropdownMenuItem>
               )}
-              {canEdit && (
+              {canBill && (
                 <DropdownMenuItem onSelect={() => setReceiveOpen(true)}>
                   <CreditCard className="mr-2 h-4 w-4" /> বিল রিসিভ
                 </DropdownMenuItem>
               )}
-              {canEdit && (
+              {canBill && (
                 <DropdownMenuItem onSelect={() => generateBillMutation.mutate()}>
                   <FilePlus className="mr-2 h-4 w-4" /> বিল তৈরি
                 </DropdownMenuItem>

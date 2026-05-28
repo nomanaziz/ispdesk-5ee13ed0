@@ -15,12 +15,15 @@ import { toast } from "@/hooks/use-toast";
 import { Banknote, FileSpreadsheet, FileText, Plus, Search, Clock, X, CheckCircle2 } from "lucide-react";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
+import { useModulePermissions } from "@/hooks/useModulePermissions";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function DailyCollection() {
   const queryClient = useQueryClient();
   const { isPopMode, branchId } = usePopScope();
+  const perms = useModulePermissions();
+  const canReceive = perms.isSuperAdmin || perms.canWriteItem("CLIENTS", "Daily Collection") || perms.canWriteItem("CLIENTS", "Billing List");
   const [fromDate, setFromDate] = useState(today());
   const [toDate, setToDate] = useState(today());
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
@@ -223,7 +226,7 @@ export default function DailyCollection() {
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline"><FileSpreadsheet className="h-4 w-4 mr-1" /> CSV</Button>
             <Button size="sm" variant="outline"><FileText className="h-4 w-4 mr-1" /> PDF</Button>
-            <Button size="sm" onClick={() => setReceiveOpen(true)}><Plus className="h-4 w-4 mr-1" /> রিসিভ বিল</Button>
+            {canReceive && <Button size="sm" onClick={() => setReceiveOpen(true)}><Plus className="h-4 w-4 mr-1" /> রিসিভ বিল</Button>}
           </div>
 
           {/* Filters */}
