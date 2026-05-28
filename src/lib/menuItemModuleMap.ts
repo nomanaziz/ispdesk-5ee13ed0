@@ -177,8 +177,9 @@ export const ITEM_MODULE: Record<string, { group: string; name: string }> = {
   "/dashboard/assets":           { group: "ASSETS", name: "Asset List" },
   "/dashboard/assets/destroyed": { group: "ASSETS", name: "Destroyed" },
 
-  // ইভেন্ট ও ছুটি — Leave module
-  "/dashboard/events": { group: "LEAVE", name: "Setup" },
+  // ইভেন্ট ও ছুটি — HR module
+  "/dashboard/hr/events-holidays": { group: "HR_PAYROLL", name: "Events & Holidays" },
+  "/dashboard/events":             { group: "HR_PAYROLL", name: "Events & Holidays" },
 
   // ওয়েবসাইট প্যানেল
   "/dashboard/website":               { group: "WEBSITE", name: "Pages" },

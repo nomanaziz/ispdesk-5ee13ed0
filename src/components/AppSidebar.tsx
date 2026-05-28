@@ -164,6 +164,7 @@ export const menuGroups: MenuGroup[] = [
       { title: "রিজাইনেশন", url: "/dashboard/hr/resignations", icon: UserX },
       { title: "উপস্থিতি", url: "/dashboard/hr/attendance", icon: CheckSquare },
       { title: "ছুটি ম্যানেজমেন্ট", url: "/dashboard/hr/leave", icon: CalendarDays },
+      { title: "ইভেন্ট ও ছুটি", url: "/dashboard/hr/events-holidays", icon: Calendar },
       { title: "কনভেয়েন্স বিল", url: "/dashboard/hr/conveyance-bills", icon: DollarSign },
       { title: "আমার কনভেয়েন্স", url: "/dashboard/hr/my-conveyance", icon: Wallet },
       { title: "ক্যাটারিং", url: "/dashboard/hr/catering", icon: UtensilsCrossed },
@@ -321,13 +322,6 @@ export const menuGroups: MenuGroup[] = [
     items: [
       { title: "অ্যাসেট তালিকা", url: "/dashboard/assets", icon: Archive },
       { title: "নষ্ট আইটেম", url: "/dashboard/assets/destroyed", icon: Trash2 },
-    ],
-  },
-  {
-    label: "ইভেন্ট ও ছুটি",
-    icon: Calendar,
-    items: [
-      { title: "ইভেন্ট ও ছুটি", url: "/dashboard/events", icon: Calendar },
     ],
   },
   {
