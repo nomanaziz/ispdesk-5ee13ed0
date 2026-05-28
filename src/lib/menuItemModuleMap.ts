@@ -19,11 +19,13 @@ export const ITEM_MODULE: Record<string, { group: string; name: string }> = {
   "/dashboard/clients/update-requests": { group: "CLIENTS", name: "Update Requests" },
   "/dashboard/clients/add":             { group: "CLIENTS", name: "Add Client" },
 
-  // Billing (in All Clients group)
-  "/dashboard/billing":                  { group: "BILLING", name: "Billing List" },
-  "/dashboard/billing/daily-collection": { group: "BILLING", name: "Daily Collection" },
-  "/dashboard/billing/cycle-settings":   { group: "BILLING", name: "Cycle Settings" },
-  "/dashboard/sales/installation-fee":   { group: "BILLING", name: "Installation Fee" },
+  // Billing & related (All Clients menu group — unified under CLIENTS)
+  "/dashboard/billing":                  { group: "CLIENTS", name: "Billing List" },
+  "/dashboard/billing/client":           { group: "CLIENTS", name: "Billing List" },
+  "/dashboard/billing/daily-collection": { group: "CLIENTS", name: "Daily Collection" },
+  "/dashboard/sales/installation-fee":   { group: "CLIENTS", name: "Installation Fee" },
+  // Billing Cycle Settings sidebar item লাইভ আছে System group-এ
+  "/dashboard/billing/cycle-settings":   { group: "SYSTEM",  name: "Billing Cycle Settings" },
 
   // POP / MAC ক্লায়েন্ট (Branches)
   "/dashboard/branches/managers":         { group: "BRANCHES", name: "Managers" },
