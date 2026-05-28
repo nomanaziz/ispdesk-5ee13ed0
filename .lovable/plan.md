@@ -1,66 +1,69 @@
-## সমস্যা যেটা পাওয়া গেছে
+# Move Events & Holidays into HR + Holiday Auto-Import + Leave Tuning
 
-- Sidebar-এ **বিলিং তালিকা** আছে **All Clients** গ্রুপের ভিতরে, কিন্তু permission map-এ এটা আলাদা **BILLING > Billing List** হিসেবে আছে। তাই All Clients permission দিলেও billing option/action consistent হচ্ছে না।
-- **হোম ক্লায়েন্ট / কর্পোরেট ক্লায়েন্ট / বিলিং তালিকা** একই visible menu hierarchy-এর অধীনে থাকলেও permission table-এ আলাদা আলাদা পুরনো group/name দিয়ে মিশ্রভাবে রাখা হয়েছে।
-- Bill paid / bill receive করতে গেলে frontend button দেখা গেলেও database RLS এখনো মূলত admin-only billing write ধরে রেখেছে, তাই employee permission পেলেও payment save করতে পারে না।
-- Employee role-এর উদ্দেশ্য self-service/contact-level access; full HR payroll admin menu employee role থেকে খুলে যাওয়া উচিত না।
+## লক্ষ্য
 
-## ঠিক করার পরিকল্পনা
+১। "ইভেন্ট ও ছুটি" মেনুটাকে আলাদা group থেকে সরিয়ে **HR ও পেরোল** group এর ভেতরে নিয়ে আসা — route, permission module সব একসাথে move হবে যাতে permission table এ আর আলাদা `LEAVE > Setup` entry না থাকে।
+২। বাংলাদেশের **government holiday** প্রতি বছর automatic add হওয়ার ব্যবস্থা।
+৩। **ছুটি (leave) allocation** আরো গুছিয়ে — কে কোন category তে বছরে কয়টা ছুটি পাবে সেটা configure করা।
 
-### 1. Menu-কে single source of truth করা
-- `menuItemModuleMap.ts`-এ All Clients গ্রুপের সব item একই group-এ আনব:
-  - `CLIENTS > New Request`
-  - `CLIENTS > Home Clients`
-  - `CLIENTS > Corporate Clients`
-  - `CLIENTS > Billing List`
-  - `CLIENTS > Daily Collection`
-  - `CLIENTS > Installation Fee`
-  - `CLIENTS > Left Clients`
-  - `CLIENTS > Scheduler`
-  - `CLIENTS > Change Request`
-  - `CLIENTS > Portal Manage`
-  - `CLIENTS > Update Requests`
-- `/dashboard/billing/cycle-settings` যেহেতু System menu-তে আছে, এটাকে `SYSTEM > Billing Cycle Settings` করব।
-- Inventory category permission issue যেন না থাকে, `/dashboard/inventory/categories` অবশ্যই `INVENTORY > Categories` হিসেবেই থাকবে এবং role table-এ seed নিশ্চিত করব।
+---
 
-### 2. Role permission table menu অনুযায়ী sync করা
-- Database migration দিয়ে সব role-এর জন্য visible sidebar menu items অনুযায়ী missing permission rows add করব।
-- পুরনো `BILLING > Billing List / Daily Collection / Installation Fee` permission থাকলে তার enabled + permission level নতুন `CLIENTS > Billing List / Daily Collection / Installation Fee` row-তে copy করব, যাতে existing roles ভাঙে না।
-- এরপর sidebar ও role permission screen একই item list দেখাবে; All Clients-এর ভিতরের item আর আলাদা Billing group হিসেবে কাজ করবে না।
+## ১. মেনু ও Permission একীভূতকরণ
 
-### 3. Bill paid / receive permission ঠিক করা
-- Billing List page-এ:
-  - `CLIENTS > Billing List` write/full থাকলে row-level “পরিশোধ” button দেখাবে।
-  - read-only হলে শুধু bill status/due দেখা যাবে, paid করার button থাকবে না।
-- Daily Collection page-এ:
-  - `CLIENTS > Daily Collection` write/full থাকলে “রিসিভ বিল” action থাকবে।
-  - read-only হলে collection list দেখা যাবে, receive action থাকবে না।
+- `src/components/AppSidebar.tsx`: "ইভেন্ট ও ছুটি" আলাদা group টা মুছে, item টা **HR ও পেরোল** group এর ভেতরে নতুন route `"/dashboard/hr/events-holidays"` দিয়ে যোগ করব (ছুটি ম্যানেজমেন্ট এর পাশে)।
+- `src/App.tsx`: পুরাতন `/dashboard/events` route কে নতুন `/dashboard/hr/events-holidays` এ redirect এবং নতুন route এ `Events` component mount।
+- `src/lib/menuItemModuleMap.ts`: `/dashboard/events` mapping সরিয়ে নতুন route কে **`HR > Events & Holidays`** module এ point করব।
+- Migration: 
+  - `app_role_modules` এ পুরাতন `LEAVE > Setup` rows এর enabled/permission মান copy করে নতুন `HR > Events & Holidays` rows তৈরি করব (সব role এর জন্য, যাতে কেউ access হারায় না)।
+  - পুরাতন `LEAVE > Setup` rows delete।
+  - Super Admin/Admin কে নতুন module এ full access।
 
-### 4. Database RLS update করা
-- `billing` table:
-  - read: `CLIENTS > Billing List` অথবা `CLIENTS > Daily Collection` read permission থাকলে দেখা যাবে।
-  - write: bill receive/generate করার জন্য একই item-এর write permission লাগবে।
-- `bill_collections` table:
-  - read/write permission একইভাবে All Clients-এর Billing List/Daily Collection permission থেকে চলবে।
-- `income_entries` insert:
-  - bill receive করলে income entry create হয়, তাই billing write permission থাকলে insert allow করব।
+## ২. বাংলাদেশ Government Holiday auto-import
 
-### 5. Page/route protection align করা
-- Sidebar hidden থাকলেও direct URL দিলে page খুলে যাওয়া কমাতে route/page-level guard যোগ করব।
-- Guard `ITEM_MODULE` map থেকে permission check করবে, যাতে menu ও page access একই logic follow করে।
+- নতুন table **`bd_government_holidays`** (year, date, title_bn, title_en, category — public/optional/religious, source)। RLS: সবাই read, admin write। GRANT যথাযথ।
+- Edge function **`import-bd-holidays`**: parameter `{year}` নিয়ে public source থেকে fetch করে upsert করবে। প্রথম source হিসেবে [date.nager.at](https://date.nager.at/api/v3/PublicHolidays/{year}/BD) ব্যবহার করব (free, no key); failure হলে static seed list fallback (২০২৫–২০২৭ এর জন্য hand-curated BD holidays bundle)। Religious holiday (ঈদ, পূজা) এর সঠিক তারিখ admin manual override করতে পারবে।
+- Cron/Trigger: প্রতি বছর January 1 এ scheduled trigger (pg_cron) যা automatic ভাবে নতুন বছরের holiday import করবে। প্রথম বার চালু হলে current ও next year import হবে।
+- Events page এ নতুন **"সরকারি ছুটি Import"** button: year select + "Import / Re-sync" → edge function call → success হলে holiday গুলো `events_holidays` table এ `type='holiday'`, `source='bd_govt'` দিয়ে upsert। Manual created event/holiday গুলো অপরিবর্তিত থাকবে।
+- `events_holidays` table এ দুটো column যোগ: `source text` (manual/bd_govt), `external_id text` (idempotent re-sync এর জন্য, unique with year)।
 
-### 6. Employee role cleanup
-- Protected Employee role-এ admin HR/Payroll module rows disabled থাকবে।
-- শুধু `আমার প্যানেল` self-service items employee-এর জন্য থাকবে।
-- Employee contact number দেখানোর প্রয়োজন থাকলে সেটা `HR_PAYROLL > Employees` read permission দেওয়া custom/extra role দিয়ে করা যাবে, পুরো HR payroll খুলবে না।
+## ৩. Leave allocation fine-tuning
 
-## Verification
+বর্তমানে `/dashboard/leave/categories` ও `LeaveManagement` আছে। নতুন যোগ করব:
 
-- Employee/custom role-এ `CLIENTS > Billing List = write` দিলে:
-  - All Clients-এর ভিতরে Billing List দেখা যাবে।
-  - billing list page খুলবে।
-  - unpaid/partial bill-এ “পরিশোধ” button দেখা যাবে।
-  - payment submit করলে RLS error ছাড়াই billing, bill_collections, income_entries update হবে।
-- শুধু read দিলে page দেখা যাবে, কিন্তু paid/receive action থাকবে না।
-- `INVENTORY > Categories` read দিলে Inventory group-এর Category menu দেখা যাবে।
-- Employee role শুধুমাত্র আমার প্যানেল দেখাবে, full HR payroll admin menu নয়।
+- `leave_categories` table এ field যোগ (যদি না থাকে): `annual_quota int` (বছরে কত দিন), `gender` (any/male/female), `min_service_months int` (কত মাস চাকরি হলে পাবে), `carry_forward boolean`, `max_carry_days int`, `is_paid boolean`।
+- নতুন table **`employee_leave_balances`** (employee_id, category_id, year, allocated, used, carried_from_prev) — প্রতি employee × category × year।
+- নতুন function `recalculate_leave_balances(year)`: সকল active employee এর জন্য category অনুযায়ী allocation generate করবে, eligibility (gender, service length) check করে।
+- `LeaveManagement` page এ নতুন tab **"বার্ষিক বরাদ্দ"** — year selector + employee/category grid দেখাবে allocated/used/remaining। "নতুন বছর বরাদ্দ তৈরি" button যা উপরের function call করবে।
+- Leave apply করার সময় current year balance check করে remaining < requested হলে block করবে।
+
+বাংলাদেশের default leave categories seed হিসেবে যোগ করব (admin পরে customize করতে পারবে):
+
+| Category | Quota (দিন/বছর) | Notes |
+|---|---|---|
+| Casual Leave (নৈমিত্তিক) | ১০ | paid |
+| Sick Leave (অসুস্থতাজনিত) | ১৪ | paid, doctor cert |
+| Earned/Annual Leave | ২০ | carry-forward, max ৪০ |
+| Maternity Leave | ১১২ দিন | female only, paid |
+| Paternity Leave | ৭ | male only |
+| Without Pay | unlimited | unpaid |
+
+## Technical Section
+
+**Files to modify:**
+- `src/components/AppSidebar.tsx` — remove standalone group, add item under HR
+- `src/App.tsx` — new route `/dashboard/hr/events-holidays`, redirect old
+- `src/lib/menuItemModuleMap.ts` — remap to `HR > Events & Holidays`
+- `src/pages/dashboard/events/Events.tsx` — add "Import BD Holidays" button, year selector
+- `src/pages/dashboard/hr/LeaveManagement.tsx` — add "বার্ষিক বরাদ্দ" tab
+
+**New files:**
+- `supabase/functions/import-bd-holidays/index.ts`
+- Migration files for: column additions, new tables (`bd_government_holidays`, `employee_leave_balances`), permission module rename, cron schedule, seed leave categories.
+
+**Edge function source priority:**
+1. `https://date.nager.at/api/v3/PublicHolidays/{year}/BD`
+2. Bundled static fallback JSON
+
+---
+
+কোনো acceptable হলে এগিয়ে যাই। আপনার confirm এর পর migration আগে চলবে, তারপর code change।
