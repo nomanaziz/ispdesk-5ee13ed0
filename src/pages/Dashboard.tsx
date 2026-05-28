@@ -999,16 +999,17 @@ const Dashboard = () => {
 
 
       {/* Top Due — by category */}
-      {showW("top_due", "top_due_table") && (
+      {(showW("top_due","home_due_tile") || showW("top_due","corporate_due_tile") || showW("top_due","bandwidth_due_tile") || showW("top_due","pop_negative_tile") || showW("top_due","home_due_list") || showW("top_due","corporate_due_list") || showW("top_due","bandwidth_due_list") || showW("top_due","pop_negative_list")) && (
       <div className="space-y-3">
         <SectionHeading title="টপ বকেয়া" hint="প্রতি ক্যাটাগরির শীর্ষ ২০ বকেয়াদার" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <MetricTile label="হোম বকেয়া" value={fmt(d?.totalDueHome)} icon={Home} tone="rose" to="/dashboard/billing?paymentStatus=unpaid" />
-          <MetricTile label="কর্পোরেট বকেয়া" value={fmt(d?.totalDueCorporate)} icon={Building2} tone="amber" to="/dashboard/billing?paymentStatus=unpaid" />
-          <MetricTile label="ব্যান্ডউইথ বকেয়া" value={fmt(d?.totalDueBandwidth)} icon={Share2} tone="violet" to="/dashboard/bandwidth/sales/invoices" />
-          <MetricTile label="POP নেগেটিভ" value={fmt(d?.totalDuePops)} icon={Network} tone="rose" to="/dashboard/pop-management" />
+          {showW("top_due","home_due_tile") && <MetricTile label="হোম বকেয়া" value={fmt(d?.totalDueHome)} icon={Home} tone="rose" to="/dashboard/billing?paymentStatus=unpaid" />}
+          {showW("top_due","corporate_due_tile") && <MetricTile label="কর্পোরেট বকেয়া" value={fmt(d?.totalDueCorporate)} icon={Building2} tone="amber" to="/dashboard/billing?paymentStatus=unpaid" />}
+          {showW("top_due","bandwidth_due_tile") && <MetricTile label="ব্যান্ডউইথ বকেয়া" value={fmt(d?.totalDueBandwidth)} icon={Share2} tone="violet" to="/dashboard/bandwidth/sales/invoices" />}
+          {showW("top_due","pop_negative_tile") && <MetricTile label="POP নেগেটিভ" value={fmt(d?.totalDuePops)} icon={Network} tone="rose" to="/dashboard/pop-management" />}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          {showW("top_due","home_due_list") && (
           <TopDueListCard
             title="হোম ক্লায়েন্ট — টপ ২০"
             icon={Home}
@@ -1017,7 +1018,8 @@ const Dashboard = () => {
             items={d?.topDueHome || []}
             allHref="/dashboard/billing?paymentStatus=unpaid"
             itemHref={(it) => `/dashboard/billing?search=${encodeURIComponent(it.name)}`}
-          />
+          />)}
+          {showW("top_due","corporate_due_list") && (
           <TopDueListCard
             title="কর্পোরেট ক্লায়েন্ট — টপ ২০"
             icon={Building2}
@@ -1026,7 +1028,8 @@ const Dashboard = () => {
             items={d?.topDueCorporate || []}
             allHref="/dashboard/billing?paymentStatus=unpaid"
             itemHref={(it) => `/dashboard/billing?search=${encodeURIComponent(it.name)}`}
-          />
+          />)}
+          {showW("top_due","bandwidth_due_list") && (
           <TopDueListCard
             title="ব্যান্ডউইথ কাস্টমার — টপ ২০"
             icon={Share2}
@@ -1034,7 +1037,8 @@ const Dashboard = () => {
             total={d?.totalDueBandwidth || 0}
             items={d?.topDueBandwidth || []}
             allHref="/dashboard/bandwidth/sales/invoices"
-          />
+          />)}
+          {showW("top_due","pop_negative_list") && (
           <TopDueListCard
             title="POP নেগেটিভ ব্যালেন্স — টপ ২০"
             icon={Network}
@@ -1042,40 +1046,41 @@ const Dashboard = () => {
             total={d?.totalDuePops || 0}
             items={d?.topNegativePops || []}
             allHref="/dashboard/pop-management"
-          />
+          />)}
         </div>
       </div>
       )}
 
       {/* Action required */}
-      {showW("action_needed", "action_panel") && (
+      {(showW("action_needed","overdue_billing") || showW("action_needed","expired_clients") || showW("action_needed","inactive_left") || showW("action_needed","grace_extension") || showW("action_needed","pending_tickets") || showW("action_needed","pending_tasks")) && (
       <div className="space-y-3">
         <SectionHeading title="অ্যাকশন প্রয়োজন" hint="দ্রুত পদক্ষেপ নিন" />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <MetricTile label="ওভারডিউ বিলিং" value={num(d?.overdueBillingCount)} icon={AlertTriangle} tone="rose" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />
-          <MetricTile label="মেয়াদোত্তীর্ণ" value={num(d?.totalExpired)} icon={CalendarX} tone="amber" to="/dashboard/clients/home?status=expired" />
-          <MetricTile label="নিষ্ক্রিয়/বাতিল" value={num(d?.inactiveLeftCount)} icon={UserX} tone="rose" to="/dashboard/clients/home?status=inactive" />
-          <MetricTile label="গ্রেস/এক্সটেনশন" value={num(d?.extensionGraceCount)} icon={Timer} tone="amber" to="/dashboard/clients/home?status=extended" />
-          <MetricTile label="পেন্ডিং টিকেট" value={num(d?.pendingTickets)} icon={ClipboardList} tone="violet" to="/dashboard/support/tickets?status=pending" />
-          <MetricTile label="পেন্ডিং টাস্ক" value={num(d?.pendingTasks)} icon={ListTodo} tone="violet" to="/dashboard/tasks?status=pending" />
+          {showW("action_needed","overdue_billing") && <MetricTile label="ওভারডিউ বিলিং" value={num(d?.overdueBillingCount)} icon={AlertTriangle} tone="rose" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />}
+          {showW("action_needed","expired_clients") && <MetricTile label="মেয়াদোত্তীর্ণ" value={num(d?.totalExpired)} icon={CalendarX} tone="amber" to="/dashboard/clients/home?status=expired" />}
+          {showW("action_needed","inactive_left") && <MetricTile label="নিষ্ক্রিয়/বাতিল" value={num(d?.inactiveLeftCount)} icon={UserX} tone="rose" to="/dashboard/clients/home?status=inactive" />}
+          {showW("action_needed","grace_extension") && <MetricTile label="গ্রেস/এক্সটেনশন" value={num(d?.extensionGraceCount)} icon={Timer} tone="amber" to="/dashboard/clients/home?status=extended" />}
+          {showW("action_needed","pending_tickets") && <MetricTile label="পেন্ডিং টিকেট" value={num(d?.pendingTickets)} icon={ClipboardList} tone="violet" to="/dashboard/support/tickets?status=pending" />}
+          {showW("action_needed","pending_tasks") && <MetricTile label="পেন্ডিং টাস্ক" value={num(d?.pendingTasks)} icon={ListTodo} tone="violet" to="/dashboard/tasks?status=pending" />}
         </div>
       </div>
       )}
 
       {/* Finance summary */}
-      {showW("financial_summary", "financial_panel") && (
+      {(showW("financial_summary","total_bill") || showW("financial_summary","collected") || showW("financial_summary","discount") || showW("financial_summary","total_due") || showW("financial_summary","income") || showW("financial_summary","expense")) && (
       <div className="space-y-3">
         <SectionHeading title="আর্থিক বিবরণ" hint="বর্তমান মাস" />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <MetricTile label="মোট বিল" value={fmt(d?.totalBillAmount)} icon={FileText} tone="violet" to={`/dashboard/billing?month=${currentMonth}`} />
-          <MetricTile label="কালেক্টেড" value={fmt(d?.totalPaidAmount)} icon={HandCoins} tone="emerald" to={`/dashboard/billing?paymentStatus=paid&month=${currentMonth}`} />
-          <MetricTile label="ডিসকাউন্ট" value={fmt(d?.totalDiscount)} icon={CircleDollarSign} tone="amber" />
-          <MetricTile label="বকেয়া" value={fmt(d?.totalDueAmount)} icon={AlertTriangle} tone="rose" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />
-          <MetricTile label="আয়" value={fmt(d?.incTM)} icon={TrendingUp} tone="emerald" />
-          <MetricTile label="ব্যয়" value={fmt(d?.expTM)} icon={TrendingDown} tone="rose" />
+          {showW("financial_summary","total_bill") && <MetricTile label="মোট বিল" value={fmt(d?.totalBillAmount)} icon={FileText} tone="violet" to={`/dashboard/billing?month=${currentMonth}`} />}
+          {showW("financial_summary","collected") && <MetricTile label="কালেক্টেড" value={fmt(d?.totalPaidAmount)} icon={HandCoins} tone="emerald" to={`/dashboard/billing?paymentStatus=paid&month=${currentMonth}`} />}
+          {showW("financial_summary","discount") && <MetricTile label="ডিসকাউন্ট" value={fmt(d?.totalDiscount)} icon={CircleDollarSign} tone="amber" />}
+          {showW("financial_summary","total_due") && <MetricTile label="বকেয়া" value={fmt(d?.totalDueAmount)} icon={AlertTriangle} tone="rose" to={`/dashboard/billing?paymentStatus=unpaid&month=${currentMonth}`} />}
+          {showW("financial_summary","income") && <MetricTile label="আয়" value={fmt(d?.incTM)} icon={TrendingUp} tone="emerald" />}
+          {showW("financial_summary","expense") && <MetricTile label="ব্যয়" value={fmt(d?.expTM)} icon={TrendingDown} tone="rose" />}
         </div>
       </div>
       )}
+
 
       {/* 12-month trend (2/3) + compact বকেয়া list (1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
