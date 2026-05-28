@@ -226,7 +226,7 @@ export default function DailyCollection() {
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline"><FileSpreadsheet className="h-4 w-4 mr-1" /> CSV</Button>
             <Button size="sm" variant="outline"><FileText className="h-4 w-4 mr-1" /> PDF</Button>
-            <Button size="sm" onClick={() => setReceiveOpen(true)}><Plus className="h-4 w-4 mr-1" /> রিসিভ বিল</Button>
+            {canReceive && <Button size="sm" onClick={() => setReceiveOpen(true)}><Plus className="h-4 w-4 mr-1" /> রিসিভ বিল</Button>}
           </div>
 
           {/* Filters */}
