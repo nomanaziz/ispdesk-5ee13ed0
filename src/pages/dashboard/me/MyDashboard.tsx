@@ -140,6 +140,28 @@ export default function MyDashboard() {
         </Card>
       </div>
 
+      {/* Assigned tickets — for employees who handle support */}
+      {(myTickets?.open ?? 0) + (myTickets?.pendingApproval ?? 0) > 0 && (
+        <Link to="/dashboard/support/tickets?mine=1" className="block">
+          <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 hover:shadow-md transition-shadow">
+            <CardContent className="p-4 flex items-center gap-4">
+              <TicketCheck className="h-10 w-10 text-orange-600" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs">আমাকে অ্যাসাইন করা টিকেট</div>
+                <p className="text-2xl font-bold mt-1">{myTickets?.open ?? 0} টি চলমান</p>
+                <div className="flex gap-2 mt-1 text-xs">
+                  <Badge variant="outline">প্রসেসিং: {myTickets?.processing ?? 0}</Badge>
+                  {(myTickets?.pendingApproval ?? 0) > 0 && (
+                    <Badge className="bg-purple-600 text-white">অনুমোদনের অপেক্ষায়: {myTickets?.pendingApproval}</Badge>
+                  )}
+                </div>
+              </div>
+              <Badge variant="outline" className="text-xs">দেখুন →</Badge>
+            </CardContent>
+          </Card>
+        </Link>
+      )}
+
       {/* Extra widgets if admin granted any */}
       {widgetPermissions.length > 0 && (
         <Card>
