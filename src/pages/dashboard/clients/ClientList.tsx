@@ -40,6 +40,7 @@ import BulkClientRechargeDialog from "@/components/reseller/BulkClientRechargeDi
 import TransferClientsToPopDialog from "@/components/clients/TransferClientsToPopDialog";
 import { DataTableCard } from "@/components/common/DataTableCard";
 import { useColumnVisibility, type ColumnDef } from "@/hooks/useColumnVisibility";
+import { useModulePermissions } from "@/hooks/useModulePermissions";
 
 const CLIENT_LIST_COLUMNS: ColumnDef[] = [
   { key: "select", label: "Select", required: true },
@@ -73,6 +74,9 @@ interface ClientListProps {
 
 export default function ClientList({ lockedClientType, pageTitle, pageDescription }: ClientListProps = {}) {
   const { isPopMode, branchId } = usePopScope();
+  const perms = useModulePermissions();
+  const scopeName = lockedClientType === "Corporate" ? "Corporate Clients" : lockedClientType === "Home" ? "Home Clients" : "Client List";
+  const canAddClient = perms.isSuperAdmin || perms.canWriteItem("CLIENTS", "Add Client") || perms.canWriteItem("CLIENTS", scopeName);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [perPage, setPerPage] = useState(100);
@@ -419,16 +423,18 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
         title={pageTitle || "ক্লায়েন্ট তালিকা"}
         description={pageDescription || "সকল ক্লায়েন্ট দেখুন ও পরিচালনা করুন"}
         action={
-          <Button asChild size="sm">
-            <Link
-              to={
-                (isPopMode ? "/pop-admin/clients/add" : "/dashboard/clients/add") +
-                (lockedClientType ? `?client_type=${lockedClientType}` : "")
-              }
-            >
-              <Plus className="h-4 w-4 mr-1" /> নতুন {lockedClientType === "Corporate" ? "কর্পোরেট" : lockedClientType === "Home" ? "হোম" : ""} ক্লায়েন্ট
-            </Link>
-          </Button>
+          canAddClient ? (
+            <Button asChild size="sm">
+              <Link
+                to={
+                  (isPopMode ? "/pop-admin/clients/add" : "/dashboard/clients/add") +
+                  (lockedClientType ? `?client_type=${lockedClientType}` : "")
+                }
+              >
+                <Plus className="h-4 w-4 mr-1" /> নতুন {lockedClientType === "Corporate" ? "কর্পোরেট" : lockedClientType === "Home" ? "হোম" : ""} ক্লায়েন্ট
+              </Link>
+            </Button>
+          ) : null
         }
       />
 
