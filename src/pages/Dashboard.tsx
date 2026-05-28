@@ -1083,7 +1083,9 @@ const Dashboard = () => {
 
 
       {/* 12-month trend (2/3) + compact বকেয়া list (1/3) */}
+      {(showW("financial_summary","trend_12_chart") || showW("financial_summary","unpaid_clients")) && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {showW("financial_summary","trend_12_chart") && (
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -1112,7 +1114,9 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+        )}
 
+        {showW("financial_summary","unpaid_clients") && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -1138,7 +1142,9 @@ const Dashboard = () => {
             )}
           </CardContent>
         </Card>
+        )}
       </div>
+      )}
     </div>
   );
 };
