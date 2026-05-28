@@ -1,73 +1,61 @@
-## সমস্যার মূল কারণ
+# Billing Mode সেটআপ — Monthly / Date-to-Date / Hybrid
 
-`src/lib/menuItemModuleMap.ts` (ITEM_MODULE) এ অনেক sidebar URL **missing**, আর HR এর প্রায় সব সাব-আইটেম ভুল করে একই `HR_PAYROLL / Employees` মডিউলে map করা — ফলে:
+## লক্ষ্য
+System-wide তিনটি billing mode support করা:
+1. **Monthly (month-to-month)** — সব client প্রতি মাসের একটি নির্দিষ্ট তারিখে (যেমন ১ তারিখে) bill পাবে; expiry সেই মাসের শেষে।
+2. **Date-to-Date** — যে তারিখে line চালু, পরের মাসের সেই তারিখেই expire; expiry-র একদিন আগে bill auto-generate, pay না হলে next day inactive।
+3. **Hybrid** — দুটোই enabled; প্রতিটি client-এ আলাদা mode select করা যাবে। শুধু hybrid mode-এ client form/edit page-এ "Billing Policy" option দেখাবে। Monthly বা Date-to-Date selected থাকলে option লুকানো (force-applied)।
 
-1. **INVENTORY → Categories permission দিলেও মেনু আসে না** — কারণ `/dashboard/inventory/categories` ITEM_MODULE-এ নেই, fallback হিসেবে group `ইনভেন্টরি` চেক হয়, কিন্তু `GROUP_MODULE`-এ "ইনভেন্টরি" নেই → পুরো group hidden।
-2. **শুধু "Employees" permission দিলে পুরো HR group খুলে যায়** — কারণ Payroll / Payslip / Salary Sheet / Advance Salary / Loans / Resignations / Conveyance / Catering / HR Settings — সবগুলো ITEM_MODULE-এ `Employees` লেখা; এছাড়া unmapped item-গুলোর fallback `groupHasAccess = Employees` true হয়ে যায়।
-3. একই সমস্যা **BW Sale, BW Buy, OLT, Network, Device Admin, Tasks, Reports, Shop, Purchases, Sales, Assets, Events, Website, Config, VAS, Branches (POP/MAC)** — কোনো item-mapping নেই, তাই হয় সব খুলে যায় (যদি group fallback true) বা সব hidden।
+## পরিবর্তনের scope
 
-DB-তে সব দরকারি `app_role_modules` entry আগে থেকেই আছে (INVENTORY/Categories, HR_PAYROLL/Payroll, BW_SALE/*, BRANCHES/*, OLT/*, NETWORK/*, SHOP/*, ইত্যাদি), শুধু frontend mapping অসম্পূর্ণ।
+### 1. System settings (পিরিয়ড সেটআপ পেজ)
+`src/pages/dashboard/system/Periods.tsx` এবং `billing_periods` setting-এ `billing_mode` এর তিনটি option:
+- `monthly`
+- `date_to_date`
+- `hybrid`
 
-## ফিক্সের পরিকল্পনা
+প্রতিটির পাশে একটি ছোট ব্যাখ্যা — কোনটা select করলে কী হবে। Hybrid select করলে একটি info box: "প্রতিটি client-এ আলাদা policy বেছে নিতে হবে।"
 
-### ১) `src/lib/menuItemModuleMap.ts` — পূর্ণাঙ্গ ITEM_MODULE (সব sidebar URL)
+### 2. Clients table-এ per-client mode
+নতুন column: `clients.billing_policy` (`text`, nullable, values: `monthly` | `date_to_date`)।
+- Hybrid mode-এ এই column-এর value কাজ করবে। null হলে default `monthly`।
+- Non-hybrid mode-এ system setting-ই উৎস; per-client value ignore।
 
-প্রতিটি `menuGroups` item-কে সঠিক `(module_group, module_name)` দিয়ে map করব। উদাহরণ:
+### 3. Add/Edit Client UI
+`AddClient.tsx` (এবং edit flow)-এ একটি "Billing Policy" select field যোগ করা হবে যা **শুধু তখনই render হবে** যখন system `billing_mode === 'hybrid'`। দুটো option: Monthly / Date-to-Date। সেটি `billing_policy` column-এ save হবে।
 
-- HR বিভাগ আলাদা করব:
-  - `/dashboard/hr/employee-hub` → HR_PAYROLL / Employee Hub
-  - `/dashboard/hr/payroll` → HR_PAYROLL / Payroll
-  - `/dashboard/hr/payslip` → HR_PAYROLL / Payslip
-  - `/dashboard/hr/employees` → HR_PAYROLL / Employees  *(শুধু contact দেখার জন্য)*
-  - `/dashboard/hr/salary-sheet` → HR_PAYROLL / Salary Sheet
-  - `/dashboard/hr/advance-salary` → HR_PAYROLL / Advance Salary
-  - `/dashboard/hr/loans` → HR_PAYROLL / Employee Loans
-  - `/dashboard/hr/resignations` → HR_PAYROLL / Resignations
-  - `/dashboard/hr/attendance` → HR_PAYROLL / Attendance
-  - `/dashboard/hr/conveyance-bills` + `/dashboard/hr/my-conveyance` → HR_PAYROLL / Conveyance Bills
-  - `/dashboard/hr/catering` → HR_PAYROLL / Catering
-  - `/dashboard/hr/settings` → HR_PAYROLL / HR Settings
-  - `/dashboard/hr/leave` → HR_PAYROLL / Leave Management
-- Inventory: units/locations/categories/items/stock → INVENTORY / {Items, Locations, Categories, Stock} (units → Items)
-- BW Sale, BW Buy, Branches (POP/MAC), OLT, Network, Monitoring, Device Admin, Mikrotik, Tasks, Reports, SMS, Shop, Purchases, Sales, Assets, Events, Website, Config, VAS, Accounting, Support, System — সব route entry যোগ করব এক্সিস্টিং DB মডিউল নাম মিলিয়ে।
+### 4. Effective policy resolver (নতুন helper)
+`src/lib/billingPolicy.ts`:
+```ts
+resolveClientBillingPolicy(systemMode, client): 'monthly' | 'date_to_date'
+```
+- system `monthly` → সর্বদা monthly
+- system `date_to_date` → সর্বদা date_to_date
+- system `hybrid` → `client.billing_policy ?? 'monthly'`
 
-### ২) `src/components/AppSidebar.tsx` — strict fallback
+সব billing-related code (bill generation, expiry calc, UI badge) এই একটি helper ব্যবহার করবে।
 
-`orderedGroups` filter-এ unmapped item-এর জন্য `groupHasAccess` fallback **বাদ** দেব। মানে:
+### 5. Billing engines update
+- **Monthly path** (existing `generate-monthly-billing` edge function) — শুধু সেই client-দের process করবে যাদের effective policy `monthly`।
+- **Date-to-Date path** (নতুন edge function `generate-date-to-date-billing` অথবা existing enforce-billing-এ extend) — প্রতিদিন run হয়ে চেক করবে: যেসব client-এর `expire_date` আগামীকাল, তাদের জন্য আজ ১ মাসের নতুন bill issue করবে; `expire_date` পেরিয়ে গেলে এবং unpaid থাকলে status → inactive।
+- Existing daily cron / enforce-billing-এ branching: effective policy অনুযায়ী কোন logic চলবে তা ঠিক হবে।
 
-- ITEM_MODULE-এ entry না থাকলে non-admin user-এর জন্য item hidden।
-- Super Admin / Admin সব আগের মতই দেখবে।
+### 6. Client list / detail UI
+"Exp Date" column-এর পাশে policy badge (M / D2D) — শুধু hybrid mode-এ visible, যাতে operator চিনতে পারে কে কোন policy-তে আছে।
 
-এতে permission "leak" বন্ধ হবে, এবং সব item সঠিক permission দিয়েই নিয়ন্ত্রিত।
+## এই plan-এ যা **নেই**
+- BW Sale / BW Buy এর internal pro-rate logic অপরিবর্তিত (ওগুলো subscription-segment ভিত্তিক, পৃথক)।
+- Suspend/disable cron-এর core logic পরিবর্তন হচ্ছে না — শুধু policy-aware branch যোগ হচ্ছে।
+- বিদ্যমান client-দের data migration প্রয়োজন নেই; null → monthly default।
 
-### ৩) `src/lib/menuModuleMap.ts` — group fallback ছেঁটে সঠিক করা
+## Technical notes (non-blocking)
+- Migration: `ALTER TABLE public.clients ADD COLUMN billing_policy text CHECK (billing_policy IN ('monthly','date_to_date')) NULL;`
+- `Periods.tsx` config schema-তে `billing_mode` enum update + hybrid option।
+- কোনো existing screen-এ visible change নেই যতক্ষণ না admin hybrid select করেন।
 
-`HR ও পেরোল` → `Employees` mapping leak-এর কারণ। GROUP_MODULE শুধু "group label collapse-এ থাকলে আইকন show করার জন্য" ব্যবহার হয় না — orderedGroups-এ ব্যবহৃত। strict-fallback হলে আর দরকার নেই; তবু সংক্ষেপে রেখে সব item-level হবে।
+## যাচাই
+1. System mode = monthly → AddClient-এ policy field দেখাবে না; সব client monthly billing।
+2. System mode = date_to_date → field দেখাবে না; সব client D2D।
+3. System mode = hybrid → field দেখাবে; একজন client-কে D2D, আরেকজনকে monthly করে confirm করতে হবে যে দুই engine দুটোকে আলাদাভাবে process করছে।
 
-### ৪) Action gating audit (delete/edit permissions)
-
-আগের কাজে `ClientActionButtons.tsx` ঠিক হয়েছে। এখন **এক রাউন্ড QA** করব:
-
-- `useModulePermission(group, name)` ব্যবহার করে relevant page-এর Add/Edit/Delete buttons-এ Guard আছে কিনা — Inventory, Shop, BW Sale, Assets, Branches, HR sub-pages।
-- যেখানে শুধু `<Guarded module=...>` page-level আছে কিন্তু button-level guard নেই, সেখানে minimum দুই জায়গায় (Add button + row Delete) `canWriteItem` / `canDeleteItem` যোগ করব।
-
-### ৫) Roles & Permissions UI (`/dashboard/access/roles`)
-
-`access/RoleFeaturePanels.tsx` UI ইতিমধ্যেই DB-driven (`app_role_modules`), তাই নতুন entry নিজে নিজেই দেখা যাবে। শুধু verify করব Employee role default-এ কোনগুলো on/off আছে — যা missing সেগুলো previous migration-এ যোগ করা আছে।
-
-### ৬) Verification
-
-* DB query: প্রতিটি ITEM_MODULE entry আসলেই `app_role_modules`-এ আছে কিনা।
-* Manual: Employee role-এ শুধু `HR_PAYROLL/Employees` (read) এবং `INVENTORY/Categories` (write) দিয়ে test —
-  - HR group-এ শুধু "কর্মচারী তালিকা" item দেখা যাবে; বাকি সব hidden।
-  - Inventory group-এ শুধু "আইটেম ক্যাটাগরি" দেখা যাবে; Add button visible, Delete hidden।
-* Debug page `/dashboard/debug/panel-visibility` দিয়ে role/permission resolution verify।
-
-## প্রভাবিত ফাইল
-
-- **`src/lib/menuItemModuleMap.ts`** — পূর্ণাঙ্গ rewrite (সব sidebar URL → DB module)
-- **`src/lib/menuModuleMap.ts`** — সংক্ষিপ্ত (group-level fallback বাদ)
-- **`src/components/AppSidebar.tsx`** — `orderedGroups`-এ strict filter (unmapped item hidden for non-admin)
-- **`src/pages/dashboard/inventory/*`**, **`shop/*`**, **`bw-sale/*`**, **`assets/*`**, **`branches/*`** — Add/Edit/Delete buttons-এ permission guard যোগ (audit-based, যেখানে missing)
-
-কোনো DB migration লাগবে না — সব module entry আগে থেকেই আছে।
+Approve করলে migration + code changes একসাথে apply করা হবে।
