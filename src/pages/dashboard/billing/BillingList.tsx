@@ -656,16 +656,20 @@ export default function BillingList() {
                       ) : isPartial ? (
                         <div className="flex items-center gap-1">
                           <Badge className="text-[10px] h-6 flex items-center bg-amber-500/20 text-amber-600 border-amber-500/30" variant="outline">আংশিক</Badge>
-                          <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
-                            পরিশোধ
-                          </Button>
+                          {canReceive && (
+                            <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
+                              পরিশোধ
+                            </Button>
+                          )}
                         </div>
                       ) : (
                         <div className="flex items-center gap-1">
                           <Badge variant="destructive" className="text-[10px] h-6 flex items-center">বকেয়া</Badge>
-                          <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
-                            পরিশোধ
-                          </Button>
+                          {canReceive && (
+                            <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { setPayClient(c); setPayBilling(b); }}>
+                              পরিশোধ
+                            </Button>
+                          )}
                         </div>
                       )}
                     </TableCell>
