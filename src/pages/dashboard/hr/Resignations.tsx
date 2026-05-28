@@ -104,7 +104,9 @@ export default function Resignations() {
 
       let letterUrl: string | null = null;
       if (form.file) {
-        const path = `${form.employee_id}/${Date.now()}-${form.file.name}`;
+        const { data: u } = await supabase.auth.getUser();
+        // Folder must be auth.uid() to satisfy storage RLS (owner-scoped upload)
+        const path = `${u.user?.id}/${form.employee_id}/${Date.now()}-${form.file.name}`;
         const { error: upErr } = await supabase.storage.from("resignation-letters").upload(path, form.file);
         if (upErr) throw upErr;
         letterUrl = path;

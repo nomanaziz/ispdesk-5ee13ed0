@@ -111,7 +111,7 @@ export default function OltDevices() {
   const { data: pollingAgents = [] } = useQuery({
     queryKey: ["polling-agents-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("polling_agents").select("id, name, status, last_heartbeat").order("name");
+      const { data } = await supabase.from("polling_agents_public" as any).select("id, name, status, last_heartbeat").order("name");
       return (data || []) as any[];
     },
   });

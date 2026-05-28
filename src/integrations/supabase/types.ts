@@ -7416,6 +7416,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "olt_devices_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "polling_agents_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "olt_devices_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
@@ -13213,6 +13220,47 @@ export type Database = {
           user_id: string | null
         }
         Relationships: []
+      }
+      polling_agents_public: {
+        Row: {
+          branch_id: string | null
+          created_at: string | null
+          id: string | null
+          last_heartbeat: string | null
+          name: string | null
+          notes: string | null
+          poll_interval_seconds: number | null
+          status: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_heartbeat?: string | null
+          name?: string | null
+          notes?: string | null
+          poll_interval_seconds?: number | null
+          status?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_heartbeat?: string | null
+          name?: string | null
+          notes?: string | null
+          poll_interval_seconds?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "polling_agents_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sms_templates_effective: {
         Row: {
