@@ -1,162 +1,126 @@
-# Capital, Funding Sources ও Cash-on-Hand Guard — Accounting Module Plan
+## ISP ERP — Final Sales-Readiness Audit Report
 
-## সমস্যা ও লক্ষ্য
-
-বর্তমানে Cash Book এ `Cash on Hand = Debit Total − Credit Total` মাইনাস হয়ে যাচ্ছে। বাস্তবে — income না থাকলে expense সম্ভব না; টাকা কোথাও না কোথাও থেকে আসতে হবে (মালিক, ব্যাংক, বিনিয়োগকারী ইত্যাদি)। তাই দরকার:
-
-১. একটা পূর্ণাঙ্গ **Capital / Funding Source** module।
-২. প্রতিটি funding source এর জন্য — fund add, withdrawal, interest/installment, fine track।
-৩. সকল expense, withdraw, salary, purchase, vendor pay submit করার আগে **Cash on Hand ≥ 0** check। কম হলে save block → "আগে fund add করুন" toast।
-৪. Cash Book এ funding সব visible debit side এ; withdrawal/installment credit side এ।
+পুরো codebase ঘুরে দেখলাম। নিচে চারটা section-এ মিলিয়ে report দিচ্ছি, এবং কী action নেব সেটাও।
 
 ---
 
-## ১. Funding Source Types
+### 1) Menu language fixes (keyword → English)
 
-বাজারে ISP/SMB বাস্তবতায় common ৬ ধরনের capital ধরছি:
+আপনার নিয়ম: তথ্যপ্রযুক্তির keyword (Dashboard, Reports, OLT, HR, Payroll, etc.) **English** থাকবে; বর্ণনামূলক শব্দ Bangla থাকবে।
 
-| Type | বিবরণ | Interest | Repayment |
-|---|---|---|---|
-| `owner_capital` | মালিকের নিজের জমা টাকা | না | optional drawing |
-| `partner_capital` | অংশীদারের জমা | না | profit share / drawing |
-| `investor` | তৃতীয়পক্ষ বিনিয়োগকারী | optional % | মাসিক / এককালীন, profit share বা fixed |
-| `bank_loan` | ব্যাংক ঋণ | আছে (%) | মাসিক installment, late fine |
-| `private_loan` | ব্যক্তিগত ধার | optional | flexible |
-| `other_income` | অন্য ব্যবসা থেকে transfer | না | না |
+**Group labels যেগুলো পাল্টানো হবে** (`src/components/AppSidebar.tsx`):
 
-প্রতি source এর জন্য একটা **contributor profile** (নাম, ফোন, ঠিকানা, NID/Trade License, opening date, agreed terms)।
+| বর্তমান | পরিবর্তন → |
+|---|---|
+| ড্যাশবোর্ড | Dashboard |
+| রিপোর্ট | Reports |
+| ইনভেন্টরি | Inventory |
+| অ্যাকাউন্টিং | Accounting |
+| সিস্টেম | System |
+| কনফিগারেশন | Configuration |
+| ব্যান্ডউইথ ক্রয় | Bandwidth Purchase |
+| ব্যান্ডউইথ ক্লায়েন্ট | Bandwidth Clients |
+| নেটওয়ার্ক মনিটরিং | Network Monitoring |
+| নেটওয়ার্ক ডায়াগ্রাম | Network Diagram |
+| HR ও পেরোল | HR & Payroll |
+| SMS সার্ভিস | SMS Service |
+| ই-কমার্স | E-Commerce |
+| ওয়েবসাইট প্যানেল | Website Panel |
+| সাপোর্ট ও টিকেটিং | Support & Ticketing |
+| টাস্ক ম্যানেজমেন্ট | Task Management |
+| ডিভাইস | Devices |
+| অ্যাসেট | Assets |
+| বিক্রয় ও সার্ভিস | Sales & Service |
+| ক্রয় | Purchase |
 
----
+**Item-level mix-language fixes:**
+- `কর্মী Loan` → `Employee Loan`
+- `About পেজ` → `About Page`
+- প্রতিটা গ্রুপের ভিতরে `ড্যাশবোর্ড` → `Dashboard`
 
-## ২. ডাটাবেস ডিজাইন
-
-### `capital_contributors`
-- type (enum উপরের ৬টা)
-- name, phone, address, identifier (NID/account)
-- agreed_amount, currency (default BDT)
-- interest_rate_pct (nullable), interest_type (`flat`/`reducing`/`profit_share`/`none`)
-- installment_amount, installment_cycle (`monthly`/`quarterly`/`yearly`/`one_time`/`flexible`)
-- start_date, end_date, status (`active`/`closed`)
-- branch_id, notes
-
-### `capital_transactions`
-সবধরনের contributor-related টাকার movement একই table এ:
-- contributor_id
-- direction (`in` = fund add → cash বাড়ে / `out` = withdraw বা installment → cash কমে)
-- category (`principal_in`, `principal_repay`, `interest_pay`, `profit_share`, `late_fine`, `drawing`, `other`)
-- amount, transaction_date, payment_method
-- reference, description, branch_id, created_by
-- linked_account_id (chart_of_accounts এ map)
-
-### `capital_installment_schedule` (শুধু loan/scheduled investor এর জন্য)
-- contributor_id, due_date, principal_due, interest_due, total_due, paid_amount, status (`pending`/`partial`/`paid`/`overdue`), fine_amount
-
-> Auto-generate: contributor save করলে cycle অনুযায়ী schedule rows তৈরি হবে। due_date পার হলে `overdue` ও fine rule অনুযায়ী fine যোগ।
-
-### Chart of Accounts auto-seed
-নতুন accounts যুক্ত হবে (যদি না থাকে):
-- `3000 Owner Capital` (Equity)
-- `3100 Partner Capital` (Equity)
-- `3200 Investor Capital` (Equity/Liability)
-- `2100 Bank Loan` (Liability)
-- `2200 Private Loan` (Liability)
-- `5100 Interest Expense` (Expense)
-- `5110 Late Payment Fine` (Expense)
-- `3900 Owner Drawings` (Equity-contra)
-
-প্রত্যেক contributor save এ ledger account auto-link হবে।
+**যা যেমন আছে রাখব:** "All Clients" (already English), "OLT Power Dashboard", "Live Traffic", "Online Client Monitoring" — সব ঠিক আছে।
 
 ---
 
-## ৩. Cash-on-Hand Guard (Core Rule)
+### 2) Module completeness — সব মডিউল চলে?
 
-নতুন SQL function **`get_cash_on_hand(_branch_id uuid, _as_of date)`** —
-Debit (যোগ): bill_collections + installation_fees.paid + service/product/bw_sales paid_amount + income_entries + **capital_transactions(direction=in)** + branch_funding(type=in)
-Credit (বিয়োগ): payroll paid + expense_entries + bw_purchase paid + purchase_bills paid + **capital_transactions(direction=out)**
+প্রায় **সব মডিউল real implementation** (Supabase queries, full CRUD)। শুধু **একটাই filler** খুঁজে পাওয়া গেছে:
 
-নতুন BEFORE-INSERT trigger function **`enforce_cash_on_hand()`** এই tables এ attach হবে:
-- `expense_entries`
-- `payroll` (status='paid' update এ)
-- `bw_purchase_bills`, `purchase_bills` (paid amount বাড়ালে)
-- `bill_collections` কে exclude (এটা income)
-- `capital_transactions` যেখানে direction='out'
+- `/pop-admin/monitoring/ping` — POP Admin portal-এ Ping Tools এখনো "শীঘ্রই আসছে" placeholder (`src/pages/reseller/PopPlaceholder.tsx`)। Main dashboard-এ Ping Tools complete; শুধু reseller portal-এ port করা বাকি।
 
-Logic: insert/update এর পর projected `cash_on_hand` calculate করবে; যদি `< 0` তাহলে `RAISE EXCEPTION 'Insufficient cash on hand. Please add fund first.'`। Frontend এই error catch করে Bangla toast দেখাবে।
-
-> Exception: Super Admin override করতে পারবে `app_settings.allow_negative_cash=true` দিয়ে (default false)। UI তে override checkbox + reason বাধ্যতামূলক।
+বাকি ২৫+ মডিউল (HR, Payroll, Billing, OLT, Network, Inventory, Accounting+Capital, E-Commerce, Website CMS, SMS, Reports, Tasks, Support, Purchase, Sales, VAS, Configuration, System) — সবগুলো production-ready।
 
 ---
 
-## ৪. নতুন UI পেজ
+### 3) Login portals — কোনগুলো আছে, কোনগুলো নেই
 
-Accounting menu এ নতুন গ্রুপ — "মূলধন ও বিনিয়োগ":
+সব login এক জায়গায়: `/login` page তিন method চেষ্টা করে (email → Supabase Auth, username → app-user-login edge function, username/password → portalLogin → type-based redirect)।
 
-1. **`/dashboard/accounting/capital/contributors`** — contributor list/add/edit। Type filter, agreed vs current outstanding, next due।
-2. **`/dashboard/accounting/capital/transactions`** — সকল fund-in/out লেনদেন, filter by contributor/type/date।
-3. **`/dashboard/accounting/capital/schedule`** — loan/investor installment calendar; due/overdue badge, "পরিশোধ" button → capital_transactions(out, interest+principal split) তৈরি।
-4. **`/dashboard/accounting/capital/dashboard`** — summary cards:
-   - Total Capital Received (by type breakdown pie)
-   - Outstanding Liability (loans + investor principal due)
-   - Interest Paid YTD
-   - Upcoming Installments (next 30 days)
-   - Cash on Hand (live)
+**✅ কাজ করে:**
+- Admin/Employee → `/dashboard`
+- Home/Corporate client → `/portal/dashboard`
+- Reseller (POP Admin) → `/pop-admin/dashboard`
+- Reseller sub-user → `/pop-admin/dashboard`
+- Bandwidth customer → `/bw/dashboard`
 
-### বিদ্যমান পেজ আপডেট
-- **CashBook.tsx**: debit side এ "Owner/Partner Capital In", "Investor In", "Loan Disbursed", "Other Income"; credit side এ "Owner Drawing", "Investor Withdraw", "Loan Installment (Principal)", "Interest Paid", "Late Fine"। Cash on Hand row কে `Math.max(0, …)` নয় — actual দেখাবে কিন্তু negative হলে red highlight + "⚠ আগে fund add করুন" banner।
-- **Expense.tsx / Income.tsx / Payroll / Purchase pay dialog**: submit এ trigger error catch করে user-friendly Bangla message + শর্টকাট "এখন fund add করুন" link।
-- **AccountingDashboard.tsx**: Cash on Hand widget + funding breakdown widget যোগ।
+**❌ Gap (sale-এর আগে fix করা দরকার):**
+1. **BW customer-এর client-দের login**: BW tenant তার নিজের client add করে কিন্তু তাদের জন্য আলাদা portal route নেই। ওরা generic `/portal/dashboard`-এ যায় — BW tenant-এর branded portal-এ যায় না।
+2. **Per-reseller white-label portal**: সব reseller-এর retail client একই generic portal দেখে। POP-ভিত্তিক branding নেই।
+3. **Dedicated login URLs** (`/bw/login`, `/pop-admin/login`, `/portal/login`) সবগুলো `/login`-এ redirect করে — sales material-এ এটা document করা দরকার, অথবা প্রত্যেকের জন্য আলাদা branded entry page বানানো দরকার।
 
 ---
 
-## ৫. Permission ও Routing
+### 4) Global unique client code — এখন নেই
 
-- নতুন `ACCOUNTING > Capital Contributors`, `Capital Transactions`, `Capital Schedule`, `Capital Dashboard` permission modules।
-- Super Admin/Admin কে full access auto-grant। অন্যান্য role default `none`।
-- Menu items `menuItemModuleMap.ts` ও `AppSidebar.tsx` এ map।
+এখন প্রতি table-এ আলাদা code field:
+- `clients.client_code`
+- `bw_sale_customers.customer_code`
+- `branch_managers.pop_code` + `client_code`
+- `employees` → শুধু UUID, human-readable code নেই
+- `app_users.username` → structured code না
 
----
+**সুপারিশ (Phase-2 কাজ):** একটা **global `uid`** column সব user-type table-এ যোগ করা — format `{TYPE}-{TENANT}-{SEQ}`, যেমন:
+- `CL-ISP001-00421` (client)
+- `BW-ISP001-00012` (bandwidth customer)
+- `POP-ISP001-00003` (reseller)
+- `EMP-ISP001-00089` (employee)
+- `USR-ISP001-00007` (app user)
 
-## ৬. Installment ও Fine Automation
-
-- দৈনিক pg_cron job `update_capital_installments_daily()`:
-  - past-due unpaid rows → status `overdue`
-  - contributor এর `late_fine_rule` (json: `{type: 'fixed'|'percent', value, grace_days}`) অনুযায়ী fine calc।
-- Schedule page এ "পরিশোধ" → modal: principal, interest auto-split (reducing balance হলে remaining principal × rate/12), fine, payment_method → একসাথে capital_transactions(out) ও expense_entries (interest, fine) তৈরি, schedule row update।
-
----
-
-## Technical Section
-
-**Migration order:**
-1. `chart_of_accounts` seed (idempotent INSERT … WHERE NOT EXISTS)
-2. CREATE `capital_contributors`, `capital_transactions`, `capital_installment_schedule` + GRANT + RLS (admin write, all auth read)
-3. CREATE `app_settings` (singleton or key-value) যদি না থাকে; key `allow_negative_cash`
-4. CREATE function `get_cash_on_hand(branch, as_of)` SECURITY DEFINER
-5. CREATE function `enforce_cash_on_hand()` trigger + AFTER INSERT/UPDATE triggers on listed tables
-6. CREATE function `generate_installment_schedule(contributor_id)` + trigger on insert
-7. CREATE cron job
-8. Permission rows insert
-
-**Frontend new files:**
-- `src/pages/dashboard/accounting/capital/Contributors.tsx`
-- `src/pages/dashboard/accounting/capital/Transactions.tsx`
-- `src/pages/dashboard/accounting/capital/Schedule.tsx`
-- `src/pages/dashboard/accounting/capital/Dashboard.tsx`
-- `src/components/accounting/CashOnHandBanner.tsx` (reusable warning)
-- `src/lib/accountingErrors.ts` — `INSUFFICIENT_CASH` error code → Bangla message handler
-
-**Edits:**
-- `src/App.tsx` — 4 new routes
-- `src/components/AppSidebar.tsx` — accounting group এ 4 new items
-- `src/lib/menuItemModuleMap.ts` — 4 new mappings
-- `src/pages/dashboard/accounting/CashBook.tsx` — new rows, negative warning
-- `src/pages/dashboard/accounting/Expense.tsx`, `Income.tsx`, `AccountingDashboard.tsx` — banner ও error handler
-
-**Excluded scope (next phase, যদি চান):**
-- Multi-currency
-- Audit log alada (existing audit ব্যবহার হবে)
-- Investor profit-share auto-calc (manual entry for now)
+এতে সব মডিউল থেকে একই search box দিয়ে যে কোনো user-type খুঁজে পাওয়া যাবে; invoice/contract/SLA-তে globally unique reference থাকবে।
 
 ---
 
-confirm করলে migration আগে, তারপর কোড সব একসাথে।
+### Saleability verdict
+
+**Ready to sell after these fixes:**
+- ✅ সব core ERP মডিউল live এবং Supabase-backed
+- ✅ Authentication, RBAC, multi-tenancy, RLS — সব hardened (আজকের security pass-এ ৬টা finding fix হয়েছে)
+- ✅ Capital/Funding, Cash-on-Hand guard, Events & Leave + government holiday import, Bangladeshi context — সব আছে
+
+**ছাড়ার আগে প্রয়োজনীয় কাজ:**
+- 🔧 Menu language consistency (এই plan-এ)
+- 🔧 BillingList "পরিশোধ" button-এ permission guard (আগের audit থেকে carry-over)
+- 🔧 ClientActionButtons-এ BILLING|Billing List write permission accept করা
+- 🔧 POP Admin Ping Tools port
+
+**Phase-2 (sales pitch deck-এ "roadmap" হিসেবে রাখা যায়):**
+- 📋 Global unique `uid` system সব user-type-এ
+- 📋 Per-reseller white-label client portal
+- 📋 BW tenant-এর client-দের জন্য আলাদা portal context
+
+---
+
+## যে কাজ Build mode-এ এখনই করব
+
+আপনি OK বললে নিচের চারটা **এই round-এই** করে দেব:
+
+1. **AppSidebar.tsx**: উপরের তালিকা অনুযায়ী group labels ও mixed-language items English-এ ফিরিয়ে আনব (label-only — route/permission key অপরিবর্তিত)।
+2. **BillingList.tsx**: inline "পরিশোধ" button-এ `BILLING|Billing List` write permission guard যোগ।
+3. **ClientActionButtons.tsx**: `canEdit`-এ `BILLING|Billing List` write permission যোগ — যাতে শুধু Billing write থাকলেও বিল রিসিভ দেখা যায়।
+4. **PopAdmin Ping Tools**: placeholder সরিয়ে main `PingTools.tsx` component reuse করে port করা।
+
+**এই round-এ করব না (আলাদা চাইলে পরে):**
+- Global `uid` system → DB schema migration লাগবে সব user-type table-এ, frontend refactor অনেক জায়গায়। আলাদা task হিসেবে।
+- BW tenant client portal / per-reseller white-label → নতুন routes, layouts, branding system। আলাদা task।
+
+বললে শুরু করি।
