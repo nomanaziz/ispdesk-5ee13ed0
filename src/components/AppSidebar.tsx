@@ -946,12 +946,12 @@ export function AppSidebar() {
       .map((g) => {
         if (perms.isSuperAdmin) return g;
         if (ALWAYS_VISIBLE_GROUPS.has(g.label)) return g;
-        const groupMod = GROUP_MODULE[g.label];
-        const groupHasAccess = groupMod ? perms.canRead(groupMod) : false;
+        // STRICT: প্রতিটি item-কে নিজস্ব ITEM_MODULE entry দিয়েই check করব।
+        // Map-এ না থাকলে non-admin user item দেখবে না (permission leak ঠেকাতে)।
         const items = g.items.filter((it) => {
           const m = ITEM_MODULE[it.url];
-          if (m) return perms.canReadItem(m.group, m.name);
-          return groupHasAccess; // unmapped item → fallback to group permission
+          if (!m) return false;
+          return perms.canReadItem(m.group, m.name);
         });
         if (items.length === 0) return null;
         return { ...g, items };
