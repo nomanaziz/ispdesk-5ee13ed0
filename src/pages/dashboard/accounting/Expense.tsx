@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Plus, Search, Pencil, Trash2, TrendingDown } from "lucide-react";
+import { formatAccountingError } from "@/lib/accountingErrors";
 
 const CATEGORIES = ["Office", "Salary", "Utility", "Maintenance", "Network", "Equipment", "Transport", "Marketing", "Tax", "Other"];
 const PAYMENT_METHODS = ["Cash", "Bank Transfer", "bKash", "Nagad", "Rocket", "Card", "Online"];
@@ -62,7 +63,7 @@ export default function Expense() {
       toast.success(editId ? "আপডেট হয়েছে" : "সংরক্ষিত হয়েছে");
       setOpen(false); setEditId(null); setForm(defaultForm);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(formatAccountingError(e)),
   });
 
   const del = useMutation({
