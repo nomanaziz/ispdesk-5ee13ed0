@@ -35,8 +35,14 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
   const { isAdmin } = useAuth();
   const { isPopMode } = usePopScope();
   const perms = useModulePermissions();
-  const canEdit = perms.isSuperAdmin || perms.canWriteItem("CLIENTS", "Client List") || perms.canWriteItem("CLIENTS", client?.client_type === "Corporate" ? "Corporate Clients" : "Home Clients");
-  const canBill = perms.isSuperAdmin || perms.canWriteItem("CLIENTS", "Billing List") || perms.canWriteItem("CLIENTS", "Daily Collection");
+  const canEdit = perms.isSuperAdmin
+    || perms.canWriteItem("CLIENTS", "Client List")
+    || perms.canWriteItem("CLIENTS", client?.client_type === "Corporate" ? "Corporate Clients" : "Home Clients")
+    || perms.canWriteItem("BILLING", "Billing List");
+  const canBill = perms.isSuperAdmin
+    || perms.canWriteItem("BILLING", "Billing List")
+    || perms.canWriteItem("CLIENTS", "Billing List")
+    || perms.canWriteItem("CLIENTS", "Daily Collection");
   const canDelete = perms.isSuperAdmin || perms.canDeleteItem("CLIENTS", "Client List") || perms.canDeleteItem("CLIENTS", client?.client_type === "Corporate" ? "Corporate Clients" : "Home Clients");
   const [statusOpen, setStatusOpen] = useState(false);
   const [packageOpen, setPackageOpen] = useState(false);

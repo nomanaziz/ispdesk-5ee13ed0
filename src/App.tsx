@@ -1022,7 +1022,7 @@ const App = () => (
               <Route path="/pop-admin/billing/invoice" element={<Navigate to="/pop-admin/billing/list" replace />} />
               <Route path="/pop-admin/billing/profile" element={<Navigate to="/pop-admin/clients/billing" replace />} />
               <Route path="/pop-admin/monitoring/online" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopOnlineMonitoring /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
-              <Route path="/pop-admin/monitoring/ping" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopPlaceholder title="Ping Tools" /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
+              <Route path="/pop-admin/monitoring/ping" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PingTools /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/templates" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSmsTemplates /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/individual" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSmsIndividual /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
               <Route path="/pop-admin/sms/send" element={<PortalAuthProvider><ResellerProtectedRoute><ResellerLayout><PopSmsSend /></ResellerLayout></ResellerProtectedRoute></PortalAuthProvider>} />
