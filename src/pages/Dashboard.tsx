@@ -846,16 +846,17 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {showW("system_resource", "resource_overview") && (
+        {(showW("system_resource", "onu_gauge") || showW("system_resource", "paid_gauge") || showW("system_resource", "collection_gauge") || showW("system_resource", "sms_balance")) && (
           <div className="space-y-3">
             <SectionHeading title="সিস্টেম রিসোর্স" hint="বর্তমান মাসের অগ্রগতি" />
             <Card>
               <CardContent className="p-4 space-y-3">
                 <div className="grid grid-cols-3 gap-2">
-                  <ResourceGauge label="ONU অনলাইন" value={onlinePct} tone="emerald" />
-                  <ResourceGauge label="পেইড ক্লায়েন্ট" value={paidPct} tone="violet" />
-                  <ResourceGauge label="কালেকশন" value={collectionPct} tone="violet" />
+                  {showW("system_resource", "onu_gauge") && <ResourceGauge label="ONU অনলাইন" value={onlinePct} tone="emerald" />}
+                  {showW("system_resource", "paid_gauge") && <ResourceGauge label="পেইড ক্লায়েন্ট" value={paidPct} tone="violet" />}
+                  {showW("system_resource", "collection_gauge") && <ResourceGauge label="কালেকশন" value={collectionPct} tone="violet" />}
                 </div>
+                {showW("system_resource", "sms_balance") && (
                 <Link to="/dashboard/sms" className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2.5 hover:bg-muted/60 transition">
                   <div className="flex items-center gap-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600">
@@ -865,10 +866,12 @@ const Dashboard = () => {
                   </div>
                   <span className="text-base font-bold tabular-nums text-foreground">{String(d?.smsBalance ?? "0")}</span>
                 </Link>
+                )}
               </CardContent>
             </Card>
           </div>
         )}
+
       </div>
 
       {/* POP Hero Row */}
