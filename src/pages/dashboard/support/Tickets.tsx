@@ -503,6 +503,7 @@ export default function Tickets() {
         <TabsList>
           <TabsTrigger value="accepted">Accepted (Client's)</TabsTrigger>
           <TabsTrigger value="pending">Pending ({stats.pending})</TabsTrigger>
+          <TabsTrigger value="approval">Approval ({stats.pendingApproval})</TabsTrigger>
           <TabsTrigger value="mac">MAC Reseller's</TabsTrigger>
           <TabsTrigger value="bw">Bandwidth POP's</TabsTrigger>
         </TabsList>
