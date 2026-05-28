@@ -223,6 +223,7 @@ export default function Tickets() {
       total: thisMonth.length,
       pending: tickets.filter((t: any) => t.status === "pending").length,
       processing: tickets.filter((t: any) => t.status === "processing").length,
+      pendingApproval: tickets.filter((t: any) => t.status === "pending_approval").length,
       solved: tickets.filter((t: any) => t.status === "solved").length,
     };
   }, [tickets]);
