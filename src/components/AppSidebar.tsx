@@ -41,33 +41,33 @@ export interface MenuGroup { label: string; icon: LucideIcon; items: MenuItem[];
 
 // Rainbow candy-tone color per group label. Light: -600, Dark: -400 for readability.
 const GROUP_COLORS: Record<string, string> = {
-  "ড্যাশবোর্ড": "text-indigo-600 dark:text-indigo-400",
-  "ওয়েবসাইট প্যানেল": "text-sky-600 dark:text-sky-400",
-  "কনফিগারেশন": "text-slate-600 dark:text-slate-300",
+  "Dashboard": "text-indigo-600 dark:text-indigo-400",
+  "Website Panel": "text-sky-600 dark:text-sky-400",
+  "Configuration": "text-slate-600 dark:text-slate-300",
   "VAS": "text-teal-600 dark:text-teal-400",
   "হোম ক্লায়েন্ট": "text-blue-600 dark:text-blue-400",
   "POP / MAC ক্লায়েন্ট": "text-violet-600 dark:text-violet-400",
-  "ব্যান্ডউইথ ক্লায়েন্ট": "text-cyan-600 dark:text-cyan-400",
-  "ডিভাইস": "text-emerald-600 dark:text-emerald-400",
-  "HR ও পেরোল": "text-pink-600 dark:text-pink-400",
+  "Bandwidth Clients": "text-cyan-600 dark:text-cyan-400",
+  "Devices": "text-emerald-600 dark:text-emerald-400",
+  "HR & Payroll": "text-pink-600 dark:text-pink-400",
   "অ্যাক্সেস ম্যানেজমেন্ট": "text-indigo-700 dark:text-indigo-300",
   "OLT ম্যানেজমেন্ট": "text-purple-600 dark:text-purple-400",
-  "নেটওয়ার্ক মনিটরিং": "text-green-600 dark:text-green-400",
-  "নেটওয়ার্ক ডায়াগ্রাম": "text-lime-600 dark:text-lime-400",
+  "Network Monitoring": "text-green-600 dark:text-green-400",
+  "Network Diagram": "text-lime-600 dark:text-lime-400",
   "ছুটি ম্যানেজমেন্ট": "text-amber-600 dark:text-amber-400",
   "ইভেন্ট ও ছুটি": "text-yellow-600 dark:text-yellow-400",
-  "সাপোর্ট ও টিকেটিং": "text-rose-600 dark:text-rose-400",
-  "টাস্ক ম্যানেজমেন্ট": "text-fuchsia-600 dark:text-fuchsia-400",
-  "ব্যান্ডউইথ ক্রয়": "text-cyan-700 dark:text-cyan-300",
-  "ক্রয়": "text-orange-600 dark:text-orange-400",
-  "বিক্রয় ও সার্ভিস": "text-red-600 dark:text-red-400",
-  "ইনভেন্টরি": "text-amber-700 dark:text-amber-300",
-  "অ্যাসেট": "text-stone-600 dark:text-stone-300",
-  "অ্যাকাউন্টিং": "text-green-700 dark:text-green-300",
-  "রিপোর্ট": "text-blue-700 dark:text-blue-300",
-  "SMS সার্ভিস": "text-sky-700 dark:text-sky-300",
-  "ই-কমার্স": "text-pink-700 dark:text-pink-300",
-  "সিস্টেম": "text-zinc-600 dark:text-zinc-300",
+  "Support & Ticketing": "text-rose-600 dark:text-rose-400",
+  "Task Management": "text-fuchsia-600 dark:text-fuchsia-400",
+  "Bandwidth Purchase": "text-cyan-700 dark:text-cyan-300",
+  "Purchase": "text-orange-600 dark:text-orange-400",
+  "Sales & Service": "text-red-600 dark:text-red-400",
+  "Inventory": "text-amber-700 dark:text-amber-300",
+  "Assets": "text-stone-600 dark:text-stone-300",
+  "Accounting": "text-green-700 dark:text-green-300",
+  "Reports": "text-blue-700 dark:text-blue-300",
+  "SMS Service": "text-sky-700 dark:text-sky-300",
+  "E-Commerce": "text-pink-700 dark:text-pink-300",
+  "System": "text-zinc-600 dark:text-zinc-300",
 };
 
 function getGroupColor(group: MenuGroup): string {
@@ -76,11 +76,11 @@ function getGroupColor(group: MenuGroup): string {
 
 export const menuGroups: MenuGroup[] = [
   {
-    label: "ড্যাশবোর্ড",
+    label: "Dashboard",
     icon: LayoutDashboard,
     defaultOpen: true,
     items: [
-      { title: "ড্যাশবোর্ড", url: "/dashboard", icon: LayoutDashboard },
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
       { title: "লিংক", url: "/dashboard/links", icon: Link2 },
     ],
   },
@@ -112,7 +112,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "ব্যান্ডউইথ ক্লায়েন্ট",
+    label: "Bandwidth Clients",
     icon: Wifi,
     items: [
       { title: "POP / কাস্টমার", url: "/dashboard/bw-sale/pop", icon: Radio },
@@ -124,7 +124,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "সাপোর্ট ও টিকেটিং",
+    label: "Support & Ticketing",
     icon: Headphones,
     items: [
       { title: "ক্লায়েন্ট সাপোর্ট", url: "/dashboard/support/tickets", icon: Headphones },
@@ -133,10 +133,10 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "অ্যাকাউন্টিং",
+    label: "Accounting",
     icon: BarChart3,
     items: [
-      { title: "ড্যাশবোর্ড", url: "/dashboard/accounting", icon: PieChart },
+      { title: "Dashboard", url: "/dashboard/accounting", icon: PieChart },
       { title: "চার্ট অফ অ্যাকাউন্টস", url: "/dashboard/accounting/chart", icon: BookOpen },
       { title: "আয়", url: "/dashboard/accounting/income", icon: DollarSign },
       { title: "ব্যয়", url: "/dashboard/accounting/expense", icon: Banknote },
@@ -155,7 +155,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "HR ও পেরোল",
+    label: "HR & Payroll",
     icon: UserCog,
     items: [
       { title: "কর্মী আবেদন কেন্দ্র", url: "/dashboard/hr/employee-hub", icon: ClipboardList },
@@ -164,7 +164,7 @@ export const menuGroups: MenuGroup[] = [
       { title: "কর্মচারী তালিকা", url: "/dashboard/hr/employees", icon: Users },
       { title: "বেতন শীট", url: "/dashboard/hr/salary-sheet", icon: ScrollText },
       { title: "অগ্রিম বেতন", url: "/dashboard/hr/advance-salary", icon: Wallet },
-      { title: "কর্মী Loan", url: "/dashboard/hr/loans", icon: DollarSign },
+      { title: "Employee Loan", url: "/dashboard/hr/loans", icon: DollarSign },
       { title: "রিজাইনেশন", url: "/dashboard/hr/resignations", icon: UserX },
       { title: "উপস্থিতি", url: "/dashboard/hr/attendance", icon: CheckSquare },
       { title: "ছুটি ম্যানেজমেন্ট", url: "/dashboard/hr/leave", icon: CalendarDays },
@@ -192,7 +192,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "নেটওয়ার্ক মনিটরিং",
+    label: "Network Monitoring",
     icon: Activity,
     items: [
       { title: "অনলাইন মনিটরিং", url: "/dashboard/monitoring/online", icon: Wifi },
@@ -206,7 +206,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "নেটওয়ার্ক ডায়াগ্রাম",
+    label: "Network Diagram",
     icon: Network,
     items: [
       { title: "ডায়াগ্রাম", url: "/dashboard/network/diagram", icon: Network },
@@ -218,10 +218,10 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "ডিভাইস",
+    label: "Devices",
     icon: ShieldCheck,
     items: [
-      { title: "ড্যাশবোর্ড", url: "/dashboard/device-admin", icon: LayoutDashboard },
+      { title: "Dashboard", url: "/dashboard/device-admin", icon: LayoutDashboard },
       { title: "ডিভাইস ইনভেন্টরি", url: "/dashboard/device-admin/devices", icon: Server },
       { title: "OID Library", url: "/dashboard/device-admin/oid-library", icon: Server },
       { title: "Polling Agents", url: "/dashboard/device-admin/polling-agents", icon: Server },
@@ -235,7 +235,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "টাস্ক ম্যানেজমেন্ট",
+    label: "Task Management",
     icon: CheckSquare,
     items: [
       { title: "টাস্ক", url: "/dashboard/tasks", icon: CheckSquare },
@@ -243,7 +243,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "ব্যান্ডউইথ ক্রয়",
+    label: "Bandwidth Purchase",
     icon: Wifi,
     items: [
       { title: "আইটেম", url: "/dashboard/bw-buy/items", icon: Package },
@@ -254,7 +254,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "রিপোর্ট",
+    label: "Reports",
     icon: FileBarChart,
     items: [
       { title: "বিল কালেকশন", url: "/dashboard/reports/bill-collection", icon: Wallet },
@@ -268,7 +268,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "SMS সার্ভিস",
+    label: "SMS Service",
     icon: Send,
     items: [
       { title: "ব্যক্তিগত SMS", url: "/dashboard/sms/individual", icon: MessageSquare },
@@ -280,7 +280,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "ই-কমার্স",
+    label: "E-Commerce",
     icon: ShoppingCart,
     items: [
       { title: "ক্যাটেগরি", url: "/dashboard/shop/categories", icon: FolderOpen },
@@ -293,7 +293,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "ক্রয়",
+    label: "Purchase",
     icon: ShoppingCart,
     items: [
       { title: "রিকুইজিশন", url: "/dashboard/purchases/requisitions", icon: ClipboardList },
@@ -302,7 +302,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "বিক্রয় ও সার্ভিস",
+    label: "Sales & Service",
     icon: Receipt,
     items: [
       { title: "প্রোডাক্ট ইনভয়েস", url: "/dashboard/sales/product-invoice", icon: FileText },
@@ -310,7 +310,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "ইনভেন্টরি",
+    label: "Inventory",
     icon: Boxes,
     items: [
       { title: "ইউনিট", url: "/dashboard/inventory/units", icon: CircleDot },
@@ -321,7 +321,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "অ্যাসেট",
+    label: "Assets",
     icon: Archive,
     items: [
       { title: "অ্যাসেট তালিকা", url: "/dashboard/assets", icon: Archive },
@@ -329,7 +329,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "ওয়েবসাইট প্যানেল",
+    label: "Website Panel",
     icon: Globe,
     items: [
       { title: "ওয়েবসাইট ড্যাশবোর্ড", url: "/dashboard/website", icon: Globe },
@@ -344,12 +344,12 @@ export const menuGroups: MenuGroup[] = [
       { title: "উৎসব", url: "/dashboard/website/festivals", icon: Megaphone },
       { title: "মেনু এডিটর", url: "/dashboard/website/menu", icon: List },
       { title: "মিডিয়া লাইব্রেরি", url: "/dashboard/website/media", icon: FolderOpen },
-      { title: "About পেজ", url: "/dashboard/website/about", icon: BookOpen },
+      { title: "About Page", url: "/dashboard/website/about", icon: BookOpen },
       { title: "সাইট সেটিংস", url: "/dashboard/website/settings", icon: Cog },
     ],
   },
   {
-    label: "কনফিগারেশন",
+    label: "Configuration",
     icon: Settings,
     items: [
       { title: "জোন", url: "/dashboard/config/zones", icon: MapPin },
@@ -365,7 +365,7 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    label: "সিস্টেম",
+    label: "System",
     icon: Cog,
     items: [
       { title: "সিস্টেম সেটআপ", url: "/dashboard/system/setup", icon: Settings },
@@ -400,33 +400,33 @@ export const menuGroups: MenuGroup[] = [
 // Default UI is Bangla; lookup returns English when language toggled.
 export const SIDEBAR_EN: Record<string, string> = {
   // Group labels
-  "ড্যাশবোর্ড": "Dashboard",
-  "ওয়েবসাইট প্যানেল": "Website Panel",
-  "কনফিগারেশন": "Configuration",
+  "Dashboard": "Dashboard",
+  "Website Panel": "Website Panel",
+  "Configuration": "Configuration",
   "VAS": "VAS",
   "All Clients": "All Clients",
   "হোম ক্লায়েন্ট": "Home Clients",
   "POP / MAC ক্লায়েন্ট": "POP / MAC Clients",
-  "ব্যান্ডউইথ ক্লায়েন্ট": "Bandwidth Clients",
-  "ডিভাইস": "Devices",
-  "HR ও পেরোল": "HR & Payroll",
+  "Bandwidth Clients": "Bandwidth Clients",
+  "Devices": "Devices",
+  "HR & Payroll": "HR & Payroll",
   "OLT ম্যানেজমেন্ট": "OLT Management",
-  "নেটওয়ার্ক মনিটরিং": "Network Monitoring",
-  "নেটওয়ার্ক ডায়াগ্রাম": "Network Diagram",
+  "Network Monitoring": "Network Monitoring",
+  "Network Diagram": "Network Diagram",
   "ছুটি ম্যানেজমেন্ট": "Leave Management",
   "ইভেন্ট ও ছুটি": "Events & Holidays",
-  "সাপোর্ট ও টিকেটিং": "Support & Ticketing",
-  "টাস্ক ম্যানেজমেন্ট": "Task Management",
-  "ব্যান্ডউইথ ক্রয়": "Bandwidth Purchase",
+  "Support & Ticketing": "Support & Ticketing",
+  "Task Management": "Task Management",
+  "Bandwidth Purchase": "Bandwidth Purchase",
   "ক্রয়": "Purchase",
-  "বিক্রয় ও সার্ভিস": "Sales & Services",
-  "ইনভেন্টরি": "Inventory",
-  "অ্যাসেট": "Assets",
-  "অ্যাকাউন্টিং": "Accounting",
-  "রিপোর্ট": "Reports",
-  "SMS সার্ভিস": "SMS Service",
-  "ই-কমার্স": "E-Commerce",
-  "সিস্টেম": "System",
+  "Sales & Service": "Sales & Services",
+  "Inventory": "Inventory",
+  "Assets": "Assets",
+  "Accounting": "Accounting",
+  "Reports": "Reports",
+  "SMS Service": "SMS Service",
+  "E-Commerce": "E-Commerce",
+  "System": "System",
 
   // Common item titles
   "ওয়েবসাইট ড্যাশবোর্ড": "Website Dashboard",
@@ -441,7 +441,7 @@ export const SIDEBAR_EN: Record<string, string> = {
   "উৎসব": "Festivals",
   "মেনু এডিটর": "Menu Editor",
   "মিডিয়া লাইব্রেরি": "Media Library",
-  "About পেজ": "About Page",
+  "About Page": "About Page",
   "সাইট সেটিংস": "Site Settings",
   "জোন": "Zones",
   "সাব জোন": "Sub Zones",
