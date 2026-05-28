@@ -59,6 +59,10 @@ export const ITEM_MODULE: Record<string, { group: string; name: string }> = {
   "/dashboard/accounting/compare-pl":    { group: "ACCOUNTING", name: "Profit & Loss" },
   "/dashboard/accounting/trial-balance": { group: "ACCOUNTING", name: "Trial Balance" },
   "/dashboard/accounting/cash-book":     { group: "ACCOUNTING", name: "Cash Book" },
+  "/dashboard/accounting/capital":               { group: "ACCOUNTING", name: "Capital Dashboard" },
+  "/dashboard/accounting/capital/contributors":  { group: "ACCOUNTING", name: "Capital Contributors" },
+  "/dashboard/accounting/capital/transactions":  { group: "ACCOUNTING", name: "Capital Transactions" },
+  "/dashboard/accounting/capital/schedule":      { group: "ACCOUNTING", name: "Capital Schedule" },
 
   // HR ও পেরোল — প্রতিটি item আলাদা module
   "/dashboard/hr/employee-hub":      { group: "HR_PAYROLL", name: "Employee Hub" },

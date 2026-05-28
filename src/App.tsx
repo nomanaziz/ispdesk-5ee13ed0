@@ -280,6 +280,10 @@ const AccountingProfitLoss = lazy(() => import("@/pages/dashboard/accounting/Pro
 const AccountingComparePL = lazy(() => import("@/pages/dashboard/accounting/ComparePL"));
 const AccountingTrialBalance = lazy(() => import("@/pages/dashboard/accounting/TrialBalance"));
 const AccountingCashBook = lazy(() => import("@/pages/dashboard/accounting/CashBook"));
+const CapitalContributors = lazy(() => import("@/pages/dashboard/accounting/capital/Contributors"));
+const CapitalTransactions = lazy(() => import("@/pages/dashboard/accounting/capital/Transactions"));
+const CapitalSchedule = lazy(() => import("@/pages/dashboard/accounting/capital/Schedule"));
+const CapitalDashboardPage = lazy(() => import("@/pages/dashboard/accounting/capital/CapitalDashboard"));
 
 // Reports
 const ReportBillCollection = lazy(() => import("@/pages/dashboard/reports/BillCollection"));
@@ -775,6 +779,10 @@ const App = () => (
               <Route path="/dashboard/accounting/compare-pl" element={<P><AccountingComparePL /></P>} />
               <Route path="/dashboard/accounting/trial-balance" element={<P><AccountingTrialBalance /></P>} />
               <Route path="/dashboard/accounting/cash-book" element={<P><AccountingCashBook /></P>} />
+              <Route path="/dashboard/accounting/capital" element={<P><CapitalDashboardPage /></P>} />
+              <Route path="/dashboard/accounting/capital/contributors" element={<P><CapitalContributors /></P>} />
+              <Route path="/dashboard/accounting/capital/transactions" element={<P><CapitalTransactions /></P>} />
+              <Route path="/dashboard/accounting/capital/schedule" element={<P><CapitalSchedule /></P>} />
 
               {/* Reports */}
               <Route path="/dashboard/reports/bill-collection" element={<P><ReportBillCollection /></P>} />
