@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User, Wallet, Calendar, ClipboardCheck } from "lucide-react";
+import { User, Wallet, Calendar, ClipboardCheck, TicketCheck } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function MyDashboard() {
   const { employee, primaryRoleName, extraRoleNames, widgetPermissions, loading } = useEmployeeContext();
