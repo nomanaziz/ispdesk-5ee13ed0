@@ -49,6 +49,30 @@ export default function MyDashboard() {
   });
   const leaveLeft = (leaveBalance ?? []).reduce((s, l: any) => s + Number(l.remaining_days || 0), 0);
 
+  // My assigned tickets (open / in-progress)
+  const { data: myTickets } = useQuery({
+    queryKey: ["my-assigned-tickets", empId],
+    enabled: !!empId,
+    queryFn: async () => {
+      const { data: links } = await supabase
+        .from("support_ticket_assignees")
+        .select("ticket_id")
+        .eq("employee_id", empId!);
+      const ids = (links ?? []).map((l: any) => l.ticket_id);
+      if (ids.length === 0) return { open: 0, processing: 0, pendingApproval: 0 };
+      const { data: ts } = await supabase
+        .from("support_tickets")
+        .select("id, status")
+        .in("id", ids);
+      const arr = (ts ?? []) as any[];
+      return {
+        open: arr.filter((t) => t.status === "pending" || t.status === "processing").length,
+        processing: arr.filter((t) => t.status === "processing").length,
+        pendingApproval: arr.filter((t) => t.status === "pending_approval").length,
+      };
+    },
+  });
+
   if (loading) return <div className="space-y-3">{[...Array(2)].map((_, i) => <Skeleton key={i} className="h-32" />)}</div>;
   if (!employee) {
     return (
