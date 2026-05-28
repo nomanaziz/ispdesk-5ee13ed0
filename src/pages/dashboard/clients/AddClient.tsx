@@ -477,7 +477,7 @@ export default function AddClient() {
           payload.mikrotik_status = mikrotikStatus;
         }
 
-        const { error } = await supabase.from("clients").update(payload).eq("id", editClientId);
+        const { error } = await supabase.from("clients").update(payload as any).eq("id", editClientId);
         if (error) throw error;
       } else {
         if (shouldSyncMikrotik) {
@@ -510,7 +510,7 @@ export default function AddClient() {
           return;
         }
 
-        const { data: insertedClient, error } = await supabase.from("clients").insert(payload).select("id").single();
+        const { data: insertedClient, error } = await supabase.from("clients").insert(payload as any).select("id").single();
         if (error) throw error;
 
         // Auto-generate billing record — prorated for first month if mid-month join (admin mode only;
