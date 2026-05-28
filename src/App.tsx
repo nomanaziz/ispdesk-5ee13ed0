@@ -40,6 +40,7 @@ const MyPayslip = lazy(() => import("@/pages/dashboard/me/MyPayslip"));
 const MyRequestPage = lazy(() => import("@/pages/dashboard/me/MyRequestPage"));
 const MyMeals = lazy(() => import("@/pages/dashboard/me/MyMeals"));
 const MyRequisitions = lazy(() => import("@/pages/dashboard/me/MyRequisitions"));
+const PanelVisibilityDebug = lazy(() => import("@/pages/dashboard/debug/PanelVisibilityDebug"));
 const HrCatering = lazy(() => import("@/pages/dashboard/hr/Catering"));
 const HrProfileApprovals = lazy(() => import("@/pages/dashboard/hr/ProfileApprovals"));
 const HrEmployeeRequests = lazy(() => import("@/pages/dashboard/hr/EmployeeRequests"));
