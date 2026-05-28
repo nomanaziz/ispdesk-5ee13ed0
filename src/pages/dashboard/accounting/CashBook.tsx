@@ -26,17 +26,19 @@ export default function CashBook() {
       const f = applied.from, t = applied.to;
       const sum = (rows: any[] | null, key: string) => (rows ?? []).reduce((s, r) => s + Number(r[key] || 0), 0);
 
-      const [billColl, instFee, svcInv, prodInv, bwSale, income, payroll, expense, bwBuy, purchase] = await Promise.all([
+      const [billColl, instFee, svcInv, prodInv, bwSale, income, capIn, payroll, expense, bwBuy, purchase, capOut] = await Promise.all([
         supabase.from("bill_collections").select("amount").gte("created_at", f).lte("created_at", `${t}T23:59:59`),
         supabase.from("installation_fees").select("paid").gte("fee_date", f).lte("fee_date", t),
         supabase.from("service_invoices").select("paid_amount").gte("issued_date", f).lte("issued_date", t),
         supabase.from("product_invoices").select("paid_amount").gte("issued_date", f).lte("issued_date", t),
         supabase.from("bw_sales_invoices").select("paid_amount").gte("issued_date", f).lte("issued_date", t),
         supabase.from("income_entries").select("amount").gte("income_date", f).lte("income_date", t),
+        supabase.from("capital_transactions" as any).select("amount,category").eq("direction", "in").gte("transaction_date", f).lte("transaction_date", t),
         supabase.from("payroll").select("net_salary").eq("status", "paid").gte("paid_at", f).lte("paid_at", `${t}T23:59:59`),
         supabase.from("expense_entries").select("amount").gte("expense_date", f).lte("expense_date", t),
         supabase.from("bw_purchase_bills").select("paid").gte("created_at", f).lte("created_at", `${t}T23:59:59`),
         supabase.from("purchase_bills").select("paid_amount").gte("issued_date", f).lte("issued_date", t).then(r => r, () => ({ data: [] as any[] })),
+        supabase.from("capital_transactions" as any).select("amount,category").eq("direction", "out").gte("transaction_date", f).lte("transaction_date", t),
       ]);
 
       return {
@@ -48,12 +50,14 @@ export default function CashBook() {
           popBill: 0,
           bwPop: sum(bwSale.data, "paid_amount"),
           income: sum(income.data, "amount"),
+          capitalIn: sum((capIn as any).data, "amount"),
         },
         credit: {
           salary: sum(payroll.data, "net_salary"),
           expense: sum(expense.data, "amount"),
           bwProvider: sum(bwBuy.data, "paid"),
-          withdraw: 0,
+          withdraw: sum(((capOut as any).data ?? []).filter((r: any) => r.category === "drawing" || r.category === "principal_repay" || r.category === "profit_share"), "amount"),
+          interest: sum(((capOut as any).data ?? []).filter((r: any) => r.category === "interest_pay" || r.category === "late_fine"), "amount"),
           purchase: sum((purchase as any).data, "paid_amount"),
         },
       };
@@ -68,12 +72,14 @@ export default function CashBook() {
     { label: "POP Bill", value: data?.debit.popBill ?? 0 },
     { label: "Bandwidth POP Bill", value: data?.debit.bwPop ?? 0 },
     { label: "Income", value: data?.debit.income ?? 0 },
+    { label: "Capital / Loan / Investor In", value: data?.debit.capitalIn ?? 0 },
   ];
   const creditRows = [
     { label: "Paid Salary", value: data?.credit.salary ?? 0 },
     { label: "Expense", value: data?.credit.expense ?? 0 },
     { label: "Bandwidth Provider Bill", value: data?.credit.bwProvider ?? 0 },
-    { label: "Withdraw", value: data?.credit.withdraw ?? 0 },
+    { label: "Owner/Investor Withdraw + Loan Principal", value: data?.credit.withdraw ?? 0 },
+    { label: "Interest + Late Fine", value: data?.credit.interest ?? 0 },
     { label: "Purchase Paid Amount", value: data?.credit.purchase ?? 0 },
   ];
   const totalDebit = debitRows.reduce((s, r) => s + r.value, 0);
@@ -169,7 +175,10 @@ export default function CashBook() {
                   <td className="p-2 border border-border text-right font-mono">{fmtMoney(totalCredit)}</td>
                 </tr>
                 <tr className={`font-bold ${cashOnHand >= 0 ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-destructive/10 text-destructive"}`}>
-                  <td className="p-2 border border-border" colSpan={3}>Cash on Hand (Debit Total − Credit Total)</td>
+                  <td className="p-2 border border-border" colSpan={3}>
+                    Cash on Hand (Debit Total − Credit Total)
+                    {cashOnHand < 0 && <span className="ml-2 text-xs font-normal">⚠ ঋণাত্মক — Capital → Transactions থেকে fund add করুন</span>}
+                  </td>
                   <td className="p-2 border border-border text-right font-mono">{fmtMoney(cashOnHand)}</td>
                 </tr>
               </tbody>

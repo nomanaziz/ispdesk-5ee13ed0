@@ -148,6 +148,10 @@ export const menuGroups: MenuGroup[] = [
       { title: "P&L তুলনা", url: "/dashboard/accounting/compare-pl", icon: BarChart },
       { title: "ট্রায়াল ব্যালেন্স", url: "/dashboard/accounting/trial-balance", icon: Scale },
       { title: "ক্যাশ বুক", url: "/dashboard/accounting/cash-book", icon: BookOpen },
+      { title: "মূলধন ড্যাশবোর্ড", url: "/dashboard/accounting/capital", icon: PieChart },
+      { title: "মূলধন অবদানকারী", url: "/dashboard/accounting/capital/contributors", icon: Users },
+      { title: "মূলধন লেনদেন", url: "/dashboard/accounting/capital/transactions", icon: Receipt },
+      { title: "কিস্তি সূচি", url: "/dashboard/accounting/capital/schedule", icon: BookMarked },
     ],
   },
   {

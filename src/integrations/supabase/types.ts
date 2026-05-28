@@ -2798,6 +2798,214 @@ export type Database = {
           },
         ]
       }
+      capital_contributors: {
+        Row: {
+          address: string | null
+          agreed_amount: number
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          end_date: string | null
+          id: string
+          identifier: string | null
+          installment_amount: number
+          installment_cycle: string
+          interest_rate_pct: number
+          interest_type: string
+          late_fine_rule: Json
+          linked_account_id: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          start_date: string
+          status: string
+          total_installments: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          agreed_amount?: number
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          end_date?: string | null
+          id?: string
+          identifier?: string | null
+          installment_amount?: number
+          installment_cycle?: string
+          interest_rate_pct?: number
+          interest_type?: string
+          late_fine_rule?: Json
+          linked_account_id?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          start_date?: string
+          status?: string
+          total_installments?: number
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          agreed_amount?: number
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          end_date?: string | null
+          id?: string
+          identifier?: string | null
+          installment_amount?: number
+          installment_cycle?: string
+          interest_rate_pct?: number
+          interest_type?: string
+          late_fine_rule?: Json
+          linked_account_id?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          start_date?: string
+          status?: string
+          total_installments?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capital_contributors_linked_account_id_fkey"
+            columns: ["linked_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      capital_installment_schedule: {
+        Row: {
+          contributor_id: string
+          created_at: string
+          due_date: string
+          fine_amount: number
+          id: string
+          installment_no: number
+          interest_due: number
+          paid_amount: number
+          paid_at: string | null
+          principal_due: number
+          status: string
+          total_due: number | null
+          updated_at: string
+        }
+        Insert: {
+          contributor_id: string
+          created_at?: string
+          due_date: string
+          fine_amount?: number
+          id?: string
+          installment_no: number
+          interest_due?: number
+          paid_amount?: number
+          paid_at?: string | null
+          principal_due?: number
+          status?: string
+          total_due?: number | null
+          updated_at?: string
+        }
+        Update: {
+          contributor_id?: string
+          created_at?: string
+          due_date?: string
+          fine_amount?: number
+          id?: string
+          installment_no?: number
+          interest_due?: number
+          paid_amount?: number
+          paid_at?: string | null
+          principal_due?: number
+          status?: string
+          total_due?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capital_installment_schedule_contributor_id_fkey"
+            columns: ["contributor_id"]
+            isOneToOne: false
+            referencedRelation: "capital_contributors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      capital_transactions: {
+        Row: {
+          amount: number
+          branch_id: string | null
+          category: string
+          contributor_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          direction: string
+          id: string
+          linked_account_id: string | null
+          payment_method: string
+          reference: string | null
+          schedule_id: string | null
+          transaction_date: string
+        }
+        Insert: {
+          amount: number
+          branch_id?: string | null
+          category: string
+          contributor_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          direction: string
+          id?: string
+          linked_account_id?: string | null
+          payment_method?: string
+          reference?: string | null
+          schedule_id?: string | null
+          transaction_date?: string
+        }
+        Update: {
+          amount?: number
+          branch_id?: string | null
+          category?: string
+          contributor_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          direction?: string
+          id?: string
+          linked_account_id?: string | null
+          payment_method?: string
+          reference?: string | null
+          schedule_id?: string | null
+          transaction_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capital_transactions_contributor_id_fkey"
+            columns: ["contributor_id"]
+            isOneToOne: false
+            referencedRelation: "capital_contributors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capital_transactions_linked_account_id_fkey"
+            columns: ["linked_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catering_services: {
         Row: {
           active: boolean
@@ -13165,6 +13373,10 @@ export type Database = {
         Args: { _days: number; _tenant_id: string }
         Returns: string
       }
+      generate_installment_schedule: {
+        Args: { _contributor_id: string }
+        Returns: number
+      }
       generate_license_key: { Args: never; Returns: string }
       get_bw_portal_invoice_detail: {
         Args: {
@@ -13176,6 +13388,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_cash_on_hand: { Args: { _as_of?: string }; Returns: number }
       get_important_link_password: {
         Args: { _link_id: string }
         Returns: string
@@ -13300,6 +13513,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_capital_installments_daily: { Args: never; Returns: number }
       user_has_module: {
         Args: {
           _auth_uid: string
