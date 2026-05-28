@@ -749,6 +749,7 @@ const Dashboard = () => {
   const { isEmployeeOnly, loading: empLoading } = useEmployeeContext();
   const { data: d, isLoading } = useStats();
   const dashPerm = useModulePermission("Dashboard");
+  const { canWidget } = useFeatureFlags();
   if (empLoading || dashPerm.loading) return null;
   if (isEmployeeOnly) return <Navigate to="/dashboard/me" replace />;
   // Non-admin without Dashboard module permission → send to their own panel.
