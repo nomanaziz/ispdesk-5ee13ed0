@@ -1,69 +1,73 @@
-## লক্ষ্য
-Employee/Support Engineer যেন শুধু দেওয়া permission অনুযায়ী menu, page, client data এবং actions দেখতে/করতে পারে। EMP001-এর মতো user যেন অতিরিক্ত HR/VAS/System access না পায়, আর Client List permission থাকলে client list empty না দেখায়।
+## সমস্যার মূল কারণ
 
-## পাওয়া সমস্যা
-- EMP001-এর primary role `Employee`, extra role `Support Engineer`। Effective permission extra role থেকেও আসছে।
-- Support Engineer role-এ `Client List = write` আছে, কিন্তু `clients` RLS এখন শুধু Admin/Super Admin বা একই branch allow করছে। EMP001-এর branch নেই, তাই client list page খুললেও data empty।
-- Sidebar এখন group-level permission চেক করছে। যেমন `SYSTEM > Setup` থাকলে পুরো System group দেখাচ্ছে, তাই Custom Domain/System Log/অন্য item দেখা যাচ্ছে।
-- `HR ও পেরোল` group `Employees` permission পেলেই পুরো HR group খুলে যাচ্ছে। Item-level filtering নেই।
-- permission hook শুধু `module_name` দিয়ে map বানাচ্ছে; `module_group + module_name` ধরে না। একই নাম/ কাছাকাছি নাম থাকলে permission leakage হতে পারে।
-- Dashboard widget/bulk feature view শুধু primary role ধরে, extra role ধরে না; এটাও inconsistent।
+`src/lib/menuItemModuleMap.ts` (ITEM_MODULE) এ অনেক sidebar URL **missing**, আর HR এর প্রায় সব সাব-আইটেম ভুল করে একই `HR_PAYROLL / Employees` মডিউলে map করা — ফলে:
 
-## Implementation Plan
+1. **INVENTORY → Categories permission দিলেও মেনু আসে না** — কারণ `/dashboard/inventory/categories` ITEM_MODULE-এ নেই, fallback হিসেবে group `ইনভেন্টরি` চেক হয়, কিন্তু `GROUP_MODULE`-এ "ইনভেন্টরি" নেই → পুরো group hidden।
+2. **শুধু "Employees" permission দিলে পুরো HR group খুলে যায়** — কারণ Payroll / Payslip / Salary Sheet / Advance Salary / Loans / Resignations / Conveyance / Catering / HR Settings — সবগুলো ITEM_MODULE-এ `Employees` লেখা; এছাড়া unmapped item-গুলোর fallback `groupHasAccess = Employees` true হয়ে যায়।
+3. একই সমস্যা **BW Sale, BW Buy, OLT, Network, Device Admin, Tasks, Reports, Shop, Purchases, Sales, Assets, Events, Website, Config, VAS, Branches (POP/MAC)** — কোনো item-mapping নেই, তাই হয় সব খুলে যায় (যদি group fallback true) বা সব hidden।
 
-### 1) Permission engine ঠিক করা
-- `useModulePermissions` আপডেট করব যাতে permission key হবে `module_group|module_name`।
-- Backward compatibility রাখব: পুরনো `canRead('Client List')` call থাকলেও কাজ করবে, কিন্তু নতুন safe API হবে `canReadModule('CLIENTS', 'Client List')`।
-- `enabled=false` permission কখনো effective access হিসেবে গণনা হবে না।
+DB-তে সব দরকারি `app_role_modules` entry আগে থেকেই আছে (INVENTORY/Categories, HR_PAYROLL/Payroll, BW_SALE/*, BRANCHES/*, OLT/*, NETWORK/*, SHOP/*, ইত্যাদি), শুধু frontend mapping অসম্পূর্ণ।
 
-### 2) Sidebar item-level permission filtering
-- `menuModuleMap.ts`-এ প্রতিটি sidebar item-এর exact permission mapping যোগ করব:
-  - All Clients → Home/Corporate/Add/Scheduler/Portal Manage/Billing etc আলাদা আলাদা
-  - HR & Payroll → Payroll/Payslip/Employees/Attendance/Leave/Settings আলাদা
-  - System → Setup/Periods/Payment Gateways/System Log/Custom Domain/Company/Invoice আলাদা
-  - VAS → Config/Subscriptions/Transactions আলাদা
-  - Network/Bandwidth/Support/Reports/SMS/Inventory/Accounting ইত্যাদিও route অনুযায়ী map করব
-- `AppSidebar`-এ group নয়, আগে item filter হবে; group তখনই দেখাবে যখন অন্তত ১টা allowed item থাকবে।
-- Employee self-service “আমার প্যানেল” আগের মতো থাকবে, কিন্তু admin HR module permission না থাকলে HR & Payroll group দেখাবে না।
+## ফিক্সের পরিকল্পনা
 
-### 3) Route-level protection যোগ করা
-- শুধু sidebar hide করলে হবে না—URL paste করেও যেন unauthorized page না খোলে।
-- `App.tsx` routes-এ lightweight permission wrapper বসাবো, route অনুযায়ী `read/write/full` require করবে।
-- unauthorized হলে clean “অনুমতি নেই” page দেখাবে বা employee panel-এ redirect করবে।
+### ১) `src/lib/menuItemModuleMap.ts` — পূর্ণাঙ্গ ITEM_MODULE (সব sidebar URL)
 
-### 4) Client List visibility + action permission
-- Database migration দিয়ে `clients` RLS policy আপডেট করব:
-  - Admin/Super Admin full access থাকবে।
-  - যাদের `CLIENTS > Client List` read/write/full আছে তারা client list দেখতে পারবে।
-  - write/full permission অনুযায়ী create/update/delete policy আলাদা হবে।
-- `ClientList`, `CorporateClients`, `ClientActionButtons`-এ action gates বসাবো:
-  - read = শুধু view
-  - write = add/edit/bill receive/scheduler/status/package/sync টাইপ কাজ
-  - full = delete/bulk delete
-- Add Client button, bulk actions, edit/delete dropdown permission অনুযায়ী hide/disable হবে।
+প্রতিটি `menuGroups` item-কে সঠিক `(module_group, module_name)` দিয়ে map করব। উদাহরণ:
 
-### 5) Feature flags/bulk/dashboard permissions extra role-aware করা
-- `app_user_effective_features` view migration দিয়ে primary + extra roles দুটোই ধরবে।
-- `useFeatureFlags` default-on behavior শুধু unconfigured group-এর জন্য থাকবে; configured হলে disabled item hidden হবে।
-- নতুন/মিসিং widgets/actions registry-তে যোগ করব যাতে Role page-এ সব permission দেখা যায়।
+- HR বিভাগ আলাদা করব:
+  - `/dashboard/hr/employee-hub` → HR_PAYROLL / Employee Hub
+  - `/dashboard/hr/payroll` → HR_PAYROLL / Payroll
+  - `/dashboard/hr/payslip` → HR_PAYROLL / Payslip
+  - `/dashboard/hr/employees` → HR_PAYROLL / Employees  *(শুধু contact দেখার জন্য)*
+  - `/dashboard/hr/salary-sheet` → HR_PAYROLL / Salary Sheet
+  - `/dashboard/hr/advance-salary` → HR_PAYROLL / Advance Salary
+  - `/dashboard/hr/loans` → HR_PAYROLL / Employee Loans
+  - `/dashboard/hr/resignations` → HR_PAYROLL / Resignations
+  - `/dashboard/hr/attendance` → HR_PAYROLL / Attendance
+  - `/dashboard/hr/conveyance-bills` + `/dashboard/hr/my-conveyance` → HR_PAYROLL / Conveyance Bills
+  - `/dashboard/hr/catering` → HR_PAYROLL / Catering
+  - `/dashboard/hr/settings` → HR_PAYROLL / HR Settings
+  - `/dashboard/hr/leave` → HR_PAYROLL / Leave Management
+- Inventory: units/locations/categories/items/stock → INVENTORY / {Items, Locations, Categories, Stock} (units → Items)
+- BW Sale, BW Buy, Branches (POP/MAC), OLT, Network, Monitoring, Device Admin, Mikrotik, Tasks, Reports, SMS, Shop, Purchases, Sales, Assets, Events, Website, Config, VAS, Accounting, Support, System — সব route entry যোগ করব এক্সিস্টিং DB মডিউল নাম মিলিয়ে।
 
-### 6) Role management UI polish
-- Role page-এ module permissions আরো breakdown হবে:
-  - group-level “সব চালু/সব বন্ধ” toggle
-  - item-level permission select
-  - enabled count
-- Disabled item হলে permission dropdown inactive থাকবে, এবং save করার পর sidebar/page/action সঙ্গে সঙ্গে match করবে।
+### ২) `src/components/AppSidebar.tsx` — strict fallback
 
-### 7) Verify EMP001 scenario
-- EMP001 effective permissions re-check করব।
-- Support Engineer হিসেবে:
-  - Client List data দেখাবে যদি `CLIENTS > Client List` read/write থাকে।
-  - Delete button দেখাবে না যদি permission `full` না থাকে।
-  - HR/VAS/System item শুধু যেগুলো role-এ enabled সেগুলোই দেখাবে।
-  - Custom Domain/System Log আলাদা permission ছাড়া দেখাবে না।
+`orderedGroups` filter-এ unmapped item-এর জন্য `groupHasAccess` fallback **বাদ** দেব। মানে:
 
-## Database changes needed
-- Add/replace helper function for module permission check using primary role + extra roles.
-- Update `clients` RLS policies to respect module permission levels.
-- Recreate `app_user_effective_features` view to include extra roles.
-- No new public table needed.
+- ITEM_MODULE-এ entry না থাকলে non-admin user-এর জন্য item hidden।
+- Super Admin / Admin সব আগের মতই দেখবে।
+
+এতে permission "leak" বন্ধ হবে, এবং সব item সঠিক permission দিয়েই নিয়ন্ত্রিত।
+
+### ৩) `src/lib/menuModuleMap.ts` — group fallback ছেঁটে সঠিক করা
+
+`HR ও পেরোল` → `Employees` mapping leak-এর কারণ। GROUP_MODULE শুধু "group label collapse-এ থাকলে আইকন show করার জন্য" ব্যবহার হয় না — orderedGroups-এ ব্যবহৃত। strict-fallback হলে আর দরকার নেই; তবু সংক্ষেপে রেখে সব item-level হবে।
+
+### ৪) Action gating audit (delete/edit permissions)
+
+আগের কাজে `ClientActionButtons.tsx` ঠিক হয়েছে। এখন **এক রাউন্ড QA** করব:
+
+- `useModulePermission(group, name)` ব্যবহার করে relevant page-এর Add/Edit/Delete buttons-এ Guard আছে কিনা — Inventory, Shop, BW Sale, Assets, Branches, HR sub-pages।
+- যেখানে শুধু `<Guarded module=...>` page-level আছে কিন্তু button-level guard নেই, সেখানে minimum দুই জায়গায় (Add button + row Delete) `canWriteItem` / `canDeleteItem` যোগ করব।
+
+### ৫) Roles & Permissions UI (`/dashboard/access/roles`)
+
+`access/RoleFeaturePanels.tsx` UI ইতিমধ্যেই DB-driven (`app_role_modules`), তাই নতুন entry নিজে নিজেই দেখা যাবে। শুধু verify করব Employee role default-এ কোনগুলো on/off আছে — যা missing সেগুলো previous migration-এ যোগ করা আছে।
+
+### ৬) Verification
+
+* DB query: প্রতিটি ITEM_MODULE entry আসলেই `app_role_modules`-এ আছে কিনা।
+* Manual: Employee role-এ শুধু `HR_PAYROLL/Employees` (read) এবং `INVENTORY/Categories` (write) দিয়ে test —
+  - HR group-এ শুধু "কর্মচারী তালিকা" item দেখা যাবে; বাকি সব hidden।
+  - Inventory group-এ শুধু "আইটেম ক্যাটাগরি" দেখা যাবে; Add button visible, Delete hidden।
+* Debug page `/dashboard/debug/panel-visibility` দিয়ে role/permission resolution verify।
+
+## প্রভাবিত ফাইল
+
+- **`src/lib/menuItemModuleMap.ts`** — পূর্ণাঙ্গ rewrite (সব sidebar URL → DB module)
+- **`src/lib/menuModuleMap.ts`** — সংক্ষিপ্ত (group-level fallback বাদ)
+- **`src/components/AppSidebar.tsx`** — `orderedGroups`-এ strict filter (unmapped item hidden for non-admin)
+- **`src/pages/dashboard/inventory/*`**, **`shop/*`**, **`bw-sale/*`**, **`assets/*`**, **`branches/*`** — Add/Edit/Delete buttons-এ permission guard যোগ (audit-based, যেখানে missing)
+
+কোনো DB migration লাগবে না — সব module entry আগে থেকেই আছে।
