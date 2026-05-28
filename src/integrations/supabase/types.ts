@@ -3456,6 +3456,7 @@ export type Database = {
           bandwidth_committed_mbps: number | null
           bgp_as_number: string | null
           billing_date: number | null
+          billing_policy: string | null
           billing_start_month: string | null
           billing_status: string | null
           box_id: string | null
@@ -3553,6 +3554,7 @@ export type Database = {
           bandwidth_committed_mbps?: number | null
           bgp_as_number?: string | null
           billing_date?: number | null
+          billing_policy?: string | null
           billing_start_month?: string | null
           billing_status?: string | null
           box_id?: string | null
@@ -3650,6 +3652,7 @@ export type Database = {
           bandwidth_committed_mbps?: number | null
           bgp_as_number?: string | null
           billing_date?: number | null
+          billing_policy?: string | null
           billing_start_month?: string | null
           billing_status?: string | null
           box_id?: string | null
