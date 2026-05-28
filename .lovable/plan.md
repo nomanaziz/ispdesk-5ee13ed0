@@ -1,69 +1,162 @@
-# Move Events & Holidays into HR + Holiday Auto-Import + Leave Tuning
+# Capital, Funding Sources ও Cash-on-Hand Guard — Accounting Module Plan
 
-## লক্ষ্য
+## সমস্যা ও লক্ষ্য
 
-১। "ইভেন্ট ও ছুটি" মেনুটাকে আলাদা group থেকে সরিয়ে **HR ও পেরোল** group এর ভেতরে নিয়ে আসা — route, permission module সব একসাথে move হবে যাতে permission table এ আর আলাদা `LEAVE > Setup` entry না থাকে।
-২। বাংলাদেশের **government holiday** প্রতি বছর automatic add হওয়ার ব্যবস্থা।
-৩। **ছুটি (leave) allocation** আরো গুছিয়ে — কে কোন category তে বছরে কয়টা ছুটি পাবে সেটা configure করা।
+বর্তমানে Cash Book এ `Cash on Hand = Debit Total − Credit Total` মাইনাস হয়ে যাচ্ছে। বাস্তবে — income না থাকলে expense সম্ভব না; টাকা কোথাও না কোথাও থেকে আসতে হবে (মালিক, ব্যাংক, বিনিয়োগকারী ইত্যাদি)। তাই দরকার:
+
+১. একটা পূর্ণাঙ্গ **Capital / Funding Source** module।
+২. প্রতিটি funding source এর জন্য — fund add, withdrawal, interest/installment, fine track।
+৩. সকল expense, withdraw, salary, purchase, vendor pay submit করার আগে **Cash on Hand ≥ 0** check। কম হলে save block → "আগে fund add করুন" toast।
+৪. Cash Book এ funding সব visible debit side এ; withdrawal/installment credit side এ।
 
 ---
 
-## ১. মেনু ও Permission একীভূতকরণ
+## ১. Funding Source Types
 
-- `src/components/AppSidebar.tsx`: "ইভেন্ট ও ছুটি" আলাদা group টা মুছে, item টা **HR ও পেরোল** group এর ভেতরে নতুন route `"/dashboard/hr/events-holidays"` দিয়ে যোগ করব (ছুটি ম্যানেজমেন্ট এর পাশে)।
-- `src/App.tsx`: পুরাতন `/dashboard/events` route কে নতুন `/dashboard/hr/events-holidays` এ redirect এবং নতুন route এ `Events` component mount।
-- `src/lib/menuItemModuleMap.ts`: `/dashboard/events` mapping সরিয়ে নতুন route কে **`HR > Events & Holidays`** module এ point করব।
-- Migration: 
-  - `app_role_modules` এ পুরাতন `LEAVE > Setup` rows এর enabled/permission মান copy করে নতুন `HR > Events & Holidays` rows তৈরি করব (সব role এর জন্য, যাতে কেউ access হারায় না)।
-  - পুরাতন `LEAVE > Setup` rows delete।
-  - Super Admin/Admin কে নতুন module এ full access।
+বাজারে ISP/SMB বাস্তবতায় common ৬ ধরনের capital ধরছি:
 
-## ২. বাংলাদেশ Government Holiday auto-import
+| Type | বিবরণ | Interest | Repayment |
+|---|---|---|---|
+| `owner_capital` | মালিকের নিজের জমা টাকা | না | optional drawing |
+| `partner_capital` | অংশীদারের জমা | না | profit share / drawing |
+| `investor` | তৃতীয়পক্ষ বিনিয়োগকারী | optional % | মাসিক / এককালীন, profit share বা fixed |
+| `bank_loan` | ব্যাংক ঋণ | আছে (%) | মাসিক installment, late fine |
+| `private_loan` | ব্যক্তিগত ধার | optional | flexible |
+| `other_income` | অন্য ব্যবসা থেকে transfer | না | না |
 
-- নতুন table **`bd_government_holidays`** (year, date, title_bn, title_en, category — public/optional/religious, source)। RLS: সবাই read, admin write। GRANT যথাযথ।
-- Edge function **`import-bd-holidays`**: parameter `{year}` নিয়ে public source থেকে fetch করে upsert করবে। প্রথম source হিসেবে [date.nager.at](https://date.nager.at/api/v3/PublicHolidays/{year}/BD) ব্যবহার করব (free, no key); failure হলে static seed list fallback (২০২৫–২০২৭ এর জন্য hand-curated BD holidays bundle)। Religious holiday (ঈদ, পূজা) এর সঠিক তারিখ admin manual override করতে পারবে।
-- Cron/Trigger: প্রতি বছর January 1 এ scheduled trigger (pg_cron) যা automatic ভাবে নতুন বছরের holiday import করবে। প্রথম বার চালু হলে current ও next year import হবে।
-- Events page এ নতুন **"সরকারি ছুটি Import"** button: year select + "Import / Re-sync" → edge function call → success হলে holiday গুলো `events_holidays` table এ `type='holiday'`, `source='bd_govt'` দিয়ে upsert। Manual created event/holiday গুলো অপরিবর্তিত থাকবে।
-- `events_holidays` table এ দুটো column যোগ: `source text` (manual/bd_govt), `external_id text` (idempotent re-sync এর জন্য, unique with year)।
+প্রতি source এর জন্য একটা **contributor profile** (নাম, ফোন, ঠিকানা, NID/Trade License, opening date, agreed terms)।
 
-## ৩. Leave allocation fine-tuning
+---
 
-বর্তমানে `/dashboard/leave/categories` ও `LeaveManagement` আছে। নতুন যোগ করব:
+## ২. ডাটাবেস ডিজাইন
 
-- `leave_categories` table এ field যোগ (যদি না থাকে): `annual_quota int` (বছরে কত দিন), `gender` (any/male/female), `min_service_months int` (কত মাস চাকরি হলে পাবে), `carry_forward boolean`, `max_carry_days int`, `is_paid boolean`।
-- নতুন table **`employee_leave_balances`** (employee_id, category_id, year, allocated, used, carried_from_prev) — প্রতি employee × category × year।
-- নতুন function `recalculate_leave_balances(year)`: সকল active employee এর জন্য category অনুযায়ী allocation generate করবে, eligibility (gender, service length) check করে।
-- `LeaveManagement` page এ নতুন tab **"বার্ষিক বরাদ্দ"** — year selector + employee/category grid দেখাবে allocated/used/remaining। "নতুন বছর বরাদ্দ তৈরি" button যা উপরের function call করবে।
-- Leave apply করার সময় current year balance check করে remaining < requested হলে block করবে।
+### `capital_contributors`
+- type (enum উপরের ৬টা)
+- name, phone, address, identifier (NID/account)
+- agreed_amount, currency (default BDT)
+- interest_rate_pct (nullable), interest_type (`flat`/`reducing`/`profit_share`/`none`)
+- installment_amount, installment_cycle (`monthly`/`quarterly`/`yearly`/`one_time`/`flexible`)
+- start_date, end_date, status (`active`/`closed`)
+- branch_id, notes
 
-বাংলাদেশের default leave categories seed হিসেবে যোগ করব (admin পরে customize করতে পারবে):
+### `capital_transactions`
+সবধরনের contributor-related টাকার movement একই table এ:
+- contributor_id
+- direction (`in` = fund add → cash বাড়ে / `out` = withdraw বা installment → cash কমে)
+- category (`principal_in`, `principal_repay`, `interest_pay`, `profit_share`, `late_fine`, `drawing`, `other`)
+- amount, transaction_date, payment_method
+- reference, description, branch_id, created_by
+- linked_account_id (chart_of_accounts এ map)
 
-| Category | Quota (দিন/বছর) | Notes |
-|---|---|---|
-| Casual Leave (নৈমিত্তিক) | ১০ | paid |
-| Sick Leave (অসুস্থতাজনিত) | ১৪ | paid, doctor cert |
-| Earned/Annual Leave | ২০ | carry-forward, max ৪০ |
-| Maternity Leave | ১১২ দিন | female only, paid |
-| Paternity Leave | ৭ | male only |
-| Without Pay | unlimited | unpaid |
+### `capital_installment_schedule` (শুধু loan/scheduled investor এর জন্য)
+- contributor_id, due_date, principal_due, interest_due, total_due, paid_amount, status (`pending`/`partial`/`paid`/`overdue`), fine_amount
+
+> Auto-generate: contributor save করলে cycle অনুযায়ী schedule rows তৈরি হবে। due_date পার হলে `overdue` ও fine rule অনুযায়ী fine যোগ।
+
+### Chart of Accounts auto-seed
+নতুন accounts যুক্ত হবে (যদি না থাকে):
+- `3000 Owner Capital` (Equity)
+- `3100 Partner Capital` (Equity)
+- `3200 Investor Capital` (Equity/Liability)
+- `2100 Bank Loan` (Liability)
+- `2200 Private Loan` (Liability)
+- `5100 Interest Expense` (Expense)
+- `5110 Late Payment Fine` (Expense)
+- `3900 Owner Drawings` (Equity-contra)
+
+প্রত্যেক contributor save এ ledger account auto-link হবে।
+
+---
+
+## ৩. Cash-on-Hand Guard (Core Rule)
+
+নতুন SQL function **`get_cash_on_hand(_branch_id uuid, _as_of date)`** —
+Debit (যোগ): bill_collections + installation_fees.paid + service/product/bw_sales paid_amount + income_entries + **capital_transactions(direction=in)** + branch_funding(type=in)
+Credit (বিয়োগ): payroll paid + expense_entries + bw_purchase paid + purchase_bills paid + **capital_transactions(direction=out)**
+
+নতুন BEFORE-INSERT trigger function **`enforce_cash_on_hand()`** এই tables এ attach হবে:
+- `expense_entries`
+- `payroll` (status='paid' update এ)
+- `bw_purchase_bills`, `purchase_bills` (paid amount বাড়ালে)
+- `bill_collections` কে exclude (এটা income)
+- `capital_transactions` যেখানে direction='out'
+
+Logic: insert/update এর পর projected `cash_on_hand` calculate করবে; যদি `< 0` তাহলে `RAISE EXCEPTION 'Insufficient cash on hand. Please add fund first.'`। Frontend এই error catch করে Bangla toast দেখাবে।
+
+> Exception: Super Admin override করতে পারবে `app_settings.allow_negative_cash=true` দিয়ে (default false)। UI তে override checkbox + reason বাধ্যতামূলক।
+
+---
+
+## ৪. নতুন UI পেজ
+
+Accounting menu এ নতুন গ্রুপ — "মূলধন ও বিনিয়োগ":
+
+1. **`/dashboard/accounting/capital/contributors`** — contributor list/add/edit। Type filter, agreed vs current outstanding, next due।
+2. **`/dashboard/accounting/capital/transactions`** — সকল fund-in/out লেনদেন, filter by contributor/type/date।
+3. **`/dashboard/accounting/capital/schedule`** — loan/investor installment calendar; due/overdue badge, "পরিশোধ" button → capital_transactions(out, interest+principal split) তৈরি।
+4. **`/dashboard/accounting/capital/dashboard`** — summary cards:
+   - Total Capital Received (by type breakdown pie)
+   - Outstanding Liability (loans + investor principal due)
+   - Interest Paid YTD
+   - Upcoming Installments (next 30 days)
+   - Cash on Hand (live)
+
+### বিদ্যমান পেজ আপডেট
+- **CashBook.tsx**: debit side এ "Owner/Partner Capital In", "Investor In", "Loan Disbursed", "Other Income"; credit side এ "Owner Drawing", "Investor Withdraw", "Loan Installment (Principal)", "Interest Paid", "Late Fine"। Cash on Hand row কে `Math.max(0, …)` নয় — actual দেখাবে কিন্তু negative হলে red highlight + "⚠ আগে fund add করুন" banner।
+- **Expense.tsx / Income.tsx / Payroll / Purchase pay dialog**: submit এ trigger error catch করে user-friendly Bangla message + শর্টকাট "এখন fund add করুন" link।
+- **AccountingDashboard.tsx**: Cash on Hand widget + funding breakdown widget যোগ।
+
+---
+
+## ৫. Permission ও Routing
+
+- নতুন `ACCOUNTING > Capital Contributors`, `Capital Transactions`, `Capital Schedule`, `Capital Dashboard` permission modules।
+- Super Admin/Admin কে full access auto-grant। অন্যান্য role default `none`।
+- Menu items `menuItemModuleMap.ts` ও `AppSidebar.tsx` এ map।
+
+---
+
+## ৬. Installment ও Fine Automation
+
+- দৈনিক pg_cron job `update_capital_installments_daily()`:
+  - past-due unpaid rows → status `overdue`
+  - contributor এর `late_fine_rule` (json: `{type: 'fixed'|'percent', value, grace_days}`) অনুযায়ী fine calc।
+- Schedule page এ "পরিশোধ" → modal: principal, interest auto-split (reducing balance হলে remaining principal × rate/12), fine, payment_method → একসাথে capital_transactions(out) ও expense_entries (interest, fine) তৈরি, schedule row update।
+
+---
 
 ## Technical Section
 
-**Files to modify:**
-- `src/components/AppSidebar.tsx` — remove standalone group, add item under HR
-- `src/App.tsx` — new route `/dashboard/hr/events-holidays`, redirect old
-- `src/lib/menuItemModuleMap.ts` — remap to `HR > Events & Holidays`
-- `src/pages/dashboard/events/Events.tsx` — add "Import BD Holidays" button, year selector
-- `src/pages/dashboard/hr/LeaveManagement.tsx` — add "বার্ষিক বরাদ্দ" tab
+**Migration order:**
+1. `chart_of_accounts` seed (idempotent INSERT … WHERE NOT EXISTS)
+2. CREATE `capital_contributors`, `capital_transactions`, `capital_installment_schedule` + GRANT + RLS (admin write, all auth read)
+3. CREATE `app_settings` (singleton or key-value) যদি না থাকে; key `allow_negative_cash`
+4. CREATE function `get_cash_on_hand(branch, as_of)` SECURITY DEFINER
+5. CREATE function `enforce_cash_on_hand()` trigger + AFTER INSERT/UPDATE triggers on listed tables
+6. CREATE function `generate_installment_schedule(contributor_id)` + trigger on insert
+7. CREATE cron job
+8. Permission rows insert
 
-**New files:**
-- `supabase/functions/import-bd-holidays/index.ts`
-- Migration files for: column additions, new tables (`bd_government_holidays`, `employee_leave_balances`), permission module rename, cron schedule, seed leave categories.
+**Frontend new files:**
+- `src/pages/dashboard/accounting/capital/Contributors.tsx`
+- `src/pages/dashboard/accounting/capital/Transactions.tsx`
+- `src/pages/dashboard/accounting/capital/Schedule.tsx`
+- `src/pages/dashboard/accounting/capital/Dashboard.tsx`
+- `src/components/accounting/CashOnHandBanner.tsx` (reusable warning)
+- `src/lib/accountingErrors.ts` — `INSUFFICIENT_CASH` error code → Bangla message handler
 
-**Edge function source priority:**
-1. `https://date.nager.at/api/v3/PublicHolidays/{year}/BD`
-2. Bundled static fallback JSON
+**Edits:**
+- `src/App.tsx` — 4 new routes
+- `src/components/AppSidebar.tsx` — accounting group এ 4 new items
+- `src/lib/menuItemModuleMap.ts` — 4 new mappings
+- `src/pages/dashboard/accounting/CashBook.tsx` — new rows, negative warning
+- `src/pages/dashboard/accounting/Expense.tsx`, `Income.tsx`, `AccountingDashboard.tsx` — banner ও error handler
+
+**Excluded scope (next phase, যদি চান):**
+- Multi-currency
+- Audit log alada (existing audit ব্যবহার হবে)
+- Investor profit-share auto-calc (manual entry for now)
 
 ---
 
-কোনো acceptable হলে এগিয়ে যাই। আপনার confirm এর পর migration আগে চলবে, তারপর code change।
+confirm করলে migration আগে, তারপর কোড সব একসাথে।
