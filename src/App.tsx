@@ -528,6 +528,7 @@ const App = () => (
               <Route path="/dashboard/billing-overview" element={<P><CompanyOverview /></P>} />
               <Route path="/dashboard/olt-overview" element={<P><OltOverview /></P>} />
               <Route path="/dashboard/_icons" element={<P><IconPreview /></P>} />
+              <Route path="/dashboard/debug/panel-visibility" element={<P><PanelVisibilityDebug /></P>} />
 
               {/* Employee self-service */}
               <Route path="/dashboard/me" element={<P><MyShell /></P>}>
