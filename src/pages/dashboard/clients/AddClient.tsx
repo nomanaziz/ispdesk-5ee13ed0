@@ -27,6 +27,7 @@ export default function AddClient() {
   const location = useLocation();
   const { isPopMode, isBwPanel, branchId, popId, tariffId, popName, districtId, upazilaId } = usePopScope();
   const prefill = location.state?.prefill;
+  const { isHybrid: isHybridBilling } = useBillingMode();
   const requestId = location.state?.request_id;
   const editMode = location.state?.editMode === true;
   const editClientId = prefill?.id;
@@ -1123,6 +1124,21 @@ export default function AddClient() {
                   প্রতি মাসের এই তারিখে line বন্ধ হবে (Date-to-Date tariff হলে validity এই তারিখ থেকেই গণনা হবে)।
                 </p>
               </div>
+              {isHybridBilling && (
+                <div>
+                  <Label>Billing Policy *</Label>
+                  <Select value={form.billing_policy || "monthly"} onValueChange={v => setField("billing_policy", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly (মাস টু মাস)</SelectItem>
+                      <SelectItem value="date_to_date">Date-to-Date (চালু তারিখ অনুযায়ী)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Hybrid mode চালু — এই ক্লায়েন্ট কোন policy-তে চলবে নির্ধারণ করুন।
+                  </p>
+                </div>
+              )}
             </>
           )}
           <div>
