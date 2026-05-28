@@ -36,6 +36,7 @@ import { callPortal } from "@/lib/portalApi";
 import { getBillStatus } from "@/lib/billingStatus";
 import { DataTableCard } from "@/components/common/DataTableCard";
 import { useColumnVisibility, type ColumnDef } from "@/hooks/useColumnVisibility";
+import { useModulePermissions } from "@/hooks/useModulePermissions";
 
 const BILLING_LIST_COLUMNS: ColumnDef[] = [
   { key: "select", label: "Select", required: true },
