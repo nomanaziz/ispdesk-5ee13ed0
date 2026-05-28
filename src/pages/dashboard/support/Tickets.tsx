@@ -48,7 +48,8 @@ function LiveElapsed({ start, className = "" }: { start: string; className?: str
 
 export default function Tickets() {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const { isEmployee, isEmployeeOnly } = useEmployeeContext();
   const [tab, setTab] = useState("accepted");
   const [search, setSearch] = useState("");
   const [newTicketOpen, setNewTicketOpen] = useState(false);
@@ -59,12 +60,20 @@ export default function Tickets() {
       searchParams.delete("new");
       setSearchParams(searchParams, { replace: true });
     }
+    if (searchParams.get("mine") === "1") {
+      setMyOnly(true);
+      searchParams.delete("mine");
+      setSearchParams(searchParams, { replace: true });
+    }
   }, [searchParams, setSearchParams]);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [conversationOpen, setConversationOpen] = useState(false);
   const [solveDialogOpen, setSolveDialogOpen] = useState(false);
   const [solveTicket, setSolveTicket] = useState<any>(null);
-  const [myOnly, setMyOnly] = useState(false);
+  const [resolutionNote, setResolutionNote] = useState("");
+  // Default ON for employees so they only see their assigned tickets
+  const [myOnly, setMyOnly] = useState(isEmployeeOnly);
+  useEffect(() => { if (isEmployeeOnly) setMyOnly(true); }, [isEmployeeOnly]);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [assignDept, setAssignDept] = useState<string>("");
