@@ -14,9 +14,10 @@ const RANK: Record<PermLevel, number> = { none: 0, read: 1, write: 2, full: 3 };
  *   none  → no access
  *   read  → view only
  *   write → view + create + edit
- *   full  → view + create + edit + delete (admin-equivalent for that module)
+ *   full  → view + create + edit + delete
  *
  * If a user has multiple roles, the highest permission wins (max).
+ * Effective view already merges primary + extra roles and skips disabled rows.
  */
 export function useModulePermissions() {
   const { user } = useAuth();
@@ -36,47 +37,57 @@ export function useModulePermissions() {
     queryKey: ["effective-modules", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      // app_users.id is the app-user PK; the view groups by it.
       const { data: appUser } = await supabase
         .from("app_users")
         .select("id")
         .eq("auth_user_id", user!.id)
         .maybeSingle();
-      if (!appUser?.id) return {} as Record<string, PermLevel>;
+      if (!appUser?.id) return { byName: {} as Record<string, PermLevel>, byItem: {} as Record<string, PermLevel> };
 
       const { data, error } = await supabase
         .from("app_user_effective_modules")
-        .select("module_name, permission")
+        .select("module_group, module_name, permission")
         .eq("user_id", appUser.id);
-      if (error) return {} as Record<string, PermLevel>;
+      if (error) return { byName: {} as Record<string, PermLevel>, byItem: {} as Record<string, PermLevel> };
 
-      const map: Record<string, PermLevel> = {};
+      const byName: Record<string, PermLevel> = {};
+      const byItem: Record<string, PermLevel> = {};
       (data || []).forEach((r: any) => {
-        const cur = map[r.module_name];
-        if (!cur || RANK[r.permission as PermLevel] > RANK[cur]) {
-          map[r.module_name] = r.permission as PermLevel;
-        }
+        const p = r.permission as PermLevel;
+        const itemKey = `${r.module_group}|${r.module_name}`;
+        if (!byItem[itemKey] || RANK[p] > RANK[byItem[itemKey]]) byItem[itemKey] = p;
+        // legacy: lookup by module_name only (max across groups)
+        if (!byName[r.module_name] || RANK[p] > RANK[byName[r.module_name]]) byName[r.module_name] = p;
       });
-      return map;
+      return { byName, byItem };
     },
     staleTime: 5 * 60_000,
   });
 
   const isSuperAdmin = !!superQ.data;
-  const map = modsQ.data || {};
+  const byName = modsQ.data?.byName || {};
+  const byItem = modsQ.data?.byItem || {};
   const loading = superQ.isLoading || modsQ.isLoading;
 
   const levelOf = (module: string): PermLevel =>
-    isSuperAdmin ? "full" : map[module] ?? "none";
+    isSuperAdmin ? "full" : byName[module] ?? "none";
+
+  const levelOfItem = (group: string, name: string): PermLevel =>
+    isSuperAdmin ? "full" : byItem[`${group}|${name}`] ?? "none";
 
   return {
     loading,
     isSuperAdmin,
-    map,
+    map: byName,
+    itemMap: byItem,
     levelOf,
+    levelOfItem,
     canRead:   (m: string) => RANK[levelOf(m)] >= RANK.read,
     canWrite:  (m: string) => RANK[levelOf(m)] >= RANK.write,
     canDelete: (m: string) => RANK[levelOf(m)] >= RANK.full,
+    canReadItem:   (g: string, n: string) => RANK[levelOfItem(g, n)] >= RANK.read,
+    canWriteItem:  (g: string, n: string) => RANK[levelOfItem(g, n)] >= RANK.write,
+    canDeleteItem: (g: string, n: string) => RANK[levelOfItem(g, n)] >= RANK.full,
   };
 }
 
