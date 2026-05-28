@@ -930,7 +930,9 @@ const Dashboard = () => {
 
 
       {/* Traffic / chart (2/3) + Top Active Users (1/3) */}
+      {(showW("growth_charts", "monthly_new_clients") || showW("growth_charts", "top_active_users")) && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {showW("growth_charts", "monthly_new_clients") && (
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -957,8 +959,10 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+        )}
 
         {/* Top Downloaders */}
+        {showW("growth_charts", "top_active_users") && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -989,7 +993,10 @@ const Dashboard = () => {
             )}
           </CardContent>
         </Card>
+        )}
       </div>
+      )}
+
 
       {/* Top Due — by category */}
       {showW("top_due", "top_due_table") && (
