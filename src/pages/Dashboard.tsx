@@ -876,24 +876,25 @@ const Dashboard = () => {
 
       {/* POP Hero Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <MetricTile label="মোট POP" value={num(d?.totalPopMgrs)} icon={Network} tone="violet" to="/dashboard/pop-management" />
-        <MetricTile label="মোট POP ক্লায়েন্ট" value={num(d?.popTotalClients)} icon={Users} tone="emerald" to="/dashboard/clients/home" />
-        <MetricTile label="সচল POP ক্লায়েন্ট" value={num(d?.popEnabledClients)} icon={UserCheck} tone="violet" to="/dashboard/clients/home?status=active" />
-        <MetricTile label="নিষ্ক্রিয় POP ক্লায়েন্ট" value={num(d?.popDisabledClients)} icon={UserX} tone="rose" to="/dashboard/clients/home?mikrotikStatus=disabled" />
+        {showW("pop_overview", "total_pop") && <MetricTile label="মোট POP" value={num(d?.totalPopMgrs)} icon={Network} tone="violet" to="/dashboard/pop-management" />}
+        {showW("pop_overview", "total_pop_clients") && <MetricTile label="মোট POP ক্লায়েন্ট" value={num(d?.popTotalClients)} icon={Users} tone="emerald" to="/dashboard/clients/home" />}
+        {showW("pop_overview", "pop_active_clients") && <MetricTile label="সচল POP ক্লায়েন্ট" value={num(d?.popEnabledClients)} icon={UserCheck} tone="violet" to="/dashboard/clients/home?status=active" />}
+        {showW("pop_overview", "pop_inactive_clients") && <MetricTile label="নিষ্ক্রিয় POP ক্লায়েন্ট" value={num(d?.popDisabledClients)} icon={UserX} tone="rose" to="/dashboard/clients/home?mikrotikStatus=disabled" />}
       </div>
 
       {/* Zone / Subzone donuts + Tickets/Tasks column + Monthly Problem donut */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        <DonutCard title="জোন অনুযায়ী সমস্যা" data={d?.zoneDonut || []} />
-        <DonutCard title="সাবজোন অনুযায়ী সমস্যা" data={d?.subzoneDonut || []} />
+        {showW("tickets_overview", "zone_donut") && <DonutCard title="জোন অনুযায়ী সমস্যা" data={d?.zoneDonut || []} />}
+        {showW("tickets_overview", "subzone_donut") && <DonutCard title="সাবজোন অনুযায়ী সমস্যা" data={d?.subzoneDonut || []} />}
         <div className="grid grid-cols-2 gap-2">
-          <TicketTile label="পেন্ডিং টিকেট" value={num(d?.pendingTickets)} icon={ClipboardList} tone="rose" to="/dashboard/support/tickets?status=pending" hint="যেগুলো এখনো শুরু হয়নি" />
-          <TicketTile label="প্রসেসিং টিকেট" value={num(d?.processingTickets)} icon={TicketCheck} tone="cyan" to="/dashboard/support/tickets?status=processing" hint="চলমান টিকেট" />
-          <TicketTile label="পেন্ডিং টাস্ক" value={num(d?.pendingTasks)} icon={ListTodo} tone="amber" to="/dashboard/tasks?status=pending" hint="অপেক্ষমাণ টাস্ক" />
-          <TicketTile label="প্রসেসিং টাস্ক" value={num(d?.processingTasks)} icon={Activity} tone="violet" to="/dashboard/tasks?status=processing" hint="চলমান টাস্ক" />
+          {showW("tickets_overview", "pending_tickets") && <TicketTile label="পেন্ডিং টিকেট" value={num(d?.pendingTickets)} icon={ClipboardList} tone="rose" to="/dashboard/support/tickets?status=pending" hint="যেগুলো এখনো শুরু হয়নি" />}
+          {showW("tickets_overview", "processing_tickets") && <TicketTile label="প্রসেসিং টিকেট" value={num(d?.processingTickets)} icon={TicketCheck} tone="cyan" to="/dashboard/support/tickets?status=processing" hint="চলমান টিকেট" />}
+          {showW("tickets_overview", "pending_tasks") && <TicketTile label="পেন্ডিং টাস্ক" value={num(d?.pendingTasks)} icon={ListTodo} tone="amber" to="/dashboard/tasks?status=pending" hint="অপেক্ষমাণ টাস্ক" />}
+          {showW("tickets_overview", "processing_tasks") && <TicketTile label="প্রসেসিং টাস্ক" value={num(d?.processingTasks)} icon={Activity} tone="violet" to="/dashboard/tasks?status=processing" hint="চলমান টাস্ক" />}
         </div>
-        <DonutCard title="মাসিক সমস্যার ধরন" data={d?.monthlyProblemDonut || []} />
+        {showW("tickets_overview", "monthly_problem_donut") && <DonutCard title="মাসিক সমস্যার ধরন" data={d?.monthlyProblemDonut || []} />}
       </div>
+
 
       {/* Most Problem Solver */}
       <Card>
