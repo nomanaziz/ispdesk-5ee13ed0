@@ -834,43 +834,70 @@ export default function Tickets() {
       </Dialog>
 
       {/* Solve Confirmation Dialog */}
-      <Dialog open={solveDialogOpen} onOpenChange={setSolveDialogOpen}>
+      <Dialog open={solveDialogOpen} onOpenChange={(o) => { setSolveDialogOpen(o); if (!o) setResolutionNote(""); }}>
         <DialogContent className="max-w-xl">
-          <DialogHeader><DialogTitle>Press Yes if solved</DialogTitle></DialogHeader>
-          {solveTicket && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">CONNECTIVITY STATUS</Label>
-                  <Input readOnly value={(solveTicket.clients as any)?.billing_status === "active" ? "Connected" : "Disconnected"} />
+          <DialogHeader>
+            <DialogTitle>
+              {isEmployee && !isAdmin ? "Submit for Approval" : "Press Yes if solved"}
+            </DialogTitle>
+          </DialogHeader>
+          {solveTicket && (() => {
+            const c: any = solveTicket.clients || {};
+            const isOnline = !!c.is_online;
+            return (
+              <div className="space-y-4">
+                {/* Big online/offline banner */}
+                <div className={`rounded-lg p-4 flex items-center gap-3 border-2 ${isOnline ? "bg-green-50 border-green-300" : "bg-red-50 border-red-300"}`}>
+                  {isOnline ? <Wifi className="h-8 w-8 text-green-600" /> : <WifiOff className="h-8 w-8 text-red-600" />}
+                  <div>
+                    <div className={`text-lg font-bold ${isOnline ? "text-green-700" : "text-red-700"}`}>
+                      ক্লায়েন্ট {isOnline ? "অনলাইন" : "অফলাইন"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {isOnline ? "ক্লায়েন্ট এখন অনলাইনে আছে — সমস্যা সম্ভবত সমাধান" : "ক্লায়েন্ট এখনো অফলাইনে — verify করে নিন"}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-xs">STATUS</Label>
-                  <Input readOnly value={solveTicket.status === "processing" ? "Offline" : "Online"} className="bg-destructive/10" />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">CONNECTIVITY STATUS</Label>
+                    <Input readOnly value={c.billing_status === "active" ? "Connected" : "Disconnected"} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">LIVE STATUS</Label>
+                    <Input readOnly value={isOnline ? "Online" : "Offline"} className={isOnline ? "bg-green-100" : "bg-destructive/10"} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">MAC ADDRESS / CALLER ID</Label>
+                    <Input readOnly value={c.mac_address || ""} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">IP ADDRESS</Label>
+                    <Input readOnly value={c.remote_address || ""} />
+                  </div>
                 </div>
+
                 <div>
-                  <Label className="text-xs">UPTIME</Label>
-                  <Input readOnly value="" placeholder="—" />
+                  <Label className="text-xs">Resolution Note (সমাধানের বিবরণ)</Label>
+                  <Textarea
+                    value={resolutionNote}
+                    onChange={(e) => setResolutionNote(e.target.value)}
+                    rows={3}
+                    placeholder="কী সমস্যা ছিল এবং কীভাবে সমাধান হয়েছে লিখুন..."
+                  />
                 </div>
-                <div>
-                  <Label className="text-xs">LAST LOGOUT TIME</Label>
-                  <Input readOnly value={format(new Date(), "dd/MM/yyyy hh:mm a")} />
-                </div>
-                <div>
-                  <Label className="text-xs">MAC ADDRESS / CALLER ID</Label>
-                  <Input readOnly value={(solveTicket.clients as any)?.mac_address || ""} />
-                </div>
-                <div>
-                  <Label className="text-xs">IP ADDRESS</Label>
-                  <Input readOnly value={(solveTicket.clients as any)?.remote_address || ""} />
+
+                <div className="bg-muted/50 p-3 rounded text-xs space-y-1">
+                  <div><strong>টিকেট:</strong> {solveTicket.ticket_no} — {solveTicket.subject}</div>
+                  <div><strong>ক্লায়েন্ট:</strong> {c.name || "—"}</div>
+                  {isEmployee && !isAdmin && (
+                    <div className="text-purple-700 mt-2">⚠ এটি অনুমোদনের জন্য পাঠানো হবে। Admin অনুমোদন দিলে চূড়ান্ত solved হবে।</div>
+                  )}
                 </div>
               </div>
-              <div className="bg-muted/50 p-3 rounded text-xs space-y-1">
-                <div><strong>টিকেট:</strong> {solveTicket.ticket_no} — {solveTicket.subject}</div>
-                <div><strong>ক্লায়েন্ট:</strong> {(solveTicket.clients as any)?.name || "—"}</div>
-              </div>
-            </div>
-          )}
+            );
+          })()}
           <DialogFooter>
             <Button variant="destructive" onClick={() => setSolveDialogOpen(false)}>Cancel</Button>
             <Button
@@ -878,7 +905,9 @@ export default function Tickets() {
               onClick={() => solveTicket && resolveMutation.mutate(solveTicket.id)}
               disabled={resolveMutation.isPending}
             >
-              {resolveMutation.isPending ? "সেভ হচ্ছে..." : "Yes, Solved"}
+              {resolveMutation.isPending
+                ? "সেভ হচ্ছে..."
+                : (isEmployee && !isAdmin ? "Submit for Approval" : "Yes, Solved")}
             </Button>
           </DialogFooter>
         </DialogContent>
