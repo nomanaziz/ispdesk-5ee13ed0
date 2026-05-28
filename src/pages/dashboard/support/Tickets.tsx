@@ -617,15 +617,25 @@ export default function Tickets() {
                         ) : formatDuration(t.created_at, t.solved_at)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1 items-center">
+                        <div className="flex gap-1 items-center flex-wrap">
                           {canStart && (
                             <Button size="sm" className="h-7 px-2 text-[10px] bg-blue-600 hover:bg-blue-700 text-white" onClick={() => startWorkingMutation.mutate(t.id)}>
                               <Play className="h-3 w-3 mr-1" />Start
                             </Button>
                           )}
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openConversation(t.id)}><MessageSquare className="h-4 w-4" /></Button>
-                          {t.status !== "solved" && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSolveDialog(t)}><CheckCircle2 className="h-4 w-4 text-green-500" /></Button>
+                          {t.status !== "solved" && t.status !== "pending_approval" && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSolveDialog(t)} title="Mark as solved"><CheckCircle2 className="h-4 w-4 text-green-500" /></Button>
+                          )}
+                          {t.status === "pending_approval" && isAdmin && (
+                            <>
+                              <Button size="sm" className="h-7 px-2 text-[10px] bg-green-600 hover:bg-green-700 text-white" onClick={() => approveMutation.mutate(t.id)} title="Approve">
+                                <ThumbsUp className="h-3 w-3 mr-1" />Approve
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => rejectMutation.mutate(t.id)} title="Reject">
+                                <ThumbsDown className="h-3 w-3 mr-1" />Reject
+                              </Button>
+                            </>
                           )}
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteMutation.mutate(t.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
