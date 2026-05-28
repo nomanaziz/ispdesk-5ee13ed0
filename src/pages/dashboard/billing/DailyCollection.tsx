@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { Banknote, FileSpreadsheet, FileText, Plus, Search, Clock, X, CheckCircle2 } from "lucide-react";
 import { usePopScope } from "@/hooks/usePopScope";
 import { callPortal } from "@/lib/portalApi";
+import { useModulePermissions } from "@/hooks/useModulePermissions";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
