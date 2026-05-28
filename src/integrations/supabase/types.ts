@@ -13203,6 +13203,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      user_has_module: {
+        Args: {
+          _auth_uid: string
+          _group: string
+          _min?: string
+          _name: string
+        }
+        Returns: boolean
+      }
+      user_module_level: {
+        Args: { _auth_uid: string; _group: string; _name: string }
+        Returns: string
+      }
     }
     Enums: {
       alert_channel: "dashboard" | "telegram"
