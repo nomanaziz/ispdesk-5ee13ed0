@@ -159,12 +159,12 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
                   <Edit className="mr-2 h-4 w-4" /> এডিট
                 </DropdownMenuItem>
               )}
-              {canEdit && (
+              {canBill && (
                 <DropdownMenuItem onSelect={() => setReceiveOpen(true)}>
                   <CreditCard className="mr-2 h-4 w-4" /> বিল রিসিভ
                 </DropdownMenuItem>
               )}
-              {canEdit && (
+              {canBill && (
                 <DropdownMenuItem onSelect={() => generateBillMutation.mutate()}>
                   <FilePlus className="mr-2 h-4 w-4" /> বিল তৈরি
                 </DropdownMenuItem>
