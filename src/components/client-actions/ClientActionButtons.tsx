@@ -16,6 +16,7 @@ import { usePopScope } from "@/hooks/usePopScope";
 import BillReceiveDialog from "@/components/billing/BillReceiveDialog";
 import { exportInvoicesPdf } from "@/lib/exportClients";
 import { callPortal } from "@/lib/portalApi";
+import { useModulePermissions } from "@/hooks/useModulePermissions";
 
 interface Props {
   client: any;
@@ -33,6 +34,9 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
   const queryClient = useQueryClient();
   const { isAdmin } = useAuth();
   const { isPopMode } = usePopScope();
+  const perms = useModulePermissions();
+  const canEdit = perms.isSuperAdmin || perms.canWriteItem("CLIENTS", "Client List") || perms.canWriteItem("CLIENTS", client?.client_type === "Corporate" ? "Corporate Clients" : "Home Clients");
+  const canDelete = perms.isSuperAdmin || perms.canDeleteItem("CLIENTS", "Client List") || perms.canDeleteItem("CLIENTS", client?.client_type === "Corporate" ? "Corporate Clients" : "Home Clients");
   const [statusOpen, setStatusOpen] = useState(false);
   const [packageOpen, setPackageOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -149,27 +153,37 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
               <DropdownMenuItem onSelect={handleView}>
                 <Eye className="mr-2 h-4 w-4" /> ভিউ প্রোফাইল
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleEdit}>
-                <Edit className="mr-2 h-4 w-4" /> এডিট
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setReceiveOpen(true)}>
-                <CreditCard className="mr-2 h-4 w-4" /> বিল রিসিভ
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => generateBillMutation.mutate()}>
-                <FilePlus className="mr-2 h-4 w-4" /> বিল তৈরি
-              </DropdownMenuItem>
+              {canEdit && (
+                <DropdownMenuItem onSelect={handleEdit}>
+                  <Edit className="mr-2 h-4 w-4" /> এডিট
+                </DropdownMenuItem>
+              )}
+              {canEdit && (
+                <DropdownMenuItem onSelect={() => setReceiveOpen(true)}>
+                  <CreditCard className="mr-2 h-4 w-4" /> বিল রিসিভ
+                </DropdownMenuItem>
+              )}
+              {canEdit && (
+                <DropdownMenuItem onSelect={() => generateBillMutation.mutate()}>
+                  <FilePlus className="mr-2 h-4 w-4" /> বিল তৈরি
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onSelect={handleInvoiceDownload}>
                 <FileText className="mr-2 h-4 w-4" /> ইনভয়েস
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={handleSMS}>
                 <MessageSquare className="mr-2 h-4 w-4" /> SMS পাঠান
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setPackageOpen(true)}>
-                <Package className="mr-2 h-4 w-4" /> প্যাকেজ শিডিউলার
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setStatusOpen(true)}>
-                <CalendarClock className="mr-2 h-4 w-4" /> স্ট্যাটাস শিডিউলার
-              </DropdownMenuItem>
+              {canEdit && (
+                <DropdownMenuItem onSelect={() => setPackageOpen(true)}>
+                  <Package className="mr-2 h-4 w-4" /> প্যাকেজ শিডিউলার
+                </DropdownMenuItem>
+              )}
+              {canEdit && (
+                <DropdownMenuItem onSelect={() => setStatusOpen(true)}>
+                  <CalendarClock className="mr-2 h-4 w-4" /> স্ট্যাটাস শিডিউলার
+                </DropdownMenuItem>
+              )}
               {isAdmin && (
                 <DropdownMenuItem
                   onSelect={() =>
@@ -181,16 +195,18 @@ export default function ClientActionButtons({ client, mode, invalidateKey = "cli
                   <LogIn className="mr-2 h-4 w-4" /> Admin: Login as Client
                 </DropdownMenuItem>
               )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  setTimeout(() => setDeleteOpen(true), 0);
-                }}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" /> ডিলিট
-              </DropdownMenuItem>
+              {canDelete && <DropdownMenuSeparator />}
+              {canDelete && (
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setTimeout(() => setDeleteOpen(true), 0);
+                  }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> ডিলিট
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
