@@ -19,6 +19,7 @@ import {
   CheckCircle, XCircle, Eye, Calendar as CalendarIcon, FolderOpen, Settings, CheckSquare, FileText,
 } from "lucide-react";
 import PolicyEditor from "@/components/leave/PolicyEditor";
+import LeaveAllocations from "@/components/leave/LeaveAllocations";
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
   pending: { label: "অপেক্ষমাণ", variant: "outline", color: "text-yellow-600" },
@@ -47,12 +48,14 @@ export default function LeaveManagement() {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="apply"><FileText className="h-3.5 w-3.5 mr-1" /> আবেদন</TabsTrigger>
           {isAdmin && <TabsTrigger value="approval"><CheckSquare className="h-3.5 w-3.5 mr-1" /> অনুমোদন</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="allocations"><CalendarDays className="h-3.5 w-3.5 mr-1" /> বার্ষিক বরাদ্দ</TabsTrigger>}
           {isAdmin && <TabsTrigger value="categories"><FolderOpen className="h-3.5 w-3.5 mr-1" /> ক্যাটাগরি</TabsTrigger>}
           {isAdmin && <TabsTrigger value="setup"><Settings className="h-3.5 w-3.5 mr-1" /> Policy ও সেটআপ</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="apply" className="mt-4"><ApplyTab /></TabsContent>
         {isAdmin && <TabsContent value="approval" className="mt-4"><ApprovalTab user={user} /></TabsContent>}
+        {isAdmin && <TabsContent value="allocations" className="mt-4"><LeaveAllocations /></TabsContent>}
         {isAdmin && <TabsContent value="categories" className="mt-4"><CategoriesTab /></TabsContent>}
         {isAdmin && <TabsContent value="setup" className="mt-4"><SetupTab /></TabsContent>}
       </Tabs>

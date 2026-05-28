@@ -142,13 +142,44 @@ export default function Events() {
     setEditing(null);
   };
 
+  const [importYear, setImportYear] = useState(String(new Date().getFullYear()));
+  const [importing, setImporting] = useState(false);
+
+  const importBdHolidays = async () => {
+    setImporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("import-bd-holidays", {
+        body: { year: Number(importYear) },
+      });
+      if (error) throw error;
+      toast.success(`${data?.count || 0} টি সরকারি ছুটি import হয়েছে (${data?.source})`);
+      queryClient.invalidateQueries({ queryKey: ["events_holidays"] });
+    } catch (e: any) {
+      toast.error("Import ব্যর্থ: " + (e?.message || ""));
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">ইভেন্ট ও ছুটি</h1>
-        <Button onClick={openAdd}>
-          <Plus className="h-4 w-4 mr-1" /> নতুন ইভেন্ট
-        </Button>
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            value={importYear}
+            onChange={(e) => setImportYear(e.target.value)}
+            className="w-24"
+            placeholder="বছর"
+          />
+          <Button variant="outline" onClick={importBdHolidays} disabled={importing}>
+            {importing ? "Import হচ্ছে..." : "সরকারি ছুটি Import"}
+          </Button>
+          <Button onClick={openAdd}>
+            <Plus className="h-4 w-4 mr-1" /> নতুন ইভেন্ট
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

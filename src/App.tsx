@@ -701,8 +701,9 @@ const App = () => (
               <Route path="/dashboard/branches/pgw-settlement" element={<Navigate to="/dashboard/branches/pgw-transactions" replace />} />
               <Route path="/dashboard/branches/pop-notice" element={<Navigate to="/dashboard/support/notices" replace />} />
 
-              {/* Events */}
-              <Route path="/dashboard/events" element={<P><Events /></P>} />
+              {/* Events & Holidays — under HR */}
+              <Route path="/dashboard/hr/events-holidays" element={<P><Events /></P>} />
+              <Route path="/dashboard/events" element={<Navigate to="/dashboard/hr/events-holidays" replace />} />
 
               {/* Support */}
               <Route path="/dashboard/support/categories" element={<P><SupportCategories /></P>} />

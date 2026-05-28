@@ -670,6 +670,42 @@ export type Database = {
           },
         ]
       }
+      bd_government_holidays: {
+        Row: {
+          category: string
+          created_at: string
+          date: string
+          id: string
+          source: string
+          title_bn: string
+          title_en: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          date: string
+          id?: string
+          source?: string
+          title_bn: string
+          title_en?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          date?: string
+          id?: string
+          source?: string
+          title_bn?: string
+          title_en?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       bill_collections: {
         Row: {
           amount: number
@@ -4923,6 +4959,42 @@ export type Database = {
           },
         ]
       }
+      employee_leave_balances: {
+        Row: {
+          allocated: number
+          carried_from_prev: number
+          category_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          updated_at: string
+          used: number
+          year: number
+        }
+        Insert: {
+          allocated?: number
+          carried_from_prev?: number
+          category_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          updated_at?: string
+          used?: number
+          year: number
+        }
+        Update: {
+          allocated?: number
+          carried_from_prev?: number
+          category_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          updated_at?: string
+          used?: number
+          year?: number
+        }
+        Relationships: []
+      }
       employee_loans: {
         Row: {
           branch_id: string | null
@@ -5259,7 +5331,9 @@ export type Database = {
           description: string | null
           end_date: string | null
           event_date: string
+          external_id: string | null
           id: string
+          source: string
           status: string
           title: string
           type: string | null
@@ -5269,7 +5343,9 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           event_date: string
+          external_id?: string | null
           id?: string
+          source?: string
           status?: string
           title: string
           type?: string | null
@@ -5279,7 +5355,9 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           event_date?: string
+          external_id?: string | null
           id?: string
+          source?: string
           status?: string
           title?: string
           type?: string | null
@@ -6021,26 +6099,41 @@ export type Database = {
       }
       leave_categories: {
         Row: {
+          carry_forward: boolean
           created_at: string
           days_allowed: number | null
           description: string | null
+          gender: string
           id: string
+          is_paid: boolean
+          max_carry_days: number
+          min_service_months: number
           name: string
           status: string
         }
         Insert: {
+          carry_forward?: boolean
           created_at?: string
           days_allowed?: number | null
           description?: string | null
+          gender?: string
           id?: string
+          is_paid?: boolean
+          max_carry_days?: number
+          min_service_months?: number
           name: string
           status?: string
         }
         Update: {
+          carry_forward?: boolean
           created_at?: string
           days_allowed?: number | null
           description?: string | null
+          gender?: string
           id?: string
+          is_paid?: boolean
+          max_carry_days?: number
+          min_service_months?: number
           name?: string
           status?: string
         }
@@ -13184,6 +13277,7 @@ export type Database = {
         }[]
       }
       public_payment_gateways: { Args: never; Returns: Json }
+      recalculate_leave_balances: { Args: { _year: number }; Returns: number }
       refresh_yearly_leave_balances: {
         Args: { _year?: number }
         Returns: number
