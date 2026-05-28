@@ -1,49 +1,54 @@
-# Employee Ticket Assignment + Solve Approval Flow
+# Dashboard Widget — Granular Permission (প্রতিটা widget আলাদা toggle)
 
 ## লক্ষ্য
-1. Employee (support engineer/technician) login করে শুধুমাত্র তাকে assign করা টিকিটগুলো filter করে দেখতে পারবে।
-2. Employee solve করলে ticket সরাসরি "solved" না হয়ে "pending approval"-এ যাবে।
-3. Admin/Manager/অন্য authorized role approval দিলে তবেই ticket "solved" হবে। চাইলে verification skip করেও approve করা যাবে।
-4. Solve dialog-এ client online/offline real-time status popup দেখাবে।
+
+এখন `featureRegistry.ts`-এ Dashboard widget গুলো অল্প কয়েকটা group-এ ভাগ করা — যেমন পুরো "অ্যাকশন প্রয়োজন" panel একটাই toggle (`action_panel`), পুরো "টপ বকেয়া" একটাই toggle, পুরো "আর্থিক বিবরণ" একটাই toggle, এমনকি POP hero row / জোন donut / টপ ডাউনলোডার / সমাধানকারী chart — এগুলোর জন্য কোনো toggle-ই নেই।
+
+ব্যবহারকারী চান:
+- ড্যাশবোর্ডের **প্রত্যেকটা widget আলাদা ভাবে on/off** হবে role permission থেকে।
+- Default: সব on (এক click-এ চালু — এটা ইতিমধ্যে handled, row না থাকলে `useFeatureFlags` true return করে)।
+- চাইলে একটা group-এর ৫টা চালু, ২টা বন্ধ — এরকম যেকোনো combination।
 
 ## পরিবর্তন
 
-### 1) Database (`support_tickets` table)
-- নতুন column যোগ:
-  - `pending_approval_at` (timestamptz) — কখন employee solve mark করেছে
-  - `pending_approval_by` (uuid) — কোন employee mark করেছে
-  - `approved_by` (uuid), `approved_at` (timestamptz)
-  - `resolution_note` (text) — solve note
-  - `client_online_at_solve` (boolean, nullable) — solve সময় online ছিল কিনা snapshot
-- Status values: `processing | pending_approval | solved | rejected` (text কলামে নতুন value, enum না)
+### 1) `src/lib/featureRegistry.ts` — `DASHBOARD_SECTIONS` ভাঙা ও সম্প্রসারণ
 
-### 2) Tickets পেজ (`src/pages/dashboard/support/Tickets.tsx`)
-- নতুন **"Assigned to me"** toggle/Tab — employee login হলে default ON। `support_ticket_assignees` join করে filter।
-- নতুন **"Pending Approval"** tab — admin/manager দের জন্য approval queue।
-- Employee দের জন্য row action: "Mark as Solved" → solve dialog খুলবে (status `processing` → `pending_approval`)।
-- Admin/manager দের জন্য pending_approval row-এ "Approve" / "Reject" button → `solved` / আবার `processing`।
-- Permission gate: `useEmployeeContext` দিয়ে employee হলে শুধু নিজের assigned টিকিট দেখাবে, অন্যদের জন্য সব।
+প্রতিটা section-এর `items` array ভেতরের প্রতিটা card/tile-এর জন্য আলাদা `key + label` পাবে:
 
-### 3) Solve Dialog enhancement
-- Existing dialog-এ live online/offline check যোগ — client এর MikroTik PPP active session query করে real-time status আনা (existing `clients.billing_status` + active session check)।
-- Resolution note textarea।
-- Submit করলে `pending_approval` status set, employee হলে।
-- Admin সরাসরি solve করলে এক step এ `solved` মার্ক হবে।
+- **`kpi_top`** (already 4 items) — অপরিবর্তিত।
+- **`system_overview`** (already 8 items) — অপরিবর্তিত।
+- **`system_resource`** — `resource_overview` সরিয়ে ভাঙা হবে: `onu_gauge`, `paid_gauge`, `collection_gauge`, `sms_balance`।
+- **`pop_overview`** (নতুন group) — `total_pop`, `total_pop_clients`, `pop_active_clients`, `pop_inactive_clients`।
+- **`tickets_overview`** (নতুন group) — `zone_donut`, `subzone_donut`, `pending_tickets`, `processing_tickets`, `pending_tasks`, `processing_tasks`, `monthly_problem_donut`, `top_solver_chart`।
+- **`growth_charts`** (নতুন group) — `monthly_new_clients`, `top_active_users`।
+- **`top_due`** — `top_due_table` সরিয়ে ভাঙা হবে: `home_due_tile`, `corporate_due_tile`, `bandwidth_due_tile`, `pop_negative_tile`, `home_due_list`, `corporate_due_list`, `bandwidth_due_list`, `pop_negative_list`।
+- **`action_needed`** — `action_panel` সরিয়ে ভাঙা হবে: `overdue_billing`, `expired_clients`, `inactive_left`, `grace_extension`, `pending_tickets`, `pending_tasks`।
+- **`financial_summary`** — `financial_panel` সরিয়ে ভাঙা হবে: প্রত্যেক finance metric-এর জন্য আলাদা key (এই মাসের সেল, আজকের সেল, প্রফিট, ইনকাম, ব্যয়, কালেকশন %, বকেয়া, ইত্যাদি — `Dashboard.tsx`-এর actual finance card গুলোর সাথে মিলিয়ে)।
 
-### 4) My Dashboard widget (`src/pages/dashboard/me/MyDashboard.tsx`)
-- "Assigned Tickets" card: open / in-progress count + recent list link → `/dashboard/support/tickets?mine=1`।
+### 2) `src/pages/Dashboard.tsx` — প্রতিটা widget এ gate
 
-### 5) Notification (optional, scoped)
-- Assignee যোগ হলে SMS/Telegram alert (existing `assignSms` flag আছে — extend)।
-- Approval queue-এ নতুন entry এলে admin notification bell এ count।
+প্রতিটা card/tile/chart-কে `showW("<section>", "<key>")` দিয়ে wrap করা হবে। বর্তমানে যেগুলো wrap নেই (POP row, donut গুলো, ticket tiles, solver chart, new-client chart, top downloaders, এবং action/top-due/financial panel-এর ভেতরের individual tile গুলো) — সব wrap করা হবে।
 
-## Technical Notes
-- Status গুলো বর্তমানে text column — enum migration লাগবে না।
-- Online detection: `mikrotik_ppp_active` বা equivalent live table থেকে client এর session lookup করে real-time popup-এ দেখাবে।
-- RLS: `support_tickets` SELECT policy already tenant-scoped; employee view client-side filter দিয়ে handle হবে (যেহেতু same tenant এর সব employee দেখতে পারে — আলাদা DB rule দরকার নেই)।
+একটা group-এর সব widget বন্ধ থাকলে সেই section-এর heading-ও hide হবে।
 
-## ফাইল পরিবর্তন (সংক্ষেপ)
-- migration: support_tickets columns
-- edit: `src/pages/dashboard/support/Tickets.tsx` (filter, tabs, approve/reject, solve flow)
-- edit: `src/pages/dashboard/me/MyDashboard.tsx` (assigned widget)
-- new (optional): `src/components/support/SolveTicketDialog.tsx` যদি existing inline dialog বড় হয়ে যায়
+### 3) `src/pages/dashboard/access/RoleFeaturePanels.tsx` — UX উন্নতি
+
+- প্রতিটা group-এর header-এ "সব চালু / সব বন্ধ" master switch যোগ — এক click-এ পুরো group toggle।
+- group expand করলে individual switch গুলো আসবে (এটা ইতিমধ্যে আছে)।
+
+### 4) ডাটাবেস
+
+কোনো schema change লাগবে না — `app_role_features` table-এ আগের মতই `(scope, scope_key, feature_key)` row insert হবে। নতুন key গুলো প্রথমবার toggle করলে row create হবে; row না থাকলে default = on।
+
+## প্রভাব
+
+- Super Admin: সব দেখবে (`useFeatureFlags.isSuperAdmin` short-circuit)।
+- যেকোনো role: রোল-পারমিশন পেজ → "ড্যাশবোর্ড উইজেট পারমিশন" section-এ এখন বিস্তারিত breakdown। প্রতিটা widget আলাদা toggle।
+- যেই employee এই role-এ আছে, সে শুধু allowed widget গুলো দেখবে।
+- Employee-only user যেমন আগে, `/dashboard/me`-এ redirect হবে (অপরিবর্তিত)।
+
+## ফাইল সমূহ
+
+- `src/lib/featureRegistry.ts` — registry সম্প্রসারণ
+- `src/pages/Dashboard.tsx` — প্রতিটা widget-এ `showW()` gate
+- `src/pages/dashboard/access/RoleFeaturePanels.tsx` — master toggle যোগ
