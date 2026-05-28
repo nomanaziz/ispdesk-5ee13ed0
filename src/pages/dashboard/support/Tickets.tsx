@@ -331,17 +331,72 @@ export default function Tickets() {
     },
   });
 
-  // Resolve
+  // Resolve / mark for approval. Employees → pending_approval, admins → solved directly.
   const resolveMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("support_tickets").update({ status: "solved", solved_at: new Date().toISOString(), solved_by: user?.id || null }).eq("id", id);
+      const t = tickets.find((x: any) => x.id === id);
+      const clientOnline = (t?.clients as any)?.is_online ?? null;
+      const goPendingApproval = isEmployee && !isAdmin;
+      const payload: any = goPendingApproval
+        ? {
+            status: "pending_approval",
+            pending_approval_at: new Date().toISOString(),
+            pending_approval_by: user?.id || null,
+            resolution_note: resolutionNote || null,
+            client_online_at_solve: clientOnline,
+          }
+        : {
+            status: "solved",
+            solved_at: new Date().toISOString(),
+            solved_by: user?.id || null,
+            approved_by: user?.id || null,
+            approved_at: new Date().toISOString(),
+            resolution_note: resolutionNote || null,
+            client_online_at_solve: clientOnline,
+          };
+      const { error } = await supabase.from("support_tickets").update(payload).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("টিকেট সমাধান হয়েছে");
+      toast.success(isEmployee && !isAdmin ? "অনুমোদনের জন্য পাঠানো হয়েছে" : "টিকেট সমাধান হয়েছে");
       qc.invalidateQueries({ queryKey: ["support_tickets"] });
       setSolveDialogOpen(false);
       setSolveTicket(null);
+      setResolutionNote("");
+    },
+  });
+
+  // Approve a pending_approval ticket → solved
+  const approveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("support_tickets").update({
+        status: "solved",
+        solved_at: new Date().toISOString(),
+        solved_by: user?.id || null,
+        approved_by: user?.id || null,
+        approved_at: new Date().toISOString(),
+      }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("অনুমোদিত — টিকেট সমাধান");
+      qc.invalidateQueries({ queryKey: ["support_tickets"] });
+    },
+  });
+
+  // Reject pending_approval → back to processing
+  const rejectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("support_tickets").update({
+        status: "processing",
+        pending_approval_at: null,
+        pending_approval_by: null,
+      }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("অনুমোদন বাতিল — টিকেট পুনরায় চালু");
+      qc.invalidateQueries({ queryKey: ["support_tickets"] });
     },
   });
 
