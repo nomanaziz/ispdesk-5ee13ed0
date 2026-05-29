@@ -7251,6 +7251,101 @@ export type Database = {
           },
         ]
       }
+      notification_logs: {
+        Row: {
+          body: string
+          channel: string
+          context: Json | null
+          created_at: string
+          error: string | null
+          id: string
+          provider: string | null
+          provider_message_id: string | null
+          recipient: string
+          sent_at: string | null
+          status: string
+          subject: string | null
+          template_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          body: string
+          channel: string
+          context?: Json | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          recipient: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          template_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          context?: Json | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          recipient?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          template_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_logs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "notification_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_providers: {
+        Row: {
+          channel: string
+          config: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          provider: string
+          sender_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          channel: string
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          provider: string
+          sender_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          provider?: string
+          sender_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           branch_id: string | null
@@ -7285,6 +7380,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notification_templates: {
+        Row: {
+          body: string
+          category: string
+          channel: string
+          created_at: string
+          enabled: boolean
+          id: string
+          name: string
+          subject: string | null
+          tenant_id: string
+          updated_at: string
+          variables: string[]
+        }
+        Insert: {
+          body: string
+          category: string
+          channel: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          subject?: string | null
+          tenant_id: string
+          updated_at?: string
+          variables?: string[]
+        }
+        Update: {
+          body?: string
+          category?: string
+          channel?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          subject?: string | null
+          tenant_id?: string
+          updated_at?: string
+          variables?: string[]
+        }
+        Relationships: []
       }
       olt_branch_shares: {
         Row: {
