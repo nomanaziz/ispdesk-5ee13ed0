@@ -93,6 +93,7 @@ export const menuGroups: MenuGroup[] = [
       { title: "কর্পোরেট ক্লায়েন্ট", url: "/dashboard/clients/corporate", icon: Building2 },
       { title: "বিলিং তালিকা", url: "/dashboard/billing", icon: CreditCard },
       { title: "বাল্ক ইনভয়েস জেনারেট", url: "/dashboard/billing/bulk-generate", icon: FileText },
+      { title: "অটো-সাসপেনশন", url: "/dashboard/billing/auto-suspension", icon: ShieldOff },
       { title: "দৈনিক বিল কালেকশন", url: "/dashboard/billing/daily-collection", icon: Wallet },
       { title: "ইনস্টলেশন ফি", url: "/dashboard/sales/installation-fee", icon: DollarSign },
       { title: "চলে যাওয়া ক্লায়েন্ট", url: "/dashboard/clients/left", icon: UserX },
