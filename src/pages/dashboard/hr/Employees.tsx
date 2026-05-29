@@ -169,6 +169,7 @@ export default function Employees() {
                       <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
                     </TableHead>
                     <TableHead>নাম</TableHead>
+                    <TableHead>UID</TableHead>
                     <TableHead>ID</TableHead>
                     <TableHead>মোবাইল</TableHead>
                     <TableHead>অফিস ফোন</TableHead>
@@ -190,6 +191,7 @@ export default function Employees() {
                         <Checkbox checked={selected.has(emp.id)} onCheckedChange={() => toggleOne(emp.id)} />
                       </TableCell>
                       <TableCell className="font-medium">{emp.name}</TableCell>
+                      <TableCell className="text-[10px] font-mono text-muted-foreground">{emp.uid || "—"}</TableCell>
                       <TableCell className="font-mono">{emp.employee_id}</TableCell>
                       <TableCell>{emp.phone || emp.personal_phone || "—"}</TableCell>
                       <TableCell>{emp.office_phone || "—"}</TableCell>

@@ -521,6 +521,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
             <TableRow className="bg-primary/10">
               <TableHead className="w-8"><Checkbox checked={paginated.length > 0 && selectedIds.size === paginated.length} onCheckedChange={toggleAll} /></TableHead>
               <TableHead className="text-xs">ক্লা. কোড</TableHead>
+              <TableHead className="text-xs">UID</TableHead>
               {isVisible("username") && <TableHead className="text-xs">ID/IP</TableHead>}
               {isVisible("password") && <TableHead className="text-xs">পাসওয়ার্ড</TableHead>}
               <TableHead className="text-xs">কাস্টমার নাম</TableHead>
@@ -551,6 +552,7 @@ export default function ClientList({ lockedClientType, pageTitle, pageDescriptio
                 return (
                   <TableRow key={c.id} data-state={selectedIds.has(c.id) ? "selected" : undefined}>
                     <TableCell><Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} /></TableCell>
+                    <TableCell className="text-[10px] font-mono text-muted-foreground">{c.uid || "—"}</TableCell>
                     <TableCell className="text-xs font-medium">
                       <div className="flex items-center gap-1">
                         <span>{c.client_id}</span>
