@@ -15,7 +15,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { KeyRound } from "lucide-react";
+import { KeyRound, Smartphone } from "lucide-react";
 import NotificationBell from "@/components/portal/NotificationBell";
 import { NotesButton } from "@/components/notes/NotesButton";
 import { InstallAppBanner } from "@/components/InstallAppBanner";
