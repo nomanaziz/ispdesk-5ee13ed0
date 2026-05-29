@@ -259,6 +259,7 @@ export const menuGroups: MenuGroup[] = [
     label: "Reports",
     icon: FileBarChart,
     items: [
+      { title: "এক্সিকিউটিভ অ্যানালিটিক্স", url: "/dashboard/analytics", icon: BarChart3 },
       { title: "বিল কালেকশন", url: "/dashboard/reports/bill-collection", icon: Wallet },
       { title: "ছাড় রিপোর্ট", url: "/dashboard/reports/discount", icon: Tag },
       { title: "কাস্টমার রিপোর্ট", url: "/dashboard/reports/customer", icon: Users },
