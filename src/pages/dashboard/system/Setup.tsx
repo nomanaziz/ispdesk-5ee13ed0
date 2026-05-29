@@ -237,6 +237,8 @@ export default function Setup() {
             </div>
           </div>
 
+          <MikrotikBlockProfileCard />
+
           {/* VAT Defaults */}
           <div className="border rounded-lg overflow-hidden">
             <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium flex items-center gap-2">
