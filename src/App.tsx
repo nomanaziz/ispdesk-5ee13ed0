@@ -1080,6 +1080,7 @@ const App = () => {
     </LanguageProvider>
   </ThemeProvider>
   </BootGate>
-);
+  );
+};
 
 export default App;
