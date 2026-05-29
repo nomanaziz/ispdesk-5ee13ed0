@@ -1,64 +1,42 @@
-# Block Profile সাসপেনশন মোড
 
-বর্তমানে bill overdue হলে client টার MikroTik account disable হয়ে যায়। নতুন মোডে disable না করে শুধু MikroTik profile-টা একটা **block-profile**-এ change হবে — user connect করতে পারবে কিন্তু internet পাবে না। Bill পরিশোধ হলে আগের profile auto restore হবে।
+# Block Profile — Per-Server Mapping
 
-## যা থাকবে
+আপনার screenshot অনুযায়ী ঠিক বুঝেছি: প্রতিটা MikroTik server-এ একটাই block profile থাকবে, এবং সেই server-এর সব user blocked হলে ওই profile-এ যাবে। POP/Reseller override-এর দরকার নেই — mapping সরাসরি MikroTik device-এর সাথে।
 
-### Settings (২টা)
-1. **Auto-suspension on/off** — ইতিমধ্যেই আছে।
-2. **Suspension Mode** — নতুন:
-   - `disable` (পুরনো default)
-   - `block_profile` — MikroTik profile change হবে
-3. **Block Profile name** — MikroTik-এ যে profile-টা set হবে (default: `block-profile`)। UI-তে dropdown — MikroTik থেকে fetch করা profile list থেকে select।
+## যা পরিবর্তন হবে
 
-### Scope
-- **Global** setting → admin level।
-- **Per-POP/Reseller override** → প্রতিটা POP চাইলে নিজের mode + block_profile_name set করতে পারবে; না করলে global inherit হবে।
+### 1. Database
+- `mikrotik_devices` table-এ নতুন column: `block_profile_name text` (nullable)
+- পুরোনো `branch_managers.suspension_mode` ও `block_profile_name` column দুটো আর ব্যবহার হবে না — রেখে দেব (data loss এড়াতে), পরে cleanup করা যাবে
+- `clients.original_profile` আগের মতই থাকবে (restore-এর জন্য)
+- `system_settings.auto_suspension` JSON-এ শুধু `mode` ("disable" বা "block_profile") থাকবে, global `block_profile_name` আর লাগবে না
 
-### Auto-restore on payment
-Bill paid হলে — client-এর `original_profile` field-এ আগের profile saved থাকবে, সেটা restore করে field টা clear করা হবে।
+### 2. Edge Function: `enforce-expired-disable`
+- Global `mode` পড়বে
+- `block_profile` mode হলে: প্রতিটা expired client-এর `mikrotik_id` দিয়ে সেই device-এর `block_profile_name` লাগাবে
+- যদি ওই device-এ block profile set না থাকে → ওই client skip করবে (warning log)
+- বাকি logic আগের মতই: `original_profile` save → profile change → payment-callback-এ restore
 
----
+### 3. UI — Auto-Suspension Scheduler page (`/dashboard/billing/auto-suspension`)
+এখানেই on/off ও mapping দুটোই থাকবে:
+- **Master switch:** Enable/Disable auto-suspension (আগে থেকেই আছে)
+- **Mode radio:** "Disable user" / "Set Block Profile" (আগে থেকেই আছে, শুধু global block profile input বাদ দেব)
+- **নতুন section — "Server-wise Block Profile Mapping":** আপনার screenshot-এর মত table — বাঁয়ে MikroTik server নাম, ডানে dropdown (ওই device থেকে fetch করা available profile list)। Save করলে `mikrotik_devices.block_profile_name` update হবে।
 
-## কাজগুলো
+### 4. Payment restore
+আগের মতই থাকবে — `original_profile` থেকে restore হবে।
 
-### 1. Database migration
-- `clients` table-এ নতুন column: `original_profile text` (suspension-এর আগের profile store করার জন্য)।
-- `branch_managers` (POP) table-এ:
-  - `suspension_mode text` — values: `inherit` / `disable` / `block_profile` (default `inherit`)
-  - `block_profile_name text` (nullable)
-- `system_settings.auto_suspension` JSON-এ নতুন keys: `mode`, `block_profile_name` (schema change নয়, value extension)।
+## কোথা থেকে on/off করবেন
+**Dashboard → Billing → Auto-Suspension Scheduler** page থেকেই সব কিছু:
+- পুরো auto-suspension on/off
+- Mode: Disable / Block Profile
+- প্রতি server-এর block profile mapping
 
-### 2. Edge function: `enforce-expired-disable` update
-- প্রত্যেক overdue client-এর জন্য effective mode resolve:
-  POP override থাকলে সেটা, না থাকলে global।
-- `mode = disable` → আগের মতই behavior।
-- `mode = block_profile`:
-  - `clients.original_profile`-এ current profile copy করে রাখা (যদি ইতিমধ্যেই block না হয়ে থাকে),
-  - `manage-mikrotik-ppp` action=`update` দিয়ে `profile = block_profile_name` push,
-  - `mikrotik_status = enabled` রাখা, `billing_status = blocked` set করা।
+আলাদা কোনো page-এ যেতে হবে না।
 
-### 3. Payment restore hook
-- নতুন helper edge function `restore-client-profile` (বা existing payment-success path-এ inline):
-  Payment confirm হওয়ার পর যদি client-এর `original_profile` non-null হয়,
-  - `manage-mikrotik-ppp` action=`update` দিয়ে profile restore,
-  - DB-তে `original_profile = null`, `billing_status = paid`।
-- Existing payment confirmation/edge function-এ এটা call করা হবে।
+## Technical notes
+- POP override অংশ (`branch_managers.suspension_mode` UI + edge function override logic) সরিয়ে দেব
+- `fetch-mikrotik-profiles` edge function আগে থেকেই আছে — সেটাই ব্যবহার করব dropdown populate-এর জন্য
+- পুরোনো column drop করব না, শুধু UI/logic থেকে সরাব
 
-### 4. UI
-- **Admin → Billing → Auto-Suspension Scheduler** (`AutoSuspensionScheduler.tsx`):
-  - Mode radio: `Disable` / `Block Profile`
-  - Block Profile name input + একটা MikroTik device সিলেক্ট করে "Fetch profiles" বাটন (existing `list-profiles` action ব্যবহার করে dropdown populate)।
-- **POP/Reseller settings page** (`src/pages/reseller/...config`):
-  - Override fields — Mode (Inherit/Disable/Block Profile) + Block Profile name।
-
-### 5. সতর্কতা / Notes
-- VIP/Personal/Free clients এক্ষেত্রেও skip হবে (current behavior অপরিবর্তিত)।
-- Block profile actually MikroTik-এ exist করতে হবে; UI dropdown সেটা enforce করতে সাহায্য করবে।
-- Block profile-এ থাকা user-কে আবার manual enable/disable করলেও DB consistency রাখা হবে (status flow রিভিউ)।
-
-## যা পরিবর্তন হবে না
-- বর্তমান disable mode পুরোপুরি কাজ করবে — শুধু একটা option হিসেবে block_profile যোগ হচ্ছে।
-- SMS/notification flow আগের মতই।
-
-Approve করলে আমি migration + edge function update + UI টা implement শুরু করব।
+Approve করলে migration + code changes একসাথে করব।
