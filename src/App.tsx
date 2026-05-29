@@ -498,7 +498,12 @@ const Pub = ({ children }: { children: React.ReactNode }) => (
   <PublicLayout>{children}</PublicLayout>
 );
 
-const App = () => (
+const App = () => {
+  // Re-apply portal branding (logo color CSS var) on every boot
+  if (typeof window !== "undefined") {
+    import("@/lib/portalBranding").then((m) => m.initBrandingFromStorage()).catch(() => {});
+  }
+  return (
   <BootGate>
   <ThemeProvider>
     <LanguageProvider>
