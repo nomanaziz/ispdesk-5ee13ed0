@@ -599,6 +599,7 @@ const App = () => {
 
               {/* Billing */}
               <Route path="/dashboard/billing" element={<P><BillingList /></P>} />
+              <Route path="/dashboard/billing/bulk-generate" element={<P><BulkInvoiceGenerator /></P>} />
               <Route path="/dashboard/billing/client/:id" element={<P><ClientProfile /></P>} />
               <Route path="/dashboard/billing/daily-collection" element={<P><BillingDailyCollection /></P>} />
               <Route path="/dashboard/billing/cycle-settings" element={<P><BillingCycleSettings /></P>} />
