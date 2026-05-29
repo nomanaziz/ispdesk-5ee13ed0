@@ -1153,6 +1153,7 @@ export type Database = {
           set_prefix_mikrotik: boolean
           status: string
           tariff_id: string | null
+          uid: string | null
           upazila_id: string | null
           use_prefix: boolean
           user_id: string | null
@@ -1200,6 +1201,7 @@ export type Database = {
           set_prefix_mikrotik?: boolean
           status?: string
           tariff_id?: string | null
+          uid?: string | null
           upazila_id?: string | null
           use_prefix?: boolean
           user_id?: string | null
@@ -1247,6 +1249,7 @@ export type Database = {
           set_prefix_mikrotik?: boolean
           status?: string
           tariff_id?: string | null
+          uid?: string | null
           upazila_id?: string | null
           use_prefix?: boolean
           user_id?: string | null
@@ -2284,6 +2287,7 @@ export type Database = {
           status_changed_at: string | null
           status_reason: string | null
           tenant_status: Database["public"]["Enums"]["tenant_status"] | null
+          uid: string | null
           updated_at: string
           username: string | null
           vlan_info: Json | null
@@ -2332,6 +2336,7 @@ export type Database = {
           status_changed_at?: string | null
           status_reason?: string | null
           tenant_status?: Database["public"]["Enums"]["tenant_status"] | null
+          uid?: string | null
           updated_at?: string
           username?: string | null
           vlan_info?: Json | null
@@ -2380,6 +2385,7 @@ export type Database = {
           status_changed_at?: string | null
           status_reason?: string | null
           tenant_status?: Database["public"]["Enums"]["tenant_status"] | null
+          uid?: string | null
           updated_at?: string
           username?: string | null
           vlan_info?: Json | null
@@ -3783,6 +3789,7 @@ export type Database = {
           total_download: number
           total_upload: number
           trade_license_no: string | null
+          uid: string | null
           upazila_id: string | null
           updated_at: string
           user_id: string | null
@@ -3881,6 +3888,7 @@ export type Database = {
           total_download?: number
           total_upload?: number
           trade_license_no?: string | null
+          uid?: string | null
           upazila_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -3979,6 +3987,7 @@ export type Database = {
           total_download?: number
           total_upload?: number
           trade_license_no?: string | null
+          uid?: string | null
           upazila_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -5347,6 +5356,7 @@ export type Database = {
           show_on_website: boolean | null
           status: string
           sub_user_id: string | null
+          uid: string | null
           upazila: string | null
           upazila_id: string | null
           updated_at: string
@@ -5402,6 +5412,7 @@ export type Database = {
           show_on_website?: boolean | null
           status?: string
           sub_user_id?: string | null
+          uid?: string | null
           upazila?: string | null
           upazila_id?: string | null
           updated_at?: string
@@ -5457,6 +5468,7 @@ export type Database = {
           show_on_website?: boolean | null
           status?: string
           sub_user_id?: string | null
+          uid?: string | null
           upazila?: string | null
           upazila_id?: string | null
           updated_at?: string
@@ -5706,6 +5718,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      global_uid_seq: {
+        Row: {
+          last_seq: number
+          tenant_id: string
+          uid_type: string
+          updated_at: string
+        }
+        Insert: {
+          last_seq?: number
+          tenant_id: string
+          uid_type: string
+          updated_at?: string
+        }
+        Update: {
+          last_seq?: number
+          tenant_id?: string
+          uid_type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       hr_settings: {
         Row: {
@@ -13419,6 +13452,10 @@ export type Database = {
       current_employee_id: { Args: never; Returns: string }
       extend_tenant_subscription: {
         Args: { _days: number; _tenant_id: string }
+        Returns: string
+      }
+      generate_global_uid: {
+        Args: { _tenant_id: string; _type: string }
         Returns: string
       }
       generate_installment_schedule: {
