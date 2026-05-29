@@ -1,10 +1,7 @@
-// Auto-Suspension Scheduler — checks system_settings.auto_suspension config:
-//   {
-//     enabled: bool, grace_days: int, sms_enabled: bool, template_key: string,
-//     mode: "disable" | "block_profile",
-//     block_profile_name: string,
-//   }
-// Per-POP override via branch_managers.suspension_mode + block_profile_name.
+// Auto-Suspension Scheduler — system_settings.auto_suspension:
+//   { enabled, grace_days, sms_enabled, template_key, dry_run,
+//     mode: "disable" | "block_profile" }
+// Per-MikroTik-server block profile lives in mikrotik_devices.block_profile_name.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -33,7 +30,6 @@ Deno.serve(async (req) => {
     const templateKey = cfg.template_key || "suspension_notice";
     const dryRun = cfg.dry_run === true;
     const globalMode: "disable" | "block_profile" = cfg.mode === "block_profile" ? "block_profile" : "disable";
-    const globalBlockProfile: string = (cfg.block_profile_name || "block-profile").trim();
 
     if (!enabled) {
       return new Response(JSON.stringify({ ok: true, skipped: "auto_suspension disabled" }), {
@@ -47,7 +43,7 @@ Deno.serve(async (req) => {
 
     const { data: rows, error } = await sb
       .from("clients")
-      .select("id, mikrotik_id, username, mobile, full_name, expire_date, mikrotik_status, billing_status, is_vip, branch_id, profile, original_profile")
+      .select("id, mikrotik_id, username, mobile, full_name, expire_date, mikrotik_status, billing_status, is_vip, profile, original_profile")
       .lt("expire_date", cutoffStr)
       .eq("mikrotik_status", "enabled")
       .not("mikrotik_id", "is", null)
@@ -57,59 +53,54 @@ Deno.serve(async (req) => {
 
     const list = (rows ?? []) as any[];
     if (list.length === 0) {
-      return new Response(JSON.stringify({ ok: true, disabled: 0, blocked: 0, grace_days: graceDays }), {
+      return new Response(JSON.stringify({ ok: true, disabled: 0, blocked: 0, skipped_no_profile: 0, grace_days: graceDays }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Load per-POP overrides for involved branches
-    const branchIds = Array.from(new Set(list.map((r) => r.branch_id).filter(Boolean)));
-    const popOverrides: Record<string, { mode: string; block_profile_name: string | null }> = {};
-    if (branchIds.length) {
-      const { data: pops } = await sb
-        .from("branch_managers")
-        .select("branch_id, suspension_mode, block_profile_name")
-        .in("branch_id", branchIds);
-      for (const p of pops ?? []) {
-        popOverrides[(p as any).branch_id] = {
-          mode: (p as any).suspension_mode || "inherit",
-          block_profile_name: (p as any).block_profile_name,
-        };
+    // Map mikrotik_id -> block_profile_name
+    const mkIds = Array.from(new Set(list.map((r) => r.mikrotik_id).filter(Boolean)));
+    const blockProfileByDevice: Record<string, string | null> = {};
+    if (mkIds.length) {
+      const { data: devs } = await sb
+        .from("mikrotik_devices")
+        .select("id, block_profile_name")
+        .in("id", mkIds);
+      for (const d of devs ?? []) {
+        blockProfileByDevice[(d as any).id] = (d as any).block_profile_name || null;
       }
     }
 
-    const effectiveFor = (r: any): { mode: "disable" | "block_profile"; profile: string } => {
-      const ov = r.branch_id ? popOverrides[r.branch_id] : null;
-      let mode: "disable" | "block_profile" = globalMode;
-      let profile = globalBlockProfile;
-      if (ov && ov.mode && ov.mode !== "inherit") {
-        mode = ov.mode === "block_profile" ? "block_profile" : "disable";
-        if (mode === "block_profile" && ov.block_profile_name) profile = ov.block_profile_name;
-      }
-      return { mode, profile };
-    };
-
     if (dryRun) {
-      const preview = list.slice(0, 10).map((r) => ({ id: r.id, username: r.username, ...effectiveFor(r) }));
+      const preview = list.slice(0, 10).map((r) => ({
+        id: r.id,
+        username: r.username,
+        mode: globalMode,
+        block_profile: globalMode === "block_profile" ? blockProfileByDevice[r.mikrotik_id] : null,
+      }));
       return new Response(JSON.stringify({ ok: true, dry_run: true, would_affect: list.length, sample: preview }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    let disabledCount = 0, blockedCount = 0, pushed = 0, failed = 0, notified = 0;
+    let disabledCount = 0, blockedCount = 0, skippedNoProfile = 0, pushed = 0, failed = 0, notified = 0;
 
     for (const r of list) {
       if (!r.mikrotik_id || !r.username) continue;
-      const eff = effectiveFor(r);
 
       try {
-        if (eff.mode === "block_profile") {
-          // Save current profile (only if not already blocked)
+        if (globalMode === "block_profile") {
+          const bp = blockProfileByDevice[r.mikrotik_id];
+          if (!bp) {
+            skippedNoProfile++;
+            console.warn(`skip client ${r.id} (${r.username}) — device ${r.mikrotik_id} has no block_profile_name`);
+            continue;
+          }
           const orig = r.original_profile || r.profile || null;
           await sb.from("clients").update({
             original_profile: orig,
             billing_status: "Blocked",
-            profile: eff.profile,
+            profile: bp,
           }).eq("id", r.id);
 
           const res = await fetch(`${url}/functions/v1/manage-mikrotik-ppp`, {
@@ -120,7 +111,7 @@ Deno.serve(async (req) => {
               username: r.username,
               client_id: r.id,
               action: "update",
-              profile: eff.profile,
+              profile: bp,
               disabled: false,
             }),
           });
@@ -154,7 +145,7 @@ Deno.serve(async (req) => {
                 client_name: r.full_name ?? "",
                 username: r.username ?? "",
                 expire_date: r.expire_date ?? "",
-                mode: eff.mode,
+                mode: globalMode,
               },
             }),
           });
@@ -164,7 +155,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, disabled: disabledCount, blocked: blockedCount, pushed, failed, notified, grace_days: graceDays }),
+      JSON.stringify({ ok: true, disabled: disabledCount, blocked: blockedCount, skipped_no_profile: skippedNoProfile, pushed, failed, notified, grace_days: graceDays }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e: any) {

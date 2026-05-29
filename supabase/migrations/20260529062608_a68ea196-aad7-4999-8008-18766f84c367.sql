@@ -1,0 +1,1 @@
+ALTER TABLE public.mikrotik_devices ADD COLUMN IF NOT EXISTS block_profile_name text;
