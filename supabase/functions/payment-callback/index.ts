@@ -380,5 +380,30 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Send SMS receipt via Step-1 notification engine (best-effort)
+  try {
+    const { data: client } = await supabase.from("clients")
+      .select("name, contact, mobile").eq("id", pr.client_id).maybeSingle();
+    const phone = (client as any)?.contact || (client as any)?.mobile;
+    if (phone) {
+      await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-notification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+        body: JSON.stringify({
+          template_key: "payment_receipt",
+          channel: "sms",
+          recipient: phone,
+          variables: {
+            client_name: (client as any)?.name ?? "",
+            amount: pr.amount,
+            trx_id: trxId,
+            gateway,
+            date: new Date().toISOString().slice(0, 10),
+          },
+        }),
+      });
+    }
+  } catch (e) { console.error("payment receipt sms failed", e); }
+
   return redirect(portalUrl("success"));
 });
