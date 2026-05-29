@@ -360,6 +360,7 @@ import { PortalLayout } from "@/components/PortalLayout";
 import PortalProtectedRoute from "@/components/PortalProtectedRoute";
 const PortalLogin = lazy(() => import("@/pages/portal/PortalLogin"));
 const PortalDashboard = lazy(() => import("@/pages/portal/PortalDashboard"));
+const PortalInstall = lazy(() => import("@/pages/portal/PortalInstall"));
 const PortalInvoices = lazy(() => import("@/pages/portal/PortalInvoices"));
 
 const PortalSupport = lazy(() => import("@/pages/portal/PortalSupport"));
@@ -884,6 +885,7 @@ const App = () => {
               {/* Portal */}
               <Route path="/portal/login" element={<PortalAuthProvider><PortalLogin /></PortalAuthProvider>} />
               <Route path="/portal/dashboard" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalDashboard /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
+              <Route path="/portal/install" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalInstall /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/invoices" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalInvoices /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/bills" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalBills /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
               <Route path="/portal/bills/:id" element={<PortalAuthProvider><PortalProtectedRoute><PortalLayout><PortalBillInvoice /></PortalLayout></PortalProtectedRoute></PortalAuthProvider>} />
