@@ -59,6 +59,7 @@ const menuItems: { bn: string; en: string; icon: any; path: string; tint: IconTi
   { bn: "আমার অর্ডার", en: "My Orders", icon: Package, path: "/portal/my-orders", tint: "orange", icons8: "delivery-time" },
   { bn: "আমার মেসেজ", en: "My Messages", icon: MessageSquare, path: "/portal/messages", tint: "violet", icons8: "comments" },
   { bn: "সাপোর্ট টিকেট", en: "Support Tickets", icon: HeadphonesIcon, path: "/portal/support", tint: "red", icons8: "online-support" },
+  { bn: "অ্যাপ ইনস্টল", en: "Install App", icon: Smartphone, path: "/portal/install", tint: "indigo", icons8: "smartphone-tablet" },
 ];
 
 // Single source-of-truth bottom nav (used on mobile + tablet, every page)
