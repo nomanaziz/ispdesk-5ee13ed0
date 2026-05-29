@@ -49,7 +49,7 @@ export default function ExecutiveAnalytics() {
       const { data: bills } = await supabase
         .from("billing")
         .select("month, amount, paid, due, status")
-        .eq("tenant_id", tenantId)
+        
         .gte("month", sixMonthsAgo);
 
       const map: Record<string, MonthRow> = {};
@@ -69,7 +69,7 @@ export default function ExecutiveAnalytics() {
       const { data: clients } = await supabase
         .from("clients")
         .select("status, monthly_bill")
-        .eq("tenant_id", tenantId);
+        ;
 
       const sBreak: Record<string, number> = {};
       let activeCount = 0, totalMRR = 0, leftCount = 0;
@@ -87,7 +87,7 @@ export default function ExecutiveAnalytics() {
       const { data: tix } = await supabase
         .from("support_tickets")
         .select("created_at, closed_at, status")
-        .eq("tenant_id", tenantId)
+        
         .gte("created_at", sixMonthsAgo);
 
       const tMap: Record<string, { opened: number; closed: number }> = {};
