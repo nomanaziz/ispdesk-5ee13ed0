@@ -825,6 +825,9 @@ const App = () => {
               <Route path="/dashboard/system/bill-period-years" element={<P><SystemBillPeriodYears /></P>} />
               <Route path="/dashboard/system/automatic-process" element={<P><SystemAutomaticProcess /></P>} />
               <Route path="/dashboard/system/portal-branding" element={<P><SystemPortalBranding /></P>} />
+              <Route path="/dashboard/system/notification-providers" element={<P><SystemNotifProviders /></P>} />
+              <Route path="/dashboard/system/notification-templates" element={<P><SystemNotifTemplates /></P>} />
+              <Route path="/dashboard/system/notification-logs" element={<P><SystemNotifLogs /></P>} />
 
               {/* Branded portal entry points — set branding then redirect to /portal/login */}
               <Route path="/t/:slug" element={<BrandedPortalEntry kind="tenant" />} />
