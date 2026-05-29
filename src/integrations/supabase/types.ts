@@ -7266,7 +7266,7 @@ export type Database = {
           status: string
           subject: string | null
           template_id: string | null
-          tenant_id: string
+          tenant_id: string | null
         }
         Insert: {
           body: string
@@ -7282,7 +7282,7 @@ export type Database = {
           status?: string
           subject?: string | null
           template_id?: string | null
-          tenant_id: string
+          tenant_id?: string | null
         }
         Update: {
           body?: string
@@ -7298,7 +7298,7 @@ export type Database = {
           status?: string
           subject?: string | null
           template_id?: string | null
-          tenant_id?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -7319,7 +7319,7 @@ export type Database = {
           id: string
           provider: string
           sender_id: string | null
-          tenant_id: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -7330,7 +7330,7 @@ export type Database = {
           id?: string
           provider: string
           sender_id?: string | null
-          tenant_id: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -7341,7 +7341,7 @@ export type Database = {
           id?: string
           provider?: string
           sender_id?: string | null
-          tenant_id?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -7391,7 +7391,7 @@ export type Database = {
           id: string
           name: string
           subject: string | null
-          tenant_id: string
+          tenant_id: string | null
           updated_at: string
           variables: string[]
         }
@@ -7404,7 +7404,7 @@ export type Database = {
           id?: string
           name: string
           subject?: string | null
-          tenant_id: string
+          tenant_id?: string | null
           updated_at?: string
           variables?: string[]
         }
@@ -7417,7 +7417,7 @@ export type Database = {
           id?: string
           name?: string
           subject?: string | null
-          tenant_id?: string
+          tenant_id?: string | null
           updated_at?: string
           variables?: string[]
         }

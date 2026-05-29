@@ -320,6 +320,9 @@ const SystemLog = lazy(() => import("@/pages/dashboard/system/SystemLog"));
 const SystemBillPeriodYears = lazy(() => import("@/pages/dashboard/system/BillPeriodYears"));
 const SystemAutomaticProcess = lazy(() => import("@/pages/dashboard/system/AutomaticProcess"));
 const SystemPortalBranding = lazy(() => import("@/pages/dashboard/system/PortalBranding"));
+const SystemNotifProviders = lazy(() => import("@/pages/dashboard/system/NotificationProviders"));
+const SystemNotifTemplates = lazy(() => import("@/pages/dashboard/system/NotificationTemplates"));
+const SystemNotifLogs = lazy(() => import("@/pages/dashboard/system/NotificationLogs"));
 const BrandedPortalEntry = lazy(() => import("@/pages/portal/BrandedPortalEntry"));
 const SystemCustomDomain = lazy(() => import("@/pages/system/CustomDomainPage"));
 const MySubscription = lazy(() => import("@/pages/MySubscription"));
@@ -822,6 +825,9 @@ const App = () => {
               <Route path="/dashboard/system/bill-period-years" element={<P><SystemBillPeriodYears /></P>} />
               <Route path="/dashboard/system/automatic-process" element={<P><SystemAutomaticProcess /></P>} />
               <Route path="/dashboard/system/portal-branding" element={<P><SystemPortalBranding /></P>} />
+              <Route path="/dashboard/system/notification-providers" element={<P><SystemNotifProviders /></P>} />
+              <Route path="/dashboard/system/notification-templates" element={<P><SystemNotifTemplates /></P>} />
+              <Route path="/dashboard/system/notification-logs" element={<P><SystemNotifLogs /></P>} />
 
               {/* Branded portal entry points — set branding then redirect to /portal/login */}
               <Route path="/t/:slug" element={<BrandedPortalEntry kind="tenant" />} />
