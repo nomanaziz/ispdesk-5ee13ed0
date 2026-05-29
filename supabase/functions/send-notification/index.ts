@@ -10,7 +10,7 @@ const corsHeaders = {
 
 interface Payload {
   tenant_id: string;
-  channel: "sms" | "email" | "whatsapp";
+  channel: "sms" | "email" | "whatsapp" | "telegram";
   recipient: string;
   template_category?: string;
   template_id?: string;
@@ -104,6 +104,44 @@ async function sendWhatsApp(provider: any, recipient: string, body: string) {
   throw new Error(`Unsupported WhatsApp provider: ${provider.provider}`);
 }
 
+async function sendTelegram(provider: any, recipient: string, body: string) {
+  // recipient = chat_id (numeric string or @channelusername)
+  const cfg = provider.config || {};
+  const p = (provider.provider || "").toLowerCase();
+  // Option A: Lovable Telegram connector gateway (no bot token in config)
+  if (p === "lovable_gateway" || p === "gateway") {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const TELEGRAM_API_KEY = Deno.env.get("TELEGRAM_API_KEY");
+    if (!LOVABLE_API_KEY || !TELEGRAM_API_KEY) {
+      throw new Error("Telegram connector not linked (LOVABLE_API_KEY / TELEGRAM_API_KEY missing)");
+    }
+    const r = await fetch("https://connector-gateway.lovable.dev/telegram/sendMessage", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "X-Connection-Api-Key": TELEGRAM_API_KEY,
+      },
+      body: JSON.stringify({ chat_id: recipient, text: body, parse_mode: "HTML" }),
+    });
+    const j = await r.json().catch(() => ({}));
+    return { ok: r.ok && j?.ok !== false, id: j?.result?.message_id ? String(j.result.message_id) : null, raw: j };
+  }
+  // Option B: raw bot token in provider.config.bot_token
+  if (p === "telegram_bot" || p === "bot") {
+    const token = cfg.bot_token;
+    if (!token) throw new Error("bot_token missing in provider config");
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: recipient, text: body, parse_mode: "HTML" }),
+    });
+    const j = await r.json().catch(() => ({}));
+    return { ok: r.ok && j?.ok !== false, id: j?.result?.message_id ? String(j.result.message_id) : null, raw: j };
+  }
+  throw new Error(`Unsupported Telegram provider: ${provider.provider}`);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -161,6 +199,7 @@ Deno.serve(async (req) => {
   try {
     if (channel === "sms") result = await sendSms(provider, recipient, body);
     else if (channel === "email") result = await sendEmail(provider, recipient, subject, body);
+    else if (channel === "telegram") result = await sendTelegram(provider, recipient, body);
     else result = await sendWhatsApp(provider, recipient, body);
   } catch (e: any) {
     await admin.from("notification_logs").insert({

@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type NotifChannel = "sms" | "email" | "whatsapp";
+export type NotifChannel = "sms" | "email" | "whatsapp" | "telegram";
 
 export interface SendNotifInput {
   tenant_id: string;
@@ -39,3 +39,7 @@ export const SMS_PROVIDERS = [
 
 export const EMAIL_PROVIDERS = [{ value: "resend", label: "Resend" }];
 export const WA_PROVIDERS = [{ value: "whatsapp_cloud", label: "WhatsApp Cloud API (Meta)" }];
+export const TELEGRAM_PROVIDERS = [
+  { value: "lovable_gateway", label: "Lovable Telegram Connector (ফ্রি, সহজ)" },
+  { value: "telegram_bot", label: "নিজস্ব Bot Token" },
+];
