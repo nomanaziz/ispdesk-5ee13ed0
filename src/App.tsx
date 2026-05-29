@@ -296,6 +296,7 @@ const ReportDueSms = lazy(() => import("@/pages/dashboard/reports/DueSms"));
 const ReportProcessingFee = lazy(() => import("@/pages/dashboard/reports/ProcessingFee"));
 const ReportBtrc = lazy(() => import("@/pages/dashboard/reports/Btrc"));
 const ReportFinancial = lazy(() => import("@/pages/dashboard/reports/Financial"));
+const ExecutiveAnalytics = lazy(() => import("@/pages/dashboard/ExecutiveAnalytics"));
 
 // SMS
 const SmsIndividual = lazy(() => import("@/pages/dashboard/sms/Individual"));
@@ -808,6 +809,7 @@ const App = () => {
               <Route path="/dashboard/reports/processing-fee" element={<P><ReportProcessingFee /></P>} />
               <Route path="/dashboard/reports/btrc" element={<P><ReportBtrc /></P>} />
               <Route path="/dashboard/reports/financial" element={<P><ReportFinancial /></P>} />
+              <Route path="/dashboard/analytics" element={<P><ExecutiveAnalytics /></P>} />
 
               {/* SMS */}
               <Route path="/dashboard/sms/individual" element={<P><SmsIndividual /></P>} />
