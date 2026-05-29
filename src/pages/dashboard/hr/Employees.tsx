@@ -183,7 +183,7 @@ export default function Employees() {
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 && (
-                    <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">কোনো কর্মী পাওয়া যায়নি</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">কোনো কর্মী পাওয়া যায়নি</TableCell></TableRow>
                   )}
                   {filtered.map((emp: any) => (
                     <TableRow key={emp.id} className={selected.has(emp.id) ? "bg-muted/30" : ""}>
