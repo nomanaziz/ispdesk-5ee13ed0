@@ -379,6 +379,7 @@ export const menuGroups: MenuGroup[] = [
       { title: "পেমেন্ট গেটওয়ে", url: "/dashboard/system/payment-gateways", icon: CreditCardIcon },
       { title: "প্রসেসিং ফি", url: "/dashboard/system/processing-fee", icon: DollarSign },
       { title: "অটোমেটিক প্রসেস", url: "/dashboard/system/automatic-process", icon: Activity },
+      { title: "Portal Branding", url: "/dashboard/system/portal-branding", icon: Activity },
       { title: "সিস্টেম লগ", url: "/dashboard/system/system-log", icon: ScrollText },
       { title: "কাস্টম ডোমেইন", url: "/dashboard/system/custom-domain", icon: Globe },
       { title: "আমার সাবস্ক্রিপশন", url: "/dashboard/my-subscription", icon: CreditCardIcon },

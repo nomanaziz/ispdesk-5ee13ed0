@@ -76,14 +76,18 @@ interface Props {
   fullBleedMobile?: boolean;
 }
 
+import { getBranding } from "@/lib/portalBranding";
+
 export const PortalLayout = ({ children, fullBleedMobile = true }: Props) => {
   const { customer, logout } = usePortalAuth();
   const { lang, setLang, t } = useLanguage();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const branding = getBranding();
 
   const initials =
     customer?.name?.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+
 
   return (
     <div className="flex min-h-screen bg-background print:block print:min-h-0">
@@ -97,13 +101,17 @@ export const PortalLayout = ({ children, fullBleedMobile = true }: Props) => {
         {/* User card */}
         <div className="px-5 pt-6 pb-5 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12 ring-2 ring-sidebar-primary/40">
-              <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground font-semibold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            {branding?.logoUrl ? (
+              <img src={branding.logoUrl} alt={branding.name} className="h-12 w-12 rounded object-contain bg-white p-1" />
+            ) : (
+              <Avatar className="h-12 w-12 ring-2 ring-sidebar-primary/40">
+                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground font-semibold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            )}
             <div className="min-w-0 flex-1">
-              <div className="font-semibold text-sm truncate">{customer?.name || "Customer"}</div>
+              <div className="font-semibold text-sm truncate">{branding?.title || customer?.name || "Customer"}</div>
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
                 <span className="text-[11px] text-success">{t("সাইন ইন", "Signed in")}</span>

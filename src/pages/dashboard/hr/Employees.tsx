@@ -169,6 +169,7 @@ export default function Employees() {
                       <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
                     </TableHead>
                     <TableHead>নাম</TableHead>
+                    <TableHead>UID</TableHead>
                     <TableHead>ID</TableHead>
                     <TableHead>মোবাইল</TableHead>
                     <TableHead>অফিস ফোন</TableHead>
@@ -182,7 +183,7 @@ export default function Employees() {
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 && (
-                    <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">কোনো কর্মী পাওয়া যায়নি</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">কোনো কর্মী পাওয়া যায়নি</TableCell></TableRow>
                   )}
                   {filtered.map((emp: any) => (
                     <TableRow key={emp.id} className={selected.has(emp.id) ? "bg-muted/30" : ""}>
@@ -190,6 +191,7 @@ export default function Employees() {
                         <Checkbox checked={selected.has(emp.id)} onCheckedChange={() => toggleOne(emp.id)} />
                       </TableCell>
                       <TableCell className="font-medium">{emp.name}</TableCell>
+                      <TableCell className="text-[10px] font-mono text-muted-foreground">{emp.uid || "—"}</TableCell>
                       <TableCell className="font-mono">{emp.employee_id}</TableCell>
                       <TableCell>{emp.phone || emp.personal_phone || "—"}</TableCell>
                       <TableCell>{emp.office_phone || "—"}</TableCell>

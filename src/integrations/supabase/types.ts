@@ -1148,7 +1148,11 @@ export type Database = {
           pop_prefix: string | null
           pop_type: string
           pop_type_changed_at: string | null
+          portal_brand_color: string | null
           portal_enabled: boolean
+          portal_logo_url: string | null
+          portal_slug: string | null
+          portal_title: string | null
           server_id: string | null
           set_prefix_mikrotik: boolean
           status: string
@@ -1196,7 +1200,11 @@ export type Database = {
           pop_prefix?: string | null
           pop_type?: string
           pop_type_changed_at?: string | null
+          portal_brand_color?: string | null
           portal_enabled?: boolean
+          portal_logo_url?: string | null
+          portal_slug?: string | null
+          portal_title?: string | null
           server_id?: string | null
           set_prefix_mikrotik?: boolean
           status?: string
@@ -1244,7 +1252,11 @@ export type Database = {
           pop_prefix?: string | null
           pop_type?: string
           pop_type_changed_at?: string | null
+          portal_brand_color?: string | null
           portal_enabled?: boolean
+          portal_logo_url?: string | null
+          portal_slug?: string | null
+          portal_title?: string | null
           server_id?: string | null
           set_prefix_mikrotik?: boolean
           status?: string
@@ -2280,6 +2292,10 @@ export type Database = {
           phone: string | null
           pop_id: string | null
           pop_name_last_mile: string | null
+          portal_brand_color: string | null
+          portal_logo_url: string | null
+          portal_slug: string | null
+          portal_title: string | null
           reference_by: string | null
           remarks: string | null
           scr_link_id: string | null
@@ -2329,6 +2345,10 @@ export type Database = {
           phone?: string | null
           pop_id?: string | null
           pop_name_last_mile?: string | null
+          portal_brand_color?: string | null
+          portal_logo_url?: string | null
+          portal_slug?: string | null
+          portal_title?: string | null
           reference_by?: string | null
           remarks?: string | null
           scr_link_id?: string | null
@@ -2378,6 +2398,10 @@ export type Database = {
           phone?: string | null
           pop_id?: string | null
           pop_name_last_mile?: string | null
+          portal_brand_color?: string | null
+          portal_logo_url?: string | null
+          portal_slug?: string | null
+          portal_title?: string | null
           reference_by?: string | null
           remarks?: string | null
           scr_link_id?: string | null
@@ -13477,6 +13501,28 @@ export type Database = {
       get_important_link_password: {
         Args: { _link_id: string }
         Returns: string
+      }
+      get_reseller_branding_by_slug: {
+        Args: { _slug: string }
+        Returns: {
+          branch_id: string
+          name: string
+          portal_brand_color: string
+          portal_logo_url: string
+          portal_title: string
+          reseller_id: string
+        }[]
+      }
+      get_tenant_branding_by_slug: {
+        Args: { _slug: string }
+        Returns: {
+          customer_name: string
+          panel_branch_id: string
+          portal_brand_color: string
+          portal_logo_url: string
+          portal_title: string
+          tenant_id: string
+        }[]
       }
       get_tenant_by_domain: {
         Args: { _domain: string }
