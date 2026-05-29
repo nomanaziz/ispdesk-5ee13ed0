@@ -21,7 +21,7 @@ import {
 import { NavLink, useLocation } from "react-router-dom";
 import { Sidebar, SidebarContent, useSidebar } from "@/components/ui/sidebar";
 import { useEmployeeContext } from "@/hooks/useEmployeeContext";
-import { User as UserIcon, Utensils, UtensilsCrossed, ClipboardList as ClipboardListIcon } from "lucide-react";
+import { User as UserIcon, Utensils, UtensilsCrossed, ClipboardList as ClipboardListIcon, ShieldOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MenuIconTile, tintForLabel } from "@/components/sidebar/MenuIconTile";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -93,6 +93,7 @@ export const menuGroups: MenuGroup[] = [
       { title: "কর্পোরেট ক্লায়েন্ট", url: "/dashboard/clients/corporate", icon: Building2 },
       { title: "বিলিং তালিকা", url: "/dashboard/billing", icon: CreditCard },
       { title: "বাল্ক ইনভয়েস জেনারেট", url: "/dashboard/billing/bulk-generate", icon: FileText },
+      { title: "অটো-সাসপেনশন", url: "/dashboard/billing/auto-suspension", icon: ShieldOff },
       { title: "দৈনিক বিল কালেকশন", url: "/dashboard/billing/daily-collection", icon: Wallet },
       { title: "ইনস্টলেশন ফি", url: "/dashboard/sales/installation-fee", icon: DollarSign },
       { title: "চলে যাওয়া ক্লায়েন্ট", url: "/dashboard/clients/left", icon: UserX },

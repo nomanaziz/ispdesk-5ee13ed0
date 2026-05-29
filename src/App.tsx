@@ -102,6 +102,7 @@ const ClientPortalManage = lazy(() => import("@/pages/dashboard/clients/PortalMa
 // Billing
 const BillingList = lazy(() => import("@/pages/dashboard/billing/BillingList"));
 const BulkInvoiceGenerator = lazy(() => import("@/pages/dashboard/billing/BulkInvoiceGenerator"));
+const AutoSuspensionScheduler = lazy(() => import("@/pages/dashboard/billing/AutoSuspensionScheduler"));
 const BillingDailyCollection = lazy(() => import("@/pages/dashboard/billing/DailyCollection"));
 const ClientProfile = lazy(() => import("@/pages/dashboard/billing/ClientProfile"));
 const BillingCycleSettings = lazy(() => import("@/pages/dashboard/billing/BillingCycleSettings"));
@@ -600,6 +601,7 @@ const App = () => {
               {/* Billing */}
               <Route path="/dashboard/billing" element={<P><BillingList /></P>} />
               <Route path="/dashboard/billing/bulk-generate" element={<P><BulkInvoiceGenerator /></P>} />
+              <Route path="/dashboard/billing/auto-suspension" element={<P><AutoSuspensionScheduler /></P>} />
               <Route path="/dashboard/billing/client/:id" element={<P><ClientProfile /></P>} />
               <Route path="/dashboard/billing/daily-collection" element={<P><BillingDailyCollection /></P>} />
               <Route path="/dashboard/billing/cycle-settings" element={<P><BillingCycleSettings /></P>} />
