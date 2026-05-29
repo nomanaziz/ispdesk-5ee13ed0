@@ -31,7 +31,8 @@ const PortalLogin = () => {
     if (!username || !password) { toast.error("Username ও password দিন"); return; }
     setLoading(true);
     try {
-      await login(username, password);
+      const res = await login(username, password);
+      if (res?.error) { toast.error(res.error); return; }
       navigate("/portal/dashboard");
     } catch (err: any) {
       toast.error(err?.message || "Login ব্যর্থ");
