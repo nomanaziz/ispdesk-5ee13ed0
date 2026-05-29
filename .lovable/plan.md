@@ -1,42 +1,28 @@
 
-# Block Profile — Per-Server Mapping
+# Block Profile Enable/Disable — System Setup-এ যোগ
 
-আপনার screenshot অনুযায়ী ঠিক বুঝেছি: প্রতিটা MikroTik server-এ একটাই block profile থাকবে, এবং সেই server-এর সব user blocked হলে ওই profile-এ যাবে। POP/Reseller override-এর দরকার নেই — mapping সরাসরি MikroTik device-এর সাথে।
+আপনার screenshot-এর মত — **System → Setup → Common System Settings** tab-এ একটা নতুন card যোগ করব "Mikrotik Block Profile"। বর্তমানে enable/disable Auto-Suspension Scheduler page-এ আছে, কিন্তু আপনি চান এটা Settings থেকে হোক।
 
-## যা পরিবর্তন হবে
+## যা যোগ হবে
 
-### 1. Database
-- `mikrotik_devices` table-এ নতুন column: `block_profile_name text` (nullable)
-- পুরোনো `branch_managers.suspension_mode` ও `block_profile_name` column দুটো আর ব্যবহার হবে না — রেখে দেব (data loss এড়াতে), পরে cleanup করা যাবে
-- `clients.original_profile` আগের মতই থাকবে (restore-এর জন্য)
-- `system_settings.auto_suspension` JSON-এ শুধু `mode` ("disable" বা "block_profile") থাকবে, global `block_profile_name` আর লাগবে না
+**Location:** `/dashboard/system/setup` → Common System Settings tab → নতুন card:
 
-### 2. Edge Function: `enforce-expired-disable`
-- Global `mode` পড়বে
-- `block_profile` mode হলে: প্রতিটা expired client-এর `mikrotik_id` দিয়ে সেই device-এর `block_profile_name` লাগাবে
-- যদি ওই device-এ block profile set না থাকে → ওই client skip করবে (warning log)
-- বাকি logic আগের মতই: `original_profile` save → profile change → payment-callback-এ restore
+### Card: "Mikrotik Block Profile"
+আপনার screenshot-এর হুবহু মত:
+- **Enable / Disable radio:** চালু থাকলে expired user-দের block profile-এ পাঠাবে; বন্ধ থাকলে আগের মত MikroTik user disable হবে।
+- **"Set Server-wise Block Profile" button:** click করলে modal খুলবে — modal-এ table:
+  - বাঁয়ে: প্রতিটা MikroTik server-এর নাম
+  - ডানে: profile dropdown (Fetch button দিয়ে ওই server থেকে profile list আনা)
+- Submit করলে `mikrotik_devices.block_profile_name` update হবে।
 
-### 3. UI — Auto-Suspension Scheduler page (`/dashboard/billing/auto-suspension`)
-এখানেই on/off ও mapping দুটোই থাকবে:
-- **Master switch:** Enable/Disable auto-suspension (আগে থেকেই আছে)
-- **Mode radio:** "Disable user" / "Set Block Profile" (আগে থেকেই আছে, শুধু global block profile input বাদ দেব)
-- **নতুন section — "Server-wise Block Profile Mapping":** আপনার screenshot-এর মত table — বাঁয়ে MikroTik server নাম, ডানে dropdown (ওই device থেকে fetch করা available profile list)। Save করলে `mikrotik_devices.block_profile_name` update হবে।
+## Backend
+- কোনো DB migration লাগবে না — `mikrotik_devices.block_profile_name` column আগের session-এ আগেই add করা হয়েছে।
+- Enable/disable শুধু `system_settings.auto_suspension.mode` toggle করবে (`"disable"` ↔ `"block_profile"`)। Edge function আগের মতই কাজ করবে।
 
-### 4. Payment restore
-আগের মতই থাকবে — `original_profile` থেকে restore হবে।
+## Auto-Suspension Scheduler page থেকে কী সরাবো
+সেই page-এ এখন যে "Suspension Mode" dropdown ও "Server-wise Block Profile Mapping" table আছে — দুটোই সরিয়ে দেব, কারণ এখন সব System Setup-এ। শুধু run/stats/recent list থাকবে।
 
-## কোথা থেকে on/off করবেন
-**Dashboard → Billing → Auto-Suspension Scheduler** page থেকেই সব কিছু:
-- পুরো auto-suspension on/off
-- Mode: Disable / Block Profile
-- প্রতি server-এর block profile mapping
+## কোথা থেকে on/off করবেন (final)
+**Dashboard → সিস্টেম → সিস্টেম সেটআপ → Common System Settings** tab-এর "Mikrotik Block Profile" card থেকে।
 
-আলাদা কোনো page-এ যেতে হবে না।
-
-## Technical notes
-- POP override অংশ (`branch_managers.suspension_mode` UI + edge function override logic) সরিয়ে দেব
-- `fetch-mikrotik-profiles` edge function আগে থেকেই আছে — সেটাই ব্যবহার করব dropdown populate-এর জন্য
-- পুরোনো column drop করব না, শুধু UI/logic থেকে সরাব
-
-Approve করলে migration + code changes একসাথে করব।
+Approve করলে implement করব।

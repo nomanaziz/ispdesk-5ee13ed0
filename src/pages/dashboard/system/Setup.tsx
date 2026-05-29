@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { useSystemSetting } from "@/hooks/useSystemSetting";
 import { Save, Settings, DollarSign, Clock, Calendar, Globe, RotateCcw, ShieldAlert, Timer, CalendarClock, Percent, Users } from "lucide-react";
 import ClientBillingSettings from "./ClientBillingSettings";
+import MikrotikBlockProfileCard from "@/components/billing/MikrotikBlockProfileCard";
 
 interface SystemConfig {
   currency: string; currency_symbol: string; timezone: string;
@@ -235,6 +236,8 @@ export default function Setup() {
               </div>
             </div>
           </div>
+
+          <MikrotikBlockProfileCard />
 
           {/* VAT Defaults */}
           <div className="border rounded-lg overflow-hidden">
