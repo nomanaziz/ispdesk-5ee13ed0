@@ -6967,6 +6967,7 @@ export type Database = {
         Row: {
           api_port: number
           assigned_to_pop_id: string | null
+          block_profile_name: string | null
           branch_id: string | null
           created_at: string
           credentials_encrypted: string | null
@@ -6985,6 +6986,7 @@ export type Database = {
         Insert: {
           api_port?: number
           assigned_to_pop_id?: string | null
+          block_profile_name?: string | null
           branch_id?: string | null
           created_at?: string
           credentials_encrypted?: string | null
@@ -7003,6 +7005,7 @@ export type Database = {
         Update: {
           api_port?: number
           assigned_to_pop_id?: string | null
+          block_profile_name?: string | null
           branch_id?: string | null
           created_at?: string
           credentials_encrypted?: string | null
