@@ -1119,6 +1119,7 @@ export type Database = {
           auto_recharge_enabled: boolean
           auto_settle_pgw: boolean
           balance: number
+          block_profile_name: string | null
           branch_id: string | null
           client_code: string | null
           client_code_prefix: string | null
@@ -1156,6 +1157,7 @@ export type Database = {
           server_id: string | null
           set_prefix_mikrotik: boolean
           status: string
+          suspension_mode: string
           tariff_id: string | null
           uid: string | null
           upazila_id: string | null
@@ -1171,6 +1173,7 @@ export type Database = {
           auto_recharge_enabled?: boolean
           auto_settle_pgw?: boolean
           balance?: number
+          block_profile_name?: string | null
           branch_id?: string | null
           client_code?: string | null
           client_code_prefix?: string | null
@@ -1208,6 +1211,7 @@ export type Database = {
           server_id?: string | null
           set_prefix_mikrotik?: boolean
           status?: string
+          suspension_mode?: string
           tariff_id?: string | null
           uid?: string | null
           upazila_id?: string | null
@@ -1223,6 +1227,7 @@ export type Database = {
           auto_recharge_enabled?: boolean
           auto_settle_pgw?: boolean
           balance?: number
+          block_profile_name?: string | null
           branch_id?: string | null
           client_code?: string | null
           client_code_prefix?: string | null
@@ -1260,6 +1265,7 @@ export type Database = {
           server_id?: string | null
           set_prefix_mikrotik?: boolean
           status?: string
+          suspension_mode?: string
           tariff_id?: string | null
           uid?: string | null
           upazila_id?: string | null
@@ -3782,6 +3788,7 @@ export type Database = {
           nid_number: string | null
           occupation: string | null
           onu_id: string | null
+          original_profile: string | null
           owner_scope: string
           package_id: string | null
           password: string | null
@@ -3881,6 +3888,7 @@ export type Database = {
           nid_number?: string | null
           occupation?: string | null
           onu_id?: string | null
+          original_profile?: string | null
           owner_scope?: string
           package_id?: string | null
           password?: string | null
@@ -3980,6 +3988,7 @@ export type Database = {
           nid_number?: string | null
           occupation?: string | null
           onu_id?: string | null
+          original_profile?: string | null
           owner_scope?: string
           package_id?: string | null
           password?: string | null

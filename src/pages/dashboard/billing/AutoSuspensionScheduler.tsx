@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Loader2, PlayCircle, Save, ShieldOff } from "lucide-react";
+import { Loader2, PlayCircle, Save, ShieldOff, Download } from "lucide-react";
 
 type Cfg = {
   enabled: boolean;
@@ -16,6 +17,8 @@ type Cfg = {
   sms_enabled: boolean;
   template_key: string;
   dry_run: boolean;
+  mode: "disable" | "block_profile";
+  block_profile_name: string;
 };
 
 const DEFAULT_CFG: Cfg = {
@@ -24,7 +27,20 @@ const DEFAULT_CFG: Cfg = {
   sms_enabled: false,
   template_key: "suspension_notice",
   dry_run: false,
+  mode: "disable",
+  block_profile_name: "block-profile",
 };
+
+type PopRow = {
+  id: string;
+  branch_id: string | null;
+  name: string | null;
+  pop_code: string | null;
+  suspension_mode: string | null;
+  block_profile_name: string | null;
+};
+
+type Device = { id: string; name: string };
 
 export default function AutoSuspensionScheduler() {
   const [cfg, setCfg] = useState<Cfg>(DEFAULT_CFG);
@@ -34,7 +50,18 @@ export default function AutoSuspensionScheduler() {
   const [lastResult, setLastResult] = useState<any>(null);
   const [overdueCount, setOverdueCount] = useState<number>(0);
   const [suspendedCount, setSuspendedCount] = useState<number>(0);
+  const [blockedCount, setBlockedCount] = useState<number>(0);
   const [recent, setRecent] = useState<any[]>([]);
+
+  // MikroTik profile fetch
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [pickDevice, setPickDevice] = useState<string>("");
+  const [profiles, setProfiles] = useState<string[]>([]);
+  const [fetchingProfiles, setFetchingProfiles] = useState(false);
+
+  // POP overrides
+  const [pops, setPops] = useState<PopRow[]>([]);
+  const [savingPop, setSavingPop] = useState<string | null>(null);
 
   async function loadAll() {
     setLoading(true);
@@ -60,21 +87,37 @@ export default function AutoSuspensionScheduler() {
         .eq("mikrotik_status", "disabled");
       setSuspendedCount(sc ?? 0);
 
+      const { count: bc } = await supabase
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .not("original_profile", "is", null);
+      setBlockedCount(bc ?? 0);
+
       const { data: rec } = await supabase
         .from("clients")
-        .select("id, full_name, username, mobile, expire_date, mikrotik_status, updated_at")
-        .eq("mikrotik_status", "disabled")
+        .select("id, full_name, username, mobile, expire_date, mikrotik_status, billing_status, profile, original_profile, updated_at")
+        .or("mikrotik_status.eq.disabled,original_profile.not.is.null")
         .order("updated_at", { ascending: false })
         .limit(20);
       setRecent(rec ?? []);
+
+      const { data: devs } = await supabase
+        .from("mikrotik_devices")
+        .select("id, name")
+        .order("name");
+      setDevices((devs as Device[]) ?? []);
+
+      const { data: popRows } = await supabase
+        .from("branch_managers")
+        .select("id, branch_id, name, pop_code, suspension_mode, block_profile_name")
+        .order("pop_code");
+      setPops((popRows as PopRow[]) ?? []);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    loadAll();
-  }, []);
+  useEffect(() => { loadAll(); }, []);
 
   async function saveCfg() {
     setSaving(true);
@@ -98,12 +141,47 @@ export default function AutoSuspensionScheduler() {
       const { data, error } = await supabase.functions.invoke("enforce-expired-disable", { body: {} });
       if (error) throw error;
       setLastResult(data);
-      toast.success(`সম্পন্ন: ${data?.disabled ?? 0} জন সাসপেন্ড`);
+      const msg = `সম্পন্ন: ${data?.disabled ?? 0} disable, ${data?.blocked ?? 0} block-profile`;
+      toast.success(msg);
       await loadAll();
     } catch (e: any) {
       toast.error(e.message ?? "চালাতে সমস্যা");
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function fetchProfiles() {
+    if (!pickDevice) { toast.error("একটি MikroTik device সিলেক্ট করুন"); return; }
+    setFetchingProfiles(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-mikrotik-ppp", {
+        body: { mikrotik_id: pickDevice, action: "list-profiles" },
+      });
+      if (error) throw error;
+      const names = (data?.profiles ?? []).map((p: any) => p?.name).filter(Boolean);
+      setProfiles(names);
+      toast.success(`${names.length} টি profile পাওয়া গেছে`);
+    } catch (e: any) {
+      toast.error(e.message ?? "Profile fetch ব্যর্থ");
+    } finally {
+      setFetchingProfiles(false);
+    }
+  }
+
+  async function savePop(p: PopRow) {
+    setSavingPop(p.id);
+    try {
+      const { error } = await supabase
+        .from("branch_managers")
+        .update({ suspension_mode: p.suspension_mode || "inherit", block_profile_name: p.block_profile_name || null })
+        .eq("id", p.id);
+      if (error) throw error;
+      toast.success("POP override সংরক্ষিত");
+    } catch (e: any) {
+      toast.error(e.message ?? "সংরক্ষণে সমস্যা");
+    } finally {
+      setSavingPop(null);
     }
   }
 
@@ -115,7 +193,7 @@ export default function AutoSuspensionScheduler() {
           <div>
             <h1 className="text-2xl font-bold">অটো-সাসপেনশন শিডিউলার</h1>
             <p className="text-sm text-muted-foreground">
-              মেয়াদোত্তীর্ণ ক্লায়েন্ট স্বয়ংক্রিয়ভাবে MikroTik-এ disable হবে ও SMS পাঠাবে।
+              মেয়াদোত্তীর্ণ ক্লায়েন্ট auto disable বা block-profile করা হবে।
             </p>
           </div>
         </div>
@@ -125,26 +203,31 @@ export default function AutoSuspensionScheduler() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card><CardContent className="p-4">
           <p className="text-sm text-muted-foreground">আজকের overdue (এখনো enabled)</p>
           <p className="text-3xl font-bold mt-1">{overdueCount}</p>
         </CardContent></Card>
         <Card><CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">মোট সাসপেন্ডেড</p>
+          <p className="text-sm text-muted-foreground">মোট disable</p>
           <p className="text-3xl font-bold mt-1">{suspendedCount}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <p className="text-sm text-muted-foreground">Block-profile-এ আছে</p>
+          <p className="text-3xl font-bold mt-1">{blockedCount}</p>
         </CardContent></Card>
         <Card><CardContent className="p-4">
           <p className="text-sm text-muted-foreground">শিডিউল স্ট্যাটাস</p>
           <p className="text-xl font-semibold mt-1">
             {cfg.enabled ? <Badge>চালু</Badge> : <Badge variant="secondary">বন্ধ</Badge>}
             {cfg.dry_run && <Badge variant="outline" className="ml-2">Dry-run</Badge>}
+            <Badge variant="outline" className="ml-2">{cfg.mode === "block_profile" ? "Block-Profile" : "Disable"}</Badge>
           </p>
         </CardContent></Card>
       </div>
 
       <Card>
-        <CardHeader><CardTitle>সেটিংস</CardTitle></CardHeader>
+        <CardHeader><CardTitle>গ্লোবাল সেটিংস</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -157,7 +240,7 @@ export default function AutoSuspensionScheduler() {
           <div className="flex items-center justify-between">
             <div>
               <Label>Dry-run মোড</Label>
-              <p className="text-xs text-muted-foreground">সত্যিকারে disable না করে শুধু রিপোর্ট দেখাবে।</p>
+              <p className="text-xs text-muted-foreground">সত্যিকারে কিছু না করে শুধু রিপোর্ট দেখাবে।</p>
             </div>
             <Switch checked={cfg.dry_run} onCheckedChange={(v) => setCfg({ ...cfg, dry_run: v })} />
           </div>
@@ -172,6 +255,19 @@ export default function AutoSuspensionScheduler() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <Label>সাসপেনশন মোড</Label>
+              <Select value={cfg.mode} onValueChange={(v) => setCfg({ ...cfg, mode: v as Cfg["mode"] })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="disable">Disable (MikroTik user disable)</SelectItem>
+                  <SelectItem value="block_profile">Block Profile (profile change)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Block-profile মোডে user connect করতে পারবে কিন্তু internet পাবে না।
+              </p>
+            </div>
+            <div>
               <Label>গ্রেস ডে (দিন)</Label>
               <Input
                 type="number"
@@ -179,23 +275,124 @@ export default function AutoSuspensionScheduler() {
                 value={cfg.grace_days}
                 onChange={(e) => setCfg({ ...cfg, grace_days: parseInt(e.target.value || "0", 10) })}
               />
-              <p className="text-xs text-muted-foreground mt-1">expire_date এর পরে এত দিন wait করে সাসপেন্ড করবে।</p>
+              <p className="text-xs text-muted-foreground mt-1">expire_date এর পরে এত দিন wait করে action নিবে।</p>
             </div>
-            <div>
-              <Label>SMS টেমপ্লেট key</Label>
-              <Input
-                value={cfg.template_key}
-                onChange={(e) => setCfg({ ...cfg, template_key: e.target.value })}
-                placeholder="suspension_notice"
-              />
-              <p className="text-xs text-muted-foreground mt-1">নোটিফিকেশন টেমপ্লেট পেজে এই key দিয়ে template বানান।</p>
+          </div>
+
+          {cfg.mode === "block_profile" && (
+            <div className="rounded-md border p-3 space-y-3 bg-muted/40">
+              <Label>Block Profile name</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={cfg.block_profile_name}
+                  onChange={(e) => setCfg({ ...cfg, block_profile_name: e.target.value })}
+                  placeholder="block-profile"
+                  list="profile-list"
+                />
+              </div>
+              {profiles.length > 0 && (
+                <datalist id="profile-list">
+                  {profiles.map((p) => <option key={p} value={p} />)}
+                </datalist>
+              )}
+              <div className="flex flex-wrap gap-2 items-end">
+                <div className="flex-1 min-w-[200px]">
+                  <Label className="text-xs">MikroTik থেকে profile fetch</Label>
+                  <Select value={pickDevice} onValueChange={setPickDevice}>
+                    <SelectTrigger><SelectValue placeholder="Device সিলেক্ট করুন" /></SelectTrigger>
+                    <SelectContent>
+                      {devices.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="button" variant="outline" onClick={fetchProfiles} disabled={fetchingProfiles}>
+                  {fetchingProfiles ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+                  Profiles আনুন
+                </Button>
+              </div>
+              {profiles.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {profiles.length} টি profile পাওয়া গেছে — input box-এ type করে suggest থেকে select করুন।
+                </p>
+              )}
             </div>
+          )}
+
+          <div>
+            <Label>SMS টেমপ্লেট key</Label>
+            <Input
+              value={cfg.template_key}
+              onChange={(e) => setCfg({ ...cfg, template_key: e.target.value })}
+              placeholder="suspension_notice"
+            />
           </div>
 
           <Button onClick={saveCfg} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
             সেটিংস সংরক্ষণ
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>POP / Reseller Override</CardTitle>
+          <p className="text-sm text-muted-foreground">প্রতিটা POP চাইলে নিজের mode বেছে নিতে পারে। Inherit থাকলে global setting follow করবে।</p>
+        </CardHeader>
+        <CardContent>
+          {pops.length === 0 ? (
+            <p className="text-sm text-muted-foreground">কোনো POP নেই।</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>POP</TableHead>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Mode</TableHead>
+                  <TableHead>Block Profile name</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pops.map((p, idx) => (
+                  <TableRow key={p.id}>
+                    <TableCell>{p.name || "—"}</TableCell>
+                    <TableCell className="font-mono text-xs">{p.pop_code || "—"}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={p.suspension_mode || "inherit"}
+                        onValueChange={(v) => {
+                          const copy = [...pops]; copy[idx] = { ...p, suspension_mode: v }; setPops(copy);
+                        }}
+                      >
+                        <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="inherit">Inherit (global)</SelectItem>
+                          <SelectItem value="disable">Disable</SelectItem>
+                          <SelectItem value="block_profile">Block Profile</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        value={p.block_profile_name || ""}
+                        placeholder={cfg.block_profile_name}
+                        disabled={p.suspension_mode !== "block_profile"}
+                        onChange={(e) => {
+                          const copy = [...pops]; copy[idx] = { ...p, block_profile_name: e.target.value }; setPops(copy);
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" onClick={() => savePop(p)} disabled={savingPop === p.id}>
+                        {savingPop === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -209,7 +406,7 @@ export default function AutoSuspensionScheduler() {
       )}
 
       <Card>
-        <CardHeader><CardTitle>সাম্প্রতিক সাসপেন্ডেড ক্লায়েন্ট</CardTitle></CardHeader>
+        <CardHeader><CardTitle>সাম্প্রতিক সাসপেন্ডেড / Blocked ক্লায়েন্ট</CardTitle></CardHeader>
         <CardContent>
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -222,8 +419,9 @@ export default function AutoSuspensionScheduler() {
                   <TableHead>নাম</TableHead>
                   <TableHead>ইউজারনেম</TableHead>
                   <TableHead>মোবাইল</TableHead>
+                  <TableHead>State</TableHead>
+                  <TableHead>Current / Original profile</TableHead>
                   <TableHead>মেয়াদ শেষ</TableHead>
-                  <TableHead>সর্বশেষ আপডেট</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -232,8 +430,15 @@ export default function AutoSuspensionScheduler() {
                     <TableCell>{r.full_name}</TableCell>
                     <TableCell className="font-mono text-xs">{r.username}</TableCell>
                     <TableCell>{r.mobile}</TableCell>
+                    <TableCell>
+                      {r.original_profile
+                        ? <Badge variant="outline">Block-profile</Badge>
+                        : <Badge variant="secondary">Disabled</Badge>}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {r.profile || "—"}{r.original_profile ? ` ← ${r.original_profile}` : ""}
+                    </TableCell>
                     <TableCell>{r.expire_date}</TableCell>
-                    <TableCell className="text-xs">{r.updated_at ? new Date(r.updated_at).toLocaleString() : "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

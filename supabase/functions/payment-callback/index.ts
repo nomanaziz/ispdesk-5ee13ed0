@@ -354,12 +354,14 @@ Deno.serve(async (req) => {
       if (newDue <= 0 && pr.client_id) {
         try {
           const { data: client } = await supabase.from("clients")
-            .select("id, mikrotik_id, username, billing_status")
+            .select("id, mikrotik_id, username, billing_status, original_profile")
             .eq("id", pr.client_id).maybeSingle();
           if (client?.mikrotik_id && client?.username) {
+            const restoreProfile = (client as any).original_profile as string | null;
             await supabase.from("clients").update({
               billing_status: "Active",
               mikrotik_status: "enabled",
+              ...(restoreProfile ? { profile: restoreProfile, original_profile: null } : {}),
             }).eq("id", client.id);
             await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/manage-mikrotik-ppp`, {
               method: "POST",
@@ -370,6 +372,7 @@ Deno.serve(async (req) => {
                 username: client.username,
                 action: "update",
                 disabled: false,
+                ...(restoreProfile ? { profile: restoreProfile } : {}),
               }),
             });
           }
@@ -377,6 +380,7 @@ Deno.serve(async (req) => {
           console.error("auto re-enable failed", e);
         }
       }
+
     }
   }
 
