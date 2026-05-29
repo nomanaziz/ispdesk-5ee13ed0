@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
-import { SMS_PROVIDERS, EMAIL_PROVIDERS, WA_PROVIDERS, type NotifChannel } from "@/lib/notifications";
+import { SMS_PROVIDERS, EMAIL_PROVIDERS, WA_PROVIDERS, TELEGRAM_PROVIDERS, type NotifChannel } from "@/lib/notifications";
 
 interface Provider {
   id?: string;
@@ -27,7 +27,7 @@ const empty = (tenant_id: string, channel: NotifChannel): Provider => ({
 });
 
 const providerListFor = (c: NotifChannel) =>
-  c === "sms" ? SMS_PROVIDERS : c === "email" ? EMAIL_PROVIDERS : WA_PROVIDERS;
+  c === "sms" ? SMS_PROVIDERS : c === "email" ? EMAIL_PROVIDERS : c === "telegram" ? TELEGRAM_PROVIDERS : WA_PROVIDERS;
 
 function ProviderForm({ channel }: { channel: NotifChannel }) {
   const { tenantId } = useTenant();
@@ -121,6 +121,20 @@ function ProviderForm({ channel }: { channel: NotifChannel }) {
         </div>
       </>}
 
+      {form.provider === "lovable_gateway" && (
+        <p className="text-xs text-muted-foreground bg-muted/40 p-3 rounded">
+          কোনো ক্রেডেনশিয়াল লাগবে না — Lovable Telegram connector ব্যবহার হবে। recipient ফিল্ডে ক্লায়েন্টের Telegram <code>chat_id</code> দিন।
+        </p>
+      )}
+
+      {form.provider === "telegram_bot" && (
+        <div>
+          <Label className="text-xs">Bot Token</Label>
+          <Input type="password" value={cfg.bot_token || ""} onChange={e => setCfg("bot_token", e.target.value)} placeholder="123456:ABC-DEF..." />
+          <p className="text-xs text-muted-foreground mt-1">BotFather থেকে পাওয়া token।</p>
+        </div>
+      )}
+
       <div className="flex justify-end">
         <Button onClick={save} disabled={saving}><Save className="h-4 w-4 mr-1" /> সংরক্ষণ</Button>
       </div>
@@ -142,10 +156,12 @@ export default function NotificationProviders() {
         <TabsList>
           <TabsTrigger value="sms">SMS</TabsTrigger>
           <TabsTrigger value="email">Email</TabsTrigger>
+          <TabsTrigger value="telegram">Telegram</TabsTrigger>
           <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
         </TabsList>
         <TabsContent value="sms"><ProviderForm channel="sms" /></TabsContent>
         <TabsContent value="email"><ProviderForm channel="email" /></TabsContent>
+        <TabsContent value="telegram"><ProviderForm channel="telegram" /></TabsContent>
         <TabsContent value="whatsapp"><ProviderForm channel="whatsapp" /></TabsContent>
       </Tabs>
     </div>
